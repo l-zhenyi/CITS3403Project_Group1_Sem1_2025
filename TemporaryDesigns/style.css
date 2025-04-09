@@ -19,7 +19,7 @@ body::before {
     content: ''; position: fixed;
     top: -10px; left: -10px; right: -10px; bottom: -10px;
     background: inherit;
-    filter: blur(2px) saturate(25%) brightness(1.0);
+    filter: blur(10px) saturate(50%) brightness(1.0);
     z-index: -1; transform: scale(1.1);
 }
 
@@ -130,15 +130,14 @@ body.planner-active { overflow: hidden; }
 }
 /* ... Group list internal styles ... */
 .group-list-area ul { list-style: none; padding: 0; margin: 0; }
-.group-item { display: flex; align-items: center; padding: 12px 10px; border-radius: 10px; margin-bottom: 6px; cursor: pointer; transition: background-color 0.2s ease; background-color: rgba(255, 255, 255, 0.08); }
+.group-item { display: flex; align-items: center; padding: 12px 10px; border-radius: 10px; margin-bottom: 6px; cursor: pointer; transition: background-color 0.2s ease; background-color: rgba(255, 255, 255, 0.1);}
 .group-item:hover { background-color: rgba(255, 255, 255, 0.15); }
-.group-item.active { background-color: rgba(255, 255, 255, 0.25); color: #fff; }
+.group-item.active { background-color: rgba(255, 255, 255, 0.25); color: #fff;}
 .group-item.active .group-name { color: inherit; font-weight: 600; }
-.group-item.active .group-stats { color: rgba(255, 255, 255, 0.9); }
 .group-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover; flex-shrink: 0; }
 .group-info { display: flex; flex-direction: column; overflow: hidden; }
 .group-name { font-weight: 500; color: #f5f5fa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.group-stats { font-size: 0.85rem; color: #c0c0c5; white-space: nowrap; }
+.group-stats { font-size: 0.85rem; color: rgba(255, 255, 255, 0.9); white-space: nowrap; }
 
 
 /* Event Collage Area Styling */
