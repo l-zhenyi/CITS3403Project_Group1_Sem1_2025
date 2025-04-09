@@ -4,12 +4,10 @@ html { scroll-behavior: smooth; }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    /* Background image */
     background-image: url('https://sb.ecobnb.net/app/uploads/sites/3/2020/01/nature.jpg');
     background-size: cover;
     background-position: center center;
     background-attachment: fixed;
-    /* Default text color to LIGHT for contrast */
     color: #f0f0f5;
     line-height: 1.6;
     position: relative;
@@ -17,122 +15,124 @@ body {
     margin: 0;
 }
 
-/* Global Background Filter via Pseudo-element */
 body::before {
-    content: '';
-    position: fixed;
+    content: ''; position: fixed;
     top: -10px; left: -10px; right: -10px; bottom: -10px;
     background: inherit;
-    /* Adjusted filter - slightly brighter, keep blur */
-    filter: blur(30px) saturate(25%) brightness(1.0);
-    z-index: -1;
-    transform: scale(1.1);
+    filter: blur(2px) saturate(25%) brightness(1.0);
+    z-index: -1; transform: scale(1.1);
 }
 
 body.planner-active { overflow: hidden; }
 
 
-/* MID-TONE, MORE TRANSPARENT Glassmorphism Style */
+/* Mid-tone Glass Style (Base Layer) */
 .glassy {
-    /* Mid-tone Gray Base, LOWER Alpha (more transparent) */
-    background: rgba(140, 140, 145, 0.6); /* Neutral gray, 60% opacity */
-    /* High Blur */
-    backdrop-filter: blur(35px) saturate(150%); /* Strong blur */
-    -webkit-backdrop-filter: blur(35px) saturate(150%);
-    /* Subtle Border for definition */
-    border: 1px solid rgba(255, 255, 255, 0.25); /* Faint light border */
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Moderate shadow */
+    background: rgba(140, 140, 145, 0.6); /* Base glass color */
+    backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
 /* --- Navigation --- */
 .top-nav {
     position: sticky; top: 10px;
-    width: calc(100% - 40px); max-width: 1400px;
+    width: calc(100% - 24px); max-width: 1800px;
     margin: 10px auto 0 auto; display: flex;
     justify-content: space-between; align-items: center;
-    padding: 12px 24px; z-index: 1000; border-radius: 18px;
+    /* Top Nav Padding (Reference) */
+    padding: 10px 24px; /* Reduced vertical slightly */
+    z-index: 1000; border-radius: 16px;
     /* Inherits .glassy */
 }
-/* Text/Icons on Nav - LIGHT text */
-.top-nav-left a, .top-nav-right .icon-button {
-    color: #ffffff; /* Bright white */
-    font-weight: 500;
-    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); /* Dark halo for pop */
-    text-decoration: none;
+/* Top Nav Links (Reference) */
+.top-nav-left a {
+    padding: 8px 20px; /* Padding applied to the link itself */
+    margin-right: 8px; border-radius: 10px;
+    color: #ffffff; font-weight: 500;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); text-decoration: none;
     transition: background-color 0.2s ease, color 0.2s ease;
 }
-.top-nav-left a { padding: 8px 16px; margin-right: 8px; border-radius: 12px; }
 .top-nav-left a.active {
-    color: #fff; /* White active text */
-    font-weight: 600;
-    background-color: rgba(255, 255, 255, 0.15); /* Brighter active bg */
-    text-shadow: none;
+    color: #fff; font-weight: 600;
+    background-color: rgba(255, 255, 255, 0.15); text-shadow: none;
 }
+
 .top-nav-right .icon-button { background: none; border: none; font-size: 1.4rem; padding: 8px; margin-left: 12px; cursor: pointer; border-radius: 50%; }
-.top-nav-left a:not(.active):hover, .top-nav-right .icon-button:hover { background-color: rgba(255, 255, 255, 0.15); } /* Light hover */
+.top-nav-left a:not(.active):hover, .top-nav-right .icon-button:hover { background-color: rgba(255, 255, 255, 0.15); }
 
 
 /* --- Planner Interface --- */
 .planner-interface {
-    padding: 0 20px 20px 20px; max-width: 1600px; margin: 0 auto;
-    height: calc(100vh - 75px); display: flex; flex-direction: column;
+    padding: 0 12px 12px 12px; max-width: 1800px; margin: 0 auto;
+    height: calc(100vh - 65px); display: flex; flex-direction: column;
 }
 
 .planner-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 15px 5px 15px 5px; flex-shrink: 0;
-    text-shadow: 0 0 8px rgba(0, 0, 0, 0.6); /* Dark shadow */
+    padding: 15px 0px 15px 0px; flex-shrink: 0;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
 }
-.planner-title { font-size: 1.8rem; font-weight: bold; margin: 0; color: #fff; /* White title */ }
+.planner-title { font-size: 1.8rem; font-weight: bold; margin: 0; color: #fff; }
 
+/* View Selector - Padding aligned with Top Nav */
 .view-selector {
-    display: flex; padding: 5px; border-radius: 12px;
-    margin-left: 30px; flex-grow: 1; max-width: 800px;
+    display: flex;
+    /* Align container padding with top-nav */
+    padding: 6px 14px;
+    border-radius: 12px;
+    width: fit-content;
+    max-width: 70%;
     /* Inherits glassy */
 }
+/* View Tab Padding Adjusted to match Top Nav Links */
 .view-tab {
-    background: none; border: none; padding: 10px 25px; border-radius: 9px; cursor: pointer;
-    font-weight: 500; font-size: 1.05rem; color: #e0e0e5; /* Light gray tab text */
-    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    background: none; border: none;
+    /* Align padding with .top-nav-left a */
+    padding: 8px 20px;
+    margin-right: 8px; /* Space between tabs */
+    border-radius: 10px; /* Match nav links */
+    cursor: pointer;
+    font-weight: 500; font-size: 1.0rem; /* Slightly smaller font than title maybe */
+    color: #e0e0e5;
+    transition: background-color 0.3s ease, color 0.3s ease;
     white-space: nowrap; text-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
 }
+/* View Selector - Translucent Active State */
 .view-tab.active {
-    background-color: rgba(250, 250, 253, 0.9); /* Light active tab */
-    color: #0073e6; /* Standard blue */ font-weight: 600;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15); text-shadow: none;
+    /* Align active style with .top-nav-left a.active */
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff; font-weight: 600;
+    box-shadow: none; text-shadow: none;
+}
+.view-tab:not(.active):hover {
+     /* Align hover style with .top-nav-left a:hover */
+     background-color: rgba(255, 255, 255, 0.1); /* Slightly less prominent hover than active */
 }
 
 /* Planner Window (Single Pane Container) */
 .planner-pane {
-    flex-grow: 1; border-radius: 20px;
-    /* More transparent base */
-    background-color: rgba(150, 150, 155, 0.3); /* Mid-tone gray, low alpha */
-    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.15); /* Adjusted inset */
+    flex-grow: 1; border-radius: 18px;
+    background-color: rgba(140, 140, 145, 0.6);
+    backdrop-filter: blur(30px) saturate(140%);
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
     padding: 0; display: flex; gap: 0; overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Fainter light border */
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* --- Content Inside Single Pane --- */
+/* --- Content Inside Single Pane (Lighter than Pane) --- */
 
 /* Group List Area Styling */
 .group-list-area {
     flex: 0 0 340px; height: 100%; overflow-y: auto; padding: 12px;
-    /* Mid-tone Glassy effect, more transparent */
-    background-color: rgba(145, 145, 150, 0.65); /* Slightly adjusted gray, lower alpha */
-    backdrop-filter: blur(30px) saturate(140%);
-    -webkit-backdrop-filter: blur(30px) saturate(140%);
-    border-radius: 20px 0 0 20px;
-    border-right: 1px solid rgba(255, 255, 255, 0.3); /* Light divider */
+    border-radius: 18px 0 0 18px;
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
 }
+/* ... Group list internal styles ... */
 .group-list-area ul { list-style: none; padding: 0; margin: 0; }
-.group-item {
-    display: flex; align-items: center; padding: 12px 10px; border-radius: 10px;
-    margin-bottom: 6px; cursor: pointer; transition: background-color 0.2s ease;
-    /* Subtle internal background */
-    background-color: rgba(255, 255, 255, 0.08);
-}
+.group-item { display: flex; align-items: center; padding: 12px 10px; border-radius: 10px; margin-bottom: 6px; cursor: pointer; transition: background-color 0.2s ease; background-color: rgba(255, 255, 255, 0.08); }
 .group-item:hover { background-color: rgba(255, 255, 255, 0.15); }
-.group-item.active { background-color: rgba(255, 255, 255, 0.2); color: #fff; } /* Active is just brighter */
+.group-item.active { background-color: rgba(255, 255, 255, 0.25); color: #fff; }
 .group-item.active .group-name { color: inherit; font-weight: 600; }
 .group-item.active .group-stats { color: rgba(255, 255, 255, 0.9); }
 .group-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover; flex-shrink: 0; }
@@ -145,24 +145,19 @@ body.planner-active { overflow: hidden; }
 .event-collage-area {
     flex-grow: 1; height: 100%; overflow-y: auto; position: relative;
     perspective: 1200px; padding: 12px;
-    /* Mid-tone Glassy effect, more transparent */
-    background-color: rgba(150, 150, 155, 0.7); /* Slightly different gray/alpha */
-    backdrop-filter: blur(30px) saturate(140%);
-    -webkit-backdrop-filter: blur(30px) saturate(140%);
-     border-radius: 0 20px 20px 0;
+     border-radius: 0 18px 18px 0;
 }
 
 /* Active Group Header */
 .active-group-header {
-    /* Use main glassy style */
-    background: rgba(140, 140, 145, 0.65); /* Match .glassy base, slightly more opaque */
-    backdrop-filter: blur(35px) saturate(150%);
-    -webkit-backdrop-filter: blur(35px) saturate(150%);
-    border: 1px solid rgba(255, 255, 255, 0.3); /* Light border */
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    background: rgba(160, 160, 165, 0.8);
+    backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
     display: flex; align-items: center; padding: 12px 18px; border-radius: 14px;
     margin-bottom: 18px; position: sticky; top: 0px; z-index: 10;
 }
+/* ... Active group header internal styles ... */
 .group-avatar-small { width: 36px; height: 36px; border-radius: 50%; margin-right: 14px; object-fit: cover; flex-shrink: 0; }
 .active-group-name { font-weight: 600; color: #fff; margin-right: auto; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 6px rgba(0, 0, 0, 0.6); }
 .settings-button { font-size: 1.2rem; padding: 6px; color: #e0e0e5; margin-left: 10px; background: none; border: none; cursor: pointer; border-radius: 50%; transition: background-color 0.2s ease, color 0.2s ease; flex-shrink: 0; text-shadow: none; }
@@ -174,33 +169,31 @@ body.planner-active { overflow: hidden; }
     position: absolute; width: 320px; min-height: 210px;
     padding: 18px; border-radius: 18px; transform-style: preserve-3d;
     transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
-    /* Panels: Slightly more opaque than panes, mid-tone */
-    background: rgba(155, 155, 160, 0.75); /* Mid-gray, higher alpha than panes */
-    backdrop-filter: blur(25px) saturate(130%); /* Slightly less blur */
-    -webkit-backdrop-filter: blur(25px) saturate(130%);
-    border: 1px solid rgba(255, 255, 255, 0.35); /* Light border */
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25); /* Moderate shadow */
+    background: rgba(170, 170, 175, 0.85);
+    backdrop-filter: blur(30px) saturate(130%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.28);
 }
-.event-panel:hover { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3); transform: translateY(-3px) scale(1.01); }
-/* Inner event panel styles - LIGHT text */
+/* ... Event panel internal styles ... */
+.event-panel:hover { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32); transform: translateY(-3px) scale(1.01); }
 .event-image { width: 100%; height: 100px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; opacity: 0.95; }
 .event-panel h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 5px; color: #fff; text-shadow: 0 0 5px rgba(0,0,0,0.7); }
-.event-details { font-size: 0.9rem; color: #e0e0e5; margin-bottom: 8px; text-shadow: 0 0 5px rgba(0,0,0,0.7); }
-.event-rsvp { font-size: 0.9rem; font-weight: 500; margin-bottom: 14px; color: #75c5ff; /* Adjusted blue */ text-shadow: none;}
+.event-details { font-size: 0.9rem; color: #e5e5ea; margin-bottom: 8px; text-shadow: 0 0 5px rgba(0,0,0,0.7); }
+.event-rsvp { font-size: 0.9rem; font-weight: 500; margin-bottom: 14px; color: #0369A1; text-shadow: none;}
 .event-actions { display: flex; gap: 10px; margin-top: auto; }
 .button { padding: 9px 18px; border: none; border-radius: 12px; cursor: pointer; font-weight: 500; transition: background-color 0.2s ease, transform 0.1s ease; text-shadow: none; }
 .button:active { transform: scale(0.97); }
-.button.accept { background-color: #3f9e5a; color: white; }
-.button.accept:hover { background-color: #4cb86d; }
-.button.decline { background-color: rgba(255, 255, 255, 0.15); color: #f0f0f5; } /* Light gray button */
+.button.accept { background-color: #0284C7; color: white; }
+.button.accept:hover { background-color: #0369A1; }
+.button.decline { background-color: rgba(255, 255, 255, 0.15); color: #f0f0f5; }
 .button.decline:hover { background-color: rgba(255, 255, 255, 0.25); }
 
-/* Scrollbar styling - Adapt for mid-tone theme */
+/* Scrollbar styling */
 .event-collage-area::-webkit-scrollbar,
 .group-list-area::-webkit-scrollbar { width: 8px; }
 .event-collage-area::-webkit-scrollbar-track,
-.group-list-area::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px;} /* Faint light track */
+.group-list-area::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px;}
 .event-collage-area::-webkit-scrollbar-thumb,
-.group-list-area::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; } /* Light thumb */
+.group-list-area::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; }
 .event-collage-area::-webkit-scrollbar-thumb:hover,
 .group-list-area::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
