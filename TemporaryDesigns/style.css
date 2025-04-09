@@ -1,238 +1,206 @@
 /* Basic Reset & Body */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-html {
-    /* Helps with smooth scrolling calculation */
-    scroll-behavior: smooth;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f8f8fa;
-    color: #333;
+    /* Background image */
+    background-image: url('https://sb.ecobnb.net/app/uploads/sites/3/2020/01/nature.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed;
+    /* Default text color to LIGHT for contrast */
+    color: #f0f0f5;
     line-height: 1.6;
-    /* Prevent body scroll ONLY when planner is active (handles its own scroll) */
-    /* You might control this class with JS based on the current view */
-}
-body.planner-active {
-     overflow: hidden; /* Prevent body scrollbar for the non-scrolling planner layout */
-}
-
-
-/* Glassmorphism Definition */
-.glassy {
-    /* More pronounced frost effect */
-    background: rgba(255, 255, 255, 0.65); /* Adjust alpha for more/less transparency */
-    backdrop-filter: blur(16px) saturate(180%); /* Increase blur */
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border: 1px solid rgba(209, 213, 219, 0.4); /* Slightly stronger border */
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); /* Add base shadow */
-}
-
-/* Top Nav Bar */
-.top-nav {
-    position: sticky; /* Stick to top always */
-    top: 10px; /* Small gap from the very top */
-    /* Make it slightly less than full width and centered for the floating effect */
-    width: calc(100% - 40px); /* Adjust width as needed */
-    max-width: 1400px; /* Max width if needed */
-    margin: 10px auto 0 auto; /* Top margin, centered */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px; /* Adjust padding */
-    z-index: 1000; /* Ensure it's above everything */
-    border-radius: 16px; /* Rounded rectangle */
-    transition: top 0.3s ease; /* Smooth transition if top changes */
-}
-/* Example: On other pages, maybe top-nav sits flush at top=0 */
-body:not(.planner-active) .top-nav {
-    top: 0;
-    width: 100%;
-    max-width: none;
+    position: relative;
+    min-height: 100vh;
     margin: 0;
-    border-radius: 0; /* Or keep rounded if preferred */
-    position: sticky; /* Or change to static/relative if it should scroll away */
 }
 
+/* Global Background Filter via Pseudo-element */
+body::before {
+    content: '';
+    position: fixed;
+    top: -10px; left: -10px; right: -10px; bottom: -10px;
+    background: inherit;
+    /* Adjusted filter - slightly brighter, keep blur */
+    filter: blur(30px) saturate(25%) brightness(1.0);
+    z-index: -1;
+    transform: scale(1.1);
+}
 
-.top-nav-left a {
-    color: #333; /* Darker text for better contrast on glass */
-    text-decoration: none;
-    padding: 8px 16px;
-    margin-right: 8px;
-    border-radius: 12px;
+body.planner-active { overflow: hidden; }
+
+
+/* MID-TONE, MORE TRANSPARENT Glassmorphism Style */
+.glassy {
+    /* Mid-tone Gray Base, LOWER Alpha (more transparent) */
+    background: rgba(140, 140, 145, 0.6); /* Neutral gray, 60% opacity */
+    /* High Blur */
+    backdrop-filter: blur(35px) saturate(150%); /* Strong blur */
+    -webkit-backdrop-filter: blur(35px) saturate(150%);
+    /* Subtle Border for definition */
+    border: 1px solid rgba(255, 255, 255, 0.25); /* Faint light border */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Moderate shadow */
+}
+
+/* --- Navigation --- */
+.top-nav {
+    position: sticky; top: 10px;
+    width: calc(100% - 40px); max-width: 1400px;
+    margin: 10px auto 0 auto; display: flex;
+    justify-content: space-between; align-items: center;
+    padding: 12px 24px; z-index: 1000; border-radius: 18px;
+    /* Inherits .glassy */
+}
+/* Text/Icons on Nav - LIGHT text */
+.top-nav-left a, .top-nav-right .icon-button {
+    color: #ffffff; /* Bright white */
     font-weight: 500;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); /* Dark halo for pop */
+    text-decoration: none;
     transition: background-color 0.2s ease, color 0.2s ease;
 }
-
+.top-nav-left a { padding: 8px 16px; margin-right: 8px; border-radius: 12px; }
 .top-nav-left a.active {
-    color: #007AFF;
+    color: #fff; /* White active text */
     font-weight: 600;
+    background-color: rgba(255, 255, 255, 0.15); /* Brighter active bg */
+    text-shadow: none;
 }
+.top-nav-right .icon-button { background: none; border: none; font-size: 1.4rem; padding: 8px; margin-left: 12px; cursor: pointer; border-radius: 50%; }
+.top-nav-left a:not(.active):hover, .top-nav-right .icon-button:hover { background-color: rgba(255, 255, 255, 0.15); } /* Light hover */
 
-.top-nav-left a:hover {
-    background-color: rgba(0, 0, 0, 0.06);
-}
 
-.top-nav-right .icon-button {
-    background: none;
-    border: none;
-    font-size: 1.4rem;
-    padding: 8px;
-    margin-left: 12px;
-    cursor: pointer;
-    color: #333; /* Darker icons */
-    border-radius: 50%;
-    transition: background-color 0.2s ease;
-}
-.top-nav-right .icon-button:hover {
-     background-color: rgba(0, 0, 0, 0.06);
-}
-
-/* Planner Interface */
+/* --- Planner Interface --- */
 .planner-interface {
-    /* Wider layout - reduced horizontal padding */
-    padding: 15px 20px 20px 20px; /* Less horizontal padding */
-    max-width: 1600px; /* Increased max width */
-    margin: 0 auto;
-    /* Calculate height to fill viewport below top nav */
-    height: calc(100vh - 70px); /* Adjust 70px based on final top-nav height + margins */
-    display: flex;
-    flex-direction: column; /* Stack title, tabs, window vertically */
+    padding: 0 20px 20px 20px; max-width: 1600px; margin: 0 auto;
+    height: calc(100vh - 75px); display: flex; flex-direction: column;
 }
 
-.planner-title {
-    font-size: 1.8rem; /* Slightly smaller title */
-    font-weight: bold;
-    margin-bottom: 12px;
-    padding-left: 5px; /* Align slightly with content */
-    color: #1d1d1f;
+.planner-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 5px 15px 5px; flex-shrink: 0;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.6); /* Dark shadow */
 }
+.planner-title { font-size: 1.8rem; font-weight: bold; margin: 0; color: #fff; /* White title */ }
 
-/* Segmented View Selector */
 .view-selector {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 16px;
-    /* Enhanced glassy effect inherited */
-    border-radius: 14px; /* Slightly larger radius */
-    padding: 6px; /* Slightly more padding */
-    width: fit-content;
-    margin-left: auto;
-    margin-right: auto;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07); /* Refined shadow */
+    display: flex; padding: 5px; border-radius: 12px;
+    margin-left: 30px; flex-grow: 1; max-width: 800px;
+    /* Inherits glassy */
 }
-
 .view-tab {
-    background: none;
-    border: none;
-    padding: 9px 22px; /* Slightly larger padding */
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 500;
-    color: #333; /* Darker text */
+    background: none; border: none; padding: 10px 25px; border-radius: 9px; cursor: pointer;
+    font-weight: 500; font-size: 1.05rem; color: #e0e0e5; /* Light gray tab text */
     transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    white-space: nowrap; text-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
 }
-
 .view-tab.active {
-    background-color: rgba(255, 255, 255, 0.9); /* Brighter white active tab */
-    color: #007AFF;
-    font-weight: 600;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12); /* More pronounced shadow on active */
+    background-color: rgba(250, 250, 253, 0.9); /* Light active tab */
+    color: #0073e6; /* Standard blue */ font-weight: 600;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15); text-shadow: none;
 }
 
-/* Planner Window */
-.planner-window {
-    display: flex;
-    gap: 20px; /* Adjust gap */
-    flex-grow: 1; /* Allow window to take remaining vertical space */
-    overflow: hidden; /* Crucial: Prevent this container from scrolling */
-    /* Remove background/border if panes fill it */
+/* Planner Window (Single Pane Container) */
+.planner-pane {
+    flex-grow: 1; border-radius: 20px;
+    /* More transparent base */
+    background-color: rgba(150, 150, 155, 0.3); /* Mid-tone gray, low alpha */
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.15); /* Adjusted inset */
+    padding: 0; display: flex; gap: 0; overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Fainter light border */
 }
 
-/* Group List (Left Sidebar in Groups View) */
-.group-list {
-    flex: 0 0 300px; /* Slightly wider list */
-    background-color: rgba(242, 242, 247, 0.85); /* Subtle background */
-    border-radius: 16px;
-    padding: 16px;
-    overflow-y: auto; /* Allow ONLY this pane to scroll vertically */
-    height: 100%; /* Take full height of parent */
-    border: 1px solid rgba(200, 200, 200, 0.2);
+/* --- Content Inside Single Pane --- */
+
+/* Group List Area Styling */
+.group-list-area {
+    flex: 0 0 340px; height: 100%; overflow-y: auto; padding: 12px;
+    /* Mid-tone Glassy effect, more transparent */
+    background-color: rgba(145, 145, 150, 0.65); /* Slightly adjusted gray, lower alpha */
+    backdrop-filter: blur(30px) saturate(140%);
+    -webkit-backdrop-filter: blur(30px) saturate(140%);
+    border-radius: 20px 0 0 20px;
+    border-right: 1px solid rgba(255, 255, 255, 0.3); /* Light divider */
+}
+.group-list-area ul { list-style: none; padding: 0; margin: 0; }
+.group-item {
+    display: flex; align-items: center; padding: 12px 10px; border-radius: 10px;
+    margin-bottom: 6px; cursor: pointer; transition: background-color 0.2s ease;
+    /* Subtle internal background */
+    background-color: rgba(255, 255, 255, 0.08);
+}
+.group-item:hover { background-color: rgba(255, 255, 255, 0.15); }
+.group-item.active { background-color: rgba(255, 255, 255, 0.2); color: #fff; } /* Active is just brighter */
+.group-item.active .group-name { color: inherit; font-weight: 600; }
+.group-item.active .group-stats { color: rgba(255, 255, 255, 0.9); }
+.group-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover; flex-shrink: 0; }
+.group-info { display: flex; flex-direction: column; overflow: hidden; }
+.group-name { font-weight: 500; color: #f5f5fa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.group-stats { font-size: 0.85rem; color: #c0c0c5; white-space: nowrap; }
+
+
+/* Event Collage Area Styling */
+.event-collage-area {
+    flex-grow: 1; height: 100%; overflow-y: auto; position: relative;
+    perspective: 1200px; padding: 12px;
+    /* Mid-tone Glassy effect, more transparent */
+    background-color: rgba(150, 150, 155, 0.7); /* Slightly different gray/alpha */
+    backdrop-filter: blur(30px) saturate(140%);
+    -webkit-backdrop-filter: blur(30px) saturate(140%);
+     border-radius: 0 20px 20px 0;
 }
 
-.group-list ul { list-style: none; }
-.group-item { display: flex; align-items: center; padding: 12px; border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: background-color 0.2s ease; }
-.group-item:hover { background-color: rgba(0, 0, 0, 0.05); }
-.group-item.active { background-color: rgba(0, 122, 255, 0.15); } /* Slightly stronger active state */
-.group-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
-.group-info { display: flex; flex-direction: column; }
-.group-name { font-weight: 500; color: #1d1d1f; } /* Darker name */
-.group-item.active .group-name { font-weight: 600; color: #007AFF; }
-.group-stats { font-size: 0.85rem; color: #555; } /* Darker stats */
-
-/* Event Collage Container (Right Side) */
-.event-collage-container {
-    flex-grow: 1;
-    position: relative;
-    overflow-y: auto; /* Allow ONLY this pane to scroll vertically */
-    height: 100%;
-    perspective: 1200px; /* Slightly increased perspective */
-    padding: 15px; /* Adjust padding */
+/* Active Group Header */
+.active-group-header {
+    /* Use main glassy style */
+    background: rgba(140, 140, 145, 0.65); /* Match .glassy base, slightly more opaque */
+    backdrop-filter: blur(35px) saturate(150%);
+    -webkit-backdrop-filter: blur(35px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Light border */
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    display: flex; align-items: center; padding: 12px 18px; border-radius: 14px;
+    margin-bottom: 18px; position: sticky; top: 0px; z-index: 10;
 }
+.group-avatar-small { width: 36px; height: 36px; border-radius: 50%; margin-right: 14px; object-fit: cover; flex-shrink: 0; }
+.active-group-name { font-weight: 600; color: #fff; margin-right: auto; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 6px rgba(0, 0, 0, 0.6); }
+.settings-button { font-size: 1.2rem; padding: 6px; color: #e0e0e5; margin-left: 10px; background: none; border: none; cursor: pointer; border-radius: 50%; transition: background-color 0.2s ease, color 0.2s ease; flex-shrink: 0; text-shadow: none; }
+.settings-button:hover { background-color: rgba(255,255,255,0.15); color: #fff; }
+
 
 /* Event Panel Styling */
 .event-panel {
-    position: absolute;
-    width: 320px; /* Slightly wider panels */
-    min-height: 210px;
-    padding: 18px; /* More padding */
-    border-radius: 18px; /* More rounded */
-    transform-style: preserve-3d;
-    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease; /* Add shadow transition */
-
-    /* Apply Enhanced Glassmorphism */
-    background: rgba(255, 255, 255, 0.8); /* Adjust alpha */
-    backdrop-filter: blur(14px) saturate(160%);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    border: 1px solid rgba(200, 200, 200, 0.5);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12); /* Slightly stronger base shadow */
+    position: absolute; width: 320px; min-height: 210px;
+    padding: 18px; border-radius: 18px; transform-style: preserve-3d;
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
+    /* Panels: Slightly more opaque than panes, mid-tone */
+    background: rgba(155, 155, 160, 0.75); /* Mid-gray, higher alpha than panes */
+    backdrop-filter: blur(25px) saturate(130%); /* Slightly less blur */
+    -webkit-backdrop-filter: blur(25px) saturate(130%);
+    border: 1px solid rgba(255, 255, 255, 0.35); /* Light border */
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25); /* Moderate shadow */
 }
-
-.event-panel:hover {
-     box-shadow: 0 14px 35px rgba(0, 0, 0, 0.18); /* Enhanced hover shadow */
-     /* JS handles transform on hover if needed during scroll */
-}
-
-.event-image { width: 100%; height: 100px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; }
-.event-panel h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 5px; color: #1d1d1f; }
-.event-details { font-size: 0.9rem; color: #444; margin-bottom: 8px; }
-.event-rsvp { font-size: 0.9rem; font-weight: 500; margin-bottom: 14px; color: #007AFF; }
+.event-panel:hover { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3); transform: translateY(-3px) scale(1.01); }
+/* Inner event panel styles - LIGHT text */
+.event-image { width: 100%; height: 100px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; opacity: 0.95; }
+.event-panel h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 5px; color: #fff; text-shadow: 0 0 5px rgba(0,0,0,0.7); }
+.event-details { font-size: 0.9rem; color: #e0e0e5; margin-bottom: 8px; text-shadow: 0 0 5px rgba(0,0,0,0.7); }
+.event-rsvp { font-size: 0.9rem; font-weight: 500; margin-bottom: 14px; color: #75c5ff; /* Adjusted blue */ text-shadow: none;}
 .event-actions { display: flex; gap: 10px; margin-top: auto; }
-.button { padding: 9px 18px; border: none; border-radius: 12px; cursor: pointer; font-weight: 500; transition: background-color 0.2s ease, transform 0.1s ease; }
+.button { padding: 9px 18px; border: none; border-radius: 12px; cursor: pointer; font-weight: 500; transition: background-color 0.2s ease, transform 0.1s ease; text-shadow: none; }
 .button:active { transform: scale(0.97); }
-.button.accept { background-color: #34C759; color: white; }
-.button.accept:hover { background-color: #2aa84a; }
-.button.decline { background-color: #eaeaf0; color: #333; }
-.button.decline:hover { background-color: #dcdce3; }
+.button.accept { background-color: #3f9e5a; color: white; }
+.button.accept:hover { background-color: #4cb86d; }
+.button.decline { background-color: rgba(255, 255, 255, 0.15); color: #f0f0f5; } /* Light gray button */
+.button.decline:hover { background-color: rgba(255, 255, 255, 0.25); }
 
-/* Hide scrollbars cleanly */
-.event-collage-container::-webkit-scrollbar,
-.group-list::-webkit-scrollbar {
-    width: 5px; /* Can make very thin if needed */
-}
-.event-collage-container::-webkit-scrollbar-track,
-.group-list::-webkit-scrollbar-track {
-    background: transparent;
-}
-.event-collage-container::-webkit-scrollbar-thumb,
-.group-list::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2); /* Dim scrollbar thumb */
-    border-radius: 10px;
-    border: 2px solid transparent; /* Creates padding around thumb */
-}
+/* Scrollbar styling - Adapt for mid-tone theme */
+.event-collage-area::-webkit-scrollbar,
+.group-list-area::-webkit-scrollbar { width: 8px; }
+.event-collage-area::-webkit-scrollbar-track,
+.group-list-area::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px;} /* Faint light track */
+.event-collage-area::-webkit-scrollbar-thumb,
+.group-list-area::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; } /* Light thumb */
+.event-collage-area::-webkit-scrollbar-thumb:hover,
+.group-list-area::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }

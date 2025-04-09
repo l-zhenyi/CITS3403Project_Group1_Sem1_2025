@@ -6,9 +6,9 @@
     <title>GroupOut Planner</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<!-- Add a class to body, potentially useful for page-specific styles like overflow -->
+<!-- No separate background div needed -->
 <body class="planner-active">
-    <!-- Apply glassy style directly to top-nav -->
+
     <header class="top-nav glassy">
         <nav class="top-nav-left">
             <a href="#">Home</a>
@@ -16,31 +16,32 @@
             <a href="#">Explore</a>
         </nav>
         <div class="top-nav-right">
-            <button class="icon-button">🔍</button> <!-- Search -->
-            <button class="icon-button">👤</button> <!-- Profile -->
+            <!-- Search Button -->
+            <button class="icon-button">🔍</button>
+            <!-- Profile Button -->
+            <button class="icon-button">👤</button>
         </div>
     </header>
 
     <main class="planner-interface">
-        <h1 class="planner-title">Planner</h1>
+        <div class="planner-header">
+            <h1 class="planner-title">Planner</h1>
+            <nav class="view-selector glassy">
+                <button class="view-tab active">Groups</button>
+                <button class="view-tab">Calendar</button>
+                <button class="view-tab">Events</button>
+                <button class="view-tab">Insights</button>
+            </nav>
+        </div>
 
-        <!-- Apply glassy style directly to view-selector -->
-        <nav class="view-selector glassy">
-            <button class="view-tab active">Groups</button>
-            <button class="view-tab">Calendar</button>
-            <button class="view-tab">Events</button>
-            <!-- Renamed Tab -->
-            <button class="view-tab">Insights</button>
-        </nav>
+        <!-- Main Window Pane -->
+        <div class="planner-pane">
 
-        <!-- Main Window Area - Showing Groups View -->
-        <div class="planner-window groups-view">
-
-            <!-- Left Side: Expanded Group List -->
-            <aside class="group-list">
-                <!-- Content remains the same -->
+            <!-- Left Side: Group List -->
+            <aside class="group-list-area">
                  <ul>
-                    <li class="group-item active">
+                    <!-- Group list items -->
+                     <li class="group-item active">
                         <img src="https://via.placeholder.com/40/A0AECF/FFFFFF?text=G1" alt="Group 1 Avatar" class="group-avatar">
                         <div class="group-info">
                             <span class="group-name">Weekend Hikers</span>
@@ -54,7 +55,8 @@
                             <span class="group-stats">2 upcoming events</span>
                         </div>
                     </li>
-                    <li class="group-item">
+                    <!-- Add more list items -->
+                      <li class="group-item">
                          <img src="https://via.placeholder.com/40/C6F6D5/2F855A?text=G3" alt="Group 3 Avatar" class="group-avatar">
                         <div class="group-info">
                             <span class="group-name">City Foodies</span>
@@ -75,34 +77,21 @@
                             <span class="group-stats">5 upcoming events</span>
                         </div>
                     </li>
-                    <li class="group-item">
-                        <img src="https://via.placeholder.com/40/FEEBC8/9C4221?text=G2" alt="Group 2 Avatar" class="group-avatar">
-                        <div class="group-info">
-                            <span class="group-name">Board Game Geeks</span>
-                            <span class="group-stats">2 upcoming events</span>
-                        </div>
-                    </li>
-                    <li class="group-item">
-                         <img src="https://via.placeholder.com/40/C6F6D5/2F855A?text=G3" alt="Group 3 Avatar" class="group-avatar">
-                        <div class="group-info">
-                            <span class="group-name">City Foodies</span>
-                            <span class="group-stats">8 upcoming events</span>
-                        </div>
-                    </li>
-                     <li class="group-item">
-                         <img src="https://via.placeholder.com/40/FED7E2/97266D?text=G4" alt="Group 4 Avatar" class="group-avatar">
-                        <div class="group-info">
-                            <span class="group-name">Indie Film Club</span>
-                            <span class="group-stats">1 upcoming event</span>
-                        </div>
-                    </li>
-                </ul>
+                 </ul>
             </aside>
 
             <!-- Right Side: Event Collage -->
-            <section class="event-collage-container" id="event-collage">
-                 <!-- Event panels remain the same -->
-                <div class="event-panel" style="top: 5%; left: 5%; transform: rotate(-5deg) translateZ(-50px);">
+            <section class="event-collage-area" id="event-collage">
+                 <!-- Active Group Header -->
+                 <div class="active-group-header glassy">
+                    <img src="https://via.placeholder.com/36/A0AECF/FFFFFF?text=G1" alt="Active Group Avatar" class="group-avatar-small">
+                    <span class="active-group-name">Weekend Hikers Events</span>
+                    <!-- Settings Button -->
+                    <button class="icon-button settings-button">⚙️</button>
+                </div>
+
+                <!-- Event panels -->
+                <div class="event-panel" style="top: 15%; left: 5%; transform: rotate(-5deg) translateZ(-50px);">
                     <img src="https://via.placeholder.com/150/BEE3F8/2A4365?text=Event+Img" alt="Event Image" class="event-image">
                     <h3>Mountain Hike Day</h3>
                     <p class="event-details">Sat, Nov 4 @ 9:00 AM | $5</p>
@@ -112,8 +101,8 @@
                         <button class="button decline">Decline</button>
                     </div>
                 </div>
-
-                <div class="event-panel" style="top: 25%; left: 40%; transform: rotate(3deg) translateZ(0px);">
+                <!-- Add more event panels -->
+                <div class="event-panel" style="top: 35%; left: 40%; transform: rotate(3deg) translateZ(0px);">
                      <img src="https://via.placeholder.com/150/FEEBC8/9C4221?text=Event+Img" alt="Event Image" class="event-image">
                     <h3>Strategy Board Games Night</h3>
                     <p class="event-details">Fri, Nov 10 @ 7:00 PM | Free</p>
@@ -123,8 +112,7 @@
                         <button class="button decline">Decline</button>
                     </div>
                 </div>
-
-                 <div class="event-panel" style="top: 50%; left: 15%; transform: rotate(-2deg) translateZ(-20px);">
+                 <div class="event-panel" style="top: 60%; left: 15%; transform: rotate(-2deg) translateZ(-20px);">
                      <img src="https://via.placeholder.com/150/C6F6D5/2F855A?text=Event+Img" alt="Event Image" class="event-image">
                     <h3>Downtown Taco Tour</h3>
                     <p class="event-details">Sat, Nov 18 @ 1:00 PM | $25 Budget</p>
@@ -134,8 +122,7 @@
                         <button class="button decline">Decline</button>
                     </div>
                 </div>
-
-                 <div class="event-panel" style="top: 70%; left: 45%; transform: rotate(6deg) translateZ(20px);">
+                 <div class="event-panel" style="top: 80%; left: 45%; transform: rotate(6deg) translateZ(20px);">
                      <img src="https://via.placeholder.com/150/FED7E2/97266D?text=Event+Img" alt="Event Image" class="event-image">
                     <h3>Indie Film Screening</h3>
                     <p class="event-details">Sun, Nov 19 @ 6:00 PM | $12</p>
@@ -146,29 +133,9 @@
                     </div>
                 </div>
 
-                 <div class="event-panel" style="top: 95%; left: 10%; transform: rotate(-4deg) translateZ(-30px);">
-                    <img src="https://via.placeholder.com/150/B2F5EA/2C7A7B?text=Event+Img" alt="Event Image" class="event-image">
-                    <h3>Coastal Trail Walk</h3>
-                    <p class="event-details">Sat, Nov 25 @ 10:00 AM | Free</p>
-                    <p class="event-rsvp">Awaiting Response</p>
-                    <div class="event-actions">
-                        <button class="button accept">Accept</button>
-                        <button class="button decline">Decline</button>
-                    </div>
-                </div>
-                 <!-- Add more panels if needed to test scrolling -->
-                 <div class="event-panel" style="top: 115%; left: 35%; transform: rotate(2deg) translateZ(10px);">
-                     <img src="https://via.placeholder.com/150/EDF2F7/4A5568?text=Event+Img" alt="Event Image" class="event-image">
-                    <h3>Book Club Meeting</h3>
-                    <p class="event-details">Mon, Nov 27 @ 7:30 PM | BYOB</p>
-                    <p class="event-rsvp">You are Going</p>
-                    <div class="event-actions">
-                        <button class="button accept">Accept</button>
-                        <button class="button decline">Decline</button>
-                    </div>
-                </div>
             </section>
-        </div>
+
+        </div> <!-- End of planner-pane -->
     </main>
 
     <script src="script.js"></script>
