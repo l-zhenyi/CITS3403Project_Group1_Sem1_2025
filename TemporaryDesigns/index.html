@@ -6,8 +6,10 @@
     <title>GroupOut Planner</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <header class="top-nav">
+<!-- Add a class to body, potentially useful for page-specific styles like overflow -->
+<body class="planner-active">
+    <!-- Apply glassy style directly to top-nav -->
+    <header class="top-nav glassy">
         <nav class="top-nav-left">
             <a href="#">Home</a>
             <a href="#" class="active">Planner</a>
@@ -22,10 +24,13 @@
     <main class="planner-interface">
         <h1 class="planner-title">Planner</h1>
 
-        <nav class="view-selector">
+        <!-- Apply glassy style directly to view-selector -->
+        <nav class="view-selector glassy">
             <button class="view-tab active">Groups</button>
             <button class="view-tab">Calendar</button>
             <button class="view-tab">Events</button>
+            <!-- Renamed Tab -->
+            <button class="view-tab">Insights</button>
         </nav>
 
         <!-- Main Window Area - Showing Groups View -->
@@ -33,9 +38,38 @@
 
             <!-- Left Side: Expanded Group List -->
             <aside class="group-list">
-                <ul>
+                <!-- Content remains the same -->
+                 <ul>
                     <li class="group-item active">
                         <img src="https://via.placeholder.com/40/A0AECF/FFFFFF?text=G1" alt="Group 1 Avatar" class="group-avatar">
+                        <div class="group-info">
+                            <span class="group-name">Weekend Hikers</span>
+                            <span class="group-stats">5 upcoming events</span>
+                        </div>
+                    </li>
+                    <li class="group-item">
+                        <img src="https://via.placeholder.com/40/FEEBC8/9C4221?text=G2" alt="Group 2 Avatar" class="group-avatar">
+                        <div class="group-info">
+                            <span class="group-name">Board Game Geeks</span>
+                            <span class="group-stats">2 upcoming events</span>
+                        </div>
+                    </li>
+                    <li class="group-item">
+                         <img src="https://via.placeholder.com/40/C6F6D5/2F855A?text=G3" alt="Group 3 Avatar" class="group-avatar">
+                        <div class="group-info">
+                            <span class="group-name">City Foodies</span>
+                            <span class="group-stats">8 upcoming events</span>
+                        </div>
+                    </li>
+                     <li class="group-item">
+                         <img src="https://via.placeholder.com/40/FED7E2/97266D?text=G4" alt="Group 4 Avatar" class="group-avatar">
+                        <div class="group-info">
+                            <span class="group-name">Indie Film Club</span>
+                            <span class="group-stats">1 upcoming event</span>
+                        </div>
+                    </li>
+                     <li class="group-item">
+                         <img src="https://via.placeholder.com/40/A0AECF/FFFFFF?text=G1" alt="Group 1 Avatar" class="group-avatar">
                         <div class="group-info">
                             <span class="group-name">Weekend Hikers</span>
                             <span class="group-stats">5 upcoming events</span>
@@ -67,6 +101,7 @@
 
             <!-- Right Side: Event Collage -->
             <section class="event-collage-container" id="event-collage">
+                 <!-- Event panels remain the same -->
                 <div class="event-panel" style="top: 5%; left: 5%; transform: rotate(-5deg) translateZ(-50px);">
                     <img src="https://via.placeholder.com/150/BEE3F8/2A4365?text=Event+Img" alt="Event Image" class="event-image">
                     <h3>Mountain Hike Day</h3>
@@ -111,12 +146,22 @@
                     </div>
                 </div>
 
-                <!-- Add more panels with different top/left/transform values -->
                  <div class="event-panel" style="top: 95%; left: 10%; transform: rotate(-4deg) translateZ(-30px);">
                     <img src="https://via.placeholder.com/150/B2F5EA/2C7A7B?text=Event+Img" alt="Event Image" class="event-image">
                     <h3>Coastal Trail Walk</h3>
                     <p class="event-details">Sat, Nov 25 @ 10:00 AM | Free</p>
                     <p class="event-rsvp">Awaiting Response</p>
+                    <div class="event-actions">
+                        <button class="button accept">Accept</button>
+                        <button class="button decline">Decline</button>
+                    </div>
+                </div>
+                 <!-- Add more panels if needed to test scrolling -->
+                 <div class="event-panel" style="top: 115%; left: 35%; transform: rotate(2deg) translateZ(10px);">
+                     <img src="https://via.placeholder.com/150/EDF2F7/4A5568?text=Event+Img" alt="Event Image" class="event-image">
+                    <h3>Book Club Meeting</h3>
+                    <p class="event-details">Mon, Nov 27 @ 7:30 PM | BYOB</p>
+                    <p class="event-rsvp">You are Going</p>
                     <div class="event-actions">
                         <button class="button accept">Accept</button>
                         <button class="button decline">Decline</button>

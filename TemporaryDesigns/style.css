@@ -5,37 +5,63 @@
     padding: 0;
 }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f8f8fa; /* Soft neutral background */
-    color: #333;
-    line-height: 1.6;
+html {
+    /* Helps with smooth scrolling calculation */
+    scroll-behavior: smooth;
 }
 
-/* Glassmorphism Helper */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f8f8fa;
+    color: #333;
+    line-height: 1.6;
+    /* Prevent body scroll ONLY when planner is active (handles its own scroll) */
+    /* You might control this class with JS based on the current view */
+}
+body.planner-active {
+     overflow: hidden; /* Prevent body scrollbar for the non-scrolling planner layout */
+}
+
+
+/* Glassmorphism Definition */
 .glassy {
-    background: rgba(255, 255, 255, 0.6); /* Semi-transparent white */
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%); /* Safari */
-    border: 1px solid rgba(209, 213, 219, 0.3); /* Subtle border */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    /* More pronounced frost effect */
+    background: rgba(255, 255, 255, 0.65); /* Adjust alpha for more/less transparency */
+    backdrop-filter: blur(16px) saturate(180%); /* Increase blur */
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(209, 213, 219, 0.4); /* Slightly stronger border */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); /* Add base shadow */
 }
 
 /* Top Nav Bar */
 .top-nav {
-    position: sticky; /* Float/stick at top */
-    top: 0;
-    width: 100%;
+    position: sticky; /* Stick to top always */
+    top: 10px; /* Small gap from the very top */
+    /* Make it slightly less than full width and centered for the floating effect */
+    width: calc(100% - 40px); /* Adjust width as needed */
+    max-width: 1400px; /* Max width if needed */
+    margin: 10px auto 0 auto; /* Top margin, centered */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 24px;
-    z-index: 100;
-    border-radius: 0 0 16px 16px; /* Rounded bottom corners */
+    padding: 10px 20px; /* Adjust padding */
+    z-index: 1000; /* Ensure it's above everything */
+    border-radius: 16px; /* Rounded rectangle */
+    transition: top 0.3s ease; /* Smooth transition if top changes */
+}
+/* Example: On other pages, maybe top-nav sits flush at top=0 */
+body:not(.planner-active) .top-nav {
+    top: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 0; /* Or keep rounded if preferred */
+    position: sticky; /* Or change to static/relative if it should scroll away */
 }
 
+
 .top-nav-left a {
-    color: #444;
+    color: #333; /* Darker text for better contrast on glass */
     text-decoration: none;
     padding: 8px 16px;
     margin-right: 8px;
@@ -45,12 +71,12 @@ body {
 }
 
 .top-nav-left a.active {
-    color: #007AFF; /* Apple-like blue */
+    color: #007AFF;
     font-weight: 600;
 }
 
 .top-nav-left a:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.06);
 }
 
 .top-nav-right .icon-button {
@@ -60,238 +86,153 @@ body {
     padding: 8px;
     margin-left: 12px;
     cursor: pointer;
-    color: #555;
+    color: #333; /* Darker icons */
     border-radius: 50%;
     transition: background-color 0.2s ease;
 }
 .top-nav-right .icon-button:hover {
-     background-color: rgba(0, 0, 0, 0.05);
+     background-color: rgba(0, 0, 0, 0.06);
 }
 
 /* Planner Interface */
 .planner-interface {
-    padding: 20px 24px;
-    max-width: 1200px; /* Limit max width */
-    margin: 0 auto; /* Center content */
+    /* Wider layout - reduced horizontal padding */
+    padding: 15px 20px 20px 20px; /* Less horizontal padding */
+    max-width: 1600px; /* Increased max width */
+    margin: 0 auto;
+    /* Calculate height to fill viewport below top nav */
+    height: calc(100vh - 70px); /* Adjust 70px based on final top-nav height + margins */
+    display: flex;
+    flex-direction: column; /* Stack title, tabs, window vertically */
 }
 
 .planner-title {
-    font-size: 2rem;
+    font-size: 1.8rem; /* Slightly smaller title */
     font-weight: bold;
-    margin-bottom: 16px;
-    color: #1d1d1f; /* Darker text for header */
+    margin-bottom: 12px;
+    padding-left: 5px; /* Align slightly with content */
+    color: #1d1d1f;
 }
 
 /* Segmented View Selector */
 .view-selector {
     display: flex;
     justify-content: center;
-    margin-bottom: 24px;
-    background: rgba(230, 230, 235, 0.7); /* Slightly darker glass base */
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 12px;
-    padding: 5px;
-    width: fit-content; /* Size to content */
-    margin-left: auto; /* Align right if desired, or keep centered */
+    margin-bottom: 16px;
+    /* Enhanced glassy effect inherited */
+    border-radius: 14px; /* Slightly larger radius */
+    padding: 6px; /* Slightly more padding */
+    width: fit-content;
+    margin-left: auto;
     margin-right: auto;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07); /* Refined shadow */
 }
 
 .view-tab {
     background: none;
     border: none;
-    padding: 8px 20px;
-    border-radius: 9px; /* Slightly smaller radius than container */
+    padding: 9px 22px; /* Slightly larger padding */
+    border-radius: 10px;
     cursor: pointer;
     font-weight: 500;
-    color: #555;
+    color: #333; /* Darker text */
     transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .view-tab.active {
-    background-color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.9); /* Brighter white active tab */
     color: #007AFF;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12); /* More pronounced shadow on active */
 }
 
 /* Planner Window */
 .planner-window {
     display: flex;
-    gap: 24px; /* Space between list and collage */
-    /* Give the window a container feel if desired */
-    /* background-color: rgba(255, 255, 255, 0.5); */
-    /* border-radius: 16px; */
-    /* padding: 20px; */
-    /* box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); */
-    height: calc(100vh - 180px); /* Adjust based on nav/header/padding height */
-    overflow: hidden; /* Prevent window itself from scrolling */
+    gap: 20px; /* Adjust gap */
+    flex-grow: 1; /* Allow window to take remaining vertical space */
+    overflow: hidden; /* Crucial: Prevent this container from scrolling */
+    /* Remove background/border if panes fill it */
 }
 
 /* Group List (Left Sidebar in Groups View) */
 .group-list {
-    flex: 0 0 280px; /* Fixed width for the list */
-    background-color: rgba(240, 240, 245, 0.8);
+    flex: 0 0 300px; /* Slightly wider list */
+    background-color: rgba(242, 242, 247, 0.85); /* Subtle background */
     border-radius: 16px;
     padding: 16px;
-    overflow-y: auto; /* Allow scrolling if list is long */
+    overflow-y: auto; /* Allow ONLY this pane to scroll vertically */
     height: 100%; /* Take full height of parent */
+    border: 1px solid rgba(200, 200, 200, 0.2);
 }
 
-.group-list ul {
-    list-style: none;
-}
-
-.group-item {
-    display: flex;
-    align-items: center;
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.group-item:hover {
-    background-color: rgba(0, 0, 0, 0.04);
-}
-
-.group-item.active {
-    background-color: rgba(0, 122, 255, 0.1); /* Light blue background for active */
-}
-
-.group-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    margin-right: 12px;
-    object-fit: cover; /* Ensure avatar images fit nicely */
-}
-
-.group-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.group-name {
-    font-weight: 500;
-    color: #333;
-}
-.group-item.active .group-name {
-    font-weight: 600;
-     color: #007AFF;
-}
-
-.group-stats {
-    font-size: 0.85rem;
-    color: #666;
-}
+.group-list ul { list-style: none; }
+.group-item { display: flex; align-items: center; padding: 12px; border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: background-color 0.2s ease; }
+.group-item:hover { background-color: rgba(0, 0, 0, 0.05); }
+.group-item.active { background-color: rgba(0, 122, 255, 0.15); } /* Slightly stronger active state */
+.group-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
+.group-info { display: flex; flex-direction: column; }
+.group-name { font-weight: 500; color: #1d1d1f; } /* Darker name */
+.group-item.active .group-name { font-weight: 600; color: #007AFF; }
+.group-stats { font-size: 0.85rem; color: #555; } /* Darker stats */
 
 /* Event Collage Container (Right Side) */
 .event-collage-container {
-    flex-grow: 1; /* Take remaining space */
-    position: relative; /* Crucial for absolute positioning of children */
-    overflow-y: auto; /* Crucial for scrolling the panels */
-    height: 100%; /* Take full height of parent */
-    perspective: 1000px; /* Enable 3D transforms */
-    padding: 10px; /* Add some padding so cards don't hit edges */
+    flex-grow: 1;
+    position: relative;
+    overflow-y: auto; /* Allow ONLY this pane to scroll vertically */
+    height: 100%;
+    perspective: 1200px; /* Slightly increased perspective */
+    padding: 15px; /* Adjust padding */
 }
 
 /* Event Panel Styling */
 .event-panel {
-    position: absolute; /* Crucial for collage layout */
-    width: 300px; /* Example width */
-    min-height: 200px; /* Example height */
-    padding: 16px;
-    border-radius: 16px;
-    transform-style: preserve-3d; /* Helps with 3D look */
-    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smooth transform transition */
+    position: absolute;
+    width: 320px; /* Slightly wider panels */
+    min-height: 210px;
+    padding: 18px; /* More padding */
+    border-radius: 18px; /* More rounded */
+    transform-style: preserve-3d;
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease; /* Add shadow transition */
 
-    /* Apply Glassmorphism */
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(10px) saturate(150%);
-    -webkit-backdrop-filter: blur(10px) saturate(150%);
-    border: 1px solid rgba(200, 200, 200, 0.4);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    /* Apply Enhanced Glassmorphism */
+    background: rgba(255, 255, 255, 0.8); /* Adjust alpha */
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid rgba(200, 200, 200, 0.5);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12); /* Slightly stronger base shadow */
 }
 
 .event-panel:hover {
-    /* Optional: slight scale/lift on hover */
-     /* transform: scale(1.03) rotate(...) translateZ(...); */
-     /* Needs JS to handle hover while scrolling */
-     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+     box-shadow: 0 14px 35px rgba(0, 0, 0, 0.18); /* Enhanced hover shadow */
+     /* JS handles transform on hover if needed during scroll */
 }
 
+.event-image { width: 100%; height: 100px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; }
+.event-panel h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 5px; color: #1d1d1f; }
+.event-details { font-size: 0.9rem; color: #444; margin-bottom: 8px; }
+.event-rsvp { font-size: 0.9rem; font-weight: 500; margin-bottom: 14px; color: #007AFF; }
+.event-actions { display: flex; gap: 10px; margin-top: auto; }
+.button { padding: 9px 18px; border: none; border-radius: 12px; cursor: pointer; font-weight: 500; transition: background-color 0.2s ease, transform 0.1s ease; }
+.button:active { transform: scale(0.97); }
+.button.accept { background-color: #34C759; color: white; }
+.button.accept:hover { background-color: #2aa84a; }
+.button.decline { background-color: #eaeaf0; color: #333; }
+.button.decline:hover { background-color: #dcdce3; }
 
-.event-image {
-    width: 100%;
-    height: 100px; /* Fixed height for example */
-    object-fit: cover;
-    border-radius: 10px;
-    margin-bottom: 12px;
-}
-
-.event-panel h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: #1d1d1f;
-}
-
-.event-details {
-    font-size: 0.9rem;
-    color: #555;
-    margin-bottom: 8px;
-}
-
-.event-rsvp {
-    font-size: 0.9rem;
-    font-weight: 500;
-    margin-bottom: 12px;
-    color: #007AFF; /* Example color, change based on status */
-}
-
-.event-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: auto; /* Push buttons to bottom if needed */
-}
-
-.button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-}
-.button:active {
-    transform: scale(0.97);
-}
-
-.button.accept {
-    background-color: #34C759; /* Green */
-    color: white;
-}
-.button.accept:hover {
-     background-color: #2aa84a;
-}
-
-
-.button.decline {
-    background-color: #f1f1f3;
-    color: #555;
-}
-.button.decline:hover {
-     background-color: #e5e5e7;
-}
-
-/* Hide scrollbar for aesthetics (optional) */
-.event-collage-container::-webkit-scrollbar {
-    width: 0px;
-    background: transparent; /* make scrollbar transparent */
-}
+/* Hide scrollbars cleanly */
+.event-collage-container::-webkit-scrollbar,
 .group-list::-webkit-scrollbar {
-     width: 0px;
-     background: transparent;
+    width: 5px; /* Can make very thin if needed */
+}
+.event-collage-container::-webkit-scrollbar-track,
+.group-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.event-collage-container::-webkit-scrollbar-thumb,
+.group-list::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2); /* Dim scrollbar thumb */
+    border-radius: 10px;
+    border: 2px solid transparent; /* Creates padding around thumb */
 }
