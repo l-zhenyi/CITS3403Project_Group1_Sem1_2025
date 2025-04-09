@@ -6,6 +6,7 @@ it comes to splitting costs fairly.
 
 # Group Members
 | UWA ID  | Name | Github username |
+| ----------- | ----------- | ----------- |
 | 24263238 | Zhen Yi Lim | l-zhenyi |
 | 23808128 | Ziye Xie | ziye0226 |
 | 23970936 | Jacob Read | Consumer-of-Souls |
