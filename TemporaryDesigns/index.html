@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GroupOut Planner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <nav class="top-nav-left">
+            <a href="#">Home</a>
+            <a href="#" class="active">Planner</a>
+            <a href="#">Explore</a>
+        </nav>
+        <div class="top-nav-right">
+            <button class="icon-button">🔍</button> <!-- Search -->
+            <button class="icon-button">👤</button> <!-- Profile -->
+        </div>
+    </header>
+
+    <main class="planner-interface">
+        <h1 class="planner-title">Planner</h1>
+
+        <nav class="view-selector">
+            <button class="view-tab active">Groups</button>
+            <button class="view-tab">Calendar</button>
+            <button class="view-tab">Events</button>
+        </nav>
+
+        <!-- Main Window Area - Showing Groups View -->
+        <div class="planner-window groups-view">
+
+            <!-- Left Side: Expanded Group List -->
+            <aside class="group-list">
+                <ul>
+                    <li class="group-item active">
+                        <img src="https://via.placeholder.com/40/A0AECF/FFFFFF?text=G1" alt="Group 1 Avatar" class="group-avatar">
+                        <div class="group-info">
+                            <span class="group-name">Weekend Hikers</span>
+                            <span class="group-stats">5 upcoming events</span>
+                        </div>
+                    </li>
+                    <li class="group-item">
+                        <img src="https://via.placeholder.com/40/FEEBC8/9C4221?text=G2" alt="Group 2 Avatar" class="group-avatar">
+                        <div class="group-info">
+                            <span class="group-name">Board Game Geeks</span>
+                            <span class="group-stats">2 upcoming events</span>
+                        </div>
+                    </li>
+                    <li class="group-item">
+                         <img src="https://via.placeholder.com/40/C6F6D5/2F855A?text=G3" alt="Group 3 Avatar" class="group-avatar">
+                        <div class="group-info">
+                            <span class="group-name">City Foodies</span>
+                            <span class="group-stats">8 upcoming events</span>
+                        </div>
+                    </li>
+                     <li class="group-item">
+                         <img src="https://via.placeholder.com/40/FED7E2/97266D?text=G4" alt="Group 4 Avatar" class="group-avatar">
+                        <div class="group-info">
+                            <span class="group-name">Indie Film Club</span>
+                            <span class="group-stats">1 upcoming event</span>
+                        </div>
+                    </li>
+                </ul>
+            </aside>
+
+            <!-- Right Side: Event Collage -->
+            <section class="event-collage-container" id="event-collage">
+                <div class="event-panel" style="top: 5%; left: 5%; transform: rotate(-5deg) translateZ(-50px);">
+                    <img src="https://via.placeholder.com/150/BEE3F8/2A4365?text=Event+Img" alt="Event Image" class="event-image">
+                    <h3>Mountain Hike Day</h3>
+                    <p class="event-details">Sat, Nov 4 @ 9:00 AM | $5</p>
+                    <p class="event-rsvp">You are Going</p>
+                    <div class="event-actions">
+                        <button class="button accept">Accept</button>
+                        <button class="button decline">Decline</button>
+                    </div>
+                </div>
+
+                <div class="event-panel" style="top: 25%; left: 40%; transform: rotate(3deg) translateZ(0px);">
+                     <img src="https://via.placeholder.com/150/FEEBC8/9C4221?text=Event+Img" alt="Event Image" class="event-image">
+                    <h3>Strategy Board Games Night</h3>
+                    <p class="event-details">Fri, Nov 10 @ 7:00 PM | Free</p>
+                    <p class="event-rsvp">Awaiting Response</p>
+                     <div class="event-actions">
+                        <button class="button accept">Accept</button>
+                        <button class="button decline">Decline</button>
+                    </div>
+                </div>
+
+                 <div class="event-panel" style="top: 50%; left: 15%; transform: rotate(-2deg) translateZ(-20px);">
+                     <img src="https://via.placeholder.com/150/C6F6D5/2F855A?text=Event+Img" alt="Event Image" class="event-image">
+                    <h3>Downtown Taco Tour</h3>
+                    <p class="event-details">Sat, Nov 18 @ 1:00 PM | $25 Budget</p>
+                     <p class="event-rsvp">You are Going</p>
+                     <div class="event-actions">
+                        <button class="button accept">Accept</button>
+                        <button class="button decline">Decline</button>
+                    </div>
+                </div>
+
+                 <div class="event-panel" style="top: 70%; left: 45%; transform: rotate(6deg) translateZ(20px);">
+                     <img src="https://via.placeholder.com/150/FED7E2/97266D?text=Event+Img" alt="Event Image" class="event-image">
+                    <h3>Indie Film Screening</h3>
+                    <p class="event-details">Sun, Nov 19 @ 6:00 PM | $12</p>
+                    <p class="event-rsvp">You Declined</p>
+                     <div class="event-actions">
+                        <button class="button accept">Accept</button>
+                        <button class="button decline">Decline</button>
+                    </div>
+                </div>
+
+                <!-- Add more panels with different top/left/transform values -->
+                 <div class="event-panel" style="top: 95%; left: 10%; transform: rotate(-4deg) translateZ(-30px);">
+                    <img src="https://via.placeholder.com/150/B2F5EA/2C7A7B?text=Event+Img" alt="Event Image" class="event-image">
+                    <h3>Coastal Trail Walk</h3>
+                    <p class="event-details">Sat, Nov 25 @ 10:00 AM | Free</p>
+                    <p class="event-rsvp">Awaiting Response</p>
+                    <div class="event-actions">
+                        <button class="button accept">Accept</button>
+                        <button class="button decline">Decline</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
