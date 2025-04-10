@@ -1,0 +1,22 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: grey;
+}
+
+#signup-container {
+    position: relative;
+    width: 400px;
+    height: 400px;
+    background-color: rgb(255, 255, 255);
+    border-radius: 20px;
+}
