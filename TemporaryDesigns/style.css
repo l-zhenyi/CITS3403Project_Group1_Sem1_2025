@@ -410,7 +410,7 @@
   
   .blur-wrapper { /* Sits inside event-collage-area, wraps header */
     position: sticky;
-    top: -12px; /* Offset by padding to stick header at the very top edge */
+    top: 0;
     height: 64px; /* Estimated height of the header + some buffer */
     z-index: 10; /* Above event panels */
     pointer-events: none; /* Allows clicks/scrolls to pass through */
@@ -420,12 +420,13 @@
   .blur-overlay { /* The visual blur effect */
     position: absolute;
     inset: 0;
+    top: -12px;
     /* Match the pane background but slightly stronger/different */
-    background: rgba(140, 140, 145, 0.9);
+    background: rgba(140, 140, 145, 1);
     backdrop-filter: blur(10px) saturate(120%);
     /* Fade out the blur effect downwards */
-    mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%); /* Safari */
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%); /* Safari */
     z-index: 0; /* Behind the actual header content */
   }
   
@@ -707,24 +708,28 @@
       opacity: 0;
       pointer-events: none;
       border-radius: 12px; /* Match sibling */
-      height: 100%; /* Ensure it can expand correctly */
       transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
     }
   
     /* Active Mobile State: Show Event List (when .mobile-event-view-active is added to .planner-pane) */
     .planner-pane.mobile-event-view-active .group-list-area {
-      flex: 0 0 0; /* Collapse */
-      padding: 0;
-      opacity: 0;
-      pointer-events: none;
+        flex: 0 0 0;
+        overflow: hidden;
+        padding: 0;
+        opacity: 0;
+        pointer-events: none;
+        height: 100%; /* Keep or add this */
     }
+    
     .planner-pane.mobile-event-view-active .event-collage-area {
-      flex: 1 1 auto; /* Takes full width */
-      padding: 8px; /* Restore padding */
-      opacity: 1;
-      pointer-events: auto;
-      perspective: none; /* Disable 3D perspective */
-      border-radius: 12px; /* Full rounding */
+        flex: 1 1 auto;
+        overflow-y: auto; /* Make sure this is auto or scroll */
+        padding: 8px;
+        opacity: 1;
+        pointer-events: auto;
+        perspective: none;
+        height: 100%; /* Keep or add this */
+        min-height: 0; /* Ensure min-height is still 0 or unset */
     }
   
     /* Group Item Adjustments */
