@@ -920,24 +920,12 @@
   
     /* --- Event Area Mobile Adjustments --- */
   
-    /* Remove sticky blur wrapper on mobile */
-    .blur-wrapper {
-      position: static; /* Not sticky */
-      height: auto;
-      margin: 0; /* Reset margin */
-      pointer-events: auto; /* Allow interaction */
-      z-index: auto;
-    }
-    .blur-overlay {
-      display: none; /* Hide the blur effect itself */
-    }
-  
+
     /* Adjust active group header for mobile */
     .active-group-header {
       position: sticky; /* Make header sticky within scrolling area */
       top: -8px;      /* Stick relative to the event area's padding */
       z-index: 10;      /* Ensure it's above scrolling content */
-      margin: 0 0 12px 0; /* Adjust margins */
       padding: 10px 15px; /* Slightly less padding */
       border-radius: 14px; /* Keep radius */
       /* Re-apply background/shadow as blur wrapper is gone */
