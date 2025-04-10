@@ -65,7 +65,7 @@ body.planner-active { overflow: hidden; }
 /* --- Planner Interface --- */
 .planner-interface {
     padding: 0 12px 12px 12px; max-width: 1800px; margin: 0 auto;
-    height: calc(100vh - 65px); display: flex; flex-direction: column;
+    height: calc(100vh - 70px); display: flex; flex-direction: column;
 }
 
 .planner-header {
