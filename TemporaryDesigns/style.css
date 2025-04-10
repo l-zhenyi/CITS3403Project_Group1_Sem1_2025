@@ -410,7 +410,7 @@
   
   .blur-wrapper { /* Sits inside event-collage-area, wraps header */
     position: sticky;
-    top: -12px; /* Offset by padding to stick header at the very top edge */
+    top: 0;
     height: 64px; /* Estimated height of the header + some buffer */
     z-index: 10; /* Above event panels */
     pointer-events: none; /* Allows clicks/scrolls to pass through */
@@ -420,12 +420,13 @@
   .blur-overlay { /* The visual blur effect */
     position: absolute;
     inset: 0;
+    top: -12px;
     /* Match the pane background but slightly stronger/different */
-    background: rgba(140, 140, 145, 0.9);
+    background: rgba(140, 140, 145, 1);
     backdrop-filter: blur(10px) saturate(120%);
     /* Fade out the blur effect downwards */
-    mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%); /* Safari */
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%); /* Safari */
     z-index: 0; /* Behind the actual header content */
   }
   
