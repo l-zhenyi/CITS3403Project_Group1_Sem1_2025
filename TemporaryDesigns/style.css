@@ -708,24 +708,28 @@
       opacity: 0;
       pointer-events: none;
       border-radius: 12px; /* Match sibling */
-      height: 100%; /* Ensure it can expand correctly */
       transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
     }
   
     /* Active Mobile State: Show Event List (when .mobile-event-view-active is added to .planner-pane) */
     .planner-pane.mobile-event-view-active .group-list-area {
-      flex: 0 0 0; /* Collapse */
-      padding: 0;
-      opacity: 0;
-      pointer-events: none;
+        flex: 0 0 0;
+        overflow: hidden;
+        padding: 0;
+        opacity: 0;
+        pointer-events: none;
+        height: 100%; /* Keep or add this */
     }
+    
     .planner-pane.mobile-event-view-active .event-collage-area {
-      flex: 1 1 auto; /* Takes full width */
-      padding: 8px; /* Restore padding */
-      opacity: 1;
-      pointer-events: auto;
-      perspective: none; /* Disable 3D perspective */
-      border-radius: 12px; /* Full rounding */
+        flex: 1 1 auto;
+        overflow-y: auto; /* Make sure this is auto or scroll */
+        padding: 8px;
+        opacity: 1;
+        pointer-events: auto;
+        perspective: none;
+        height: 100%; /* Keep or add this */
+        min-height: 0; /* Ensure min-height is still 0 or unset */
     }
   
     /* Group Item Adjustments */
