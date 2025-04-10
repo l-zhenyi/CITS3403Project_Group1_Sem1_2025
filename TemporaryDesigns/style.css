@@ -1,6 +1,9 @@
 /* Basic Reset & Body */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html {
+    scroll-behavior: smooth;
+    height: 100%; /* Force html height */
+}
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -11,8 +14,11 @@ body {
     color: #f0f0f5;
     line-height: 1.6;
     position: relative;
-    min-height: 100vh;
+    height: 100%; /* Force body height */
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent body scrollbars, let children handle scroll */
 }
 
 body::before {
@@ -22,9 +28,6 @@ body::before {
     filter: blur(10px) saturate(50%) brightness(1.0);
     z-index: -1; transform: scale(1.1);
 }
-
-body.planner-active { overflow: hidden; }
-
 
 /* Mid-tone Glass Style (Base Layer) */
 .glassy {
@@ -40,15 +43,12 @@ body.planner-active { overflow: hidden; }
     width: calc(100% - 24px); max-width: 1800px;
     margin: 10px auto 0 auto; display: flex;
     justify-content: space-between; align-items: center;
-    /* Top Nav Padding (Reference) */
-    padding: 10px 24px; /* Reduced vertical slightly */
+    padding: 10px 24px;
     z-index: 1000; border-radius: 16px;
-    /* Inherits .glassy */
+    flex-shrink: 0; /* Prevent nav from shrinking */
 }
-/* Top Nav Links (Reference) */
 .top-nav-left a {
-    padding: 8px 20px; /* Padding applied to the link itself */
-    margin-right: 8px; border-radius: 10px;
+    padding: 8px 20px; margin-right: 8px; border-radius: 10px;
     color: #ffffff; font-weight: 500;
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); text-decoration: none;
     transition: background-color 0.2s ease, color 0.2s ease;
@@ -58,77 +58,87 @@ body.planner-active { overflow: hidden; }
     background-color: rgba(255, 255, 255, 0.15); text-shadow: none;
 }
 
-.top-nav-right .icon-button { background: none; border: none; font-size: 1.4rem; padding: 8px; margin-left: 12px; cursor: pointer; border-radius: 50%; }
+.top-nav-right .icon-button { background: none; border: none; font-size: 1.4rem; padding: 8px; margin-left: 12px; cursor: pointer; border-radius: 50%; color: #fff; }
 .top-nav-left a:not(.active):hover, .top-nav-right .icon-button:hover { background-color: rgba(255, 255, 255, 0.15); }
 
 
 /* --- Planner Interface --- */
 .planner-interface {
     padding: 0 12px 12px 12px; max-width: 1800px; margin: 0 auto;
-    height: calc(100vh - 70px); display: flex; flex-direction: column;
+    flex-grow: 1; /* Allow interface to take remaining vertical space */
+    display: flex; flex-direction: column;
+    min-height: 0; /* Allow shrinking if needed */
+    width: 100%; /* Ensure it spans width */
 }
 
 .planner-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 15px 0px 15px 0px; flex-shrink: 0;
     text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+    flex-wrap: wrap; gap: 10px;
 }
-.planner-title { font-size: 1.8rem; font-weight: bold; margin: 0; color: #fff; }
+.planner-title { font-size: 1.8rem; font-weight: bold; margin: 0; color: #fff; flex-shrink: 0; }
 
-/* View Selector - Padding aligned with Top Nav */
 .view-selector {
     display: flex;
-    /* Align container padding with top-nav */
     padding: 6px 14px;
     border-radius: 12px;
-    width: fit-content;
-    max-width: 70%;
-    /* Inherits glassy */
+    width: fit-content; max-width: 100%;
+    overflow-x: auto;
 }
-/* View Tab Padding Adjusted to match Top Nav Links */
 .view-tab {
     background: none; border: none;
-    /* Align padding with .top-nav-left a */
-    padding: 8px 20px;
-    margin-right: 8px; /* Space between tabs */
-    border-radius: 10px; /* Match nav links */
-    cursor: pointer;
-    font-weight: 500; font-size: 1.0rem; /* Slightly smaller font than title maybe */
+    padding: 8px 20px; margin-right: 8px;
+    border-radius: 10px; cursor: pointer;
+    font-weight: 500; font-size: 1.0rem;
     color: #e0e0e5;
     transition: background-color 0.3s ease, color 0.3s ease;
     white-space: nowrap; text-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
 }
-/* View Selector - Translucent Active State */
+.view-tab:last-child { margin-right: 0; }
+
 .view-tab.active {
-    /* Align active style with .top-nav-left a.active */
     background-color: rgba(255, 255, 255, 0.15);
     color: #fff; font-weight: 600;
     box-shadow: none; text-shadow: none;
 }
 .view-tab:not(.active):hover {
-     /* Align hover style with .top-nav-left a:hover */
-     background-color: rgba(255, 255, 255, 0.1); /* Slightly less prominent hover than active */
+     background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Planner Window (Single Pane Container) */
 .planner-pane {
-    flex-grow: 1; border-radius: 18px;
-    background-color: rgba(140, 140, 145, 0.6);
+    flex-grow: 1; /* Allow pane to take remaining vertical space in planner-interface */
+    border-radius: 18px;
+    background-color: rgba(140, 140, 145, 0.6); /* Background for the whole pane */
     backdrop-filter: blur(30px) saturate(140%);
     box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
-    padding: 0; display: flex; gap: 0; overflow: hidden;
+    padding: 0; display: flex; gap: 0;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative; /* Needed for pseudo-element positioning */
+    min-height: 0; /* Help flex children shrink/grow properly */
+    overflow: hidden; /* Clip content exceeding pane boundaries */
 }
 
-/* --- Content Inside Single Pane (Lighter than Pane) --- */
+
+
+/* --- Content Inside Single Pane --- */
 
 /* Group List Area Styling */
 .group-list-area {
-    flex: 0 0 340px; height: 100%; overflow-y: auto; padding: 12px;
+    flex: 0 0 340px; /* Desktop width */
+    height: 100%; /* Fill the parent pane's height */
+    overflow-y: auto; /* Scroll its own content */
+    padding: 12px;
     border-radius: 18px 0 0 18px;
     border-right: 1px solid rgba(255, 255, 255, 0.3);
+    transition: flex 0.3s ease, opacity 0.3s ease;
+    min-height: 0; /* Flex behavior */
+    position: relative; /* Establish stacking context */
+    z-index: 1; /* Sit above pane background, below blur overlay if needed */
+    background-color: transparent; /* Let pane background show through */
 }
-/* ... Group list internal styles ... */
 .group-list-area ul { list-style: none; padding: 0; margin: 0; }
 .group-item { display: flex; align-items: center; padding: 12px 10px; border-radius: 10px; margin-bottom: 6px; cursor: pointer; transition: background-color 0.2s ease; background-color: rgba(255, 255, 255, 0.1);}
 .group-item:hover { background-color: rgba(255, 255, 255, 0.15); }
@@ -139,16 +149,28 @@ body.planner-active { overflow: hidden; }
 .group-name { font-weight: 500; color: #f5f5fa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .group-stats { font-size: 0.85rem; color: rgba(255, 255, 255, 0.9); white-space: nowrap; }
 
+.blur-wrapper {
+    position: sticky;
+    top: 0;
+    height: 64px;
+    z-index: 1;
+}
 
-/* Event Collage Area Styling */
-.event-collage-area {
-    flex-grow: 1; height: 100%; overflow-y: auto; position: relative;
-    perspective: 1200px; padding: 12px;
-     border-radius: 0 18px 18px 0;
+.blur-overlay {
+    position: absolute;
+    inset: 0;
+    margin: -12px;
+    background: rgba(140, 140, 145, 0.9);
+    backdrop-filter: blur(10px) saturate(120%);
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+    z-index: 0;
+    pointer-events: none;
 }
 
 /* Active Group Header */
 .active-group-header {
+    position: relative;
+    z-index: 1;
     background: rgba(160, 160, 165, 0.8);
     backdrop-filter: blur(30px) saturate(150%);
     border: 1px solid rgba(255, 255, 255, 0.4);
@@ -156,30 +178,68 @@ body.planner-active { overflow: hidden; }
     display: flex; align-items: center; padding: 12px 18px; border-radius: 14px;
     margin-bottom: 18px; position: sticky; top: 0px; z-index: 10;
 }
-/* ... Active group header internal styles ... */
+
+.event-collage-area {
+    flex-grow: 1;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative; /* Crucial for absolute positioning of overlay */
+    perspective: 1200px;
+    /* REMOVE original padding */
+    /* padding: 12px; */
+    /* ADD padding-top to make space for sticky header + blur */
+    /* Adjust this value based on your header's actual height */
+    padding: 12px;
+    border-radius: 0 18px 18px 0;
+    transition: flex 0.3s ease, opacity 0.3s ease;
+    min-height: 0;
+    z-index: 0; /* Below blur and header */
+}
+
+/* Event Panels Container */
+.event-panels-container {
+    position: relative; /* Crucial for absolute positioning of panels */
+    width: 100%;
+    min-height: 100%; /* Ensure it fills at least the initial viewport */
+    height: auto; /* Allow it to grow for scrolled content */
+}
+
 .group-avatar-small { width: 36px; height: 36px; border-radius: 50%; margin-right: 14px; object-fit: cover; flex-shrink: 0; }
 .active-group-name { font-weight: 600; color: #fff; margin-right: auto; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 6px rgba(0, 0, 0, 0.6); }
 .settings-button { font-size: 1.2rem; padding: 6px; color: #e0e0e5; margin-left: 10px; background: none; border: none; cursor: pointer; border-radius: 50%; transition: background-color 0.2s ease, color 0.2s ease; flex-shrink: 0; text-shadow: none; }
 .settings-button:hover { background-color: rgba(255,255,255,0.15); color: #fff; }
 
+/* Back button specific styles */
+.back-button {
+    display: none; /* Hidden by default */
+    font-size: 1.5rem; padding: 6px 10px; margin-right: 10px;
+    color: #e0e0e5; background: none; border: none; cursor: pointer; border-radius: 50%;
+    transition: background-color 0.2s ease, color 0.2s ease; flex-shrink: 0;
+}
+.back-button:hover { background-color: rgba(255,255,255,0.15); color: #fff; }
 
-/* Event Panel Styling */
+
+/* Event Panel Styling (Desktop) */
 .event-panel {
-    position: absolute; width: 320px; min-height: 210px;
+    position: absolute; /* Crucial for collage */
+    width: 320px; /* Fixed width for collage */
+    min-height: 210px;
     padding: 18px; border-radius: 18px; transform-style: preserve-3d;
     transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
     background: rgba(170, 170, 175, 0.85);
     backdrop-filter: blur(30px) saturate(130%);
     border: 1px solid rgba(255, 255, 255, 0.5);
     box-shadow: 0 12px 35px rgba(0, 0, 0, 0.28);
+    display: flex; /* Use flex for internal layout */
+    flex-direction: column; /* Stack content vertically */
 }
-/* ... Event panel internal styles ... */
 .event-panel:hover { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32); transform: translateY(-3px) scale(1.01); }
-.event-image { width: 100%; height: 100px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; opacity: 0.95; }
+.event-image { width: 100%; height: 100px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; opacity: 0.95; flex-shrink: 0; }
 .event-panel h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 5px; color: #fff; text-shadow: 0 0 5px rgba(0,0,0,0.7); }
 .event-details { font-size: 0.9rem; color: #e5e5ea; margin-bottom: 8px; text-shadow: 0 0 5px rgba(0,0,0,0.7); }
 .event-rsvp { font-size: 0.9rem; font-weight: 500; margin-bottom: 14px; color: #0369A1; text-shadow: none;}
-.event-actions { display: flex; gap: 10px; margin-top: auto; }
+.event-actions { display: flex; gap: 10px; margin-top: auto; /* Push actions to bottom */ flex-shrink: 0; }
 .button { padding: 9px 18px; border: none; border-radius: 12px; cursor: pointer; font-weight: 500; transition: background-color 0.2s ease, transform 0.1s ease; text-shadow: none; }
 .button:active { transform: scale(0.97); }
 .button.accept { background-color: #0284C7; color: white; }
@@ -193,6 +253,134 @@ body.planner-active { overflow: hidden; }
 .event-collage-area::-webkit-scrollbar-track,
 .group-list-area::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px;}
 .event-collage-area::-webkit-scrollbar-thumb,
-.group-list-area::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; }
+.group-list-area::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
 .event-collage-area::-webkit-scrollbar-thumb:hover,
 .group-list-area::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+    /* Reset body height for mobile scrolling if needed, or keep hidden */
+    /* body { height: auto; overflow: auto; } */
+
+    .top-nav {
+        padding: 8px 12px; width: calc(100% - 16px); top: 5px; margin-top: 5px;
+    }
+    .top-nav-left a { padding: 6px 12px; font-size: 0.9rem; margin-right: 4px; }
+    .top-nav-right .icon-button { font-size: 1.2rem; padding: 6px; margin-left: 8px; }
+
+    .planner-interface {
+        padding: 0 8px 8px 8px;
+    }
+
+    .planner-header {
+        flex-direction: column; align-items: flex-start; padding: 10px 0px;
+    }
+    .planner-title { font-size: 1.5rem; }
+
+    .view-selector {
+        width: 100%; padding: 6px; margin-top: 8px; justify-content: flex-start;
+    }
+     .view-tab { padding: 6px 14px; font-size: 0.9rem; }
+
+
+    /* --- Mobile Pane View Switching --- */
+    .planner-pane {
+        border-radius: 12px;
+    }
+
+
+    /* Default Mobile View: Show Group List */
+    .group-list-area {
+        flex: 1 1 auto; /* Fill available space */
+        border-right: none;
+        border-radius: 12px;
+        overflow-y: auto;
+        padding: 8px;
+        opacity: 1;
+        pointer-events: auto;
+        background-color: transparent; /* Ensure pane background shows */
+    }
+    .event-collage-area {
+        flex: 0 0 0; /* Collapse */
+        overflow: hidden;
+        padding: 5px;
+        border-radius: 12px;
+        opacity: 0;
+        pointer-events: none;
+        height: 100%; /* Match sibling */
+    }
+
+    /* Active Mobile View: Show Event List */
+    .planner-pane.mobile-event-view-active .group-list-area {
+        flex: 0 0 0; /* Collapse */
+        overflow: hidden;
+        padding: 0;
+        opacity: 0;
+        pointer-events: none;
+        height: 100%; /* Match sibling */
+    }
+    .planner-pane.mobile-event-view-active .event-collage-area {
+        flex: 1 1 auto; /* Fill available space */
+        overflow-y: auto;
+        padding: 8px; /* RESET padding-top */
+        opacity: 1;
+        pointer-events: auto;
+        perspective: none; /* Disable 3D perspective */
+        height: 100%; /* Match sibling */
+    }
+
+     /* Group item adjustments */
+    .group-item { padding: 15px 10px; }
+
+
+    /* --- Event Area Mobile Adjustments --- */
+
+    /* Show back button */
+    .active-group-header .back-button { display: block; }
+
+    /* Reset header positioning */
+    .active-group-header {
+        position: sticky; /* Back to sticky for mobile scroll */
+        top: 0;           /* Stick to top of mobile scroll area */
+        left: auto;       /* Remove fixed horizontal positioning */
+        right: auto;
+        width: auto;      /* Let it size naturally */
+        margin-bottom: 12px; /* Add some space below */
+        border-radius: 14px; /* Restore original mobile radius */
+    }
+
+    .group-avatar-small { width: 32px; height: 32px; margin-right: 10px;}
+    .active-group-name { font-size: 1rem; }
+
+
+    .event-panels-container {
+        position: relative;
+        width: 100%;
+        min-height: 100%;
+        height: auto;
+        /* Remove any top padding/margin here, it's handled by parent padding */
+    }
+
+    .event-panel {
+        position: relative; /* Change from absolute */
+        width: auto; /* Full width minus padding */
+        left: auto !important; /* Override inline styles */
+        top: auto !important; /* Override inline styles */
+        transform: none !important; /* Remove transforms */
+        margin-bottom: 15px;
+        min-height: unset;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        padding: 15px;
+        background: rgba(170, 170, 175, 0.9);
+        transform-style: flat; /* Disable 3D */
+        display: flex;
+        flex-direction: column;
+    }
+    .event-panel:hover {
+        transform: none !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+    .event-image { height: 120px; }
+
+}
+
