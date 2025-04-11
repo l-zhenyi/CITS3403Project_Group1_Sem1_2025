@@ -3,19 +3,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const plannerPane = document.getElementById('planner-pane');
     const groupListArea = document.querySelector('.group-list-area');
     const eventCollageArea = document.getElementById('event-collage');
-    const calendarViewArea = document.getElementById('calendar-view'); // New
+    const calendarViewArea = document.getElementById('calendar-view');
+    const eventsViewArea = document.getElementById('events-view'); // New
     const groupItems = document.querySelectorAll('.group-item');
     const backButtonGroup = document.getElementById('back-to-groups-button');
     const activeGroupNameEl = document.getElementById('active-group-name');
     const activeGroupAvatarEl = document.getElementById('active-group-avatar');
     const collageContainer = eventCollageArea;
-    const groupsTab = document.getElementById('groups-tab'); // New
-    const calendarTab = document.getElementById('calendar-tab'); // New
-    const viewTabs = document.querySelectorAll('.view-tab'); // New
-    const calendarMonthYearEl = document.getElementById('calendar-month-year'); // New
-    const calendarGridEl = document.getElementById('calendar-grid'); // New
-    const prevMonthButton = document.getElementById('calendar-prev-month'); // New
-    const nextMonthButton = document.getElementById('calendar-next-month'); // New
+    const groupsTab = document.getElementById('groups-tab');
+    const calendarTab = document.getElementById('calendar-tab');
+    const eventsTab = document.getElementById('events-tab'); // New
+    const viewTabs = document.querySelectorAll('.view-tab');
+    const calendarMonthYearEl = document.getElementById('calendar-month-year');
+    const calendarGridEl = document.getElementById('calendar-grid');
+    const prevMonthButton = document.getElementById('calendar-prev-month');
+    const nextMonthButton = document.getElementById('calendar-next-month');
+    const eventFilterBar = document.getElementById('event-filter-bar'); // New
+    const eventListContainer = document.getElementById('event-list-container'); // New
 
     // --- State Variables ---
     let panelData = [];
@@ -23,18 +27,41 @@ document.addEventListener('DOMContentLoaded', () => {
     let isParallaxSetup = false;
     let parallaxScrollHandler = null;
     let resizeTimer;
-    let currentView = 'groups'; // New: 'groups' or 'calendar'
-    let calendarDate = new Date(); // New: Holds the currently displayed month/year
-    // Sample Events Data (replace with actual data source later)
-    const sampleEvents = { // Key: YYYY-MM-DD
-        '2024-07-15': [{ title: 'Team Lunch' }],
-        '2024-07-22': [{ title: 'Project Deadline' }],
-        '2024-08-05': [{ title: 'Hiking Trip' }, {title: 'Another event'}],
-        // Add more events for testing
-    };
+    let currentView = 'groups'; // 'groups', 'calendar', or 'events'
+    let calendarDate = new Date();
+    let currentEventFilter = 'upcoming'; // New: 'upcoming', 'past', 'all'
+
+    // --- More Detailed Sample Events Data ---
+    const now = new Date();
+    const detailedEvents = [
+        { id: 1, title: 'Mountain Hike Day', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 9, 0), group: 'Weekend Hikers', location: 'Eagle Peak Trail', rsvp: 'Going' },
+        { id: 2, title: 'Strategy Board Games Night', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 9, 19, 0), group: 'Board Game Geeks', location: 'Game Nook Cafe', rsvp: 'Maybe' },
+        { id: 3, title: 'Downtown Taco Tour', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 10, 13, 0), group: 'City Foodies', location: 'Various Downtown Stops', rsvp: 'Going' }, // Past
+        { id: 4, title: 'Indie Film Screening', date: new Date(now.getFullYear(), now.getMonth() + 1, 5, 18, 0), group: 'Indie Film Club', location: 'Art House Cinema', rsvp: 'Declined' },
+        { id: 5, title: 'Coastal Trail Walk', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 15, 10, 0), group: 'Weekend Hikers', location: 'Seaview Path', rsvp: 'Invited' },
+        { id: 6, title: 'Eurogames Evening', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2, 18, 30), group: 'Board Game Geeks', location: 'Community Center', rsvp: 'Going' }, // Past
+        { id: 7, title: 'Potluck Picnic', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6, 12, 0), group: 'City Foodies', location: 'Central Park Meadow', rsvp: 'Invited' },
+         { id: 8, title: 'Previous Hike Prep Meeting', date: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 20, 19, 0), group: 'Weekend Hikers', location: 'Online', rsvp: 'Going' }, // Past
+    ];
+
+    // Convert sampleEvents (used by calendar) from detailedEvents for simplicity
+    const sampleEvents = {}; // Key: YYYY-MM-DD
+    detailedEvents.forEach(event => {
+        const dateString = `${event.date.getFullYear()}-${String(event.date.getMonth() + 1).padStart(2, '0')}-${String(event.date.getDate()).padStart(2, '0')}`;
+        if (!sampleEvents[dateString]) {
+            sampleEvents[dateString] = [];
+        }
+        sampleEvents[dateString].push({ title: event.title });
+    });
 
 
     console.log(`Initial state: ${isMobile ? 'Mobile' : 'Desktop'}, View: ${currentView}`);
+
+    function formatEventDate(date) {
+        return date.toLocaleString(undefined, {
+            weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+        });
+    }
 
     // --- Header Update Function (for Group View) ---
     function updateHeader(groupElement) {
@@ -46,13 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Parallax Effect Functions ---
     function setupParallax() {
-        // ONLY setup if on desktop AND in groups view AND not already setup
         if (!collageContainer || isParallaxSetup || isMobile || currentView !== 'groups') {
             // console.log(`Parallax setup skipped. isParallaxSetup: ${isParallaxSetup}, isMobile: ${isMobile}, currentView: ${currentView}`);
             return;
         }
         console.log("Setting up parallax...");
-        // ... (rest of setupParallax function remains the same)
 
         panelData = [];
         const panels = Array.from(collageContainer.querySelectorAll('.event-panel'));
@@ -132,8 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // console.log(`Parallax destruction skipped. isParallaxSetup: ${isParallaxSetup}`);
             return;
         }
+
         console.log("Destroying parallax...");
-        // ... (rest of destroyParallax function remains the same)
 
         collageContainer.removeEventListener('scroll', parallaxScrollHandler);
         parallaxScrollHandler = null;
@@ -152,13 +177,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- View Switching Functions ---
 
-    // Shows the Event Details pane (right side on desktop, full screen on mobile)
     function showEventView(groupElement) {
         if (!plannerPane || !groupElement) return;
 
         // *Always ensure we are in 'groups' view first*
         if (currentView !== 'groups') {
-            switchView('groups'); // Switch back if calendar was active
+            switchView('groups'); // Switch back if another view was active
         }
 
         console.log(`Showing event view for group: ${groupElement.dataset.groupName}`);
@@ -167,20 +191,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isMobile) {
             plannerPane.classList.add('mobile-event-view-active');
         } else {
-            // On desktop, ensure parallax is potentially setup
-            setupParallax(); // It will only run if conditions are met
+            setupParallax(); // Attempt setup
         }
 
         if (eventCollageArea) eventCollageArea.scrollTop = 0;
     }
 
-    // Shows the Group List (left side on desktop, full screen on mobile)
     function showGroupListView() {
         if (!plannerPane) return;
 
         // *Always ensure we are in 'groups' view first*
         if (currentView !== 'groups') {
-            switchView('groups'); // Switch back if calendar was active
+            switchView('groups');
         }
         console.log("Showing group list view");
 
@@ -189,20 +211,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (groupListArea) groupListArea.scrollTop = 0;
         }
 
-        // On Desktop, showing group list doesn't change panes visually,
-        // but destroy parallax if transitioning from event view? (Usually not needed)
-        // And update header if no group is selected.
         if (!isMobile) {
              const active = document.querySelector('.group-item.active');
              if(!active) {
                  updateHeader(null);
              }
-             // Parallax should still be potentially active here on desktop
-             setupParallax();
+             setupParallax(); // Attempt setup
         }
     }
 
-    // --- New Calendar Rendering Function ---
+
+    // --- Calendar Rendering Function ---
+    // ... (renderCalendar remains the same)
     function renderCalendar(year, month) { // month is 0-indexed (0=Jan, 11=Dec)
         if (!calendarGridEl || !calendarMonthYearEl) return;
 
@@ -235,31 +255,27 @@ document.addEventListener('DOMContentLoaded', () => {
             cell.classList.add('calendar-cell');
             const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
 
-            // Check if it's today
             if (dateString === todayDateString) {
                 cell.classList.add('today');
             }
 
             let cellHTML = `<span class="day-number">${i}</span>`;
 
-            // Check for events on this day (using sample data)
+            // Use sampleEvents derived from detailedEvents
             if (sampleEvents[dateString]) {
                 sampleEvents[dateString].forEach(event => {
-                    // Simple marker for now
                     cellHTML += `<div class="event-marker" title="${event.title}"></div>`;
                 });
             }
 
             cell.innerHTML = cellHTML;
-            cell.dataset.date = dateString; // Store date for potential click events later
+            cell.dataset.date = dateString;
             calendarGridEl.appendChild(cell);
         }
 
-         // Calculate days from next month to fill the grid (usually up to 6 rows * 7 cols = 42)
+         // Calculate days from next month to fill the grid
          const totalCells = startingDay + daysInMonth;
-         const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7) ; // Cells needed from next month
-         // More robust: Ensure grid fills up to 6 weeks (42 cells) if needed
-         // const cellsToFill = 42 - totalCells; // Alternative calculation
+         const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7) ;
 
          for (let i = 1; i <= remainingCells; i++) {
             const cell = document.createElement('div');
@@ -268,54 +284,127 @@ document.addEventListener('DOMContentLoaded', () => {
             calendarGridEl.appendChild(cell);
          }
 
-         // Ensure enough rows (optional, CSS min-height often handles this visually)
-         while(calendarGridEl.children.length < 35) { // Ensure at least 5 rows
+         // Ensure enough rows
+         while(calendarGridEl.children.length < 35) {
             const cell = document.createElement('div');
-            cell.classList.add('calendar-cell', 'other-month', 'empty-filler'); // Add class to hide if needed
+            cell.classList.add('calendar-cell', 'other-month', 'empty-filler');
             calendarGridEl.appendChild(cell);
          }
+    }
 
+    // --- New Events List Rendering Function ---
+    function renderEventsList(filter = 'upcoming') {
+        if (!eventListContainer) return;
+        console.log(`Rendering event list with filter: ${filter}`);
+        eventListContainer.innerHTML = ''; // Clear previous list
+
+        const now = new Date();
+        let filteredEvents = [];
+
+        // Filter events based on the selected filter
+        switch (filter) {
+            case 'upcoming':
+                filteredEvents = detailedEvents.filter(event => event.date >= now);
+                break;
+            case 'past':
+                filteredEvents = detailedEvents.filter(event => event.date < now);
+                break;
+            case 'all':
+            default:
+                filteredEvents = [...detailedEvents]; // Copy all events
+                break;
+        }
+
+        // Sort events by date
+        // Upcoming/All: Ascending (earliest first)
+        // Past: Descending (most recent first)
+        filteredEvents.sort((a, b) => {
+            if (filter === 'past') {
+                return b.date - a.date; // Descending for past
+            }
+            return a.date - b.date; // Ascending otherwise
+        });
+
+        // Create and append event tiles
+        if (filteredEvents.length > 0) {
+            filteredEvents.forEach(event => {
+                const tile = document.createElement('div');
+                tile.classList.add('event-tile'); // Add the glassy class if needed or style .event-tile directly
+
+                // Add simple icons (can be replaced with <img> or icon font later)
+                const dateIcon = '<span class="icon">📅</span>';
+                const groupIcon = '<span class="icon">👥</span>';
+                const locationIcon = '<span class="icon">📍</span>';
+                const rsvpIcon = '<span class="icon">✔️</span>'; // Example
+
+                tile.innerHTML = `
+                    <h4>${event.title}</h4>
+                    <p class="tile-detail">${dateIcon} ${formatEventDate(event.date)}</p>
+                    ${event.group ? `<p class="tile-detail">${groupIcon} ${event.group}</p>` : ''}
+                    ${event.location ? `<p class="tile-detail">${locationIcon} ${event.location}</p>` : ''}
+                    ${event.rsvp ? `<p class="tile-detail">${rsvpIcon} RSVP: ${event.rsvp}</p>` : ''}
+                `;
+                eventListContainer.appendChild(tile);
+            });
+        } else {
+            eventListContainer.innerHTML = '<p class="no-events-message">No events match the current filter.</p>';
+            // Add styling for .no-events-message if desired
+        }
+         // Reset scroll position of the list
+         if (eventsViewArea) eventsViewArea.scrollTop = 0;
     }
 
 
-    // --- New Main View Switching Function ---
-    function switchView(viewName) { // viewName = 'groups' or 'calendar'
-        if (currentView === viewName) return; // No change needed
+    // --- Main View Switching Function (Updated) ---
+    function switchView(viewName) { // viewName = 'groups', 'calendar', or 'events'
+        if (currentView === viewName && viewName !== 'groups') return; // Allow re-switching to groups to reset mobile view etc.
 
         console.log(`Switching view to: ${viewName}`);
+        const previousView = currentView;
         currentView = viewName;
 
         // Update Tab Styles
         viewTabs.forEach(tab => tab.classList.remove('active'));
-        if (viewName === 'groups' && groupsTab) {
-            groupsTab.classList.add('active');
-        } else if (viewName === 'calendar' && calendarTab) {
-            calendarTab.classList.add('active');
+        const activeTab = document.getElementById(`${viewName}-tab`);
+        if (activeTab) activeTab.classList.add('active');
+
+        // Always destroy parallax when leaving 'groups' view
+        if (previousView === 'groups' && viewName !== 'groups') {
+            destroyParallax();
         }
 
-        // Toggle Pane Visibility Class
-        if (viewName === 'calendar') {
-            destroyParallax(); // Always destroy parallax when leaving groups view
-            plannerPane.classList.add('calendar-view-active');
-            plannerPane.classList.remove('mobile-event-view-active'); // Ensure mobile starts at list view equivalent for calendar
-            // Render calendar for the current state date
-            renderCalendar(calendarDate.getFullYear(), calendarDate.getMonth());
-        } else { // Switching to 'groups'
-            plannerPane.classList.remove('calendar-view-active');
-            // Check if parallax should be setup (desktop state)
-            checkScreenSize(); // Re-run checkScreenSize to handle potential parallax setup
-             // Reset header based on active group, if switching back to groups
-            const activeGroup = document.querySelector('.group-item.active');
-            updateHeader(activeGroup); // Updates to default if null
-            // Ensure correct mobile view state if applicable
-            if (isMobile) {
-                showGroupListView(); // Go back to group list on mobile when switching to groups view
-            }
+        // Remove existing view classes
+        plannerPane.classList.remove('calendar-view-active', 'events-view-active', 'mobile-event-view-active');
+
+        // Add the specific class for the new view
+        switch (viewName) {
+            case 'calendar':
+                plannerPane.classList.add('calendar-view-active');
+                renderCalendar(calendarDate.getFullYear(), calendarDate.getMonth());
+                break;
+            case 'events':
+                plannerPane.classList.add('events-view-active');
+                renderEventsList(currentEventFilter); // Render with the current filter
+                break;
+            case 'groups':
+            default: // Default to groups view
+                 // No specific class needed for base group view, CSS handles default
+                 // Check screen size to potentially set up parallax or handle mobile state
+                 checkScreenSize();
+                 // Reset header based on active group
+                 const activeGroup = document.querySelector('.group-item.active');
+                 updateHeader(activeGroup);
+                 // If mobile, ensure group list is shown initially
+                 if (isMobile) {
+                     showGroupListView(); // This correctly removes mobile-event-view-active
+                 }
+                 break;
         }
     }
 
 
     // --- Responsive Logic ---
+    // ... (checkScreenSize remains the same, primarily concerned with parallax based on currentView === 'groups')
     function checkScreenSize() {
         console.log("--- checkScreenSize called ---");
         const currentlyMobile = window.innerWidth <= 768;
@@ -333,38 +422,37 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isMobile) {
                 // Transitioning TO Mobile
                 console.log("Transitioning TO Mobile actions...");
-                destroyParallax(); // Destroy parallax if it was active
-                // If in 'groups' view, ensure the group list is shown
+                destroyParallax(); // Parallax never needed on mobile
+                // If ending up in 'groups' view, ensure the group list is shown
                 if (currentView === 'groups') {
                     plannerPane.classList.remove('mobile-event-view-active');
                 }
-                 // Calendar view doesn't have a sub-view on mobile like groups does
+                 // Calendar/Events views don't have sub-views on mobile
             } else {
                 // Transitioning TO Desktop
                 console.log("Transitioning TO Desktop actions...");
                 plannerPane.classList.remove('mobile-event-view-active'); // Ensure mobile class is removed
-                // Setup parallax ONLY if in 'groups' view
+                // Setup parallax ONLY if ending up in 'groups' view
                 if (currentView === 'groups') {
                     setupParallax();
-                     // Update header based on active group (important after potential mobile view)
                     const activeGroup = document.querySelector('.group-item.active');
-                    updateHeader(activeGroup); // Updates to default if null
+                    updateHeader(activeGroup);
                     if (activeGroup && eventCollageArea) eventCollageArea.scrollTop = 0;
                 } else {
-                    destroyParallax(); // Ensure parallax is off if landing on calendar view desktop
+                    destroyParallax(); // Ensure parallax is off otherwise
                 }
             }
         } else {
             console.log("Screen state did NOT change.");
-            // If state didn't change, but we are on desktop and in 'groups' view,
-            // ensure parallax is set up if it isn't already.
+            // Ensure parallax state matches current view/screen size
             if (!isMobile && currentView === 'groups' && !isParallaxSetup) {
                 console.log("Desktop 'groups' view, ensuring parallax is set up.");
                 setupParallax();
-            }
-             // Ensure parallax is destroyed if somehow still active on mobile or calendar view
-            if (isMobile || currentView === 'calendar') {
-                destroyParallax();
+            } else if (isMobile || currentView !== 'groups') {
+                 if (isParallaxSetup) {
+                    console.log("Destroying parallax because view is not 'groups' or screen is mobile.");
+                    destroyParallax();
+                 }
             }
         }
         console.log("--- checkScreenSize finished ---");
@@ -376,30 +464,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // Group Item Clicks
     groupItems.forEach(item => {
         item.addEventListener('click', () => {
-            // If calendar is active, switch back to groups view first
-            if (currentView === 'calendar') {
+            // If another view is active, switch back to groups view first
+             if (currentView !== 'groups') {
                 switchView('groups');
-            }
-
+             }
+             // Now proceed with showing the specific group's events
             console.log(isMobile ? 'Mobile Click' : 'Desktop Click', `on group: ${item.dataset.groupName}`);
             groupItems.forEach(i => i.classList.remove('active'));
             item.classList.add('active');
-            showEventView(item);
+            showEventView(item); // Shows event collage/mobile equivalent
         });
     });
 
     // Back Button Click (Mobile only, for group events view)
     backButtonGroup?.addEventListener('click', () => {
         console.log("Back button clicked");
-         // This button only exists in the 'groups' view context
-         if (currentView === 'groups') {
-            showGroupListView(); // Should handle removing mobile-event-view-active
+         if (currentView === 'groups' && isMobile) {
+            showGroupListView(); // Go back to the group list
          }
     });
 
     // View Tab Clicks
     groupsTab?.addEventListener('click', () => switchView('groups'));
     calendarTab?.addEventListener('click', () => switchView('calendar'));
+    eventsTab?.addEventListener('click', () => switchView('events')); // New
 
     // Calendar Navigation Clicks
     prevMonthButton?.addEventListener('click', () => {
@@ -412,10 +500,27 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar(calendarDate.getFullYear(), calendarDate.getMonth());
     });
 
+    // Event Filter Pill Clicks (using event delegation)
+    eventFilterBar?.addEventListener('click', (e) => {
+        if (e.target.classList.contains('filter-pill')) {
+            const filterValue = e.target.dataset.filter;
+            if (filterValue && filterValue !== currentEventFilter) {
+                console.log(`Filter changed to: ${filterValue}`);
+                currentEventFilter = filterValue;
+
+                // Update active pill style
+                eventFilterBar.querySelectorAll('.filter-pill').forEach(pill => pill.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Re-render the list with the new filter
+                renderEventsList(currentEventFilter);
+            }
+        }
+    });
+
 
     // Window Resize Handler (Debounced)
     window.addEventListener('resize', () => {
-        // console.log("Resize event detected..."); // Less noisy log
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             console.log("Debounced resize executing checkScreenSize...");
@@ -424,25 +529,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initial Setup ---
-    checkScreenSize(); // Run once on load to set initial screen state
+    checkScreenSize(); // Set initial screen state (mobile/desktop)
 
-    // Set initial view based on `currentView` state ('groups' by default)
-    switchView(currentView); // Initialize view correctly
+    // Initialize the view based on `currentView` ('groups' by default)
+    // This will also handle initial rendering/parallax setup as needed
+    switchView(currentView);
 
-    // Set initial group header if starting in 'groups' view
-    if (currentView === 'groups') {
-        const initiallyActiveGroup = document.querySelector('.group-item.active');
-        if (initiallyActiveGroup) {
-             updateHeader(initiallyActiveGroup);
-             // Only setup parallax if desktop
-             if (!isMobile) {
-                 setupParallax(); // Attempt setup
-             }
-        } else {
-            updateHeader(null); // Set default header if no group selected
-        }
-    }
-    // Calendar is rendered by switchView if it's the initial view
+    // If starting in 'groups', set initial header (switchView handles this now)
+    // if (currentView === 'groups') { ... } // No longer needed here
 
     console.log("Planner UI script initialized.");
 

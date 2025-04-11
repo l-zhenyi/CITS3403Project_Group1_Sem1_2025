@@ -735,44 +735,188 @@
       align-self: center; /* Center dot */
       /* Add more complex styling/positioning later */
   }
+
+/* ==========================================================================
+   Events View Styles
+   ========================================================================== */
+
+   .events-view {
+    /* Positioning & Box Model */
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto; /* Scroll the list */
+    overflow-x: hidden;
+    padding: 15px; /* Consistent padding */
+    border-radius: inherit; /* Match parent rounding */
+    position: relative; /* For potential sticky filter bar */
+    padding: 15px;
+    padding-top: 5px; /* ADDED/ADJUSTED - Initial space at the top */
+  }
   
-  /* --- View Switching CSS --- */
+  .event-filter-bar {
+    /* Positioning & Box Model */
+    display: flex;
+    /* justify-content: center; */ /* REMOVED - defaults to flex-start (left) */
+    align-items: center;
+    gap: 8px; /* Space between pills */
+    padding: 8px 12px;
+    margin-bottom: 20px;
+    border-radius: 999px; /* CHANGED - Pill shape with semi-circle ends */
+    flex-shrink: 0;
+    position: sticky;
+    /* top: -15px; */ /* REMOVED - adjust below */
+    top: 5px; /* CHANGED - Stick slightly below the top edge */
+    z-index: 5;
+    width: fit-content; /* ADDED - Size to content */
+    /* Glassy style applied in HTML */
+    background: rgba(140, 140, 145, 0.85); /* Slightly stronger/more opaque background */
+    /* Add a left margin if you want it slightly indented from the edge */
+    /* margin-left: 5px; */ /* Optional */
+  }
   
-  /* Default: Show Groups/Events View (Desktop) */
-/* Default: Show Groups/Events View (Desktop & Mobile base) */
-.planner-pane:not(.calendar-view-active) .group-list-area {
-    /* Style controlled by base rules and mobile overrides */
-    /* No explicit display needed here unless overriding something */
-     opacity: 1; /* Ensure visible */
-     pointer-events: auto; /* Ensure interactive */
+  .filter-pill {
+    /* Box Model */
+    padding: 7px 20px;
+    border: none;
+    border-radius: 999px; /* Pill shape */
+  
+    /* Typography */
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #e0e0e5;
+    white-space: nowrap;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+  
+    /* Visual */
+    background: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  .filter-pill:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .filter-pill.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-weight: 600;
+    text-shadow: none;
+  }
+  
+  .event-list-container {
+    /* padding-top: 5px; */ /* REMOVED or adjust if needed */
+    /* display: flex; */ /* REMOVED */
+    /* flex-direction: column; */ /* REMOVED */
+    display: grid; /* ADDED */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* ADDED - Responsive Grid */
+    gap: 15px; /* Space between tiles (rows and columns) */
+    /* Add padding to the top to avoid content hiding under sticky filter */
+    padding-top: 10px; /* ADDED - Adjust as needed based on filter bar height */
+  }
+  
+  .event-tile {
+    /* Box Model */
+    display: block; /* Simple vertical stacking */
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+  
+    /* Visual */
+    background: rgba(140, 140, 145, 0.7); /* Glassy tile */
+    backdrop-filter: blur(25px) saturate(140%);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .event-tile:hover {
+      /* Optional hover effect */
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  }
+  
+  
+  .event-tile h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  
+  .event-tile .tile-detail {
+    font-size: 0.9rem;
+    color: #e5e5ea;
+    margin-bottom: 4px;
+    display: flex; /* Align icon and text */
+    align-items: center;
+    gap: 6px;
+  }
+  .event-tile .tile-detail:last-child {
+      margin-bottom: 0;
+  }
+  
+  /* Simple icons (can replace with actual icons later) */
+  .tile-detail .icon {
+      font-size: 0.9em; /* Slightly smaller */
+      opacity: 0.8;
+  }
+  
+/* --- Update View Switching CSS --- */
+
+/* Default: Show Groups View */
+.planner-pane:not(.calendar-view-active):not(.events-view-active) .group-list-area {
+  /* Handled by desktop/mobile rules */
+   opacity: 1;
+   pointer-events: auto;
 }
-.planner-pane:not(.calendar-view-active) .event-collage-area {
-    /* Style controlled by base rules and mobile overrides */
-    display: block; /* <<< CORRECTION: Ensure block layout for children */
-    opacity: 1; /* Ensure visible */
-    pointer-events: auto; /* Ensure interactive */
-    /* flex-grow: 1; is handled by base style */
+.planner-pane:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
+  /* Handled by desktop/mobile rules */
+  display: block; /* Ensure block layout for children */
+  opacity: 1;
+  pointer-events: auto;
 }
-.planner-pane:not(.calendar-view-active) .calendar-view {
-    display: none;
-    opacity: 0;
-    pointer-events: none;
+.planner-pane:not(.calendar-view-active):not(.events-view-active) .calendar-view,
+.planner-pane:not(.calendar-view-active):not(.events-view-active) .events-view {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
-/* Active Calendar View (Desktop & Mobile) */
+/* Active Calendar View */
 .planner-pane.calendar-view-active .group-list-area,
-.planner-pane.calendar-view-active .event-collage-area {
-    display: none !important; /* Hide groups/events */
-    flex: 0 0 0 !important; /* Ensure they collapse */
-    opacity: 0 !important;
-    pointer-events: none !important;
+.planner-pane.calendar-view-active .event-collage-area,
+.planner-pane.calendar-view-active .events-view {
+  display: none !important;
+  flex: 0 0 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 .planner-pane.calendar-view-active .calendar-view {
-    display: flex; /* Show calendar (flex direction column) */
-    flex-grow: 1; /* Make sure it takes space */
-    opacity: 1;
-    pointer-events: auto;
+  display: flex;
+  flex-grow: 1;
+  opacity: 1;
+  pointer-events: auto;
 }
+
+/* Active Events View */
+.planner-pane.events-view-active .group-list-area,
+.planner-pane.events-view-active .event-collage-area,
+.planner-pane.events-view-active .calendar-view {
+  display: none !important;
+  flex: 0 0 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.planner-pane.events-view-active .events-view {
+  display: flex; /* Use flex column */
+  flex-grow: 1;
+  opacity: 1;
+  pointer-events: auto;
+}
+
 
 
   /* ==========================================================================
@@ -803,20 +947,22 @@
     background-color: rgba(255, 255, 255, 0.5);
   }
 
-  /* --- Desktop Specific Overrides for Groups View --- */
-@media (min-width: 769px) { /* Apply only on desktop */
-    .planner-pane:not(.calendar-view-active):not(.mobile-event-view-active) .group-list-area {
-         flex: 0 0 340px; /* Fixed width */
-         display: block; /* Ensure it's displayed */
-    }
-     .planner-pane:not(.calendar-view-active):not(.mobile-event-view-active) .event-collage-area {
-         flex-grow: 1; /* Takes remaining space */
-         display: block; /* Ensure it's displayed and block layout */
-     }
-     /* Hide calendar view if not active */
-      .planner-pane:not(.calendar-view-active) .calendar-view {
-          display: none;
-     }
+/* --- Update Desktop Specific Overrides --- */
+@media (min-width: 769px) {
+  /* Show Groups/Collage if no other view active */
+  .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.mobile-event-view-active) .group-list-area {
+       flex: 0 0 340px;
+       display: block;
+  }
+   .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.mobile-event-view-active) .event-collage-area {
+       flex-grow: 1;
+       display: block;
+   }
+   /* Hide other views if not active */
+    .planner-pane:not(.calendar-view-active) .calendar-view,
+    .planner-pane:not(.events-view-active) .events-view {
+        display: none;
+   }
 }
   
   /* ==========================================================================
@@ -1038,4 +1184,52 @@
          /* etc. */
      }
   
+     .events-view {
+      padding: 10px; /* Keep reduced padding */
+  }
+  .event-filter-bar {
+      /* ... existing mobile filter bar styles ... */
+      top: 0; /* Adjust sticky position for less padding */
+      margin-bottom: 15px;
+      /* width: fit-content; is inherited */
+      /* border-radius: 999px; is inherited */
+  }
+  /* ... */
+  .event-list-container {
+      gap: 12px;
+      /* Explicitly set 1 column for mobile */
+      grid-template-columns: 1fr; /* CHANGED */
+      padding-top: 5px; /* Adjust top padding */
+  }
+    .filter-pill {
+        padding: 5px 15px;
+        font-size: 0.85rem;
+    }
+    .event-tile {
+        padding: 15px;
+        border-radius: 12px;
+    }
+    .event-tile h4 {
+        font-size: 1rem;
+    }
+      .event-tile .tile-detail {
+        font-size: 0.85rem;
+    }
+
+    /* Ensure mobile view classes don't conflict when Events view is active */
+    .planner-pane.events-view-active.mobile-event-view-active .group-list-area,
+    .planner-pane.events-view-active.mobile-event-view-active .event-collage-area,
+    .planner-pane.events-view-active.mobile-event-view-active .calendar-view {
+        display: none !important;
+        flex: 0 0 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    .planner-pane.events-view-active.mobile-event-view-active .events-view {
+        display: flex !important; /* Ensure events view stays visible */
+        flex: 1 1 auto !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
   } /* End @media */
