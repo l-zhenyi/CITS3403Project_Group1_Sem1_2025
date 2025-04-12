@@ -1,0 +1,28 @@
+
+{% extends "base.html" %}
+
+{% block content %} 
+<h1>Welcome, {{ user.username }}</h1>
+
+    <h2>Groups</h2>
+    <ul>
+        {% for group in groups %}
+            <li>
+                <h3>{{ group.name }}</h3>
+                <p>{{ group.description }}</p>
+                <h4>Members:</h4>
+                <ul>
+                    {% if group.members %}
+                        {% for member in group.members %}
+                            <li>{{ member }}</li>
+                        {% endfor %}
+                    {% else %}
+                        <li>No members</li>
+                    {% endif %}
+                </ul>
+            </li>
+        {% else %}
+            <li>No groups available</li>
+        {% endfor %}
+    </ul>
+{% endblock %} 
