@@ -120,6 +120,6 @@
         {{ all_events_json | default('[]') | safe }} {# Assumes you pass pre-processed all_events_json #}
     </script>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script> {# Adjust path as needed #}
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
