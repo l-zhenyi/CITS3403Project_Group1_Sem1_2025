@@ -1,0 +1,8 @@
+# Ignore editor settings
+.vscode/
+
+# Ignore the virtual environment
+venv/
+
+# Ignore the flask environment variables (may be sensitive)
+.flaskenv
