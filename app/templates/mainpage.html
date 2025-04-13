@@ -1,27 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GroupOut Planner</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}"> {# Adjust path as needed #}
-</head>
-<!-- Start without mobile view active class -->
-<body class="planner-active"> {# You might set this dynamically too #}
+{% extends "base.html" %}
 
-    <header class="top-nav glassy">
-        <nav class="top-nav-left">
-            <a href="#">Home</a>
-            {# Use url_for if using Flask/Django routes #}
-            <a href="#" class="active">Planner</a>
-            <a href="#">Explore</a>
-        </nav>
-        <div class="top-nav-right">
-            <button class="icon-button">🔍</button>
-            <button class="icon-button">👤</button>
-        </div>
-    </header>
-
+{% block content %}
     <main class="planner-interface">
         <div class="planner-header">
             <h1 class="planner-title">Planner</h1>
@@ -121,5 +100,4 @@
     </script>
 
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
-</body>
-</html>
+{% endblock %}

@@ -1,39 +1,53 @@
-{% extends "base.html" %} 
+{% extends "base.html" %}
 
-{% block content %} 
-    <div id="signup-container">
-        <form action="" method="post"> 
-            {{ form.hidden_tag() }} 
-            <h2>Sign up</h2><br>
-            <p> 
-                {{ form.username.label }}<br> 
-                {{ form.username(size=64, placeholder="Username") }}<br> 
-                {% for error in form.username.errors %} 
-                <span style="color: red;">[{{ error }}]</span> 
-                {% endfor %} 
-            </p> 
-            <p> 
-                {{ form.email.label }}<br> 
-                {{ form.email(size=64, placeholder="Email") }}<br> 
-                {% for error in form.email.errors %} 
-                <span style="color: red;">[{{ error }}]</span> 
-                {% endfor %} 
-            </p> 
-            <p> 
-                {{ form.password.label }}<br> 
-                {{ form.password(size=64, placeholder="Password") }}<br> 
-                {% for error in form.password.errors %} 
-                <span style="color: red;">[{{ error }}]</span> 
-                {% endfor %} 
-            </p> 
-            <p> 
-                {{ form.password2.label }}<br> 
-                {{ form.password2(size=64, placeholder="Confirm Password") }}<br> 
-                {% for error in form.password2.errors %} 
-                <span style="color: red;">[{{ error }}]</span> 
-                {% endfor %} 
-            </p> 
-            <p><button type="submit">Sign Up</button></p>
+{% block content %}
+<div class="planner-interface">
+    <div class="planner-pane glassy auth-pane"> {# Use the same styled pane #}
+        <form action="" method="post" class="auth-form">
+            {{ form.hidden_tag() }}
+            <h2>Sign Up</h2>
+
+            <div class="form-field">
+                {{ form.username.label(class_="form-label") }}
+                {{ form.username(class_="form-input", size=64, placeholder="Choose a username") }}
+                {% for error in form.username.errors %}
+                <span class="form-error">[{{ error }}]</span>
+                {% endfor %}
+            </div>
+
+            <div class="form-field">
+                {{ form.email.label(class_="form-label") }}
+                {{ form.email(class_="form-input", size=64, placeholder="Your email address") }}
+                {% for error in form.email.errors %}
+                <span class="form-error">[{{ error }}]</span>
+                {% endfor %}
+            </div>
+
+            <div class="form-field">
+                {{ form.password.label(class_="form-label") }}
+                {{ form.password(class_="form-input", size=64, placeholder="Create a password") }}
+                {% for error in form.password.errors %}
+                <span class="form-error">[{{ error }}]</span>
+                {% endfor %}
+            </div>
+
+            <div class="form-field">
+                {{ form.password2.label(class_="form-label") }}
+                {{ form.password2(class_="form-input", size=64, placeholder="Confirm your password") }}
+                {% for error in form.password2.errors %}
+                <span class="form-error">[{{ error }}]</span>
+                {% endfor %}
+            </div>
+
+            <div class="form-actions">
+                {# Apply button styles directly to the button tag #}
+                <button type="submit" class="button accept">Sign Up</button>
+            </div>
+
+             <p class="auth-switch">
+                Already have an account? <a href="{{ url_for('login') }}">Sign In</a> {# Assuming 'login' is the route name #}
+             </p>
         </form>
-    </div>
-{% endblock %} 
+    </div> {# End auth-pane #}
+</div> {# End planner-interface #}
+{% endblock %}

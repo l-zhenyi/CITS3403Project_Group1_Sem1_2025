@@ -1,5 +1,6 @@
-from flask import render_template
+from flask import render_template, redirect, url_for, flash
 from app import app
+from app.forms import LoginForm, SignupForm
 
 groups = [
     {
@@ -52,6 +53,32 @@ groups = [
     # ... more groups
 ]
 
+user = {
+    'username': 'johndoe',
+}
 @app.route('/')
-def index():
+def main():
     return render_template('mainpage.html', groups=groups)
+
+@app.route('/index')
+def index():
+    return render_template('index.html', user=user, groups=groups)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        # You can validate against users here
+        flash(f"Welcome back, {form.username.data}!", "success")
+        return redirect(url_for('main'))  # or whatever route is your homepage
+    return render_template('login.html', form=form)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = SignupForm()
+    if form.validate_on_submit():
+        # Do signup logic (e.g., check if user exists, save to db)
+        flash(f'Account created for {form.username.data}!', 'success')
+        return redirect(url_for('login'))  # or 'main', or wherever
+
+    return render_template('register.html', form=form)
