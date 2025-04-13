@@ -1,6 +1,6 @@
 from flask import render_template, redirect, url_for, flash
 from app import app
-from app.forms import LoginForm, SignupForm
+from app.forms import LoginForm, RegistrationForm
 
 groups = [
     {
@@ -75,7 +75,7 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    form = SignupForm()
+    form = RegistrationForm()
     if form.validate_on_submit():
         # Do signup logic (e.g., check if user exists, save to db)
         flash(f'Account created for {form.username.data}!', 'success')
