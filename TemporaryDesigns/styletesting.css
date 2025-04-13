@@ -1,0 +1,194 @@
+body {
+  margin: 0;
+  padding: 50px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: sans-serif;
+  background: #1a1a1a; /* Dark background to see glow */
+  /* Optional Gradient Background */
+  /* background: linear-gradient(45deg, #1a2a6c, #b21f1f, #fdbb2d);
+  background-size: 400% 400%;
+  animation: gradientBG 18s ease infinite; */
+  overflow: hidden;
+  perspective: 1000px;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.background-content {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  z-index: 0;
+}
+
+/* --- Outer Container (Border & Glow) --- */
+.glass-container {
+  width: 340px; /* Card width + 2 * border thickness */
+  height: 480px; /* Card height + 2 * border thickness */
+  position: relative;
+  z-index: 1;
+  border-radius: 20px; /* Controls the outer border radius */
+  padding: 4px; /* THIS CONTROLS BORDER THICKNESS */
+  overflow: hidden; /* Clip the glow gradient */
+  transform: translateZ(20px); /* Lift off page */
+  will-change: background, box-shadow, transform;
+
+  /* --- Variables for Mouse Interaction --- */
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  --glow-opacity: 0; /* Controls the glow visibility */
+  --sheen-opacity: 0; /* Controls internal sheen visibility */
+
+  /* Background Layers for Border: Glow + Base */
+  background-image:
+      /* 1. White Glow (Top layer, follows mouse) */
+      /* Adjust size (80px) and fade points for desired glow */
+      radial-gradient(
+          circle at var(--mouse-x) var(--mouse-y),
+          rgba(255, 255, 255, 0.8) 0%, /* Bright white center */
+          rgba(255, 255, 255, 0.3) 10%, /* Quick fade */
+          transparent 80px /* Glow size - adjust % (or use px like 80px) */
+      ),
+      /* 2. Base Border Color (Bottom layer) */
+      /* Subtle gradient or solid color */
+      linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.08),
+          rgba(255, 255, 255, 0.02)
+      );
+      /* Or a solid subtle color: */
+      /* background-color: rgba(255, 255, 255, 0.05); */
+
+  background-size: 100% 100%, 100% 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: no-repeat;
+
+  /* Apply shadows to the container for the floating effect */
+  box-shadow: 0px 20px 40px -10px rgba(0, 0, 0, 0.4);
+
+  /* Transition opacity for smooth glow fade */
+  transition: --glow-opacity 0.3s ease-out, --sheen-opacity 0.3s ease-out, box-shadow 0.3s ease-out;
+  /* Make the background transition smooth ONLY for opacity changes */
+  /* We don't want to transition background-position */
+}
+
+/* --- Inner Glass Card (Blur & Content) --- */
+.glass-card {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 16px; /* Slightly smaller than container for the border effect */
+  overflow: hidden; /* Clip the internal sheen */
+
+  /* Core Glass Effect */
+  --blur-amount: 10px;
+  background-color: rgba(30, 30, 30, 0.3); /* Darker, less transparent base */
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+
+  /* Add subtle inner shadow for depth */
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
+}
+
+/* --- Internal Sheen (::before on inner card) --- */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* Smaller, softer internal glow */
+  background: radial-gradient(
+    circle at var(--mouse-x) var(--mouse-y),
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 60px
+  );
+  opacity: var(--sheen-opacity);
+  pointer-events: none;
+  z-index: 1; /* Above glass background, below content */
+  /* Opacity transition handled by parent container's transition */
+}
+
+/* --- Activate Glow/Sheen on Hover --- */
+/* Using @property for smoother background gradient transition (optional but nice) */
+@property --glow-opacity {
+syntax: '<number>';
+inherits: false;
+initial-value: 0;
+}
+@property --sheen-opacity {
+syntax: '<number>';
+inherits: false;
+initial-value: 0;
+}
+
+.glass-container:hover {
+  --glow-opacity: 1;  /* Make glow gradient visible */
+  --sheen-opacity: 0.8; /* Make internal sheen visible */
+  box-shadow: 0px 25px 50px -12px rgba(0, 0, 0, 0.5); /* Slightly enhance shadow */
+  /* Update the glow layer's opacity - this requires the @property definition */
+  /* If not using @property, this might jump instead of fading */
+   background-image:
+      radial-gradient(
+          circle at var(--mouse-x) var(--mouse-y),
+          rgba(255, 255, 255, calc(0.8 * var(--glow-opacity))) 0%, /* Use opacity var */
+          rgba(255, 255, 255, calc(0.3 * var(--glow-opacity))) 10%,
+          transparent 80px
+      ),
+      linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.08),
+          rgba(255, 255, 255, 0.02)
+      );
+}
+
+/* --- Content Styling --- */
+.glass-card .card-content {
+  padding: 25px;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  box-sizing: border-box;
+}
+/* (Keep h2, p, button styles from previous example or customize) */
+.glass-card h2 { margin-top: 0; font-size: 1.7em; }
+.glass-card p { font-size: 1.05em; line-height: 1.5; }
+.glass-card button {
+  padding: 10px 18px; border: none;
+  background: rgba(255, 255, 255, 0.1); color: #fff;
+  border-radius: 8px; cursor: pointer;
+  transition: background-color 0.2s ease; align-self: flex-start;
+  font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.glass-card button:hover { background: rgba(255, 255, 255, 0.2); }
+
+/* --- Controls Styling --- */
+.controls {
+  margin-top: 30px; padding: 15px 20px; background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px; color: #eee; display: flex; align-items: center;
+  gap: 10px; z-index: 2;
+}
+.controls label { font-weight: bold; }
+.controls input[type="range"] { cursor: pointer; }
+.controls #fogginess-value { min-width: 40px; text-align: right; font-family: monospace; }
+
+@keyframes subtlePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.001); }
+  100% { transform: scale(1); }
+}
