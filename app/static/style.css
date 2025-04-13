@@ -1434,32 +1434,34 @@
 
 /* Container for the dashboard content */
 .dashboard-container {
-    /* Inherits flex behavior from .planner-interface potentially */
-    /* Add padding consistent with other main views */
     padding: 15px 12px 12px 12px;
-    display: flex; /* Use flex */
+    display: flex; /* Use flex to make pane grow */
     flex-direction: column; /* Stack children vertically */
     flex-grow: 1; /* Take available space */
     min-height: 0; /* Allow shrinking and scrolling */
+    width: 100%;
+    max-width: 1800px; /* Optional: Match other sections */
+    margin: 0 auto; /* Center if max-width is applied */
 }
 
 /* The main content pane for the dashboard */
 .dashboard-pane {
-    /* Override planner-pane flex defaults if they conflict */
-    /* display: block; /* Not needed if parent is flex column */
-    padding: 25px 30px; /* Internal padding */
-    border-radius: 18px; /* Consistent rounding */
-    flex-grow: 1; /* Allow pane to grow vertically */
-    overflow-y: auto; /* Enable vertical scrolling */
+    /* --- Ensure this uses default block flow internally --- */
+    /* REMOVE any 'display: flex' or 'display: grid' from here */
+    display: block; /* Explicitly set to block flow */
+    padding: 25px 30px;
+    border-radius: 18px;
+    flex-grow: 1; /* Allow pane to grow vertically within container */
+    overflow-y: auto; /* Enable scrolling for the entire pane's content */
     min-height: 0; /* Crucial for scrolling within flex parent */
-    /* Inherits glassy background/effects */
+    /* Glassy styles inherited */
 }
 
 /* --- Typography within Dashboard Pane --- */
-
+/* (Keep h1, h2, h3 styles as previously defined, including word wrap) */
 .dashboard-pane h1 {
     color: #fff;
-    font-size: 1.8rem; /* Consistent with planner title */
+    font-size: 1.8rem;
     font-weight: bold;
     margin-bottom: 10px;
     text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
@@ -1470,61 +1472,51 @@
     font-size: 1.4rem;
     font-weight: 600;
     margin-top: 25px; /* Space above section */
-    margin-bottom: 15px;
+    margin-bottom: 15px; /* Space below heading, before list */
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15); /* Optional subtle underline */
-    padding-bottom: 8px; /* Space below text, above line */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding-bottom: 8px;
 }
 
-.dashboard-pane h3 { /* Group names within the list */
+.dashboard-pane h3 {
     color: #fff;
     font-size: 1.15rem;
     font-weight: 600;
     margin-bottom: 8px;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
 }
+
 
 /* --- Divider --- */
 .content-divider {
-    border: none; /* Remove default border */
-    height: 1px; /* Define height */
-    background-color: rgba(255, 255, 255, 0.25); /* Translucent white line */
-    margin-top: 5px; /* Space below h1 */
-    margin-bottom: 25px; /* Space above h2 */
+    border: none;
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.25);
+    margin-top: 5px;
+    margin-bottom: 25px;
 }
 
 /* --- Group List Styling --- */
-
 .dashboard-group-list {
-    list-style: none; /* Remove default bullet points */
+    list-style: none;
     padding: 0;
-    margin: 0; /* Remove default margins */
-    display: grid; /* Use grid for layout */
-    /* Create responsive columns: min 300px wide, fit as many as possible */
+    margin: 0; /* Reset default ul margins */
+    /* Apply grid *only* to the list itself */
+    display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 18px; /* Space between grid items */
+    gap: 18px;
+    /* No margin-top needed here, h2 margin-bottom provides space */
 }
 
+/* (Keep .dashboard-group-item styles, including overflow: hidden, and internal p, label, etc. styles as before) */
 .dashboard-group-item {
-    /* Use a subtle background, not full glassy for each item */
     background-color: rgba(255, 255, 255, 0.1);
-    padding: 18px 20px; /* Padding inside each item */
-    border-radius: 12px; /* Rounded corners */
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
-    transition: background-color 0.2s ease, transform 0.2s ease; /* Smooth transitions */
-    /* box-shadow: 0 4px 10px rgba(0,0,0,0.1); */ /* Optional subtle shadow */
-}
-
-.dashboard-group-item:hover {
-    background-color: rgba(255, 255, 255, 0.18); /* Slightly lighter on hover */
-    /* transform: translateY(-2px); */ /* Optional lift effect */
-}
-
-/* Styling for paragraphs within group items */
-.dashboard-group-item p {
-    font-size: 0.9rem;
-    color: #e0e0e5; /* Light text color */
-    line-height: 1.5; /* Readability */
-    margin-bottom: 8px; /* Space below paragraphs */
+    padding: 18px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    overflow: hidden; /* Important */
 }
 .dashboard-group-item p:last-child {
     margin-bottom: 0; /* No space below the last paragraph */
