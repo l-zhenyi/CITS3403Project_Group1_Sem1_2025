@@ -57,8 +57,8 @@ user = {
     'username': 'johndoe',
 }
 @app.route('/')
-def main():
-    return render_template('mainpage.html', groups=groups)
+def planner():
+    return render_template('planner.html', groups=groups)
 
 @app.route('/index')
 def index():
@@ -82,3 +82,11 @@ def register():
         return redirect(url_for('login'))  # or 'main', or wherever
 
     return render_template('register.html', form=form)
+
+@app.route('/profile')
+def profile():
+    return render_template('profile.html', user=user, groups=groups)
+
+@app.route('/explore')
+def explore():
+    return 'hello explore'

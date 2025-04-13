@@ -13,14 +13,14 @@
 <body> 
       <header class="top-nav glassy">
             <nav class="top-nav-left">
-                  <a href="#">Home</a>
-                  {# Use url_for if using Flask/Django routes #}
-                  <a href="#" class="active">Planner</a>
-                  <a href="#">Explore</a>
+                  <a href="{{ url_for('index') }}">Home</a>
+                  <a href="{{ url_for('planner') }}">Planner</a>
+                  <a href="{{ url_for('explore') }}">Explore</a>
             </nav>
             <div class="top-nav-right">
                   <button class="icon-button">🔍</button>
-                  <button class="icon-button">👤</button>
+                  <a href="{{ url_for('login') }}" class="icon-button">🔑</a>
+                  <a href="{{ url_for('profile') }}" class="icon-button">👤</a>
             </div>
       </header> 
       {% with messages = get_flashed_messages() %} 
