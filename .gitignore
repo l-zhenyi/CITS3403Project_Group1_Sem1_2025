@@ -184,3 +184,6 @@ venv/
 
 # Ignore the flask environment variables (may be sensitive)
 .flaskenv
+
+# Ignore the database on machine
+app.db
