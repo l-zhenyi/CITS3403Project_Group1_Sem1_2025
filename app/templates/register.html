@@ -1,53 +1,52 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="planner-interface">
-    <div class="planner-pane glassy auth-pane"> {# Use the same styled pane #}
-        <form action="" method="post" class="auth-form">
+<div class="planner-interface auth-container"> {# New wrapper class #}
+    <div class="planner-pane glassy auth-pane"> {# Centered pane #}
+        <form action="" method="post" novalidate class="auth-form"> {# Add novalidate and class #}
             {{ form.hidden_tag() }}
             <h2>Sign Up</h2>
 
-            <div class="form-field">
-                {{ form.username.label(class_="form-label") }}
-                {{ form.username(class_="form-input", size=64, placeholder="Choose a username") }}
+            <div class="form-field"> {# Wrap each field group #}
+                {{ form.username.label(class_="form-label") }}<br> {# Add class #}
+                {{ form.username(class_="form-input", size=64, placeholder="Choose a username") }}<br> {# Add class #}
                 {% for error in form.username.errors %}
-                <span class="form-error">[{{ error }}]</span>
+                <span class="form-error">[{{ error }}]</span><br> {# Add class #}
                 {% endfor %}
             </div>
 
             <div class="form-field">
-                {{ form.email.label(class_="form-label") }}
-                {{ form.email(class_="form-input", size=64, placeholder="Your email address") }}
+                {{ form.email.label(class_="form-label") }}<br>
+                {{ form.email(class_="form-input", size=64, placeholder="Your email address") }}<br>
                 {% for error in form.email.errors %}
-                <span class="form-error">[{{ error }}]</span>
+                <span class="form-error">[{{ error }}]</span><br>
                 {% endfor %}
             </div>
 
             <div class="form-field">
-                {{ form.password.label(class_="form-label") }}
-                {{ form.password(class_="form-input", size=64, placeholder="Create a password") }}
+                {{ form.password.label(class_="form-label") }}<br>
+                {{ form.password(class_="form-input", size=64, placeholder="Enter a secure password") }}<br>
                 {% for error in form.password.errors %}
-                <span class="form-error">[{{ error }}]</span>
+                <span class="form-error">[{{ error }}]</span><br>
                 {% endfor %}
             </div>
 
             <div class="form-field">
-                {{ form.password2.label(class_="form-label") }}
-                {{ form.password2(class_="form-input", size=64, placeholder="Confirm your password") }}
+                {{ form.password2.label(class_="form-label") }}<br>
+                {{ form.password2(class_="form-input", size=64, placeholder="Confirm your password") }}<br>
                 {% for error in form.password2.errors %}
-                <span class="form-error">[{{ error }}]</span>
+                <span class="form-error">[{{ error }}]</span><br>
                 {% endfor %}
             </div>
 
-            <div class="form-actions">
-                {# Apply button styles directly to the button tag #}
-                <button type="submit" class="button accept">Sign Up</button>
+            <div class="form-actions"> {# Wrap button #}
+                <button type="submit" class="button accept">Register</button> {# Apply classes #}
             </div>
 
-             <p class="auth-switch">
-                Already have an account? <a href="{{ url_for('login') }}">Sign In</a> {# Assuming 'login' is the route name #}
-             </p>
+            <p class="auth-switch">
+               Already have an account? <a href="{{ url_for('login') }}">Sign In</a>
+            </p>
         </form>
     </div> {# End auth-pane #}
-</div> {# End planner-interface #}
+</div> {# End auth-container #}
 {% endblock %}

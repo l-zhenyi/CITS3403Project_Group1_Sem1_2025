@@ -62,7 +62,7 @@ def planner():
 
 @app.route('/index')
 def index():
-    return render_template('index.html', user=user, groups=groups)
+    return render_template('index.html', current_user=user, groups=groups)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -89,4 +89,4 @@ def profile():
 
 @app.route('/explore')
 def explore():
-    return 'hello explore'
+    return render_template('explore.html', groups=groups)

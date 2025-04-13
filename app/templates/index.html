@@ -1,39 +1,41 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="planner-interface"> {# Main container for planner content #}
+{# Use planner-interface for consistency, allows potential centering/padding #}
+<div class="planner-interface dashboard-container"> {# Add specific container class #}
 
-    {# Optional Header - you could add .planner-header here if needed #}
-    {# <div class="planner-header">
-        <h1 class="planner-title">Dashboard</h1>
-    </div> #}
-
-    <div class="planner-pane glassy" style="display: block; padding: 25px; overflow-y: auto; max-height: calc(100vh - 100px);"> {# Single content pane, override flex, add padding & scroll #}
-        <h1>Welcome, {{ user.username }}</h1>
-        <hr class="content-divider"> {# Add a styled divider #}
+    {# Single pane for dashboard content #}
+    <div class="planner-pane glassy dashboard-pane"> {# Add specific pane class, remove inline styles #}
+        {# Use current_user if using Flask-Login, check authentication #}
+        <h1>Welcome, {{ current_user.username if current_user.is_authenticated else 'Guest' }}</h1>
+        <hr class="content-divider"> {# Use class for styling #}
 
         <h2>Your Groups</h2>
         {% if groups %}
-            <ul class="simple-group-list"> {# List container #}
+            <ul class="dashboard-group-list"> {# More specific class name #}
                 {% for group in groups %}
-                    <li class="simple-group-item glassy"> {# Apply glassy style to each item #}
+                    {# Removed glassy from item, style via CSS #}
+                    <li class="dashboard-group-item">
                         <h3>{{ group.name }}</h3>
                         {% if group.description %}<p class="group-description">{{ group.description }}</p>{% endif %}
 
-                        {% if group.members %}
-                            <p class="group-members-list">
-                                <span class="label">Members:</span> {{ group.members | join(', ') }}
-                            </p>
-                        {% else %}
-                            <p class="group-members-list"><span class="label">Members:</span> None</p>
-                        {% endif %}
+                        <p class="group-members-list">
+                            <span class="label">Members:</span>
+                            {# Check if members exist and is not empty #}
+                            {% if group.members and group.members|length > 0 %}
+                                {{ group.members | join(', ') }}
+                            {% else %}
+                                <span class="no-members">None</span> {# Specific class for styling 'None' #}
+                            {% endif %}
+                        </p>
                     </li>
                 {% endfor %}
             </ul>
         {% else %}
+             {# Applying glassy here for a single message box is acceptable #}
              <p class="no-groups-message glassy">You are not part of any groups yet.</p>
         {% endif %}
 
-    </div> {# End planner-pane #}
-</div> {# End planner-interface #}
+    </div> {# End dashboard-pane #}
+</div> {# End dashboard-container #}
 {% endblock %}

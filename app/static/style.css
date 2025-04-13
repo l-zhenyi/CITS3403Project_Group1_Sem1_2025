@@ -1234,3 +1234,373 @@
     }
 
   } /* End @media */
+
+  /* ==========================================================================
+   Authentication Page Styles (Login/Register)
+   ========================================================================== */
+
+/* Container to center the auth pane */
+.auth-container {
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    flex-grow: 1; /* Take remaining vertical space */
+    padding: 20px; /* Padding around the pane */
+    width: 100%;
+  }
+  
+  /* Styling for the glassy pane holding the auth form */
+.auth-pane {
+    display: block;
+    flex-grow: 0;
+    width: 100%;
+    max-width: 450px;
+    /* MODIFIED: Reduced top/bottom padding */
+    padding: 25px 40px; /* Was 30px 40px */
+    border-radius: 18px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  }
+  
+  .auth-form h1,
+.auth-form h2 {
+  color: #fff;
+  text-align: center;
+  /* MODIFIED: Reduced bottom margin */
+  margin-bottom: 20px; /* Was 25px */
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* Spacing for form fields */
+.form-field {
+  /* MODIFIED: Reduced bottom margin */
+  margin-bottom: 15px; /* Was 20px */
+}
+/* MODIFIED: Keep last field margin consistent or slightly larger */
+.form-field:last-of-type {
+  margin-bottom: 20px; /* Was 25px */
+}
+
+  
+  /* Styling for labels */
+  .form-label {
+    display: block; /* Ensure label is on its own line */
+    margin-bottom: 6px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  
+  /* Styling for input fields */
+  .form-input {
+    display: block; /* Take full width */
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.15); /* Subtle background */
+    color: #f0f0f5; /* Light text color */
+    font-size: 1rem;
+    outline: none; /* Remove default focus outline */
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  
+  .form-input::placeholder {
+    color: rgba(255, 255, 255, 0.5); /* Lighter placeholder text */
+    opacity: 1; /* Ensure visibility */
+  }
+  
+  .form-input:focus {
+    background-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.7);
+  }
+  
+  /* Styling for error messages */
+.form-error {
+    display: inline-block;
+    color: #FF6B6B;
+    font-size: 0.85rem;
+    font-weight: 500;
+    /* MODIFIED: Slightly reduced top margin */
+    margin-top: 4px; /* Was 5px */
+    /* Add a small bottom margin if using <br> after error */
+    margin-bottom: 2px;
+  }
+  
+  /* Specific styling for checkbox alignment */
+  .form-field-checkbox {
+    display: flex;
+    align-items: center;
+     /* MODIFIED: Reduced bottom margin */
+    margin-bottom: 20px; /* Was 25px */
+  }
+  
+  .form-checkbox {
+    margin-right: 8px;
+    width: 16px; /* Adjust size if needed */
+    height: 16px;
+    accent-color: #0284C7; /* Match accept button color */
+  }
+  
+  .form-label-inline {
+    /* Inherit label styles, but don't force block */
+    display: inline;
+    margin-bottom: 0; /* Remove bottom margin */
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  /* Container for form submission button */
+.form-actions {
+    text-align: center;
+    /* MODIFIED: Slightly reduced top margin */
+    margin-top: 15px; /* Was 10px, but last form field margin reduced */
+  }
+  
+  .form-actions .button {
+      width: 100%;
+      padding: 12px 20px;
+      font-size: 1.05rem;
+      font-weight: 600;
+  }
+  
+  /* Styling for the link to switch between Login/Register */
+  .auth-switch {
+      text-align: center;
+      /* MODIFIED: Reduced top margin */
+      margin-top: 20px; /* Was 25px */
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+  }
+  
+  
+  .auth-switch a {
+      color: #BBE1FA; /* Light blue link */
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.2s ease;
+  }
+  
+  .auth-switch a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+  }
+  
+  
+  @media (max-width: 768px) {
+    .auth-pane {
+        /* MODIFIED: Further reduced top/bottom padding for mobile */
+        padding: 20px 20px; /* Was 25px 20px */
+        margin: 0 10px;
+        max-width: none;
+    }
+
+    .auth-form h1,
+    .auth-form h2 {
+        font-size: 1.5rem;
+         /* MODIFIED: Further reduced bottom margin for mobile */
+        margin-bottom: 15px; /* Was 20px */
+    }
+
+    /* Keep mobile form field margins slightly tighter */
+    .form-field {
+         margin-bottom: 12px; /* Consistent small margin */
+    }
+     .form-field:last-of-type {
+         margin-bottom: 18px; /* Slightly more before button */
+     }
+
+     /* Keep mobile checkbox margin consistent */
+     .form-field-checkbox {
+        margin-bottom: 18px;
+     }
+
+    .form-input {
+        padding: 10px 12px;
+    }
+
+    .form-actions {
+        margin-top: 15px; /* Keep consistent */
+    }
+
+    .auth-switch {
+        margin-top: 18px; /* Slightly reduced */
+    }
+}
+
+/* ==========================================================================
+   Dashboard Page Styles (e.g., index.html)
+   ========================================================================== */
+
+/* Container for the dashboard content */
+.dashboard-container {
+    /* Inherits flex behavior from .planner-interface potentially */
+    /* Add padding consistent with other main views */
+    padding: 15px 12px 12px 12px;
+    display: flex; /* Use flex */
+    flex-direction: column; /* Stack children vertically */
+    flex-grow: 1; /* Take available space */
+    min-height: 0; /* Allow shrinking and scrolling */
+}
+
+/* The main content pane for the dashboard */
+.dashboard-pane {
+    /* Override planner-pane flex defaults if they conflict */
+    /* display: block; /* Not needed if parent is flex column */
+    padding: 25px 30px; /* Internal padding */
+    border-radius: 18px; /* Consistent rounding */
+    flex-grow: 1; /* Allow pane to grow vertically */
+    overflow-y: auto; /* Enable vertical scrolling */
+    min-height: 0; /* Crucial for scrolling within flex parent */
+    /* Inherits glassy background/effects */
+}
+
+/* --- Typography within Dashboard Pane --- */
+
+.dashboard-pane h1 {
+    color: #fff;
+    font-size: 1.8rem; /* Consistent with planner title */
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+.dashboard-pane h2 {
+    color: #e5e5ea;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 25px; /* Space above section */
+    margin-bottom: 15px;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15); /* Optional subtle underline */
+    padding-bottom: 8px; /* Space below text, above line */
+}
+
+.dashboard-pane h3 { /* Group names within the list */
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* --- Divider --- */
+.content-divider {
+    border: none; /* Remove default border */
+    height: 1px; /* Define height */
+    background-color: rgba(255, 255, 255, 0.25); /* Translucent white line */
+    margin-top: 5px; /* Space below h1 */
+    margin-bottom: 25px; /* Space above h2 */
+}
+
+/* --- Group List Styling --- */
+
+.dashboard-group-list {
+    list-style: none; /* Remove default bullet points */
+    padding: 0;
+    margin: 0; /* Remove default margins */
+    display: grid; /* Use grid for layout */
+    /* Create responsive columns: min 300px wide, fit as many as possible */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 18px; /* Space between grid items */
+}
+
+.dashboard-group-item {
+    /* Use a subtle background, not full glassy for each item */
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 18px 20px; /* Padding inside each item */
+    border-radius: 12px; /* Rounded corners */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+    transition: background-color 0.2s ease, transform 0.2s ease; /* Smooth transitions */
+    /* box-shadow: 0 4px 10px rgba(0,0,0,0.1); */ /* Optional subtle shadow */
+}
+
+.dashboard-group-item:hover {
+    background-color: rgba(255, 255, 255, 0.18); /* Slightly lighter on hover */
+    /* transform: translateY(-2px); */ /* Optional lift effect */
+}
+
+/* Styling for paragraphs within group items */
+.dashboard-group-item p {
+    font-size: 0.9rem;
+    color: #e0e0e5; /* Light text color */
+    line-height: 1.5; /* Readability */
+    margin-bottom: 8px; /* Space below paragraphs */
+}
+.dashboard-group-item p:last-child {
+    margin-bottom: 0; /* No space below the last paragraph */
+}
+
+.group-description {
+    color: #c5c5ce; /* Slightly dimmer color for description */
+    font-style: italic; /* Optional italics */
+}
+
+.group-members-list .label {
+    font-weight: 500;
+    color: #c5c5ce; /* Match description color or slightly different */
+    margin-right: 5px;
+}
+
+.group-members-list .no-members {
+    font-style: italic;
+    opacity: 0.7; /* Make 'None' less prominent */
+}
+
+/* --- "No Groups" Message Styling --- */
+
+.no-groups-message {
+    /* Inherits glassy */
+    padding: 25px 30px; /* Generous padding */
+    border-radius: 12px; /* Consistent rounding */
+    text-align: center;
+    color: #e0e0e5;
+    margin-top: 20px; /* Space above the message */
+    border: 1px solid rgba(255, 255, 255, 0.25); /* Subtle border */
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+
+/* --- Responsive adjustments for Dashboard --- */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 10px 8px 8px 8px; /* Reduced container padding */
+    }
+
+    .dashboard-pane {
+        padding: 20px; /* Reduced internal padding */
+        border-radius: 12px; /* Smaller radius */
+    }
+
+    .dashboard-pane h1 {
+        font-size: 1.5rem; /* Smaller title */
+    }
+     .dashboard-pane h2 {
+        font-size: 1.2rem;
+        margin-top: 20px;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+    }
+    .dashboard-pane h3 {
+         font-size: 1.05rem; /* Smaller group title */
+    }
+
+    .content-divider {
+        margin-bottom: 20px;
+    }
+
+    .dashboard-group-list {
+         /* Stack groups in a single column on mobile */
+         grid-template-columns: 1fr;
+         gap: 12px; /* Reduce gap */
+    }
+
+    .dashboard-group-item {
+        padding: 15px; /* Reduce item padding */
+    }
+
+    .no-groups-message {
+        padding: 20px;
+        font-size: 0.95rem;
+    }
+}
