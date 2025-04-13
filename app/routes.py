@@ -1,5 +1,5 @@
 from flask import render_template, redirect, url_for, flash, request
-from app import app
+from app import app, db
 from app.forms import LoginForm, RegistrationForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User 
@@ -84,11 +84,14 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        # Do signup logic (e.g., check if user exists, save to db)
+    form = RegistrationForm() 
+    if form.validate_on_submit(): 
+        user = User(username=form.username.data, email=form.email.data) 
+        user.set_password(form.password.data) 
+        db.session.add(user) 
+        db.session.commit() 
         flash(f'Account created for {form.username.data}!', 'success')
-        return redirect(url_for('login'))  # or 'main', or wherever
+        return redirect(url_for('login')) 
     return render_template('register.html', form=form)
 
 @app.route('/logout') 
