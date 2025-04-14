@@ -1,0 +1,168 @@
+/* ==========================================================================
+   Dashboard Page Styles (e.g., index.html)
+   ========================================================================== */
+
+/* Container for the dashboard content */
+.dashboard-container {
+    padding: 15px 12px 12px 12px;
+    display: flex; /* Use flex to make pane grow */
+    flex-direction: column; /* Stack children vertically */
+    flex-grow: 1; /* Take available space */
+    min-height: 0; /* Allow shrinking and scrolling */
+    width: 100%;
+    max-width: 1800px; /* Optional: Match other sections */
+    margin: 0 auto; /* Center if max-width is applied */
+}
+
+/* The main content pane for the dashboard */
+.dashboard-pane {
+    /* --- Ensure this uses default block flow internally --- */
+    /* REMOVE any 'display: flex' or 'display: grid' from here */
+    display: block; /* Explicitly set to block flow */
+    padding: 25px 30px;
+    border-radius: 18px;
+    flex-grow: 1; /* Allow pane to grow vertically within container */
+    overflow-y: auto; /* Enable scrolling for the entire pane's content */
+    min-height: 0; /* Crucial for scrolling within flex parent */
+    /* Glassy styles inherited */
+}
+
+/* --- Typography within Dashboard Pane --- */
+/* (Keep h1, h2, h3 styles as previously defined, including word wrap) */
+.dashboard-pane h1 {
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+.dashboard-pane h2 {
+    color: #e5e5ea;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 25px; /* Space above section */
+    margin-bottom: 15px; /* Space below heading, before list */
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding-bottom: 8px;
+}
+
+.dashboard-pane h3 {
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+
+/* --- Divider --- */
+.content-divider {
+    border: none;
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.25);
+    margin-top: 5px;
+    margin-bottom: 25px;
+}
+
+/* --- Group List Styling --- */
+.dashboard-group-list {
+    list-style: none;
+    padding: 0;
+    margin: 0; /* Reset default ul margins */
+    /* Apply grid *only* to the list itself */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 18px;
+    /* No margin-top needed here, h2 margin-bottom provides space */
+}
+
+/* (Keep .dashboard-group-item styles, including overflow: hidden, and internal p, label, etc. styles as before) */
+.dashboard-group-item {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 18px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    overflow: hidden; /* Important */
+}
+.dashboard-group-item p:last-child {
+    margin-bottom: 0; /* No space below the last paragraph */
+}
+
+.group-description {
+    color: #c5c5ce; /* Slightly dimmer color for description */
+    font-style: italic; /* Optional italics */
+}
+
+.group-members-list .label {
+    font-weight: 500;
+    color: #c5c5ce; /* Match description color or slightly different */
+    margin-right: 5px;
+}
+
+.group-members-list .no-members {
+    font-style: italic;
+    opacity: 0.7; /* Make 'None' less prominent */
+}
+
+/* --- "No Groups" Message Styling --- */
+
+.no-groups-message {
+    /* Inherits glassy */
+    padding: 25px 30px; /* Generous padding */
+    border-radius: 12px; /* Consistent rounding */
+    text-align: center;
+    color: #e0e0e5;
+    margin-top: 20px; /* Space above the message */
+    border: 1px solid rgba(255, 255, 255, 0.25); /* Subtle border */
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+
+/* --- Responsive adjustments for Dashboard --- */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 10px 8px 8px 8px; /* Reduced container padding */
+    }
+
+    .dashboard-pane {
+        padding: 20px; /* Reduced internal padding */
+        border-radius: 12px; /* Smaller radius */
+    }
+
+    .dashboard-pane h1 {
+        font-size: 1.5rem; /* Smaller title */
+    }
+     .dashboard-pane h2 {
+        font-size: 1.2rem;
+        margin-top: 20px;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+    }
+    .dashboard-pane h3 {
+         font-size: 1.05rem; /* Smaller group title */
+    }
+
+    .content-divider {
+        margin-bottom: 20px;
+    }
+
+    .dashboard-group-list {
+         /* Stack groups in a single column on mobile */
+         grid-template-columns: 1fr;
+         gap: 12px; /* Reduce gap */
+    }
+
+    .dashboard-group-item {
+        padding: 15px; /* Reduce item padding */
+    }
+
+    .no-groups-message {
+        padding: 20px;
+        font-size: 0.95rem;
+    }
+}

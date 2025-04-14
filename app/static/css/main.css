@@ -1,0 +1,181 @@
+/* ==========================================================================
+   Base Styles & Resets
+   ========================================================================== */
+
+   * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  html {
+    height: 100%; /* Ensure html takes full height */
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    /* Positioning & Box Model */
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensure body takes full height */
+    position: relative; /* For pseudo-element positioning */
+    overflow: hidden; /* Prevent body scrollbars; let children manage scroll */
+  
+    /* Typography */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #f0f0f5;
+  
+    /* Background */
+    background-image: url('https://sb.ecobnb.net/app/uploads/sites/3/2020/01/nature.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed;
+  
+    /* Stacking */
+    z-index: 0; /* Establish base stacking context */
+  }
+  
+  /* Blurred Background Effect */
+  body::before {
+    content: '';
+    position: fixed; /* Cover entire viewport */
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    transform: scale(1.1); /* Scale up slightly to avoid edge issues with blur */
+    background: inherit; /* Use body's background */
+    filter: blur(10px) saturate(50%) brightness(1.0);
+    z-index: -1; /* Position behind everything else */
+  }
+  
+  /* ==========================================================================
+     Utility Styles
+     ========================================================================== */
+  
+  /* Mid-tone Glass Style (Base Layer for components) */
+  .glassy {
+    background: rgba(140, 140, 145, 0.6); /* Base glass color */
+    backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Basic Button Style (used in Event Panel) */
+  .button {
+    /* Box Model */
+    display: inline-block; /* Or flex if needed */
+    padding: 9px 18px;
+    border: none;
+    border-radius: 12px;
+  
+    /* Typography */
+    font-weight: 500;
+    color: white; /* Default color */
+    text-shadow: none;
+    text-align: center;
+    text-decoration: none;
+  
+    /* Visual */
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+  }
+  
+  .button:active {
+    transform: scale(0.97);
+  }
+  
+  .button.accept {
+    background-color: #0284C7; /* Sky Blue */
+    color: white;
+  }
+  .button.accept:hover {
+    background-color: #0369A1; /* Darker Sky Blue */
+  }
+  
+  .button.decline {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #f0f0f5;
+  }
+  .button.decline:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+  
+  
+  /* ==========================================================================
+     Navigation Bar (.top-nav)
+     ========================================================================== */
+  
+  .top-nav {
+    /* Positioning & Box Model */
+    position: sticky; /* Stick to top during scroll */
+    top: 10px;
+    z-index: 1000; /* Above other content */
+    display: flex;
+    flex-shrink: 0; /* Prevent shrinking in flex context */
+    width: calc(100% - 24px);
+    max-width: 1800px;
+    margin: 10px auto 0 auto;
+    padding: 10px 24px;
+    border-radius: 16px;
+  
+    /* Layout */
+    justify-content: space-between;
+    align-items: center;
+  
+    /* Inherit glassy style */
+    /* background defined by .glassy if applied in HTML */
+  }
+  
+  .top-nav-left a {
+    /* Box Model */
+    display: inline-block;
+    padding: 8px 20px;
+    margin-right: 8px;
+    border-radius: 10px;
+  
+    /* Typography */
+    color: #ffffff;
+    font-weight: 500;
+    text-decoration: none;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+  
+    /* Visual */
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  
+  .top-nav-left a.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-weight: 600;
+    text-shadow: none;
+  }
+  
+  .top-nav-left a:not(.active):hover {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .top-nav-right .icon-button {
+    /* Box Model */
+    padding: 8px;
+    margin-left: 12px;
+    border: none;
+    border-radius: 50%; /* Circular */
+  
+    /* Typography */
+    font-size: 1.4rem;
+    color: #fff;
+  
+    /* Visual */
+    background: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    text-decoration: none;
+  }
+  
+  .top-nav-right .icon-button:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+  
+ 

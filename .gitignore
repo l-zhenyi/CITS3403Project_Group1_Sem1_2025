@@ -187,3 +187,7 @@ venv/
 
 # Ignore the database on machine
 app.db
+
+# Ignore macOS system files
+.DS_Store
+

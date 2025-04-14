@@ -1,0 +1,193 @@
+  /* ==========================================================================
+   Authentication Page Styles (Login/Register)
+   ========================================================================== */
+
+/* Container to center the auth pane */
+.auth-container {
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    flex-grow: 1; /* Take remaining vertical space */
+    padding: 20px; /* Padding around the pane */
+    width: 100%;
+  }
+  
+  /* Styling for the glassy pane holding the auth form */
+.auth-pane {
+    display: block;
+    flex-grow: 0;
+    width: 100%;
+    max-width: 450px;
+    /* MODIFIED: Reduced top/bottom padding */
+    padding: 25px 40px; /* Was 30px 40px */
+    border-radius: 18px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  }
+  
+  .auth-form h1,
+.auth-form h2 {
+  color: #fff;
+  text-align: center;
+  /* MODIFIED: Reduced bottom margin */
+  margin-bottom: 20px; /* Was 25px */
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* Spacing for form fields */
+.form-field {
+  /* MODIFIED: Reduced bottom margin */
+  margin-bottom: 15px; /* Was 20px */
+}
+/* MODIFIED: Keep last field margin consistent or slightly larger */
+.form-field:last-of-type {
+  margin-bottom: 20px; /* Was 25px */
+}
+
+  
+  /* Styling for labels */
+  .form-label {
+    display: block; /* Ensure label is on its own line */
+    margin-bottom: 6px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  
+  /* Styling for input fields */
+  .form-input {
+    display: block; /* Take full width */
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.15); /* Subtle background */
+    color: #f0f0f5; /* Light text color */
+    font-size: 1rem;
+    outline: none; /* Remove default focus outline */
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  
+  .form-input::placeholder {
+    color: rgba(255, 255, 255, 0.5); /* Lighter placeholder text */
+    opacity: 1; /* Ensure visibility */
+  }
+  
+  .form-input:focus {
+    background-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.7);
+  }
+  
+  /* Styling for error messages */
+.form-error {
+    display: inline-block;
+    color: #FF6B6B;
+    font-size: 0.85rem;
+    font-weight: 500;
+    /* MODIFIED: Slightly reduced top margin */
+    margin-top: 4px; /* Was 5px */
+    /* Add a small bottom margin if using <br> after error */
+    margin-bottom: 2px;
+  }
+  
+  /* Specific styling for checkbox alignment */
+  .form-field-checkbox {
+    display: flex;
+    align-items: center;
+     /* MODIFIED: Reduced bottom margin */
+    margin-bottom: 20px; /* Was 25px */
+  }
+  
+  .form-checkbox {
+    margin-right: 8px;
+    width: 16px; /* Adjust size if needed */
+    height: 16px;
+    accent-color: #0284C7; /* Match accept button color */
+  }
+  
+  .form-label-inline {
+    /* Inherit label styles, but don't force block */
+    display: inline;
+    margin-bottom: 0; /* Remove bottom margin */
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  /* Container for form submission button */
+.form-actions {
+    text-align: center;
+    /* MODIFIED: Slightly reduced top margin */
+    margin-top: 15px; /* Was 10px, but last form field margin reduced */
+  }
+  
+  .form-actions .button {
+      width: 100%;
+      padding: 12px 20px;
+      font-size: 1.05rem;
+      font-weight: 600;
+  }
+  
+  /* Styling for the link to switch between Login/Register */
+  .auth-switch {
+      text-align: center;
+      /* MODIFIED: Reduced top margin */
+      margin-top: 20px; /* Was 25px */
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+  }
+  
+  
+  .auth-switch a {
+      color: #BBE1FA; /* Light blue link */
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.2s ease;
+  }
+  
+  .auth-switch a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+  }
+  
+  
+  @media (max-width: 768px) {
+    .auth-pane {
+        /* MODIFIED: Further reduced top/bottom padding for mobile */
+        padding: 20px 20px; /* Was 25px 20px */
+        margin: 0 10px;
+        max-width: none;
+    }
+
+    .auth-form h1,
+    .auth-form h2 {
+        font-size: 1.5rem;
+         /* MODIFIED: Further reduced bottom margin for mobile */
+        margin-bottom: 15px; /* Was 20px */
+    }
+
+    /* Keep mobile form field margins slightly tighter */
+    .form-field {
+         margin-bottom: 12px; /* Consistent small margin */
+    }
+     .form-field:last-of-type {
+         margin-bottom: 18px; /* Slightly more before button */
+     }
+
+     /* Keep mobile checkbox margin consistent */
+     .form-field-checkbox {
+        margin-bottom: 18px;
+     }
+
+    .form-input {
+        padding: 10px 12px;
+    }
+
+    .form-actions {
+        margin-top: 15px; /* Keep consistent */
+    }
+
+    .auth-switch {
+        margin-top: 18px; /* Slightly reduced */
+    }
+}
+

@@ -1,0 +1,381 @@
+/* ==========================================================================
+    Group List Area (Left Pane - Desktop)
+    ========================================================================== */
+
+.group-list-area {
+    /* Positioning & Box Model */
+    flex: 0 0 340px;
+    /* Fixed width on desktop, no grow, no shrink */
+    height: 100%;
+    /* Fill parent pane height */
+    min-height: 0;
+    /* Flex behavior */
+    padding: 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+    /* Divider */
+    border-radius: 18px 0 0 18px;
+    /* Match parent rounding */
+    position: relative;
+    /* Establish stacking context */
+    z-index: 1;
+    /* Above pane background */
+    overflow-y: auto;
+    /* Enable vertical scroll */
+    overflow-x: hidden;
+
+    /* Visual */
+    background-color: transparent;
+    /* Let pane background show through */
+    transition: flex 0.3s ease, opacity 0.3s ease;
+    /* For mobile view switch */
+}
+
+.group-list-area ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.group-item {
+    /* Box Model */
+    display: flex;
+    padding: 12px 10px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+
+    /* Layout */
+    align-items: center;
+
+    /* Visual */
+    background-color: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.group-item:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.group-item.active {
+    background-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    /* Affects child text color unless overridden */
+}
+
+.group-avatar {
+    /* Box Model */
+    width: 40px;
+    height: 40px;
+    margin-right: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    /* Prevent shrinking */
+
+    /* Visual */
+    object-fit: cover;
+}
+
+.group-info {
+    /* Box Model */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Prevent text overflow issues */
+}
+
+.group-name {
+    /* Typography */
+    font-weight: 500;
+    color: #f5f5fa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.group-item.active .group-name {
+    color: inherit;
+    /* Use .group-item.active color */
+    font-weight: 600;
+}
+
+.group-stats {
+    /* Typography */
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    /* Assume stats are short */
+}
+
+/* ==========================================================================
+    Event Collage Area (Right Pane - Desktop)
+    ========================================================================== */
+
+.event-collage-area {
+    /* Positioning & Box Model */
+    flex-grow: 1;
+    /* Take remaining space */
+    height: 100%;
+    /* Fill parent pane height */
+    min-height: 0;
+    /* Flex behavior */
+    position: relative;
+    /* Needed for absolute positioned children & sticky header */
+    z-index: 0;
+    /* Below sticky header/blur */
+    padding: 12px;
+    /* Consistent padding */
+    border-radius: 0 18px 18px 0;
+    /* Match parent rounding */
+    overflow-y: auto;
+    /* Enable vertical scroll */
+    overflow-x: hidden;
+
+    /* Visual */
+    perspective: 1200px;
+    /* Enable 3D transformations for event panels */
+    transition: flex 0.3s ease, opacity 0.3s ease;
+    /* For mobile view switch */
+}
+
+/* Sticky Header for Active Group within the Event Area */
+/* Uses blur overlay technique */
+
+.blur-wrapper {
+    /* Sits inside event-collage-area, wraps header */
+    position: sticky;
+    top: 0;
+    height: 64px;
+    /* Estimated height of the header + some buffer */
+    z-index: 10;
+    /* Above event panels */
+    pointer-events: none;
+    /* Allows clicks/scrolls to pass through */
+    margin: -12px -12px 0 -12px;
+    /* Counteract parent padding */
+}
+
+.blur-overlay {
+    /* The visual blur effect */
+    position: absolute;
+    inset: 0;
+    top: -12px;
+    /* Match the pane background but slightly stronger/different */
+    background: rgba(140, 140, 145, 1);
+    backdrop-filter: blur(10px) saturate(120%);
+    /* Fade out the blur effect downwards */
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+    /* Safari */
+    z-index: 0;
+    /* Behind the actual header content */
+}
+
+.active-group-header {
+    /* Positioning & Box Model */
+    display: flex;
+    position: relative;
+    /* Sits inside blur-wrapper */
+    z-index: 1;
+    /* Above blur-overlay */
+    padding: 12px 18px;
+    margin: 12px 12px 18px 12px;
+    /* Align with content padding, add bottom margin */
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 14px;
+    pointer-events: auto;
+    /* Re-enable interaction for header elements */
+
+    /* Layout */
+    align-items: center;
+
+    /* Visual */
+    background: rgba(160, 160, 165, 0.8);
+    /* Slightly different glass */
+    backdrop-filter: blur(30px) saturate(150%);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile Back Button (hidden by default) */
+.back-button {
+    /* Box Model */
+    display: none;
+    /* Hidden on desktop */
+    flex-shrink: 0;
+    padding: 6px 10px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 50%;
+
+    /* Typography */
+    font-size: 1.5rem;
+    color: #e0e0e5;
+
+    /* Visual */
+    background: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.back-button:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.group-avatar-small {
+    /* Box Model */
+    width: 36px;
+    height: 36px;
+    margin-right: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    /* Visual */
+    object-fit: cover;
+}
+
+.active-group-name {
+    /* Box Model */
+    margin-right: auto;
+    /* Pushes settings button to the right */
+    overflow: hidden;
+
+    /* Typography */
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+.settings-button {
+    /* Box Model */
+    flex-shrink: 0;
+    padding: 6px;
+    margin-left: 10px;
+    border: none;
+    border-radius: 50%;
+
+    /* Typography */
+    font-size: 1.2rem;
+    color: #e0e0e5;
+    text-shadow: none;
+
+    /* Visual */
+    background: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.settings-button:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+/* Container for absolutely positioned event panels */
+.event-panels-container {
+    position: relative;
+    /* Crucial for absolute positioning */
+    width: 100%;
+    min-height: 100%;
+    /* Ensure it fills at least the initial view */
+    height: auto;
+    /* Allow it to grow */
+    /* Padding-top is now handled by the parent .event-collage-area */
+    /* The sticky .blur-wrapper / .active-group-header pushes content down */
+}
+
+/* Individual Event Panel Styling (Desktop Collage View) */
+.event-panel {
+    /* Positioning & Box Model */
+    position: absolute;
+    /* Key for collage layout */
+    width: 320px;
+    /* Fixed width for collage */
+    min-height: 210px;
+    /* Minimum height */
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 18px;
+    display: flex;
+    /* Use flex for internal layout */
+    flex-direction: column;
+    /* Stack content vertically */
+
+    /* Visual */
+    background: rgba(170, 170, 175, 0.85);
+    /* Slightly different glass */
+    backdrop-filter: blur(30px) saturate(130%);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.28);
+    transform-style: preserve-3d;
+    /* For potential 3D effects */
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
+}
+
+.event-panel:hover {
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+    transform: translateY(-3px) scale(1.01);
+    /* Subtle lift effect */
+}
+
+.event-image {
+    /* Box Model */
+    width: 100%;
+    /* Fill panel width */
+    height: 100px;
+    /* Fixed height */
+    margin-bottom: 14px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    /* Prevent image shrinking */
+
+    /* Visual */
+    object-fit: cover;
+    opacity: 0.95;
+    /* Slightly subdued */
+}
+
+.event-panel h3 {
+    /* Box Model */
+    margin-bottom: 5px;
+
+    /* Typography */
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+.event-details {
+    /* Box Model */
+    margin-bottom: 8px;
+
+    /* Typography */
+    font-size: 0.9rem;
+    color: #e5e5ea;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+.event-rsvp {
+    /* Box Model */
+    margin-bottom: 14px;
+
+    /* Typography */
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #BBE1FA;
+    /* Lighter blue, distinct */
+    text-shadow: none;
+}
+
+.event-actions {
+    /* Box Model */
+    display: flex;
+    margin-top: auto;
+    /* Push actions to the bottom */
+    flex-shrink: 0;
+    /* Prevent shrinking */
+    gap: 10px;
+}
+
+@media (max-width: 768px) {}
