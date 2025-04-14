@@ -107,6 +107,6 @@ def profile():
 def explore():
     return render_template('explore.html', groups=groups)
 
-@app.route('/')
+@app.route('/planner')
 def planner():
     return render_template('planner.html', groups=groups)
