@@ -1,0 +1,229 @@
+/* ==========================================================================
+  Calendar View Styles
+  ========================================================================== */
+
+.calendar-view {
+    /* Positioning & Box Model */
+    display: none;
+    /* Hidden by default, shown via JS/class */
+    flex-direction: column;
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    /* Allow shrinking in flex context */
+    padding: 20px;
+    border-radius: inherit;
+    /* Match parent rounding */
+    overflow-y: auto;
+    /* Scroll if content exceeds height */
+    overflow-x: hidden;
+    color: #e0e0e5;
+    /* Default text color */
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 5px 15px 5px;
+    /* Bottom padding */
+    flex-shrink: 0;
+    /* Prevent shrinking */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 15px;
+}
+
+.calendar-month-year {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+    flex-grow: 1;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+.calendar-nav {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+    /* Center icon vertically */
+    text-align: center;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease;
+}
+
+.calendar-nav:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.calendar-nav:active {
+    transform: scale(0.95);
+}
+
+
+.calendar-days-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    padding-bottom: 10px;
+    flex-shrink: 0;
+    /* Prevent shrinking */
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    /* Gap between cells */
+    flex-grow: 1;
+    /* Take remaining space */
+    width: 100%;
+    min-height: 300px;
+    /* Give it some minimum height */
+}
+
+.calendar-cell {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px;
+    min-height: 80px;
+    /* Minimum height for cells */
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    /* For potential event absolute positioning */
+    border: 1px solid transparent;
+    /* Placeholder for potential hover/today styles */
+    transition: background-color 0.2s ease;
+}
+
+.calendar-cell:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.calendar-cell .day-number {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+    text-align: right;
+}
+
+.calendar-cell.other-month .day-number {
+    opacity: 0.4;
+}
+
+.calendar-cell.today {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.calendar-cell.today .day-number {
+    font-weight: 700;
+    color: #fff;
+}
+
+/* Simple event marker placeholder */
+.calendar-cell .event-marker {
+    width: 6px;
+    height: 6px;
+    background-color: #38BDF8;
+    /* Light blue dot */
+    border-radius: 50%;
+    margin-top: 4px;
+    align-self: center;
+    /* Center dot */
+    /* Add more complex styling/positioning later */
+}
+
+@media (max-width: 768px) {
+    .calendar-view {
+        padding: 10px;
+        /* Less padding */
+    }
+
+    .calendar-header {
+        padding: 0 0px 10px 0px;
+        margin-bottom: 10px;
+    }
+
+    .calendar-month-year {
+        font-size: 1.1rem;
+    }
+
+    .calendar-nav {
+        width: 32px;
+        height: 32px;
+        line-height: 32px;
+        font-size: 1.2rem;
+    }
+
+    .calendar-days-header {
+        font-size: 0.75rem;
+        padding-bottom: 5px;
+    }
+
+    .calendar-grid {
+        gap: 3px;
+        min-height: 250px;
+    }
+
+    .calendar-cell {
+        padding: 5px;
+        min-height: 60px;
+        /* Smaller cells */
+        border-radius: 6px;
+    }
+
+    .calendar-cell .day-number {
+        font-size: 0.8rem;
+    }
+
+    .calendar-cell .event-marker {
+        width: 5px;
+        height: 5px;
+        margin-top: 2px;
+    }
+
+    /* Important: Ensure the mobile event view class doesn't interfere */
+    /* when calendar view is active */
+    .planner-pane.calendar-view-active.mobile-event-view-active .group-list-area,
+    .planner-pane.calendar-view-active.mobile-event-view-active .event-collage-area {
+        display: none;
+        flex: 0 0 0 !important;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .planner-pane.calendar-view-active.mobile-event-view-active .calendar-view {
+        display: flex;
+        /* Ensure calendar stays visible */
+        flex: 1 1 auto !important;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Reset event panel styles when calendar is active (might not be strictly needed, but safe) */
+    .planner-pane.calendar-view-active .event-panel {
+        position: relative;
+        /* Override absolute */
+        transform: none !important;
+        /* Override transforms */
+        /* etc. */
+    }
+
+    .events-view {
+        padding: 10px;
+        /* Keep reduced padding */
+    }
+}
