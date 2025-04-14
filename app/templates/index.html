@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}" type="text/css">
+{% endblock %}
+
+
 {% block content %}
 {# Use planner-interface for consistency, allows potential centering/padding #}
 <div class="planner-interface dashboard-container"> {# Add specific container class #}

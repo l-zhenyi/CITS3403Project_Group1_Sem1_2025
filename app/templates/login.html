@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" type="text/css">
+{% endblock %}
+
 {% block content %}
 {# Use planner-interface to leverage flex centering if needed #}
 <div class="planner-interface auth-container"> {# New wrapper class for potential centering #}
