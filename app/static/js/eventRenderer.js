@@ -103,31 +103,29 @@ export function renderCalendar(year, month) {
     const prevMonthDays = lastDayOfPrevMonth.getDate();
 
     const today = new Date();
-    // Normalize today to midnight for accurate date comparison
     today.setHours(0, 0, 0, 0);
-    const todayTimestamp = today.getTime(); // Use timestamp for easier comparison
+    const todayTimestamp = today.getTime();
 
     // --- Update Header ---
     calendarMonthYearEl.textContent = `${monthNames[month]} ${year}`;
 
-    // --- Build Grid HTML String (more efficient than multiple innerHTML+=) ---
+    // --- Build Grid HTML String ---
     let gridHtml = '';
-
-    // Previous month's days (padding at the start)
-    const daysFromPrevMonth = firstDayWeekday; // Number of days to show from prev month
-    for (let i = 0; i < daysFromPrevMonth; i++) {
-        const dayNum = prevMonthDays - daysFromPrevMonth + 1 + i;
-        gridHtml += `<div class="calendar-cell other-month"><span class="day-number">${dayNum}</span></div>`;
+    // Previous month's days
+    const daysFromPrevMonth = firstDayWeekday === 0 ? 6 : firstDayWeekday; // Adjust if your week starts Monday (0 = Sun)
+    // NOTE: Standard getDay() is 0=Sunday. If your CSS grid starts Monday, adjust logic.
+    // Assuming standard 0=Sunday start for grid columns:
+    for (let i = 0; i < firstDayWeekday; i++) { // Use original firstDayWeekday if Sunday is col 1
+        const dayNum = prevMonthDays - firstDayWeekday + 1 + i;
+        gridHtml += `<div class="calendar-cell other-month"><span class="day-number">${dayNum}</span><div class="event-markers"></div></div>`;
     }
 
     // Current month's days
     for (let i = 1; i <= numDays; i++) {
         const currentDate = new Date(year, month, i);
-        currentDate.setHours(0, 0, 0, 0); // Normalize for comparison
+        currentDate.setHours(0, 0, 0, 0);
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         const isToday = currentDate.getTime() === todayTimestamp;
-
-        // Safely access eventsByDate (assuming it might be global or passed differently)
         const events = (typeof eventsByDate !== 'undefined' && eventsByDate[dateStr]) ? eventsByDate[dateStr] : [];
 
         let cellClasses = "calendar-cell";
@@ -135,45 +133,45 @@ export function renderCalendar(year, month) {
             cellClasses += " today";
         }
 
-        gridHtml += `<div class="${cellClasses}" data-date="${dateStr}">`; // Add data-date attribute
+        gridHtml += `<div class="${cellClasses}" data-date="${dateStr}">`;
         gridHtml += `<span class="day-number">${i}</span>`;
         gridHtml += `<div class="event-markers">`; // Container for markers
-        events.forEach(() => {
-            // Simple marker, could be customized (e.g., different colors)
+        events.slice(0, 3).forEach(() => { // Limit markers shown initially if needed
             gridHtml += `<div class="event-marker"></div>`;
         });
+        if (events.length > 3) {
+             gridHtml += `<div class="event-marker more-events">+</div>`; // Indicate more
+        }
         gridHtml += `</div>`; // Close event-markers
         gridHtml += '</div>'; // Close calendar-cell
     }
 
-    // Next month's days (padding at the end)
-    const totalCellsRendered = daysFromPrevMonth + numDays;
-    // Calculate remaining cells needed to fill the last row (total cells must be multiple of 7)
+    // Next month's days
+    const totalCellsRendered = firstDayWeekday + numDays;
     const remainingCells = totalCellsRendered % 7 === 0 ? 0 : 7 - (totalCellsRendered % 7);
     for (let i = 1; i <= remainingCells; i++) {
-        gridHtml += `<div class="calendar-cell other-month"><span class="day-number">${i}</span></div>`;
+        gridHtml += `<div class="calendar-cell other-month"><span class="day-number">${i}</span><div class="event-markers"></div></div>`;
     }
 
     // --- Update Grid Content ---
     calendarGridEl.innerHTML = gridHtml;
 
     // --- Calculate Rows and Apply Dynamic Row Sizing ---
-    const totalCellsInGrid = daysFromPrevMonth + numDays + remainingCells; // Should always be a multiple of 7
+    const totalCellsInGrid = firstDayWeekday + numDays + remainingCells;
     const numRows = totalCellsInGrid / 7;
 
-    // **Crucial Part:** Set grid-template-rows to use fractional units (fr).
-    // This tells the grid to divide the available vertical space equally among the rows.
+    // **Crucial Part:** Set grid-template-rows using fractional units (fr).
     calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, 1fr)`;
 
-    // **Important:** For `1fr` to work based on available height, the `calendarGridEl`
-    // must have a defined height or be allowed to stretch within its parent.
-    // Setting height: 100% is a common way, assuming the parent has height.
-    // Or, if the parent is a flex container (column), `flex-grow: 1` on the grid works.
-    // We'll set height: 100% here as a reasonable default. Adjust if your layout differs.
-    calendarGridEl.style.height = '100%';
+    // **REMOVE** setting height: 100% - let flex-grow handle it.
+    // calendarGridEl.style.height = '100%'; // <<< REMOVE THIS LINE
 
-    // Remove the old min-height calculation, as it conflicts with flexible rows.
-    calendarGridEl.style.minHeight = ''; // Ensure any previous min-height is cleared
+    // **Ensure** any previous min-height is cleared (good practice).
+    calendarGridEl.style.minHeight = '';
+
+    // Add a class to the parent if needed for styling, e.g., based on row count
+    // calendarGridEl.parentElement.classList.toggle('has-6-rows', numRows === 6);
+    // calendarGridEl.parentElement.classList.toggle('has-5-rows', numRows === 5);
 }
 
 export function renderAllEventsList(filter = 'upcoming') {

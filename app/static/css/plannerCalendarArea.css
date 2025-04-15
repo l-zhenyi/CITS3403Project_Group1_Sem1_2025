@@ -77,35 +77,33 @@
     font-weight: 500;
     color: rgba(255, 255, 255, 0.8);
     padding-bottom: 10px;
-    flex-shrink: 0;
-    /* Prevent shrinking */
+    flex-shrink: 0; /* Important: Don't let this shrink */
 }
 
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 5px;
-    /* Gap between cells */
-    flex-grow: 1;
-    /* Take remaining space */
+    flex-grow: 1; /* <<< KEY: Allow grid to take remaining vertical space */
     width: 100%;
-    min-height: 300px;
-    /* Give it some minimum height */
+    /* REMOVE min-height: 300px; <<< Remove fixed min-height */
+    /* The height will be determined by flex-grow and the fr units below */
+    /* grid-template-rows will be set dynamically by JS */
 }
 
 .calendar-cell {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    padding: 8px;
-    min-height: 80px;
-    /* Minimum height for cells */
+    padding: 8px; /* Keep some padding */
+    /* REMOVE min-height: 80px; <<< Remove fixed min-height */
+    /* ADD a smaller base min-height if desired, but 1fr should handle it */
+    /* Optional: min-height: 40px; */
     display: flex;
     flex-direction: column;
     position: relative;
-    /* For potential event absolute positioning */
     border: 1px solid transparent;
-    /* Placeholder for potential hover/today styles */
     transition: background-color 0.2s ease;
+    overflow: hidden; /* Hide potential overflow if cells get very small */
 }
 
 .calendar-cell:hover {
@@ -117,11 +115,27 @@
     font-weight: 500;
     margin-bottom: 4px;
     text-align: right;
+    flex-shrink: 0; /* Don't shrink the day number */
 }
+
+/* Container for markers to allow potential scrolling if needed */
+.calendar-cell .event-markers {
+   flex-grow: 1; /* Allow marker area to take remaining space */
+   display: flex;
+   flex-direction: column; /* Stack markers */
+   align-items: center; /* Center markers horizontally */
+   overflow-y: auto; /* Add scroll if many markers and cell is small */
+   padding-top: 2px; /* Small space above markers */
+}
+
 
 .calendar-cell.other-month .day-number {
     opacity: 0.4;
 }
+.calendar-cell.other-month .event-markers {
+    opacity: 0.4; /* Also dim markers in other months */
+}
+
 
 .calendar-cell.today {
     border-color: rgba(255, 255, 255, 0.4);
@@ -137,13 +151,11 @@
 .calendar-cell .event-marker {
     width: 6px;
     height: 6px;
-    background-color: #38BDF8;
-    /* Light blue dot */
+    background-color: #38BDF8; /* Light blue dot */
     border-radius: 50%;
     margin-top: 4px;
-    align-self: center;
-    /* Center dot */
-    /* Add more complex styling/positioning later */
+    flex-shrink: 0; /* Prevent marker shrinking */
+    /* align-self: center; no longer needed with flex parent */
 }
 
 @media (max-width: 768px) {
@@ -175,12 +187,10 @@
 
     .calendar-grid {
         gap: 3px;
-        min-height: 250px;
     }
 
     .calendar-cell {
         padding: 5px;
-        min-height: 60px;
         /* Smaller cells */
         border-radius: 6px;
     }
