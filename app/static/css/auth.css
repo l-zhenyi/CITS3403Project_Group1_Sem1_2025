@@ -22,7 +22,7 @@ Authentication Page Styles (Login/Register)
     width: 100%;
     max-width: 450px;
   
-    max-height: calc(100vh - 32px); /* 16px top + 16px bottom padding from container */
+    max-height: calc(100vh - 100px);
   
     overflow-y: auto;
     box-sizing: border-box;
@@ -177,14 +177,6 @@ Authentication Page Styles (Login/Register)
 
 
 @media (max-width: 768px) {
-    .auth-pane {
-        /* MODIFIED: Further reduced top/bottom padding for mobile */
-        padding: 20px 20px;
-        /* Was 25px 20px */
-        margin: 0 10px;
-        max-width: none;
-    }
-
     .auth-form h1,
     .auth-form h2 {
         font-size: 1.5rem;

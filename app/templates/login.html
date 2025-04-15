@@ -5,9 +5,8 @@
 {% endblock %}
 
 {% block content %}
-{# Use planner-interface to leverage flex centering if needed #}
-<div class="planner-interface auth-container"> {# New wrapper class for potential centering #}
-    <div class="planner-pane glassy auth-pane"> {# Centered pane for authentication forms #}
+<div class="auth-container"> {# New wrapper class for potential centering #}
+    <div class="glassy auth-pane"> {# Centered pane for authentication forms #}
         <form action="" method="post" novalidate class="auth-form">
             {{ form.hidden_tag() }}
             <h1>Sign In</h1>
