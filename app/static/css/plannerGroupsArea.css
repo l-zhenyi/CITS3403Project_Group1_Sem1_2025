@@ -413,47 +413,55 @@
 /* --- Mobile Specific Adjustments --- */
 @media (max-width: 768px) {
     .group-list-area {
-        /* Adjustments already handled in planner.css mobile section */
         padding: 8px;
-        /* Confirm padding */
         border-radius: 12px;
-        /* Confirm rounding */
     }
 
     .event-collage-area {
-        /* Adjustments already handled in planner.css mobile section */
         padding: 8px;
-        /* Confirm padding */
         border-radius: 12px;
-        /* Confirm rounding */
         perspective: none;
-        /* Disable 3D effects */
     }
 
     /* Show back button only when mobile event view is active */
     .planner-pane.mobile-event-view-active .active-group-header .back-button {
         display: inline-block;
-        /* Show the back button */
     }
 
+
+    /* Group Item Adjustments */
+    .group-item {
+        padding: 15px 10px;
+        /* More touch-friendly padding */
+    }
+
+    /* Adjust active group header for mobile */
     .active-group-header {
-        padding: 8px 12px;
-        /* Slightly reduce padding */
-        margin: 8px 0px 12px 0px;
-        /* Adjust margin for mobile */
-        border-radius: 12px;
-        /* Smaller radius */
-    }
-
-    .active-group-name {
-        font-size: 1.0rem;
-        /* Slightly smaller */
+        position: sticky;
+        /* Make header sticky within scrolling area */
+        top: -8px;
+        /* Stick relative to the event area's padding */
+        z-index: 1;
+        /* Ensure it's above scrolling content */
+        padding: 10px 15px;
+        /* Slightly less padding */
+        border-radius: 14px;
+        /* Keep radius */
+        margin: 8px 8px 12px 8px;
     }
 
     .group-avatar-small {
         width: 32px;
         height: 32px;
         margin-right: 10px;
+    }
+
+    .active-group-name {
+        font-size: 1rem;
+    }
+
+    .blur-wrapper {
+        margin: -8px -8px 0 -8px;
     }
 
     .settings-button {
