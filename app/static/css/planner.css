@@ -296,60 +296,6 @@
         border-radius: 12px;
     }
 
-    .planner-pane:not(.calendar-view-active):not(.events-view-active) .group-list-area {
-        flex: 1 1 auto;
-        display: block;
-        border-right: none;
-        border-radius: 12px;
-        padding: 8px;
-        opacity: 1;
-        pointer-events: auto;
-        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
-    }
-
-    .planner-pane:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
-        flex: 0 0 0;
-        display: none;
-        overflow: hidden;
-        padding: 0;
-        opacity: 0;
-        pointer-events: none;
-        border-radius: 12px;
-        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease, display 0s linear 0.3s;
-    }
-
-    .planner-pane.mobile-event-view-active .group-list-area {
-        flex: 0 0 0 !important;
-        display: none !important;
-        overflow: hidden;
-        padding: 0;
-        opacity: 0;
-        pointer-events: none;
-        height: 100%;
-    }
-
-    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
-        flex: 1 1 auto !important;
-        display: block !important;
-        overflow-y: auto;
-        padding: 8px;
-        opacity: 1;
-        pointer-events: auto;
-        perspective: none;
-        height: 100%;
-        min-height: 0;
-    }
-
-    .planner-pane.calendar-view-active .group-list-area,
-    .planner-pane.calendar-view-active .event-collage-area,
-    .planner-pane.events-view-active .group-list-area,
-    .planner-pane.events-view-active .event-collage-area {
-        flex: 0 0 0 !important;
-        display: none !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-    }
-
     .planner-pane.calendar-view-active .calendar-view,
     .planner-pane.events-view-active .events-view {
         display: flex !important;

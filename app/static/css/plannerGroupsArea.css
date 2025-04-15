@@ -380,7 +380,8 @@
 
 .back-button {
     /* Box Model */
-    display: none; /* Hidden by default and on desktop */
+    display: none;
+    /* Hidden by default and on desktop */
     flex-shrink: 0;
     padding: 6px 10px;
     margin-right: 10px;
@@ -388,8 +389,10 @@
     border-radius: 50%;
 
     /* Typography */
-    font-size: 1.5rem; /* Adjust as needed */
-    line-height: 1; /* Ensure tight fit */
+    font-size: 1.5rem;
+    /* Adjust as needed */
+    line-height: 1;
+    /* Ensure tight fit */
     color: #e0e0e5;
 
     /* Visual */
@@ -402,6 +405,7 @@
     background-color: rgba(255, 255, 255, 0.2);
     color: #fff;
 }
+
 .back-button:active {
     transform: scale(0.95);
 }
@@ -410,76 +414,160 @@
 @media (max-width: 768px) {
     .group-list-area {
         /* Adjustments already handled in planner.css mobile section */
-        padding: 8px; /* Confirm padding */
-        border-radius: 12px; /* Confirm rounding */
+        padding: 8px;
+        /* Confirm padding */
+        border-radius: 12px;
+        /* Confirm rounding */
     }
 
     .event-collage-area {
         /* Adjustments already handled in planner.css mobile section */
-        padding: 8px; /* Confirm padding */
-        border-radius: 12px; /* Confirm rounding */
-        perspective: none; /* Disable 3D effects */
+        padding: 8px;
+        /* Confirm padding */
+        border-radius: 12px;
+        /* Confirm rounding */
+        perspective: none;
+        /* Disable 3D effects */
     }
 
     /* Show back button only when mobile event view is active */
-     .planner-pane.mobile-event-view-active .active-group-header .back-button {
-        display: inline-block; /* Show the back button */
+    .planner-pane.mobile-event-view-active .active-group-header .back-button {
+        display: inline-block;
+        /* Show the back button */
     }
 
     .active-group-header {
-        padding: 8px 12px; /* Slightly reduce padding */
-        margin: 8px 0px 12px 0px; /* Adjust margin for mobile */
-        border-radius: 12px; /* Smaller radius */
+        padding: 8px 12px;
+        /* Slightly reduce padding */
+        margin: 8px 0px 12px 0px;
+        /* Adjust margin for mobile */
+        border-radius: 12px;
+        /* Smaller radius */
     }
+
     .active-group-name {
-        font-size: 1.0rem; /* Slightly smaller */
+        font-size: 1.0rem;
+        /* Slightly smaller */
     }
+
     .group-avatar-small {
         width: 32px;
         height: 32px;
         margin-right: 10px;
     }
+
     .settings-button {
         font-size: 1.1rem;
     }
 
     /* Override Event Panel for Mobile Stacked View */
     .event-panels-container {
-        min-height: auto; /* Let content define height */
-        padding-top: 0; /* No specific top padding needed here */
+        min-height: auto;
+        /* Let content define height */
+        padding-top: 0;
+        /* No specific top padding needed here */
     }
 
     .event-panel {
-        position: relative !important; /* Override absolute */
-        width: 100% !important; /* Full width */
-        max-width: 450px; /* Optional max width for better readability */
-        margin: 0 auto 15px auto !important; /* Center and add bottom margin */
+        position: relative !important;
+        /* Override absolute */
+        width: 100% !important;
+        /* Full width */
+        max-width: 450px;
+        /* Optional max width for better readability */
+        margin: 0 auto 15px auto !important;
+        /* Center and add bottom margin */
         left: auto !important;
         top: auto !important;
-        transform: none !important; /* Remove rotation/translate */
-        opacity: 1 !important; /* Ensure visible */
-        min-height: auto; /* Let content define height */
-        padding: 15px; /* Adjust padding */
-        border-radius: 14px; /* Adjust rounding */
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Simpler shadow */
-        backdrop-filter: blur(20px) saturate(120%); /* Slightly less blur potentially */
+        transform: none !important;
+        /* Remove rotation/translate */
+        opacity: 1 !important;
+        /* Ensure visible */
+        min-height: auto;
+        /* Let content define height */
+        padding: 15px;
+        /* Adjust padding */
+        border-radius: 14px;
+        /* Adjust rounding */
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        /* Simpler shadow */
+        backdrop-filter: blur(20px) saturate(120%);
+        /* Slightly less blur potentially */
     }
 
     .event-panel:hover {
-        transform: none !important; /* Disable hover transform */
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25); /* Slightly deeper hover shadow */
+        transform: none !important;
+        /* Disable hover transform */
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+        /* Slightly deeper hover shadow */
     }
 
-     .event-image {
-         height: 120px; /* Adjust if needed */
-         margin-bottom: 12px;
-     }
+    .event-image {
+        height: 120px;
+        /* Adjust if needed */
+        margin-bottom: 12px;
+    }
 
-     .event-panel h3 {
-         font-size: 1.1rem;
-     }
-     .event-details, .event-rsvp {
-         font-size: 0.85rem;
-     }
+    .event-panel h3 {
+        font-size: 1.1rem;
+    }
 
+    .event-details,
+    .event-rsvp {
+        font-size: 0.85rem;
+    }
+
+    .planner-pane:not(.calendar-view-active):not(.events-view-active) .group-list-area {
+        flex: 1 1 auto;
+        display: block;
+        border-right: none;
+        border-radius: 12px;
+        padding: 8px;
+        opacity: 1;
+        pointer-events: auto;
+        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+    }
+
+    .planner-pane:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
+        flex: 0 0 0;
+        display: none;
+        overflow: hidden;
+        padding: 0;
+        opacity: 0;
+        pointer-events: none;
+        border-radius: 12px;
+        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease, display 0s linear 0.3s;
+    }
+
+    .planner-pane.mobile-event-view-active .group-list-area {
+        flex: 0 0 0 !important;
+        display: none !important;
+        overflow: hidden;
+        padding: 0;
+        opacity: 0;
+        pointer-events: none;
+        height: 100%;
+    }
+
+    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
+        flex: 1 1 auto !important;
+        display: block !important;
+        overflow-y: auto;
+        padding: 8px;
+        opacity: 1;
+        pointer-events: auto;
+        perspective: none;
+        height: 100%;
+        min-height: 0;
+    }
+
+    .planner-pane.calendar-view-active .group-list-area,
+    .planner-pane.calendar-view-active .event-collage-area,
+    .planner-pane.events-view-active .group-list-area,
+    .planner-pane.events-view-active .event-collage-area {
+        flex: 0 0 0 !important;
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
 }
