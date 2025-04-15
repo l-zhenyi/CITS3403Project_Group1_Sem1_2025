@@ -52,7 +52,7 @@
                 <div class="blur-wrapper">
                     <div class="blur-overlay"></div>
                     <div class="active-group-header glassy">
-                        <button class="icon-button back-button" id="back-to-groups-button">←</button>
+                        <button class="icon-button back-button" aria-label="Back to groups">←</button>
                         {# Initial state set by JS based on the first group #}
                         <img src="{{ groups[0].avatar_url | default('https://via.placeholder.com/36') if groups else 'https://via.placeholder.com/36' }}" alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
                         <span class="active-group-name" id="active-group-name">{{ groups[0].name | default('Group') if groups else 'Group' }} Events</span>

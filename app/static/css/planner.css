@@ -107,8 +107,8 @@
 }
 
 /* ==========================================================================
-      Planner Pane (Main Content Area Container)
-      ========================================================================== */
+          Planner Pane (Main Content Area Container)
+          ========================================================================== */
 
 .planner-pane {
     /* Positioning & Box Model */
@@ -197,8 +197,8 @@
 
 
 /* ==========================================================================
-    Scrollbar Styling (Webkit)
-    ========================================================================== */
+        Scrollbar Styling (Webkit)
+        ========================================================================== */
 
 .group-list-area::-webkit-scrollbar,
 .event-collage-area::-webkit-scrollbar {
@@ -225,10 +225,11 @@
     background-color: rgba(255, 255, 255, 0.5);
 }
 
-/* --- Update Desktop Specific Overrides --- */
-@media (min-width: 769px) {
+/* ==========================================================================
+       Responsive Overrides
+       ========================================================================== */
 
-    /* Show Groups/Collage if no other view active */
+@media (min-width: 769px) {
     .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.mobile-event-view-active) .group-list-area {
         flex: 0 0 340px;
         display: block;
@@ -239,7 +240,6 @@
         display: block;
     }
 
-    /* Hide other views if not active */
     .planner-pane:not(.calendar-view-active) .calendar-view,
     .planner-pane:not(.events-view-active) .events-view {
         display: none;
@@ -247,8 +247,6 @@
 }
 
 @media (max-width: 768px) {
-
-    /* Adjust base layout slightly */
     .top-nav {
         padding: 8px 12px;
         width: calc(100% - 16px);
@@ -269,15 +267,13 @@
     }
 
     .planner-interface {
-        padding: 0 8px 8px 8px;
-        /* Adjust padding */
+        padding: 0 8px 8px;
     }
 
     .planner-header {
         flex-direction: column;
-        /* Stack title and view selector */
         align-items: flex-start;
-        padding: 10px 0px;
+        padding: 10px 0;
     }
 
     .planner-title {
@@ -286,11 +282,9 @@
 
     .view-selector {
         width: 100%;
-        /* Full width on mobile */
         padding: 6px;
         margin-top: 8px;
         justify-content: flex-start;
-        /* Align tabs left */
     }
 
     .view-tab {
@@ -298,61 +292,69 @@
         font-size: 0.9rem;
     }
 
-    /* --- Mobile Pane View Switching --- */
     .planner-pane {
         border-radius: 12px;
-        /* Smaller radius */
-        /* Flex direction remains row, but children flex properties change */
     }
 
-    /* Default Mobile State: Show Group List */
-    .group-list-area {
+    .planner-pane:not(.calendar-view-active):not(.events-view-active) .group-list-area {
         flex: 1 1 auto;
-        /* Takes full width */
+        display: block;
         border-right: none;
         border-radius: 12px;
-        /* Full rounding */
         padding: 8px;
         opacity: 1;
         pointer-events: auto;
         transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
     }
 
-    .event-collage-area {
+    .planner-pane:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
         flex: 0 0 0;
-        /* Collapsed */
+        display: none;
         overflow: hidden;
         padding: 0;
-        /* Collapse padding */
         opacity: 0;
         pointer-events: none;
         border-radius: 12px;
-        /* Match sibling */
-        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease, display 0s linear 0.3s;
     }
 
-    /* Active Mobile State: Show Event List (when .mobile-event-view-active is added to .planner-pane) */
     .planner-pane.mobile-event-view-active .group-list-area {
-        flex: 0 0 0;
+        flex: 0 0 0 !important;
+        display: none !important;
         overflow: hidden;
         padding: 0;
         opacity: 0;
         pointer-events: none;
         height: 100%;
-        /* Keep or add this */
     }
 
-    .planner-pane.mobile-event-view-active .event-collage-area {
-        flex: 1 1 auto;
+    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
+        flex: 1 1 auto !important;
+        display: block !important;
         overflow-y: auto;
-        /* Make sure this is auto or scroll */
         padding: 8px;
         opacity: 1;
         pointer-events: auto;
         perspective: none;
         height: 100%;
-        /* Keep or add this */
         min-height: 0;
-        /* Ensure min-height is still 0 or unset */
+    }
+
+    .planner-pane.calendar-view-active .group-list-area,
+    .planner-pane.calendar-view-active .event-collage-area,
+    .planner-pane.events-view-active .group-list-area,
+    .planner-pane.events-view-active .event-collage-area {
+        flex: 0 0 0 !important;
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    .planner-pane.calendar-view-active .calendar-view,
+    .planner-pane.events-view-active .events-view {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
     }
 }

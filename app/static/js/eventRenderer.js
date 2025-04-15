@@ -21,69 +21,114 @@ function formatEventDateForDisplay(date) {
 }
 
 export function renderGroupEvents(groupId) {
+    // Always destroy parallax first when rendering group events
     destroyParallax();
 
     const container = document.getElementById('event-panels-container');
-    const collage = document.getElementById('event-collage');
-    if (!container || !collage) return;
-
-    const group = groupsData.find(g => g.id === groupId);
-    if (!group || !group.events.length) {
-        container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
+    const collage = document.getElementById('event-collage'); // Keep this reference if needed elsewhere
+    if (!container || !collage) {
+        console.error("Event panels container or collage area not found.");
         return;
     }
 
-    container.innerHTML = '';
+    const group = groupsData.find(g => g.id === groupId);
+    if (!group) {
+        container.innerHTML = '<p class="no-events-message">Group not found.</p>';
+        return;
+    }
+    if (!group.events.length) {
+        container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
+        // Clear any previous min-height
+        container.style.minHeight = '';
+        return;
+    }
 
-    const verticalSpacing = 140;
-    const horizontalOffsets = ['12%', '40%', '68%']; // loose 3-col layout
-    const estimatedHeight = 100 + group.events.length * verticalSpacing * 0.75;
-    container.style.minHeight = `${Math.max(400, estimatedHeight)}px`;
+    container.innerHTML = ''; // Clear previous events
 
-    group.events.sort((a, b) => a.date - b.date);
+    // --- Mobile vs Desktop Check ---
+    const isMobile = window.innerWidth <= 768;
 
-    group.events.forEach((event, index) => {
-        const panel = document.createElement('div');
-        panel.className = 'event-panel';
+    if (!isMobile) {
+        // --- Desktop Collage Layout ---
+        const verticalSpacing = 140;
+        const horizontalOffsets = ['12%', '40%', '68%']; // Loose 3-col layout
+        // Estimate height only needed for desktop collage to prevent early collapse
+        const estimatedHeight = 100 + group.events.length * verticalSpacing * 0.75;
+        container.style.minHeight = `${Math.max(400, estimatedHeight)}px`;
 
-        const dateText = event.formatted_date || formatEventDateForDisplay(event.date);
-        const rotateDeg = (Math.random() * 10 - 5).toFixed(1); // -5° to +5°
-        const left = horizontalOffsets[index % horizontalOffsets.length];
-        const top = `${60 + Math.floor(index / 3) * verticalSpacing}px`;
-        const baseTransform = `rotate(${rotateDeg}deg)`;
+        group.events.sort((a, b) => a.date - b.date);
 
-        panel.innerHTML = `
-            ${event.image_url ? `<img src="${event.image_url}" class="event-image">` : ''}
-            <h3>${event.title}</h3>
-            <p class="event-details">${dateText} ${event.cost_display ? `| ${event.cost_display}` : ''}</p>
-            ${event.location ? `<p class="event-details">📍 ${event.location}</p>` : ''}
-            ${event.rsvp_status ? `<p class="event-rsvp">You are ${event.rsvp_status}</p>` : ''}
-            <div class="event-actions">
-                <button class="button accept">Accept</button>
-                <button class="button decline">Decline</button>
-            </div>
-        `;
+        group.events.forEach((event, index) => {
+            const panel = document.createElement('div');
+            panel.className = 'event-panel';
 
-        panel.style.position = 'absolute';
-        panel.style.left = left;
-        panel.style.top = top;
-        panel.style.transform = baseTransform;
-        panel.dataset.originalTransform = baseTransform;
+            const dateText = event.formatted_date || formatEventDateForDisplay(event.date);
+            const rotateDeg = (Math.random() * 10 - 5).toFixed(1); // -5° to +5°
+            const left = horizontalOffsets[index % horizontalOffsets.length];
+            const top = `${60 + Math.floor(index / 3) * verticalSpacing}px`;
+            const baseTransform = `rotate(${rotateDeg}deg)`;
 
-        container.appendChild(panel);
-    });
+            panel.innerHTML = `
+                ${event.image_url ? `<img src="${event.image_url}" class="event-image" alt="${event.title}">` : ''}
+                <h3>${event.title}</h3>
+                <p class="event-details">${dateText} ${event.cost_display ? `| ${event.cost_display}` : ''}</p>
+                ${event.location ? `<p class="event-details">📍 ${event.location}</p>` : ''}
+                ${event.rsvp_status ? `<p class="event-rsvp">You are ${event.rsvp_status}</p>` : ''}
+                <div class="event-actions">
+                    <button class="button accept">Accept</button>
+                    <button class="button decline">Decline</button>
+                </div>
+            `;
 
-    setupParallax('groups');
+            panel.style.position = 'absolute';
+            panel.style.left = left;
+            panel.style.top = top;
+            panel.style.transform = baseTransform;
+            panel.dataset.originalTransform = baseTransform; // Needed by parallax
+
+            container.appendChild(panel);
+        });
+
+        // Setup parallax ONLY for desktop view
+        setupParallax('groups');
+
+    } else {
+        // --- Mobile Stacked Layout ---
+        // Clear any min-height from previous desktop renders
+        container.style.minHeight = '';
+
+        group.events.sort((a, b) => a.date - b.date);
+
+        group.events.forEach((event) => {
+            const panel = document.createElement('div');
+            panel.className = 'event-panel'; // CSS overrides will handle styling
+
+            const dateText = event.formatted_date || formatEventDateForDisplay(event.date);
+
+            // Simpler innerHTML for mobile (no inline styles needed)
+            panel.innerHTML = `
+                ${event.image_url ? `<img src="${event.image_url}" class="event-image" alt="${event.title}">` : ''}
+                <h3>${event.title}</h3>
+                <p class="event-details">${dateText} ${event.cost_display ? `| ${event.cost_display}` : ''}</p>
+                ${event.location ? `<p class="event-details">📍 ${event.location}</p>` : ''}
+                ${event.rsvp_status ? `<p class="event-rsvp">You are ${event.rsvp_status}</p>` : ''}
+                <div class="event-actions">
+                    <button class="button accept">Accept</button>
+                    <button class="button decline">Decline</button>
+                </div>
+            `;
+
+            // NO absolute positioning, transforms, or dataset needed here
+            // CSS @media query handles layout
+
+            container.appendChild(panel);
+        });
+        // No parallax setup for mobile
+    }
 }
 
-/**
- * Renders the calendar grid for the specified year and month.
- * Assumes calendarGridEl and calendarMonthYearEl are valid DOM elements.
- * Assumes eventsByDate is an accessible object mapping 'YYYY-MM-DD' strings to event arrays.
- *
- * @param {number} year The full year (e.g., 2024)
- * @param {number} month The month index (0-11)
- */
+
+// ... (Keep renderCalendar and renderAllEventsList functions as they were) ...
 export function renderCalendar(year, month) {
     // Ensure elements exist
     if (!calendarGridEl || !calendarMonthYearEl) {
@@ -112,10 +157,8 @@ export function renderCalendar(year, month) {
     // --- Build Grid HTML String ---
     let gridHtml = '';
     // Previous month's days
-    const daysFromPrevMonth = firstDayWeekday === 0 ? 6 : firstDayWeekday; // Adjust if your week starts Monday (0 = Sun)
-    // NOTE: Standard getDay() is 0=Sunday. If your CSS grid starts Monday, adjust logic.
     // Assuming standard 0=Sunday start for grid columns:
-    for (let i = 0; i < firstDayWeekday; i++) { // Use original firstDayWeekday if Sunday is col 1
+    for (let i = 0; i < firstDayWeekday; i++) {
         const dayNum = prevMonthDays - firstDayWeekday + 1 + i;
         gridHtml += `<div class="calendar-cell other-month"><span class="day-number">${dayNum}</span><div class="event-markers"></div></div>`;
     }
@@ -160,18 +203,9 @@ export function renderCalendar(year, month) {
     const totalCellsInGrid = firstDayWeekday + numDays + remainingCells;
     const numRows = totalCellsInGrid / 7;
 
-    // **Crucial Part:** Set grid-template-rows using fractional units (fr).
     calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, 1fr)`;
+    calendarGridEl.style.minHeight = ''; // Ensure dynamic height works
 
-    // **REMOVE** setting height: 100% - let flex-grow handle it.
-    // calendarGridEl.style.height = '100%'; // <<< REMOVE THIS LINE
-
-    // **Ensure** any previous min-height is cleared (good practice).
-    calendarGridEl.style.minHeight = '';
-
-    // Add a class to the parent if needed for styling, e.g., based on row count
-    // calendarGridEl.parentElement.classList.toggle('has-6-rows', numRows === 6);
-    // calendarGridEl.parentElement.classList.toggle('has-5-rows', numRows === 5);
 }
 
 export function renderAllEventsList(filter = 'upcoming') {
