@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}" type="text/css">
 {% endblock %}
 
 
 {% block content %}
-<h1>Hi, {{ current_user.username }}!</h1> 
+<h1>Hi, {{ current_user.username }}!</h1>
 {# Use planner-interface for consistency, allows potential centering/padding #}
 <div class="dashboard-container"> {# Add specific container class #}
 
@@ -17,31 +17,67 @@
         <hr class="content-divider"> {# Use class for styling #}
 
         <h2>Your Groups</h2>
-        {% if groups %}
-            <ul class="dashboard-group-list"> {# More specific class name #}
-                {% for group in groups %}
-                    {# Removed glassy from item, style via CSS #}
-                    <li class="dashboard-group-item">
-                        <h3>{{ group.name }}</h3>
-                        {% if group.description %}<p class="group-description">{{ group.description }}</p>{% endif %}
+        <div class="glassy dashboard-pane description"> {# Add specific class for intro #}
+            <h3>Plannit: Events Made Effortless</h3>
+            <p>Want to collaborate with others effortless? Plannit is your ultimate hub for effortless
+                group event planning and collaboration. Whether you're organizing casual meetups, weekend getaways,
+                or professional gatherings, Plannit simplifies the entire process from initial idea to memorable
+                experience.</p><br>
 
-                        <p class="group-members-list">
-                            <span class="label">Members:</span>
-                            {# Check if members exist and is not empty #}
-                            {% if group.members and group.members|length > 0 %}
-                                {{ group.members | join(', ') }}
-                            {% else %}
-                                <span class="no-members">None</span> {# Specific class for styling 'None' #}
-                            {% endif %}
-                        </p>
-                    </li>
-                {% endfor %}
+            <h3>Connect, Collaborate, Celebrate</h3>
+            <ul>
+                <li>Effortless Voting: Quickly gauge group preferences and reach consensus on events.</li>
+                <li>Unified Planning: Seamlessly handle invites, shared payments, and discussions — all in one
+                    intuitive platform.</li>
+                <li>Capture Memories: Easily share photos and experiences within event nodes, turning moments into
+                    lasting memories.</li>
+                <li>Insightful Analytics: Get smart breakdowns and visual insights into your group's activities,
+                    favorite locations, and more.</li>
             </ul>
+            <br>
+            <h3>Why Choose Plannit?</h3>
+            <ul>
+                <li>Simplified Group Dynamics: Reduce planning stress and keep everyone aligned.</li>
+                <li>Flexible and Extensible: Grow your events with built-in tools for recurring meetups and intelligent
+                    recommendations.</li>
+                <li>Memorable Experiences: Spend more time enjoying moments, knowing everything behind-the-scenes is
+                    taken care of.</li>
+            </ul>
+        </div>
+        <br>
+        {% if groups %}
+        <ul class="dashboard-group-list"> {# More specific class name #}
+            {% for group in groups %}
+            {# Removed glassy from item, style via CSS #}
+            <li class="dashboard-group-item">
+                <h3>{{ group.name }}</h3>
+                {% if group.description %}<p class="group-description">{{ group.description }}</p>{% endif %}
+
+                <p class="group-members-list">
+                    <span class="label">Members:</span>
+                    {# Check if members exist and is not empty #}
+                    {% if group.members and group.members|length > 0 %}
+                    {{ group.members | join(', ') }}
+                    {% else %}
+                    <span class="no-members">None</span> {# Specific class for styling 'None' #}
+                    {% endif %}
+                </p>
+            </li>
+            {% endfor %}
+        </ul>
         {% else %}
-             {# Applying glassy here for a single message box is acceptable #}
-             <p class="no-groups-message glassy">You are not part of any groups yet.</p>
+        {# Applying glassy here for a single message box is acceptable #}
+        <p class="no-groups-message glassy">You are not part of any groups yet.</p>
         {% endif %}
 
     </div> {# End dashboard-pane #}
 </div> {# End dashboard-container #}
+
+<footer class="main-footer">
+    <div class="footer-content">
+        <p>Copyright &copy; 2025 Plannit. All rights reserved.</p>
+        <p class="footer-tagline">Plan better. Together.</p>
+    </div>
+</footer>
+
 {% endblock %}
