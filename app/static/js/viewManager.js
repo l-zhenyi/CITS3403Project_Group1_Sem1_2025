@@ -1,6 +1,5 @@
 // viewManager.js
 import { renderGroupEvents, renderCalendar, renderAllEventsList } from './eventRenderer.js';
-import { destroyParallax } from './parallax.js';
 import { groupsData } from './dataHandle.js';
 
 let calendarDate = new Date();
@@ -22,11 +21,6 @@ export function switchView(viewName) {
     document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
     const activeTab = document.getElementById(`${viewName}-tab`);
     activeTab?.classList.add('active');
-
-    // Clear parallax if switching away from groups view potential state
-    if (viewName !== 'groups') {
-        destroyParallax();
-    }
 
     // --- Apply new view ---
     if (viewName === 'calendar') {
