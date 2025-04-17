@@ -1,0 +1,33 @@
+{% extends "base.html" %} 
+{% block content %} 
+<h1>User: {{ user.username }}</h1> 
+<hr> 
+<h2>Your Groups</h2>
+
+<p> 
+    {% if groups %}
+        <ul class="dashboard-group-list"> {# More specific class name #}
+            {% for group in groups %}
+                {# Removed glassy from item, style via CSS #}
+                <li class="dashboard-group-item">
+                    <h3>{{ group.name }}</h3>
+                    {% if group.description %}<p class="group-description">{{ group.description }}</p>{% endif %}
+
+                    <p class="group-members-list">
+                        <span class="label">Members:</span>
+                        {# Check if members exist and is not empty #}
+                        {% if group.members and group.members|length > 0 %}
+                            {{ group.members | join(', ') }}
+                        {% else %}
+                            <span class="no-members">None</span> {# Specific class for styling 'None' #}
+                        {% endif %}
+                    </p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+         {# Applying glassy here for a single message box is acceptable #}
+         <p class="no-groups-message glassy">You are not part of any groups yet.</p>
+    {% endif %}
+</p> 
+{% endblock %} 
