@@ -11,7 +11,8 @@
       <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" type="text/css">
       {% block head %}{% endblock %}
 </head> 
-<body> 
+<body>
+      {% if not hide_nav %}
       <header class="top-nav glassy">
             <nav class="top-nav-left">
                   <a href="{{ url_for('index') }}">Home</a>
@@ -28,7 +29,8 @@
                   <a href="{{ url_for('login') }}" class="icon-button">🔑</a>
                   <a href="{{ url_for('profile') }}" class="icon-button">👤</a>
             </div>
-      </header> 
+      </header>
+      {% endif %}
       {% with messages = get_flashed_messages() %} 
       {% if messages %} 
       <ul> 
@@ -39,5 +41,5 @@
       {% endif %} 
       {% endwith %} 
       {% block content %}{% endblock %} 
-      </body> 
-</html> 
+</body> 
+</html>
