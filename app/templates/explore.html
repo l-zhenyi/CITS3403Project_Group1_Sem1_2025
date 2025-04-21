@@ -1,1 +1,44 @@
 {% extends "base.html" %}
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/explore.css') }}" type="text/css">
+{% endblock %}
+
+{% block content %}
+<div class="glassy explore-container">
+    <h1>Explore</h1>
+    <p>Welcome to the Explore page! Here you can find various locations to visit and explore!</p>
+    <div class="explore-content">
+        <h2>Featured Locations</h2>
+        <div class="card-grid">
+            <a href="" class="explore-card">
+                <div class="card-image" style="background-image: url('{{ url_for('static', filename='images/explore-page/collie.jpg') }}');"></div>
+                <div class="card-content">
+                    <h3>Collie</h3>
+                    <p>Discover the beauty of Collie.</p>
+                </div>
+            </a>
+            <a href="" class="explore-card">
+                <div class="card-image" style="background-image: url('{{ url_for('static', filename='images/explore-page/esperence.jpeg') }}');"></div>
+                <div class="card-content">
+                    <h3>Esperence</h3>
+                    <p>Explore the wonders of Esperence.</p>
+                </div>
+            </a>
+            <a href="" class="explore-card">
+                <div class="card-image" style="background-image: url('{{ url_for('static', filename='images/explore-page/margs.jpg') }}');"></div>
+                <div class="card-content">
+                    <h3>Margaret River</h3>
+                    <p>Experience the charm of Margaret River.</p>
+                </div>
+            </a>
+            <a href="" class="explore-card">
+                <div class="card-image" style="background-image: url('{{ url_for('static', filename='images/explore-page/nannup.jpg') }}');"></div>
+                <div class="card-content">
+                    <h3>Nannup</h3>
+                    <p>Discover the beauty of Nannup.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
