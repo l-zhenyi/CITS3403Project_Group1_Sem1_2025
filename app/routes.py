@@ -100,13 +100,16 @@ def logout():
     return redirect(url_for('index')) 
 
 @app.route('/profile')
+@login_required 
 def profile():
     return render_template('profile.html', user=user, groups=groups)
 
 @app.route('/explore')
+@login_required 
 def explore():
     return render_template('explore.html', groups=groups)
 
 @app.route('/planner')
+@login_required 
 def planner():
     return render_template('planner.html', groups=groups)
