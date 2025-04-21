@@ -23,6 +23,7 @@
                   <a href="{{ url_for('planner') }}">Planner</a>
                   <a href="{{ url_for('explore') }}">Explore</a>
             </nav>
+            
             <div class="top-nav-right">
                   <button class="icon-button">🔍</button>
                   <a href="{{ url_for('login') }}" class="icon-button">🔑</a>
@@ -38,6 +39,7 @@
       </ul> 
       {% endif %} 
       {% endwith %} 
+
       {% block content %}{% endblock %} 
       </body> 
 </html> 
