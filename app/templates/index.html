@@ -5,15 +5,14 @@
 {% endblock %}
 
 
-{% block content %}
-<h1>Hi, {{ current_user.username }}!</h1> 
+{% block content %} 
 {# Use planner-interface for consistency, allows potential centering/padding #}
 <div class="dashboard-container"> {# Add specific container class #}
 
     {# Single pane for dashboard content #}
     <div class="glassy dashboard-pane"> {# Add specific pane class, remove inline styles #}
         {# Use current_user if using Flask-Login, check authentication #}
-        <h1>Welcome, {{ current_user.username if current_user.is_authenticated else 'Guest' }}</h1>
+        <h1>Welcome, {{ current_user.username|capitalize if current_user.is_authenticated else 'Guest' }}</h1>
         <hr class="content-divider"> {# Use class for styling #}
 
         <h2>Your Groups</h2>
