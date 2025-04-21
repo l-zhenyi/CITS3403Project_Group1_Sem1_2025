@@ -1,5 +1,5 @@
 // eventRenderer.js
-import { groupsData, allEventsData, eventsByDate, eventNodes} from './dataHandle.js';
+import { groupsData, allEventsData, eventsByDate, eventNodes } from './dataHandle.js';
 
 const eventPanelsContainer = document.getElementById('event-panels-container');
 const calendarMonthYearEl = document.getElementById('calendar-month-year');
@@ -8,9 +8,8 @@ const eventListContainer = document.getElementById('event-list-container');
 const collageViewport = document.getElementById('collage-viewport');
 
 // Radius to snap to node
-const SNAP_RADIUS = 120; // Increased slightly for easier snapping
-const REPEL_DISTANCE = 100; // How far to push other events
-const REPEL_STRENGTH = 0.6; // How strongly to push (0-1)
+const SNAP_RADIUS = 400; // Increased slightly for easier snapping
+const SNAP_RING_RADIUS = 300; // radius from node center to snapped event center
 
 // --- Node Functions ---
 function renderEventNodes(container) {
@@ -76,79 +75,58 @@ function makeDraggable(element, isNode = false) {
     const useTransform = true;
 
     element.addEventListener('mousedown', (e) => {
-        // Prevent dragging text, images, buttons etc. inside the panel/node
         if (e.target !== element && !isNode) {
-            // Allow dragging node even if clicking text inside
-            if (!element.contains(e.target) || e.target.tagName === 'BUTTON' || e.target.tagName === 'IMG' || e.target.tagName === 'A') {
-                 return;
-            }
+            if (!element.contains(e.target) || ['BUTTON', 'IMG', 'A'].includes(e.target.tagName)) return;
         }
-        // Prevent canvas drag from starting
-        e.stopPropagation();
 
+        e.stopPropagation();
         isDragging = true;
         element.classList.add('dragging');
-        element.classList.remove('snapped'); // Unsnap visually when drag starts
+        element.classList.remove('snapped');
         element.dataset.isSnapped = "false";
-        element.style.zIndex = 1000; // Bring to front while dragging
+        element.style.zIndex = isNode ? 5 : 1000;
 
         const containerRect = eventPanelsContainer.getBoundingClientRect();
         const currentScale = getCurrentZoomScale();
 
-        // Calculate starting position relative to the container, considering scale
+        const elementRect = element.getBoundingClientRect();
+
+        // Positions relative to the container, scaled
         startX = e.pageX;
         startY = e.pageY;
 
-        if (useTransform && element.style.transform) {
-            const match = element.style.transform.match(/translate\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-            if (match) {
-                elementStartX = parseFloat(match[1]);
-                elementStartY = parseFloat(match[2]);
-            } else { // Fallback if transform is not in expected format
-                elementStartX = parseFloat(element.style.left || 0);
-                elementStartY = parseFloat(element.style.top || 0);
-                element.style.transform = `translate(${elementStartX}px, ${elementStartY}px)`; // Initialize transform
-            }
-        } else {
-            elementStartX = parseFloat(element.style.left || 0);
-            elementStartY = parseFloat(element.style.top || 0);
-            if(useTransform) element.style.transform = `translate(${elementStartX}px, ${elementStartY}px)`; // Initialize transform
-        }
+        elementStartX = (elementRect.left - containerRect.left) / currentScale;
+        elementStartY = (elementRect.top - containerRect.top) / currentScale;
+
+        // Clear transform if exists
+        element.style.transform = '';
 
         document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp, { once: true }); // Use once to auto-remove listener
+        document.addEventListener('mouseup', onMouseUp, { once: true });
     });
-    
+
     function onMouseMove(e) {
         if (!isDragging) return;
 
-        const currentScale = getCurrentZoomScale();
-        const dx = (e.pageX - startX) / currentScale; // Adjust delta by scale
-        const dy = (e.pageY - startY) / currentScale;
+        const scale = getCurrentZoomScale();
+        const dx = (e.pageX - startX) / scale;
+        const dy = (e.pageY - startY) / scale;
 
         const newX = elementStartX + dx;
         const newY = elementStartY + dy;
 
-        if(useTransform) {
-            element.style.transform = `translate(${newX}px, ${newY}px)`;
-            // Also update left/top slightly for potential fallback or state saving
-             element.style.left = `${newX}px`;
-             element.style.top = `${newY}px`;
-        } else {
-            element.style.left = `${newX}px`;
-            element.style.top = `${newY}px`;
-        }
+        element.style.left = `${newX}px`;
+        element.style.top = `${newY}px`;
 
-
-        // --- Snapping PREVIEW (Visual cue during drag, no state change) ---
+        // --- Snapping PREVIEW (only for event panels, not nodes) ---
         if (!isNode) {
             const closestNode = findClosestNode(element);
             if (closestNode.node && closestNode.distance < SNAP_RADIUS) {
-                element.classList.add('snap-preview'); // Add visual cue class
+                element.classList.add('snapped');
             } else {
-                element.classList.remove('snap-preview');
+                element.classList.remove('snapped');
             }
-        }
+}
     }
 
     function onMouseUp(e) {
@@ -165,7 +143,7 @@ function makeDraggable(element, isNode = false) {
         let finalX, finalY;
         if (useTransform && element.style.transform) {
             const match = element.style.transform.match(/translate\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-             if (match) {
+            if (match) {
                 finalX = parseFloat(match[1]);
                 finalY = parseFloat(match[2]);
             } else { // Fallback
@@ -173,76 +151,43 @@ function makeDraggable(element, isNode = false) {
                 finalY = parseFloat(element.style.top || 0);
             }
         } else {
-             finalX = parseFloat(element.style.left || 0);
-             finalY = parseFloat(element.style.top || 0);
+            finalX = parseFloat(element.style.left || 0);
+            finalY = parseFloat(element.style.top || 0);
         }
 
-         // Update node position in data array
-         if (isNode) {
+        // Update node position in data array
+        if (isNode) {
             const nodeId = element.dataset.nodeId;
             const nodeData = eventNodes.find(n => n.id === nodeId);
             if (nodeData) {
                 nodeData.x = finalX; // Store the final position
                 nodeData.y = finalY;
                 console.log(`Node ${nodeId} moved to ${finalX}, ${finalY}`);
-                 // Apply final position definitively (transform might reset otherwise)
-                 element.style.left = `${finalX}px`;
-                 element.style.top = `${finalY}px`;
-                 element.style.transform = ''; // Clear transform if setting left/top
+                // Apply final position definitively (transform might reset otherwise)
+                element.style.left = `${finalX}px`;
+                element.style.top = `${finalY}px`;
+                element.style.transform = ''; // Clear transform if setting left/top
             }
-         } else {
-             // Check for snapping for EVENT panels
-             const closestNode = findClosestNode(element);
-             if (closestNode.node && closestNode.distance < SNAP_RADIUS) {
-                 snapToNode(element, closestNode.node);
-             } else {
-                 // Not snapping, just record its free position
-                 element.dataset.isSnapped = "false";
-                 element.dataset.snappedToNode = "";
-                 // Update event data if needed (e.g., for saving state)
-                 // findEventById(element.dataset.eventId).x = finalX;
-                 // findEventById(element.dataset.eventId).y = finalY;
+        } else {
+            // Check for snapping for EVENT panels
+            const closestNode = findClosestNode(element);
+            if (closestNode.node && closestNode.distance < SNAP_RADIUS) {
+                snapToNode(element, closestNode.node);
+            } else {
+                // Not snapping, just record its free position
+                element.dataset.isSnapped = "false";
+                element.dataset.snappedToNode = "";
+                // Update event data if needed (e.g., for saving state)
+                // findEventById(element.dataset.eventId).x = finalX;
+                // findEventById(element.dataset.eventId).y = finalY;
 
-                 // Apply final position definitively
-                 element.style.left = `${finalX}px`;
-                 element.style.top = `${finalY}px`;
-                 element.style.transform = ''; // Clear transform
-             }
-         }
-    }
-}
-
-function checkAndSnapToNode(eventElement) {
-    const eventRect = eventElement.getBoundingClientRect();
-    const eventCenterX = eventRect.left + eventRect.width / 2;
-    const eventCenterY = eventRect.top + eventRect.height / 2;
-
-    const eventContainer = document.getElementById('event-panels-container');
-    if (!eventContainer) {
-        console.error("Event panels container not found.");
-        return;
-    }
-
-    const nodes = eventContainer.querySelectorAll('.event-node');
-    nodes.forEach(node => {
-        const nodeRect = node.getBoundingClientRect();
-        const nodeCenterX = nodeRect.left + nodeRect.width / 2;
-        const nodeCenterY = nodeRect.top + nodeRect.height / 2;
-
-        const distance = Math.sqrt(
-            Math.pow(eventCenterX - nodeCenterX, 2) +
-            Math.pow(eventCenterY - nodeCenterY, 2)
-        );
-
-        if (distance <= SNAP_RADIUS) {
-            // Snap logic
-            snapToNode(eventElement, nodeCenterX, nodeCenterY);
+                // Apply final position definitively
+                element.style.left = `${finalX}px`;
+                element.style.top = `${finalY}px`;
+                element.style.transform = ''; // Clear transform
+            }
         }
-        else {
-            // Un-snap logic
-            eventElement.style.opacity = '1';
-        }
-    });
+    }
 }
 
 function getCurrentZoomScale() {
@@ -292,82 +237,66 @@ function findClosestNode(eventElement) {
 }
 
 function snapToNode(eventElement, nodeElement) {
-    console.log(`Snapping event ${eventElement.dataset.eventId} to node ${nodeElement.dataset.nodeId}`);
-    eventElement.classList.add('snapped');
-    eventElement.dataset.isSnapped = "true";
-    eventElement.dataset.snappedToNode = nodeElement.dataset.nodeId;
-    eventElement.style.zIndex = 9; // Ensure snapped events are below dragging ones but above nodes
-
-    // --- Calculate Position & Repel ---
+    const nodeId = nodeElement.dataset.nodeId;
     const nodeX = parseFloat(nodeElement.style.left || 0);
     const nodeY = parseFloat(nodeElement.style.top || 0);
-    const eventWidth = eventElement.offsetWidth;
-    const eventHeight = eventElement.offsetHeight;
 
-    // Initial position near the node before repulsion
-    const initialAngle = Math.random() * 2 * Math.PI;
-    const initialRadius = SNAP_RADIUS * 0.6; // Start closer
-    let targetX = nodeX + initialRadius * Math.cos(initialAngle) - eventWidth / 2;
-    let targetY = nodeY + initialRadius * Math.sin(initialAngle) - eventHeight / 2;
+    const eventRect = eventElement.getBoundingClientRect();
+    const containerRect = eventPanelsContainer.getBoundingClientRect();
+    const scale = getCurrentZoomScale();
 
+    const eventCenterX = (eventRect.left + eventRect.width / 2 - containerRect.left) / scale;
+    const eventCenterY = (eventRect.top + eventRect.height / 2 - containerRect.top) / scale;
 
-    // --- Repulsion Logic ---
-    const otherSnappedEvents = eventPanelsContainer.querySelectorAll(`.event-panel.snapped[data-snapped-to-node="${nodeElement.dataset.nodeId}"]`);
+    const dx = eventCenterX - nodeX;
+    const dy = eventCenterY - nodeY;
+    const lockedAngle = Math.atan2(dy, dx); // This angle should be respected
 
-    otherSnappedEvents.forEach(otherEvent => {
-        if (otherEvent === eventElement) return; // Don't repel self
+    eventElement.classList.add('snapped');
+    eventElement.dataset.isSnapped = "true";
+    eventElement.dataset.snappedToNode = nodeId;
+    eventElement.style.zIndex = 9;
 
-        const otherRect = otherEvent.getBoundingClientRect(); // Use screen positions for relative calc
-        const eventRect = eventElement.getBoundingClientRect();
-        const scale = getCurrentZoomScale();
+    // Gather snapped events
+    const snappedEvents = Array.from(eventPanelsContainer.querySelectorAll(`.event-panel.snapped[data-snapped-to-node="${nodeId}"]`));
 
-        // Centers relative to scaled container origin
-        const otherCenterX = (otherRect.left + otherRect.width / 2 - eventPanelsContainer.getBoundingClientRect().left) / scale;
-        const otherCenterY = (otherRect.top + otherRect.height / 2 - eventPanelsContainer.getBoundingClientRect().top) / scale;
-        const eventCenterX = (eventRect.left + eventRect.width / 2 - eventPanelsContainer.getBoundingClientRect().left) / scale + (targetX - parseFloat(eventElement.style.left || 0)); // Adjust for target pos
-        const eventCenterY = (eventRect.top + eventRect.height / 2 - eventPanelsContainer.getBoundingClientRect().top) / scale + (targetY - parseFloat(eventElement.style.top || 0)); // Adjust for target pos
+    // Remove duplicates of this event (if already in DOM from previous snap)
+    const uniqueEvents = [...new Set(snappedEvents)];
+    const otherEvents = uniqueEvents.filter(e => e !== eventElement);
 
+    // Total number of snapped events (including dragged one)
+    const total = otherEvents.length + 1;
+    const angleStep = (2 * Math.PI) / total;
 
-        const dx = eventCenterX - otherCenterX;
-        const dy = eventCenterY - otherCenterY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+    // We'll position others evenly around the locked angle
+    let currentAngle = lockedAngle - angleStep * Math.floor(total / 2);
 
-        if (distance < REPEL_DISTANCE && distance > 0) {
-            const overlap = REPEL_DISTANCE - distance;
-            const pushFactor = (overlap / distance) * REPEL_STRENGTH; // Push stronger if closer
-            const pushX = dx * pushFactor;
-            const pushY = dy * pushFactor;
-
-            // Apply push to the event being snapped
-            targetX += pushX;
-            targetY += pushY;
-
-            // Optionally, push the *other* event slightly too
-            const otherTargetX = parseFloat(otherEvent.style.left || 0) - pushX * 0.3; // Weaker counter-push
-            const otherTargetY = parseFloat(otherEvent.style.top || 0) - pushY * 0.3;
-            otherEvent.style.transition = 'left 0.2s ease-out, top 0.2s ease-out'; // Smooth adjustment
-            otherEvent.style.left = `${otherTargetX}px`;
-            otherEvent.style.top = `${otherTargetY}px`;
-            otherEvent.style.transform = ''; // Clear transform if setting left/top
-            // Remove transition after a short delay
-             setTimeout(() => { otherEvent.style.transition = ''; }, 200);
+    let placed = 0;
+    for (let i = 0; i < total; i++) {
+        let el;
+        if (i === Math.floor(total / 2)) {
+            el = eventElement; // Dragged one goes in the center
+        } else {
+            el = otherEvents[placed++];
         }
-    });
 
+        const elWidth = el.offsetWidth;
+        const elHeight = el.offsetHeight;
 
-    // Apply the final (potentially repelled) position
-    eventElement.style.transition = 'left 0.25s ease-out, top 0.25s ease-out'; // Smooth snap animation
-    eventElement.style.left = `${targetX}px`;
-    eventElement.style.top = `${targetY}px`;
-    eventElement.style.transform = ''; // Clear transform when snapping to left/top
+        const targetX = nodeX + SNAP_RING_RADIUS * Math.cos(currentAngle) - elWidth / 2;
+        const targetY = nodeY + SNAP_RING_RADIUS * Math.sin(currentAngle) - elHeight / 2;
 
-    // Remove transition after animation
-    setTimeout(() => {
-        eventElement.style.transition = '';
-        // Update event data if needed
-        // findEventById(eventElement.dataset.eventId).x = targetX;
-        // findEventById(eventElement.dataset.eventId).y = targetY;
-    }, 250);
+        el.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
+        el.style.left = `${targetX}px`;
+        el.style.top = `${targetY}px`;
+        el.style.transform = '';
+
+        currentAngle += angleStep;
+
+        setTimeout(() => {
+            el.style.transition = '';
+        }, 300);
+    }
 }
 
 
@@ -428,9 +357,9 @@ export function renderGroupEvents(groupId) {
     container.innerHTML = '';
 
     if (!group.events.length && isMobile) {
-         container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
-         return;
-     }
+        container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
+        return;
+    }
 
 
     if (!isMobile) {
@@ -443,8 +372,8 @@ export function renderGroupEvents(groupId) {
         renderEventNodes(container);
 
         if (!group.events.length) {
-             container.innerHTML += '<p class="no-events-message" style="position:absolute; top: 50px; left: 50px; color: white;">No events for this group.</p>'; // Add message if no events
-             return;
+            container.innerHTML += '<p class="no-events-message" style="position:absolute; top: 50px; left: 50px; color: white;">No events for this group.</p>'; // Add message if no events
+            return;
         }
 
 
@@ -466,8 +395,8 @@ export function renderGroupEvents(groupId) {
         container.style.minHeight = '';
 
         if (!group.events.length) { // Already checked above, but safe
-             container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
-             return;
+            container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
+            return;
         }
 
         group.events.sort((a, b) => a.date - b.date);
@@ -475,7 +404,7 @@ export function renderGroupEvents(groupId) {
         group.events.forEach((event) => {
             // Create panel - CSS will handle stacking
             const panel = createEventPanel(event);
-             // Reset potentially conflicting desktop styles from createEventPanel
+            // Reset potentially conflicting desktop styles from createEventPanel
             panel.style.position = 'relative'; // Override absolute
             panel.style.left = 'auto';
             panel.style.top = 'auto';
