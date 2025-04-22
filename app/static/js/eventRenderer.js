@@ -357,7 +357,6 @@ export function renderGroupEvents(groupId) {
     container.innerHTML = '';
 
     if (!group.events.length && isMobile) {
-        container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
         return;
     }
 
@@ -372,7 +371,6 @@ export function renderGroupEvents(groupId) {
         renderEventNodes(container);
 
         if (!group.events.length) {
-            container.innerHTML += '<p class="no-events-message" style="position:absolute; top: 50px; left: 50px; color: white;">No events for this group.</p>'; // Add message if no events
             return;
         }
 
@@ -395,7 +393,6 @@ export function renderGroupEvents(groupId) {
         container.style.minHeight = '';
 
         if (!group.events.length) { // Already checked above, but safe
-            container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
             return;
         }
 

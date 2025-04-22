@@ -4,6 +4,10 @@ import { renderGroupEvents } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
 import { hookDemoButtons, hookEventFilterBar } from './eventActions.js';
 
+let panX = 0, panY = 0, scale = 1;
+const groupViewStates = new Map(); // key = groupId, value = { panX, panY, scale }
+const container = document.getElementById('event-panels-container');
+
 // --- Debounce Function ---
 function debounce(func, wait, immediate) {
     var timeout;
@@ -21,22 +25,20 @@ function debounce(func, wait, immediate) {
 };
 // --- End Debounce ---
 
+
+function applyTransform() {
+    container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+}
+
 function setupZoomAndPan() {
     const viewport = document.getElementById('collage-viewport');
-    const container = document.getElementById('event-panels-container');
     if (!viewport || !container) return;
 
-    let panX = 0, panY = 0;
-    let scale = 1;
     const minScale = 0.3;
     const maxScale = 2.5;
     const zoomFactor = 0.1;
     let isDragging = false;
     let startX, startY;
-
-    function applyTransform() {
-        container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-    }
 
     container.style.transformOrigin = '0 0';
 
@@ -116,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         groupListUL.addEventListener('click', (e) => {
             const li = e.target.closest('.group-item');
             if (!li) return;
+            console.log("lol");
 
             const groupId = li.dataset.groupId;
             const group = groupsData.find(g => g.id === groupId);
@@ -126,14 +129,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear zoom/pan state when switching groups
             const container = document.getElementById('event-panels-container');
             const viewport = document.getElementById('collage-viewport');
-            if (container) {
-                container.style.transform = 'scale(1.0)'; // Reset zoom
-                currentScale = 1.0;
+            const currentActiveGroup = groupListUL.querySelector('.group-item.active');
+            if (currentActiveGroup) {
+                const currentGroupId = currentActiveGroup.dataset.groupId;
+                groupViewStates.set(currentGroupId, { panX, panY, scale });
             }
-            if (viewport) { // Reset scroll
-                viewport.scrollLeft = 0;
-                viewport.scrollTop = 0;
+            const savedView = groupViewStates.get(groupId);
+            if (savedView) {
+                panX = savedView.panX;
+                panY = savedView.panY;
+                scale = savedView.scale;
+            } else {
+                panX = 0;
+                panY = 0;
+                scale = 1.0;
             }
+            applyTransform();
 
 
             if (isMobile) {
@@ -202,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('event-panels-container');
             if (container) {
                 container.style.transform = 'scale(1.0)';
-                currentScale = 1.0;
+                scale = 1.0; // Reset scale variable
             }
 
             let currentView = 'groups';
