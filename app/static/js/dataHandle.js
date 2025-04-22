@@ -12,6 +12,24 @@ eventNodes.push({
     y: 300
 });
 
+export function parseHash() {
+    const hash = location.hash.slice(1); // Remove "#"
+    const params = new URLSearchParams(hash);
+    return {
+        view: params.get("view") || "groups", // default view
+        groupId: params.get("groupId") || null
+    };
+}
+
+export function updateHash(view, groupId = null) {
+    const params = new URLSearchParams();
+    params.set("view", view);
+    if (view === "groups" && groupId) {
+        params.set("groupId", groupId);
+    }
+    location.hash = params.toString(); // replaces the current hash
+}
+
 export function attachGroupClickHandlers() {
     const groupItems = document.querySelectorAll('.group-item');
 
