@@ -11,26 +11,32 @@
       <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" type="text/css">
       {% block head %}{% endblock %}
 </head> 
-<body> 
+<body>
+      {% if not hide_nav %}
       <header class="top-nav glassy">
             <nav class="top-nav-left">
                   <a href="{{ url_for('index') }}">Home</a>
                   {% if current_user.is_anonymous %} 
                         <a href="{{ url_for('login') }}">Login</a> 
                   {% else %} 
-                        <a href="{{ url_for('planner') }}">Planner</a>
-                        <a href="{{ url_for('explore') }}">Explore</a>
                         <a href="{{ url_for('user', username=current_user.username) }}">Profile</a>
                         <a href="{{ url_for('logout') }}">Logout</a> 
                   {% endif %} 
+                  <a href="{{ url_for('planner') }}">Planner</a>
+                  <a href="{{ url_for('explore') }}">Explore</a>
 
             </nav>
+            
             <div class="top-nav-right">
-                  <button class="icon-button">🔍</button>
-                  <a href="{{ url_for('login') }}" class="icon-button">🔑</a>
                   <a href="{{ url_for('profile') }}" class="icon-button">👤</a>
+                  {% if current_user.is_authenticated %} 
+                  <!-- THIS NEEDS TO BE MOVED TO THE PROFILE PAGE -->
+                        <a id="logout-button" href="{{ url_for('logout') }}">Logout</a> 
+                  {% endif %}
+
             </div>
-      </header> 
+      </header>
+      {% endif %}
       {% with messages = get_flashed_messages() %} 
       {% if messages %} 
       <ul> 
@@ -40,6 +46,7 @@
       </ul> 
       {% endif %} 
       {% endwith %} 
+
       {% block content %}{% endblock %} 
-      </body> 
-</html> 
+</body> 
+</html>

@@ -87,7 +87,7 @@ def login():
         if not next_page or urlparse(next_page).netloc != '': 
             next_page = url_for('index') 
         return redirect(next_page) 
-    return render_template('login.html', title='Sign In', form=form) 
+    return render_template('login.html', title='Sign In', form=form, hide_nav=True) 
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -107,14 +107,17 @@ def logout():
     return redirect(url_for('index')) 
 
 @app.route('/profile')
+@login_required 
 def profile():
     return render_template('profile.html', user=user, groups=groups)
 
 @app.route('/explore')
+@login_required 
 def explore():
     return render_template('explore.html', groups=groups)
 
 @app.route('/planner')
+@login_required 
 def planner():
     return render_template('planner.html', groups=groups)
 

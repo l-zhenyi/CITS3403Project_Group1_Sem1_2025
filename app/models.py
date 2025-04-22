@@ -16,20 +16,20 @@ class User(UserMixin, db.Model):
     about_me: Mapped[str] = mapped_column(String(140))
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime)
 
-    def __repr__(self): 
-        return '<User {}>'.format(self.username)
-    
-    def set_password(self, password): 
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256') 
-
-    def check_password(self, password): 
-        return check_password_hash(self.password_hash, password) 
+    def __repr__(self) -> str:
+        return f"<User {self.username}>"
     
     def avatar(self, size): 
         digest = md5(self.email.lower().encode('utf-8')).hexdigest() 
         return 'https://www.gravatar.com/avatar/{}?d=identicon&s={}'.format( 
             digest, size)
 
-@login.user_loader 
-def load_user(id): 
-    return User.query.get(int(id)) 
+    def set_password(self, password: str) -> None:
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+
+    def check_password(self, password: str) -> bool:
+        return check_password_hash(self.password_hash, password)
+
+@login.user_loader
+def load_user(id: str) -> Optional[User]:
+    return db.session.get(User, int(id))
