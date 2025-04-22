@@ -25,7 +25,7 @@ export function attachGroupClickHandlers() {
             const name = li.querySelector('.group-name')?.textContent || 'Unnamed Group';
             const avatar = li.querySelector('img')?.src || '';
 
-            document.getElementById('active-group-name').textContent = `${name} Events`;
+            document.getElementById('active-group-name').textContent = name;
             document.getElementById('active-group-avatar').src = avatar;
 
             // Render events for this group
@@ -68,8 +68,10 @@ export async function loadGroups() {
 
     attachGroupClickHandlers();
 
-    // ✅ Call this *after* filling groupsData
     processAllEvents();
+
+    const firstLi = document.querySelector('.group-item');
+    if (firstLi) firstLi.click();
 }
 
 /**
