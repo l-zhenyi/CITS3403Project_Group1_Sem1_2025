@@ -2,6 +2,15 @@
 export let groupsData = [];
 export let allEventsData = [];
 export let eventsByDate = {};
+export let eventNodes = [];
+
+// Temporary default nodes
+eventNodes.push({
+    id: 'node_concerts',
+    label: 'Concerts',
+    x: 600,
+    y: 300
+});
 
 /**
  * Loads group data embedded in the HTML and prepares event date objects.

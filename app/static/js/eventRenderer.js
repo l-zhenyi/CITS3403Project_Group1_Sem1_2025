@@ -1,13 +1,330 @@
 // eventRenderer.js
-import { groupsData, allEventsData, eventsByDate } from './dataHandle.js';
-import { setupParallax, destroyParallax } from './parallax.js';
+import { groupsData, allEventsData, eventsByDate, eventNodes } from './dataHandle.js';
 
 const eventPanelsContainer = document.getElementById('event-panels-container');
 const calendarMonthYearEl = document.getElementById('calendar-month-year');
 const calendarGridEl = document.getElementById('calendar-grid');
 const eventListContainer = document.getElementById('event-list-container');
-const eventCollageArea = document.getElementById('event-collage');
-const eventsViewArea = document.getElementById('events-view');
+const collageViewport = document.getElementById('collage-viewport');
+
+// Radius to snap to node
+const SNAP_RADIUS = 400; // Increased slightly for easier snapping
+const SNAP_RING_RADIUS = 300; // radius from node center to snapped event center
+
+// --- Node Functions ---
+function renderEventNodes(container) {
+    if (!container) return;
+    container.querySelectorAll('.event-node').forEach(el => el.remove()); // Clear old nodes first
+    eventNodes.forEach(node => {
+        const nodeEl = createNodeElement(node);
+        container.appendChild(nodeEl);
+    });
+}
+
+function createNodeElement(node) {
+    const nodeEl = document.createElement('div');
+    nodeEl.className = 'event-node';
+    nodeEl.dataset.nodeId = node.id;
+    nodeEl.textContent = node.label;
+    nodeEl.style.position = 'absolute';
+    // Use transform for centering, makes position logic easier
+    nodeEl.style.left = `${node.x}px`;
+    nodeEl.style.top = `${node.y}px`;
+
+    // Make nodes draggable
+    makeDraggable(nodeEl, true); // Pass true to indicate it's a node
+    return nodeEl;
+}
+
+// --- Event Functions ---
+function createEventPanel(event) {
+    const panel = document.createElement('div');
+    panel.className = 'event-panel';
+    panel.dataset.eventId = event.id; // Add event ID for reference
+
+    const dateText = event.formatted_date || formatEventDateForDisplay(event.date);
+
+    panel.innerHTML = `
+        ${event.image_url ? `<img src="${event.image_url}" class="event-image" alt="${event.title}">` : ''}
+        <h3>${event.title}</h3>
+        <p class="event-details">${dateText} ${event.cost_display ? `| ${event.cost_display}` : ''}</p>
+        ${event.location ? `<p class="event-details">📍 ${event.location}</p>` : ''}
+        ${event.rsvp_status ? `<p class="event-rsvp">You are ${event.rsvp_status}</p>` : ''}
+        <div class="event-actions">
+            <button class="button accept">Accept</button>
+            <button class="button decline">Decline</button>
+        </div>
+    `;
+
+    // Initial random position (or load saved position later)
+    panel.style.position = 'absolute';
+    panel.style.left = `${event.x || Math.random() * (eventPanelsContainer.offsetWidth * 0.8 || 1600) + 50}px`;
+    panel.style.top = `${event.y || Math.random() * (eventPanelsContainer.offsetHeight * 0.8 || 1200) + 50}px`;
+    panel.dataset.isSnapped = "false"; // Track snap state
+
+    makeDraggable(panel);
+    return panel;
+}
+
+// --- Dragging Functions ---
+function makeDraggable(element, isNode = false) {
+    let isDragging = false;
+    let startX, startY, elementStartX, elementStartY; // Positions relative to container
+
+    // Use transform for smoother movement if possible, fallback to left/top
+    const useTransform = true;
+
+    element.addEventListener('mousedown', (e) => {
+        if (e.target !== element && !isNode) {
+            if (!element.contains(e.target) || ['BUTTON', 'IMG', 'A'].includes(e.target.tagName)) return;
+        }
+
+        e.stopPropagation();
+        isDragging = true;
+        element.classList.add('dragging');
+        element.classList.remove('snapped');
+        element.dataset.isSnapped = "false";
+        element.style.zIndex = isNode ? 5 : 1000;
+
+        const containerRect = eventPanelsContainer.getBoundingClientRect();
+        const currentScale = getCurrentZoomScale();
+
+        const elementRect = element.getBoundingClientRect();
+
+        // Positions relative to the container, scaled
+        startX = e.pageX;
+        startY = e.pageY;
+
+        elementStartX = (elementRect.left - containerRect.left) / currentScale;
+        elementStartY = (elementRect.top - containerRect.top) / currentScale;
+
+        // Clear transform if exists
+        element.style.transform = '';
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp, { once: true });
+    });
+
+    function onMouseMove(e) {
+        if (!isDragging) return;
+
+        const scale = getCurrentZoomScale();
+        const dx = (e.pageX - startX) / scale;
+        const dy = (e.pageY - startY) / scale;
+
+        const newX = elementStartX + dx;
+        const newY = elementStartY + dy;
+
+        element.style.left = `${newX}px`;
+        element.style.top = `${newY}px`;
+
+        // --- Snapping PREVIEW (only for event panels, not nodes) ---
+        if (!isNode) {
+            const closestNode = findClosestNode(element);
+            if (closestNode.node && closestNode.distance < SNAP_RADIUS) {
+                element.classList.add('snapped');
+            } else {
+                element.classList.remove('snapped');
+            }
+}
+    }
+
+    function onMouseUp(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        element.classList.remove('dragging', 'snap-preview');
+        element.style.zIndex = isNode ? 5 : 10; // Reset z-index (nodes below events)
+
+        document.removeEventListener('mousemove', onMouseMove);
+        // mouseup listener removed by {once: true}
+
+        // --- Final Position & Snapping Logic ---
+        // Get final position from transform or left/top
+        let finalX, finalY;
+        if (useTransform && element.style.transform) {
+            const match = element.style.transform.match(/translate\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+            if (match) {
+                finalX = parseFloat(match[1]);
+                finalY = parseFloat(match[2]);
+            } else { // Fallback
+                finalX = parseFloat(element.style.left || 0);
+                finalY = parseFloat(element.style.top || 0);
+            }
+        } else {
+            finalX = parseFloat(element.style.left || 0);
+            finalY = parseFloat(element.style.top || 0);
+        }
+
+        // Update node position in data array
+        if (isNode) {
+            const nodeId = element.dataset.nodeId;
+            const nodeData = eventNodes.find(n => n.id === nodeId);
+            if (nodeData) {
+                nodeData.x = finalX; // Store the final position
+                nodeData.y = finalY;
+                console.log(`Node ${nodeId} moved to ${finalX}, ${finalY}`);
+                // Apply final position definitively (transform might reset otherwise)
+                element.style.left = `${finalX}px`;
+                element.style.top = `${finalY}px`;
+                element.style.transform = ''; // Clear transform if setting left/top
+            }
+        } else {
+            // Check for snapping for EVENT panels
+            const closestNode = findClosestNode(element);
+            if (closestNode.node && closestNode.distance < SNAP_RADIUS) {
+                snapToNode(element, closestNode.node);
+            } else {
+                // Not snapping, just record its free position
+                element.dataset.isSnapped = "false";
+                element.dataset.snappedToNode = "";
+                // Update event data if needed (e.g., for saving state)
+                // findEventById(element.dataset.eventId).x = finalX;
+                // findEventById(element.dataset.eventId).y = finalY;
+
+                // Apply final position definitively
+                element.style.left = `${finalX}px`;
+                element.style.top = `${finalY}px`;
+                element.style.transform = ''; // Clear transform
+            }
+        }
+    }
+}
+
+function getCurrentZoomScale() {
+    if (!eventPanelsContainer) return 1;
+    const transform = eventPanelsContainer.style.transform;
+    const match = transform.match(/scale\(([\d.]+)\)/);
+    return match ? parseFloat(match[1]) : 1;
+}
+
+function findClosestNode(eventElement) {
+    const eventRect = eventElement.getBoundingClientRect(); // Position on screen
+    const containerRect = eventPanelsContainer.getBoundingClientRect();
+    const scale = getCurrentZoomScale();
+
+    // Calculate event center relative to the SCALED container
+    // Screen position - container screen position / scale = position within scaled container
+    const eventCenterX = (eventRect.left + eventRect.width / 2 - containerRect.left) / scale;
+    const eventCenterY = (eventRect.top + eventRect.height / 2 - containerRect.top) / scale;
+
+    let closestNode = null;
+    let minDistance = Infinity;
+
+    const nodes = eventPanelsContainer.querySelectorAll('.event-node');
+    nodes.forEach(node => {
+        // Node position is stored in its style.left/top (relative to container)
+        const nodeX = parseFloat(node.style.left || 0);
+        const nodeY = parseFloat(node.style.top || 0);
+
+        // No need for getBoundingClientRect for nodes if using style.left/top
+        // const nodeCenterX = nodeX + node.offsetWidth / 2; // Approximate center
+        // const nodeCenterY = nodeY + node.offsetHeight / 2;
+        const nodeCenterX = nodeX; // Style.left/top IS the center due to transform translate -50%
+        const nodeCenterY = nodeY;
+
+        const distance = Math.sqrt(
+            Math.pow(eventCenterX - nodeCenterX, 2) +
+            Math.pow(eventCenterY - nodeCenterY, 2)
+        );
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestNode = node;
+        }
+    });
+
+    return { node: closestNode, distance: minDistance };
+}
+
+function snapToNode(eventElement, nodeElement) {
+    const nodeId = nodeElement.dataset.nodeId;
+    const nodeX = parseFloat(nodeElement.style.left || 0);
+    const nodeY = parseFloat(nodeElement.style.top || 0);
+
+    const eventRect = eventElement.getBoundingClientRect();
+    const containerRect = eventPanelsContainer.getBoundingClientRect();
+    const scale = getCurrentZoomScale();
+
+    const eventCenterX = (eventRect.left + eventRect.width / 2 - containerRect.left) / scale;
+    const eventCenterY = (eventRect.top + eventRect.height / 2 - containerRect.top) / scale;
+
+    const dx = eventCenterX - nodeX;
+    const dy = eventCenterY - nodeY;
+    const lockedAngle = Math.atan2(dy, dx); // This angle should be respected
+
+    eventElement.classList.add('snapped');
+    eventElement.dataset.isSnapped = "true";
+    eventElement.dataset.snappedToNode = nodeId;
+    eventElement.style.zIndex = 9;
+
+    // Gather snapped events
+    const snappedEvents = Array.from(eventPanelsContainer.querySelectorAll(`.event-panel.snapped[data-snapped-to-node="${nodeId}"]`));
+
+    // Remove duplicates of this event (if already in DOM from previous snap)
+    const uniqueEvents = [...new Set(snappedEvents)];
+    const otherEvents = uniqueEvents.filter(e => e !== eventElement);
+
+    // Total number of snapped events (including dragged one)
+    const total = otherEvents.length + 1;
+    const angleStep = (2 * Math.PI) / total;
+
+    // We'll position others evenly around the locked angle
+    let currentAngle = lockedAngle - angleStep * Math.floor(total / 2);
+
+    let placed = 0;
+    for (let i = 0; i < total; i++) {
+        let el;
+        if (i === Math.floor(total / 2)) {
+            el = eventElement; // Dragged one goes in the center
+        } else {
+            el = otherEvents[placed++];
+        }
+
+        const elWidth = el.offsetWidth;
+        const elHeight = el.offsetHeight;
+
+        const targetX = nodeX + SNAP_RING_RADIUS * Math.cos(currentAngle) - elWidth / 2;
+        const targetY = nodeY + SNAP_RING_RADIUS * Math.sin(currentAngle) - elHeight / 2;
+
+        el.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
+        el.style.left = `${targetX}px`;
+        el.style.top = `${targetY}px`;
+        el.style.transform = '';
+
+        currentAngle += angleStep;
+
+        setTimeout(() => {
+            el.style.transition = '';
+        }, 300);
+    }
+}
+
+
+export function renderAllEventsList(filter = 'upcoming') {
+    if (!eventListContainer) return;
+    const now = new Date();
+
+    let filtered = allEventsData.filter(event => {
+        if (!event.date) return false;
+        if (filter === 'upcoming') return event.date >= now;
+        if (filter === 'past') return event.date < now;
+        return true;
+    });
+
+    filtered.sort((a, b) => filter === 'past' ? b.date - a.date : a.date - b.date);
+
+    eventListContainer.innerHTML = filtered.map(event => `
+        <div class="event-tile">
+            <h4>${event.title}</h4>
+            <p class="tile-detail">📅 ${formatEventDateForDisplay(event.date)}</p>
+            <p class="tile-detail">👥 ${event.group_name}</p>
+            <p class="tile-detail">📍 ${event.location || 'TBD'}</p>
+            <p class="tile-detail">✔️ RSVP: ${event.rsvp_status || 'Invited'}</p>
+        </div>
+    `).join('');
+
+    if (eventsViewArea) eventsViewArea.scrollTop = 0;
+}
 
 function formatEventDateForDisplay(date) {
     return date.toLocaleString(undefined, {
@@ -21,13 +338,9 @@ function formatEventDateForDisplay(date) {
 }
 
 export function renderGroupEvents(groupId) {
-    // Always destroy parallax first when rendering group events
-    destroyParallax();
-
     const container = document.getElementById('event-panels-container');
-    const collage = document.getElementById('event-collage'); // Keep this reference if needed elsewhere
-    if (!container || !collage) {
-        console.error("Event panels container or collage area not found.");
+    if (!container) {
+        console.error("Event panels container not found.");
         return;
     }
 
@@ -36,99 +349,72 @@ export function renderGroupEvents(groupId) {
         container.innerHTML = '<p class="no-events-message">Group not found.</p>';
         return;
     }
-    if (!group.events.length) {
-        container.innerHTML = '<p class="no-events-message">No events for this group.</p>';
-        // Clear any previous min-height
-        container.style.minHeight = '';
-        return;
-    }
-
-    container.innerHTML = ''; // Clear previous events
 
     // --- Mobile vs Desktop Check ---
     const isMobile = window.innerWidth <= 768;
 
+    // Clear container content (Events AND Nodes)
+    container.innerHTML = '';
+
+    if (!group.events.length && isMobile) {
+        return;
+    }
+
+
     if (!isMobile) {
         // --- Desktop Collage Layout ---
-        const verticalSpacing = 140;
-        const horizontalOffsets = ['12%', '40%', '68%']; // Loose 3-col layout
-        // Estimate height only needed for desktop collage to prevent early collapse
-        const estimatedHeight = 100 + group.events.length * verticalSpacing * 0.75;
-        container.style.minHeight = `${Math.max(400, estimatedHeight)}px`;
+        // Ensure container has a minimum size if needed, but allow it to grow
+        container.style.minWidth = '2000px';
+        container.style.minHeight = '1600px';
 
-        group.events.sort((a, b) => a.date - b.date);
+        // Render Nodes first (so they are behind events by default)
+        renderEventNodes(container);
 
-        group.events.forEach((event, index) => {
-            const panel = document.createElement('div');
-            panel.className = 'event-panel';
+        if (!group.events.length) {
+            return;
+        }
 
-            const dateText = event.formatted_date || formatEventDateForDisplay(event.date);
-            const rotateDeg = (Math.random() * 10 - 5).toFixed(1); // -5° to +5°
-            const left = horizontalOffsets[index % horizontalOffsets.length];
-            const top = `${60 + Math.floor(index / 3) * verticalSpacing}px`;
-            const baseTransform = `rotate(${rotateDeg}deg)`;
 
-            panel.innerHTML = `
-                ${event.image_url ? `<img src="${event.image_url}" class="event-image" alt="${event.title}">` : ''}
-                <h3>${event.title}</h3>
-                <p class="event-details">${dateText} ${event.cost_display ? `| ${event.cost_display}` : ''}</p>
-                ${event.location ? `<p class="event-details">📍 ${event.location}</p>` : ''}
-                ${event.rsvp_status ? `<p class="event-rsvp">You are ${event.rsvp_status}</p>` : ''}
-                <div class="event-actions">
-                    <button class="button accept">Accept</button>
-                    <button class="button decline">Decline</button>
-                </div>
-            `;
+        group.events.sort((a, b) => a.date - b.date); // Optional sort
 
-            panel.style.position = 'absolute';
-            panel.style.left = left;
-            panel.style.top = top;
-            panel.style.transform = baseTransform;
-            panel.dataset.originalTransform = baseTransform; // Needed by parallax
-
+        group.events.forEach((event) => {
+            const panel = createEventPanel(event);
             container.appendChild(panel);
+            // If event has saved snapped state, apply it visually (optional)
+            // if (event.snappedToNodeId) {
+            //     const nodeEl = container.querySelector(`.event-node[data-node-id="${event.snappedToNodeId}"]`);
+            //     if (nodeEl) snapToNode(panel, nodeEl); // Re-snap without animation?
+            // }
         });
-
-        // Setup parallax ONLY for desktop view
-        setupParallax('groups');
 
     } else {
         // --- Mobile Stacked Layout ---
-        // Clear any min-height from previous desktop renders
+        container.style.minWidth = ''; // Reset desktop styles
         container.style.minHeight = '';
+
+        if (!group.events.length) { // Already checked above, but safe
+            return;
+        }
 
         group.events.sort((a, b) => a.date - b.date);
 
         group.events.forEach((event) => {
-            const panel = document.createElement('div');
-            panel.className = 'event-panel'; // CSS overrides will handle styling
-
-            const dateText = event.formatted_date || formatEventDateForDisplay(event.date);
-
-            // Simpler innerHTML for mobile (no inline styles needed)
-            panel.innerHTML = `
-                ${event.image_url ? `<img src="${event.image_url}" class="event-image" alt="${event.title}">` : ''}
-                <h3>${event.title}</h3>
-                <p class="event-details">${dateText} ${event.cost_display ? `| ${event.cost_display}` : ''}</p>
-                ${event.location ? `<p class="event-details">📍 ${event.location}</p>` : ''}
-                ${event.rsvp_status ? `<p class="event-rsvp">You are ${event.rsvp_status}</p>` : ''}
-                <div class="event-actions">
-                    <button class="button accept">Accept</button>
-                    <button class="button decline">Decline</button>
-                </div>
-            `;
-
-            // NO absolute positioning, transforms, or dataset needed here
-            // CSS @media query handles layout
-
+            // Create panel - CSS will handle stacking
+            const panel = createEventPanel(event);
+            // Reset potentially conflicting desktop styles from createEventPanel
+            panel.style.position = 'relative'; // Override absolute
+            panel.style.left = 'auto';
+            panel.style.top = 'auto';
+            panel.style.transform = '';
+            panel.style.zIndex = 'auto';
+            panel.classList.remove('snapped');
+            panel.dataset.isSnapped = "false";
             container.appendChild(panel);
         });
-        // No parallax setup for mobile
     }
 }
 
 
-// ... (Keep renderCalendar and renderAllEventsList functions as they were) ...
 export function renderCalendar(year, month) {
     // Ensure elements exist
     if (!calendarGridEl || !calendarMonthYearEl) {
@@ -138,7 +424,7 @@ export function renderCalendar(year, month) {
 
     // --- Calculations ---
     const monthNames = ["January", "February", "March", "April", "May", "June",
-                        "July", "August", "September", "October", "November", "December"];
+        "July", "August", "September", "October", "November", "December"];
     const firstDayOfMonth = new Date(year, month, 1);
     const lastDayOfPrevMonth = new Date(year, month, 0);
     const lastDayOfCurrentMonth = new Date(year, month + 1, 0);
@@ -183,7 +469,7 @@ export function renderCalendar(year, month) {
             gridHtml += `<div class="event-marker"></div>`;
         });
         if (events.length > 3) {
-             gridHtml += `<div class="event-marker more-events">+</div>`; // Indicate more
+            gridHtml += `<div class="event-marker more-events">+</div>`; // Indicate more
         }
         gridHtml += `</div>`; // Close event-markers
         gridHtml += '</div>'; // Close calendar-cell
@@ -206,30 +492,4 @@ export function renderCalendar(year, month) {
     calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, 1fr)`;
     calendarGridEl.style.minHeight = ''; // Ensure dynamic height works
 
-}
-
-export function renderAllEventsList(filter = 'upcoming') {
-    if (!eventListContainer) return;
-    const now = new Date();
-
-    let filtered = allEventsData.filter(event => {
-        if (!event.date) return false;
-        if (filter === 'upcoming') return event.date >= now;
-        if (filter === 'past') return event.date < now;
-        return true;
-    });
-
-    filtered.sort((a, b) => filter === 'past' ? b.date - a.date : a.date - b.date);
-
-    eventListContainer.innerHTML = filtered.map(event => `
-        <div class="event-tile">
-            <h4>${event.title}</h4>
-            <p class="tile-detail">📅 ${formatEventDateForDisplay(event.date)}</p>
-            <p class="tile-detail">👥 ${event.group_name}</p>
-            <p class="tile-detail">📍 ${event.location || 'TBD'}</p>
-            <p class="tile-detail">✔️ RSVP: ${event.rsvp_status || 'Invited'}</p>
-        </div>
-    `).join('');
-
-    if (eventsViewArea) eventsViewArea.scrollTop = 0;
 }
