@@ -28,6 +28,8 @@
             </nav>
             
             <div class="top-nav-right">
+                  <button class="icon-button">🔍</button>
+                  <a href="{{ url_for('login') }}" class="icon-button">🔑</a>
                   <a href="{{ url_for('profile') }}" class="icon-button">👤</a>
                   {% if current_user.is_authenticated %} 
                   <!-- THIS NEEDS TO BE MOVED TO THE PROFILE PAGE -->
