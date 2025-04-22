@@ -381,6 +381,7 @@ export async function renderGroupEvents(groupId) {
 
     // --- Render Events ---
     events.forEach(event => {
+        event.date = new Date(event.date);
         const panel = createEventPanel(event); // uses event.x and event.y
         container.appendChild(panel);
     });

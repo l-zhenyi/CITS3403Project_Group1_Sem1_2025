@@ -91,7 +91,7 @@ class Event(db.Model):
         return {
             "id": self.id,
             "title": self.title,
-            "date": self.date.isoformat() if self.date else None,
+            "date": self.date.isoformat().replace('+00:00', '') + "Z" if self.date else None,
             "group_id": self.group_id,
             "location": self.location,
             "x": self.x,
