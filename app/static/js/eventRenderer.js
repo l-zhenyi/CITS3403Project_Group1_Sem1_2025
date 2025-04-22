@@ -127,13 +127,13 @@ function makeDraggable(element, isNode = false) {
             } else {
                 element.classList.remove('snapped');
             }
-}
+        }
     }
 
     function onMouseUp(e) {
         if (!isDragging) return;
         isDragging = false;
-        element.classList.remove('dragging', 'snap-preview');
+        element.classList.remove('dragging');
         element.style.zIndex = isNode ? 5 : 10; // Reset z-index (nodes below events)
 
         document.removeEventListener('mousemove', onMouseMove);
@@ -154,6 +154,26 @@ function makeDraggable(element, isNode = false) {
         } else {
             finalX = parseFloat(element.style.left || 0);
             finalY = parseFloat(element.style.top || 0);
+        }
+
+        if (!isNode) {
+            const eventId = element.dataset.eventId;
+            if (eventId) {
+                fetch(`/api/events/${eventId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        x: finalX,
+                        y: finalY
+                    })
+                }).then(res => {
+                    if (!res.ok) {
+                        console.warn("Failed to update event position");
+                    }
+                });
+            }
         }
 
         // Update node position in data array

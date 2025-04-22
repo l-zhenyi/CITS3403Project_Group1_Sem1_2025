@@ -145,3 +145,18 @@ def create_event(group_id):
     db.session.add(event)
     db.session.commit()
     return jsonify(event.to_dict()), 201
+
+@app.route('/api/events/<int:event_id>', methods=['PATCH'])
+def update_event_position(event_id):
+    data = request.get_json()
+    event = db.session.get(Event, event_id)
+    if not event:
+        return jsonify({"error": "Event not found"}), 404
+
+    if 'x' in data:
+        event.x = data['x']
+    if 'y' in data:
+        event.y = data['y']
+
+    db.session.commit()
+    return jsonify(event.to_dict())
