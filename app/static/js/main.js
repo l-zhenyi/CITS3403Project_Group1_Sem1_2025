@@ -1,5 +1,5 @@
 // main.js
-import { loadData, groupsData } from './dataHandle.js';
+import { loadGroups, groupsData } from './dataHandle.js';
 import { renderGroupEvents } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
 import { hookDemoButtons, hookEventFilterBar } from './eventActions.js';
@@ -97,7 +97,7 @@ window.addEventListener('mousemove', (e) => {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadData();
+    loadGroups();
     setupViewSwitching();
     hookDemoButtons();
     hookEventFilterBar();
@@ -190,12 +190,10 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('groups'); // Triggers initial render for desktop
         } else {
             switchView('groups'); // Show group list on mobile
-            if (activeGroupNameEl) activeGroupNameEl.textContent = `Select a Group`;
             if (activeGroupAvatarEl) activeGroupAvatarEl.src = '';
         }
     } else {
         const container = document.getElementById('event-panels-container');
-        if (container) container.innerHTML = '<p class="no-events-message">No groups available.</p>';
         if (activeGroupNameEl) activeGroupNameEl.textContent = 'No Groups';
     }
 

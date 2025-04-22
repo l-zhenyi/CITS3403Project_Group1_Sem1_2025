@@ -58,8 +58,9 @@ function createEventPanel(event) {
 
     // Initial random position (or load saved position later)
     panel.style.position = 'absolute';
-    panel.style.left = `${event.x || Math.random() * (eventPanelsContainer.offsetWidth * 0.8 || 1600) + 50}px`;
-    panel.style.top = `${event.y || Math.random() * (eventPanelsContainer.offsetHeight * 0.8 || 1200) + 50}px`;
+    console.log(event.x, event.y);
+    panel.style.left = `${event.x}px`;
+    panel.style.top = `${event.y}px`;
     panel.dataset.isSnapped = "false"; // Track snap state
 
     makeDraggable(panel);
@@ -337,81 +338,33 @@ function formatEventDateForDisplay(date) {
     });
 }
 
-export function renderGroupEvents(groupId) {
+export async function renderGroupEvents(groupId) {
     const container = document.getElementById('event-panels-container');
-    if (!container) {
-        console.error("Event panels container not found.");
-        return;
-    }
+    if (!container) return;
 
-    const group = groupsData.find(g => g.id === groupId);
-    if (!group) {
-        container.innerHTML = '<p class="no-events-message">Group not found.</p>';
-        return;
-    }
+    const res = await fetch(`/api/groups/${groupId}/events`);
+    const groupData = await res.json();
 
-    // --- Mobile vs Desktop Check ---
+    const { events, event_nodes } = groupData; // assume your API returns this structure
+
+    container.innerHTML = ''; // Clear previous content
+
+    // Optional: Add min size for the floating layout
+    container.style.minWidth = '2000px';
+    container.style.minHeight = '1600px';
+
+    // --- Render Nodes ---
+    event_nodes.forEach(node => {
+        const nodeEl = createNodeElement(node); // already defined
+        container.appendChild(nodeEl);
+    });
+
+    // --- Render Events ---
+    events.forEach(event => {
+        const panel = createEventPanel(event); // uses event.x and event.y
+        container.appendChild(panel);
+    });
     const isMobile = window.innerWidth <= 768;
-
-    // Clear container content (Events AND Nodes)
-    container.innerHTML = '';
-
-    if (!group.events.length && isMobile) {
-        return;
-    }
-
-
-    if (!isMobile) {
-        // --- Desktop Collage Layout ---
-        // Ensure container has a minimum size if needed, but allow it to grow
-        container.style.minWidth = '2000px';
-        container.style.minHeight = '1600px';
-
-        // Render Nodes first (so they are behind events by default)
-        renderEventNodes(container);
-
-        if (!group.events.length) {
-            return;
-        }
-
-
-        group.events.sort((a, b) => a.date - b.date); // Optional sort
-
-        group.events.forEach((event) => {
-            const panel = createEventPanel(event);
-            container.appendChild(panel);
-            // If event has saved snapped state, apply it visually (optional)
-            // if (event.snappedToNodeId) {
-            //     const nodeEl = container.querySelector(`.event-node[data-node-id="${event.snappedToNodeId}"]`);
-            //     if (nodeEl) snapToNode(panel, nodeEl); // Re-snap without animation?
-            // }
-        });
-
-    } else {
-        // --- Mobile Stacked Layout ---
-        container.style.minWidth = ''; // Reset desktop styles
-        container.style.minHeight = '';
-
-        if (!group.events.length) { // Already checked above, but safe
-            return;
-        }
-
-        group.events.sort((a, b) => a.date - b.date);
-
-        group.events.forEach((event) => {
-            // Create panel - CSS will handle stacking
-            const panel = createEventPanel(event);
-            // Reset potentially conflicting desktop styles from createEventPanel
-            panel.style.position = 'relative'; // Override absolute
-            panel.style.left = 'auto';
-            panel.style.top = 'auto';
-            panel.style.transform = '';
-            panel.style.zIndex = 'auto';
-            panel.classList.remove('snapped');
-            panel.dataset.isSnapped = "false";
-            container.appendChild(panel);
-        });
-    }
 }
 
 

@@ -12,30 +12,64 @@ eventNodes.push({
     y: 300
 });
 
-/**
- * Loads group data embedded in the HTML and prepares event date objects.
- */
-export function loadData() {
-    const groupDataElement = document.getElementById('group-data');
-    try {
-        groupsData = JSON.parse(groupDataElement?.textContent || '[]');
+export function attachGroupClickHandlers() {
+    const groupItems = document.querySelectorAll('.group-item');
 
-        groupsData.forEach(group => {
-            if (!Array.isArray(group.events)) group.events = [];
+    groupItems.forEach(li => {
+        li.addEventListener('click', () => {
+            // Set active class
+            document.querySelectorAll('.group-item').forEach(item => item.classList.remove('active'));
+            li.classList.add('active');
 
-            group.events.forEach(event => {
-                if (event.date_iso && !event.date) {
-                    event.date = new Date(event.date_iso);
-                }
-            });
+            // Update header
+            const name = li.querySelector('.group-name')?.textContent || 'Unnamed Group';
+            const avatar = li.querySelector('img')?.src || '';
+
+            document.getElementById('active-group-name').textContent = `${name} Events`;
+            document.getElementById('active-group-avatar').src = avatar;
+
+            // Render events for this group
+            const groupId = li.dataset.groupId;
+            if (groupId) {
+                import('./eventRenderer.js').then(mod => {
+                    mod.renderGroupEvents(groupId);
+                });
+            }
         });
+    });
+}
 
-        processAllEvents();
-        console.log(`Loaded ${groupsData.length} groups.`);
-    } catch (e) {
-        console.error("Error parsing embedded group data:", e);
-        groupsData = [];
-    }
+export async function loadGroups() {
+    const res = await fetch('/api/groups');
+    const groups = await res.json();
+
+    // ✅ Update the shared state
+    groupsData.length = 0;
+    groupsData.push(...groups);
+
+    const groupList = document.querySelector('.group-list-area ul');
+    if (!groupList) return;
+
+    groupList.innerHTML = '';
+
+    groups.forEach(group => {
+        const li = document.createElement('li');
+        li.classList.add('group-item');
+        li.dataset.groupId = group.id;
+        li.dataset.groupName = group.name;
+        li.dataset.groupAvatar = group.avatar_url;
+
+        li.innerHTML = `
+            <img src="${group.avatar_url}" class="group-avatar">
+            <span class="group-name">${group.name}</span>
+        `;
+        groupList.appendChild(li);
+    });
+
+    attachGroupClickHandlers();
+
+    // ✅ Call this *after* filling groupsData
+    processAllEvents();
 }
 
 /**
