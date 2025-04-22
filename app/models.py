@@ -3,14 +3,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from hashlib import md5 
 from datetime import datetime
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Integer, DateTime
+from typing import Annotated, Optional
 
 class User(UserMixin, db.Model): 
-    id = db.Column(db.Integer, primary_key=True) 
-    username = db.Column(db.String(64), index=True, unique=True) 
-    email = db.Column(db.String(120), index=True, unique=True) 
-    password_hash = db.Column(db.String(128)) 
-    about_me = db.Column(db.String(140)) 
-    last_active = db.Column(db.DateTime, default=datetime)
+    __tablename__ = "user"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), index=True, unique=True)
+    email: Mapped[str] = mapped_column(String(120), index=True, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(128))
+    about_me: Mapped[str] = mapped_column(String(140))
+    last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime)
 
     def __repr__(self): 
         return '<User {}>'.format(self.username)
