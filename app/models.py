@@ -5,7 +5,7 @@ from hashlib import md5
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Float, text
-from typing import Annotated, Optional
+from typing import Annotated, Optional, List
 
 class User(UserMixin, db.Model): 
     __tablename__ = "user"
@@ -37,53 +37,68 @@ def load_user(id: str) -> Optional[User]:
     return db.session.get(User, int(id))
 
 class Group(db.Model):
-    __tablename__ = 'groups'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
-    avatar_url = db.Column(db.String(255))
+    __tablename__ = "groups"
 
-    nodes = db.relationship("Node", back_populates="group", cascade="all, delete-orphan")
-    events = db.relationship("Event", back_populates="group", cascade="all, delete-orphan")
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    avatar_url: Mapped[str] = mapped_column(String(255), nullable=True)
+    about: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    members: Mapped[List["GroupMember"]] = relationship(
+        back_populates="group", cascade="all, delete-orphan"
+    )
+
+    events: Mapped[List["Event"]] = relationship(
+        back_populates="group", cascade="all, delete-orphan"
+    )
+
+    nodes: Mapped[List["Node"]] = relationship(
+        back_populates="group", cascade="all, delete-orphan"
+    )
 
     def to_dict(self, include_events=True, include_nodes=True):
         data = {
-            'id': self.id,
-            'name': self.name,
-            'avatar_url': self.avatar_url,
+            "id": self.id,
+            "name": self.name,
+            "avatar_url": self.avatar_url,
+            "about": self.about
         }
 
         if include_nodes:
-            data['event_nodes'] = [node.to_dict() for node in self.nodes]
+            data["event_nodes"] = [node.to_dict() for node in self.nodes]
 
         if include_events:
-            data['events'] = [event.to_dict() for event in self.events]
+            data["events"] = [event.to_dict() for event in self.events]
 
         return data
 
 
 class Node(db.Model):
-    __tablename__ = 'nodes'
-    id = db.Column(db.Integer, primary_key=True)
-    label = db.Column(db.String(100))
-    x = db.Column(db.Float)
-    y = db.Column(db.Float)
+    __tablename__ = "nodes"
 
-    group_id = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=False)
-    group = db.relationship("Group", back_populates="nodes")
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str] = mapped_column(String(100))
+    x: Mapped[float] = mapped_column(Float)
+    y: Mapped[float] = mapped_column(Float)
 
-    events = db.relationship("Event", back_populates="node", cascade="all, delete-orphan")
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"))
+    group: Mapped["Group"] = relationship(back_populates="nodes")
 
-    def to_dict(self, include_events=False):
+    events: Mapped[List["Event"]] = relationship(
+        back_populates="node", cascade="all, delete-orphan"
+    )
+
+    def to_dict(self, include_events: bool = False):
         data = {
-            'id': self.id,
-            'label': self.label,
-            'x': self.x,
-            'y': self.y,
-            'group_id': self.group_id,
+            "id": self.id,
+            "label": self.label,
+            "x": self.x,
+            "y": self.y,
+            "group_id": self.group_id,
         }
 
         if include_events:
-            data['events'] = [event.to_dict() for event in self.events]
+            data["events"] = [event.to_dict() for event in self.events]
 
         return data
 

@@ -11,21 +11,6 @@ const collageViewport = document.getElementById('collage-viewport');
 const SNAP_RADIUS = 400; // Increased slightly for easier snapping
 const SNAP_RING_RADIUS = 300; // radius from node center to snapped event center
 
-function createNodeElement(node) {
-    const nodeEl = document.createElement('div');
-    nodeEl.className = 'event-node';
-    nodeEl.dataset.nodeId = node.id;
-    nodeEl.textContent = node.label;
-    nodeEl.style.position = 'absolute';
-    // Use transform for centering, makes position logic easier
-    nodeEl.style.left = `${node.x}px`;
-    nodeEl.style.top = `${node.y}px`;
-
-    // Make nodes draggable
-    makeDraggable(nodeEl, true); // Pass true to indicate it's a node
-    return nodeEl;
-}
-
 function createEventPanel(event) {
     const panel = document.createElement('div');
     panel.className = 'event-panel';
@@ -479,4 +464,18 @@ export function renderCalendar(year, month) {
     calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, 1fr)`;
     calendarGridEl.style.minHeight = ''; // Ensure dynamic height works
 
+}
+
+export function createNodeElement(node) {
+    const el = document.createElement('div');
+    el.className = 'event-node';
+    el.dataset.nodeId = node.id;
+    el.style.left = `${node.x}px`;
+    el.style.top = `${node.y}px`;
+    el.textContent = node.label || 'Untitled';
+
+    // Optional: Make draggable (you likely already have this logic)
+    makeDraggable(el);
+
+    return el;
 }

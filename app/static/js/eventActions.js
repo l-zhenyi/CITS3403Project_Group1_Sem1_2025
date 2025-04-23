@@ -1,6 +1,6 @@
 // eventActions.js
 import { groupsData, processAllEvents } from './dataHandle.js';
-import { renderGroupEvents, renderAllEventsList, renderCalendar } from './eventRenderer.js';
+import { renderGroupEvents, renderAllEventsList, renderCalendar, createNodeElement } from './eventRenderer.js';
 
 let calendarDate = new Date();
 let currentEventFilter = 'upcoming';
@@ -182,4 +182,21 @@ export function hookEventFilterBar() {
             });
         });
     });
+}
+
+export async function createNodeAt(x, y, groupId) {
+    const res = await fetch(`/api/groups/${groupId}/nodes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            label: "New Node",
+            x: x,
+            y: y
+        })
+    });
+
+    const node = await res.json();
+
+    const nodeEl = createNodeElement(node);
+    document.getElementById('event-panels-container').appendChild(nodeEl);
 }

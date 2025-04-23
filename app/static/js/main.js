@@ -2,7 +2,7 @@
 import { loadGroups, groupsData, parseHash } from './dataHandle.js';
 import { renderGroupEvents } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
-import { hookDemoButtons, hookEventFilterBar } from './eventActions.js';
+import { hookDemoButtons, hookEventFilterBar, createNodeAt } from './eventActions.js';
 
 let panX = 0, panY = 0, scale = 1;
 const groupViewStates = new Map(); // key = groupId, value = { panX, panY, scale }
@@ -236,6 +236,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 250);
 
     window.addEventListener('resize', handleResize);
+    document.getElementById('event-panels-container')?.addEventListener('contextmenu', async (e) => {
+        e.preventDefault(); // prevent the default browser context menu
+
+        const container = e.currentTarget;
+        const activeLi = document.querySelector('.group-item.active');
+        const groupId = activeLi?.dataset.groupId;
+
+        const rect = container.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        await createNodeAt(clickX, clickY, groupId);
+    });
 
 
 }); // End DOMContentLoaded
