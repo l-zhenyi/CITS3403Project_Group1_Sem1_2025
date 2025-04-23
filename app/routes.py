@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash, request, session, j
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User, Group, GroupMember, Event, EventRSVP
+from app.models import User, Group, GroupMember, Event, EventRSVP, Node
 from urllib.parse import urlparse
 from datetime import datetime
 from dateutil.parser import isoparse
@@ -160,3 +160,33 @@ def update_event_position(event_id):
 
     db.session.commit()
     return jsonify(event.to_dict())
+
+@app.route('/api/groups/<int:group_id>/nodes', methods=['POST'])
+def create_node(group_id):
+    group = Group.query.get_or_404(group_id)
+    data = request.json
+
+    label = data.get('label', 'Untitled')
+    x = data.get('x', 400)
+    y = data.get('y', 300)
+
+    new_node = Node(label=label, x=x, y=y, group=group)
+    db.session.add(new_node)
+    db.session.commit()
+
+    return jsonify(new_node.to_dict()), 201
+
+@app.route('/api/nodes/<int:node_id>', methods=['PATCH'])
+def update_node(node_id):
+    node = Node.query.get_or_404(node_id)
+    data = request.json
+
+    if 'label' in data:
+        node.label = data['label']
+    if 'x' in data:
+        node.x = data['x']
+    if 'y' in data:
+        node.y = data['y']
+
+    db.session.commit()
+    return jsonify({'success': True})
