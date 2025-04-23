@@ -7,10 +7,6 @@ const calendarGridEl = document.getElementById('calendar-grid');
 const eventListContainer = document.getElementById('event-list-container');
 const collageViewport = document.getElementById('collage-viewport');
 
-// Radius to snap to node
-const SNAP_RADIUS = 400; // Increased slightly for easier snapping
-const SNAP_RING_RADIUS = 300; // radius from node center to snapped event center
-
 function createEventPanel(event) {
     const panel = document.createElement('div');
     panel.className = 'event-panel';
@@ -59,45 +55,33 @@ function createEventPanel(event) {
     panel.style.position = 'absolute';
     panel.style.left = `${event.x}px`;
     panel.style.top = `${event.y}px`;
-    panel.dataset.isSnapped = "false";
 
-    makeDraggable(panel);
+    // No dragging for event panels
     return panel;
 }
 
 // --- Dragging Functions ---
 function makeDraggable(element, isNode = false) {
-    let isDragging = false;
-    let startX, startY, elementStartX, elementStartY; // Positions relative to container
+    if (!isNode) return;
 
-    // Use transform for smoother movement if possible, fallback to left/top
-    const useTransform = true;
+    let isDragging = false;
+    let startX, startY, elementStartX, elementStartY;
 
     element.addEventListener('mousedown', (e) => {
-        if (e.target !== element && !isNode) {
-            if (!element.contains(e.target) || ['BUTTON', 'IMG', 'A'].includes(e.target.tagName)) return;
-        }
-
         e.stopPropagation();
         isDragging = true;
         element.classList.add('dragging');
-        element.classList.remove('snapped');
-        element.dataset.isSnapped = "false";
-        element.style.zIndex = isNode ? 5 : 1000;
+        element.style.zIndex = 1000;
 
         const containerRect = eventPanelsContainer.getBoundingClientRect();
         const currentScale = getCurrentZoomScale();
-
         const elementRect = element.getBoundingClientRect();
 
-        // Positions relative to the container, scaled
         startX = e.pageX;
         startY = e.pageY;
-
         elementStartX = (elementRect.left - containerRect.left) / currentScale;
         elementStartY = (elementRect.top - containerRect.top) / currentScale;
 
-        // Clear transform if exists
         element.style.transform = '';
 
         document.addEventListener('mousemove', onMouseMove);
@@ -116,96 +100,25 @@ function makeDraggable(element, isNode = false) {
 
         element.style.left = `${newX}px`;
         element.style.top = `${newY}px`;
-
-        // --- Snapping PREVIEW (only for event panels, not nodes) ---
-        if (!isNode) {
-            const closestNode = findClosestNode(element);
-            if (closestNode.node && closestNode.distance < SNAP_RADIUS) {
-                element.classList.add('snapped');
-            } else {
-                element.classList.remove('snapped');
-            }
-        }
     }
 
     function onMouseUp(e) {
         if (!isDragging) return;
         isDragging = false;
         element.classList.remove('dragging');
-        element.style.zIndex = isNode ? 5 : 10; // Reset z-index (nodes below events)
+        element.style.zIndex = 5;
 
         document.removeEventListener('mousemove', onMouseMove);
-        // mouseup listener removed by {once: true}
 
-        // --- Final Position & Snapping Logic ---
-        // Get final position from transform or left/top
-        let finalX, finalY;
-        if (useTransform && element.style.transform) {
-            const match = element.style.transform.match(/translate\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-            if (match) {
-                finalX = parseFloat(match[1]);
-                finalY = parseFloat(match[2]);
-            } else { // Fallback
-                finalX = parseFloat(element.style.left || 0);
-                finalY = parseFloat(element.style.top || 0);
-            }
-        } else {
-            finalX = parseFloat(element.style.left || 0);
-            finalY = parseFloat(element.style.top || 0);
-        }
+        const finalX = parseFloat(element.style.left || 0);
+        const finalY = parseFloat(element.style.top || 0);
 
-        if (!isNode) {
-            const eventId = element.dataset.eventId;
-            if (eventId) {
-                fetch(`/api/events/${eventId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        x: finalX,
-                        y: finalY
-                    })
-                }).then(res => {
-                    if (!res.ok) {
-                        console.warn("Failed to update event position");
-                    }
-                });
-            }
-        }
-
-        // Update node position in data array
-        if (isNode) {
-            const nodeId = element.dataset.nodeId;
-            const nodeData = eventNodes.find(n => n.id === nodeId);
-            if (nodeData) {
-                nodeData.x = finalX; // Store the final position
-                nodeData.y = finalY;
-                console.log(`Node ${nodeId} moved to ${finalX}, ${finalY}`);
-                // Apply final position definitively (transform might reset otherwise)
-                element.style.left = `${finalX}px`;
-                element.style.top = `${finalY}px`;
-                element.style.transform = ''; // Clear transform if setting left/top
-            }
-        } else {
-            // Check for snapping for EVENT panels
-            const closestNode = findClosestNode(element);
-            if (closestNode.node && closestNode.distance < SNAP_RADIUS) {
-                snapToNode(element, closestNode.node);
-            } else {
-                // Not snapping, just record its free position
-                element.dataset.isSnapped = "false";
-                element.dataset.snappedToNode = "";
-                // Update event data if needed (e.g., for saving state)
-                // findEventById(element.dataset.eventId).x = finalX;
-                // findEventById(element.dataset.eventId).y = finalY;
-
-                // Apply final position definitively
-                element.style.left = `${finalX}px`;
-                element.style.top = `${finalY}px`;
-                element.style.transform = ''; // Clear transform
-            }
-        }
+        const nodeId = element.dataset.nodeId;
+        fetch(`/api/nodes/${nodeId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ x: finalX, y: finalY })
+        }).catch(err => console.warn("Failed to update node position:", err));
     }
 }
 
@@ -216,107 +129,6 @@ function getCurrentZoomScale() {
     return match ? parseFloat(match[1]) : 1;
 }
 
-function findClosestNode(eventElement) {
-    const eventRect = eventElement.getBoundingClientRect(); // Position on screen
-    const containerRect = eventPanelsContainer.getBoundingClientRect();
-    const scale = getCurrentZoomScale();
-
-    // Calculate event center relative to the SCALED container
-    // Screen position - container screen position / scale = position within scaled container
-    const eventCenterX = (eventRect.left + eventRect.width / 2 - containerRect.left) / scale;
-    const eventCenterY = (eventRect.top + eventRect.height / 2 - containerRect.top) / scale;
-
-    let closestNode = null;
-    let minDistance = Infinity;
-
-    const nodes = eventPanelsContainer.querySelectorAll('.event-node');
-    nodes.forEach(node => {
-        // Node position is stored in its style.left/top (relative to container)
-        const nodeX = parseFloat(node.style.left || 0);
-        const nodeY = parseFloat(node.style.top || 0);
-
-        // No need for getBoundingClientRect for nodes if using style.left/top
-        // const nodeCenterX = nodeX + node.offsetWidth / 2; // Approximate center
-        // const nodeCenterY = nodeY + node.offsetHeight / 2;
-        const nodeCenterX = nodeX; // Style.left/top IS the center due to transform translate -50%
-        const nodeCenterY = nodeY;
-
-        const distance = Math.sqrt(
-            Math.pow(eventCenterX - nodeCenterX, 2) +
-            Math.pow(eventCenterY - nodeCenterY, 2)
-        );
-
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestNode = node;
-        }
-    });
-
-    return { node: closestNode, distance: minDistance };
-}
-
-function snapToNode(eventElement, nodeElement) {
-    const nodeId = nodeElement.dataset.nodeId;
-    const nodeX = parseFloat(nodeElement.style.left || 0);
-    const nodeY = parseFloat(nodeElement.style.top || 0);
-
-    const eventRect = eventElement.getBoundingClientRect();
-    const containerRect = eventPanelsContainer.getBoundingClientRect();
-    const scale = getCurrentZoomScale();
-
-    const eventCenterX = (eventRect.left + eventRect.width / 2 - containerRect.left) / scale;
-    const eventCenterY = (eventRect.top + eventRect.height / 2 - containerRect.top) / scale;
-
-    const dx = eventCenterX - nodeX;
-    const dy = eventCenterY - nodeY;
-    const lockedAngle = Math.atan2(dy, dx); // This angle should be respected
-
-    eventElement.classList.add('snapped');
-    eventElement.dataset.isSnapped = "true";
-    eventElement.dataset.snappedToNode = nodeId;
-    eventElement.style.zIndex = 9;
-
-    // Gather snapped events
-    const snappedEvents = Array.from(eventPanelsContainer.querySelectorAll(`.event-panel.snapped[data-snapped-to-node="${nodeId}"]`));
-
-    // Remove duplicates of this event (if already in DOM from previous snap)
-    const uniqueEvents = [...new Set(snappedEvents)];
-    const otherEvents = uniqueEvents.filter(e => e !== eventElement);
-
-    // Total number of snapped events (including dragged one)
-    const total = otherEvents.length + 1;
-    const angleStep = (2 * Math.PI) / total;
-
-    // We'll position others evenly around the locked angle
-    let currentAngle = lockedAngle - angleStep * Math.floor(total / 2);
-
-    let placed = 0;
-    for (let i = 0; i < total; i++) {
-        let el;
-        if (i === Math.floor(total / 2)) {
-            el = eventElement; // Dragged one goes in the center
-        } else {
-            el = otherEvents[placed++];
-        }
-
-        const elWidth = el.offsetWidth;
-        const elHeight = el.offsetHeight;
-
-        const targetX = nodeX + SNAP_RING_RADIUS * Math.cos(currentAngle) - elWidth / 2;
-        const targetY = nodeY + SNAP_RING_RADIUS * Math.sin(currentAngle) - elHeight / 2;
-
-        el.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
-        el.style.left = `${targetX}px`;
-        el.style.top = `${targetY}px`;
-        el.style.transform = '';
-
-        currentAngle += angleStep;
-
-        setTimeout(() => {
-            el.style.transition = '';
-        }, 300);
-    }
-}
 
 
 export function renderAllEventsList(filter = 'upcoming') {
@@ -363,24 +175,23 @@ export async function renderGroupEvents(groupId) {
     const res = await fetch(`/api/groups/${groupId}/events`);
     const groupData = await res.json();
 
-    const { events, event_nodes } = groupData; // assume your API returns this structure
+    const { events, event_nodes } = groupData;
 
-    container.innerHTML = ''; // Clear previous content
+    container.innerHTML = '';
 
-    // Optional: Add min size for the floating layout
     container.style.minWidth = '2000px';
     container.style.minHeight = '1600px';
 
     // --- Render Nodes ---
     event_nodes.forEach(node => {
-        const nodeEl = createNodeElement(node); // already defined
+        const nodeEl = createNodeElement(node);
         container.appendChild(nodeEl);
     });
 
     // --- Render Events ---
     events.forEach(event => {
         event.date = new Date(event.date);
-        const panel = createEventPanel(event); // uses event.x and event.y
+        const panel = createEventPanel(event);
         container.appendChild(panel);
     });
     const isMobile = window.innerWidth <= 768;
@@ -474,8 +285,7 @@ export function createNodeElement(node) {
     el.style.top = `${node.y}px`;
     el.textContent = node.label || 'Untitled';
 
-    // Optional: Make draggable (you likely already have this logic)
-    makeDraggable(el);
+    makeDraggable(el, true);
 
     return el;
 }
