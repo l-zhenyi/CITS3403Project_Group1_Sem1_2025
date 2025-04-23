@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concentric Rings Layout V8 - Interlocking</title>
+    <style>
+        /* Styling remains minimal */
+        body { margin: 0; overflow: hidden; background-color: #111; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; color: #eee; }
+        canvas { display: block; background-color: #222; border-radius: 8px; }
+        #controls { position: absolute; top: 10px; left: 10px; background-color: rgba(50, 50, 50, 0.8); padding: 10px; border-radius: 6px; z-index: 50; font-size: 11px; max-height: 90vh; overflow-y: auto; }
+        #controls label { display: block; margin-top: 6px; }
+        #controls input[type="range"] { width: 120px; margin-right: 5px; vertical-align: middle;}
+        #controls span { display: inline-block; min-width: 25px; text-align: right; font-weight: bold; vertical-align: middle;}
+        #controls input[type="color"] { width: 25px; height: 18px; border: 1px solid #666; padding: 0; vertical-align: middle; margin-left: 3px; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h4>Layout</h4>
+        <label>Count:<input type="range" id="eventCount" min="1" max="400" step="1"> <span id="eventCountValue"></span></label>
+        <label>C. Radius:<input type="range" id="centralRadius" min="10" max="100" step="1"> <span id="centralRadiusValue"></span></label>
+        <label>O. Radius:<input type="range" id="orbitRadius" min="2" max="30" step="1"> <span id="orbitRadiusValue"></span></label>
+        <label>Padding:<input type="range" id="ringPadding" min="0" max="100" step="1"> <span id="ringPaddingValue"></span></label>
+        <label>Gap:<input type="range" id="ringGap" min="0" max="100" step="1"> <span id="ringGapValue"></span></label>
+        <label>Spacing:<input type="range" id="circleSpacing" min="0" max="50" step="1"> <span id="circleSpacingValue"></span></label>
+
+        <h4>Colors</h4>
+         <label>H. Start:<input type="range" id="colorHueStart" min="0" max="360" step="1"> <span id="colorHueStartValue"></span></label>
+         <label>H. End:<input type="range" id="colorHueEnd" min="0" max="360" step="1"> <span id="colorHueEndValue"></span></label>
+         <label>Central:<input type="color" id="centralColor"> </label>
+    </div>
+
+    <canvas id="orbitCanvas"></canvas>
+
+    <script>
+        // --- Configuration ---
+        const config = {
+            eventCount: 50,      // Default back to a multi-ring count
+            centralRadius: 40,
+            orbitRadius: 10,
+            ringPadding: 15,
+            ringGap: 15,
+            circleSpacing: 5,
+            colorHueStart: 200,
+            colorHueEnd: 300,
+            colorSaturation: 70,
+            colorLightness: 60,
+            centralColor: '#FFFFFF',
+            _anglePaddingMultiplier: 1.05
+        };
+
+        // --- Sample Data Generation ---
+        let events = [];
+        function generateEvents(count) { events = Array.from({ length: count }, (_, i) => ({ id: i, name: `Item ${i + 1}` })); }
+
+        // --- Canvas Setup ---
+        const canvas = document.getElementById('orbitCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth * 0.95;
+        canvas.height = window.innerHeight * 0.95;
+        let centerX = canvas.width / 2;
+        let centerY = canvas.height / 2;
+
+        // --- State Variables ---
+        let orbitingCircles = [];
+        let centralCircle = null;
+
+        // --- Helper Functions ---
+        function distance(x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1; return Math.sqrt(dx * dx + dy * dy); }
+        function getHue(normalizedAngle) {
+             const hueRange = config.colorHueEnd - config.colorHueStart;
+             let hue;
+             if (hueRange < 0) { hue = (config.colorHueStart + normalizedAngle * (360 + hueRange)) % 360; }
+             else { hue = (config.colorHueStart + normalizedAngle * hueRange) % 360; }
+             return hue < 0 ? hue + 360 : hue;
+        }
+        function calculateRingCapacity(ringIndex) {
+             const orbitRadius = config.centralRadius + config.ringPadding + config.orbitRadius +
+                               (ringIndex - 1) * (config.orbitRadius * 2 + config.ringGap);
+             if (orbitRadius <= 0) return 0;
+             const halfAngle = Math.asin(Math.min(1, (config.orbitRadius + config.circleSpacing / 2) / orbitRadius));
+             if (isNaN(halfAngle) || halfAngle <= 0) return 1;
+             const anglePerCircleRad = 2 * halfAngle * config._anglePaddingMultiplier;
+             const capacity = Math.max(1, Math.floor(2 * Math.PI / anglePerCircleRad));
+             return capacity;
+        }
+
+        // --- Layout Calculation (V8 - Added Interlocking) ---
+        function calculateLayout(eventData) {
+            orbitingCircles = [];
+            const totalEvents = eventData.length;
+            centralCircle = { isCentral: true, x: centerX, y: centerY, radius: config.centralRadius, color: config.centralColor };
+            if (totalEvents === 0) { draw(); return; }
+
+            const maxCapacityRing1 = calculateRingCapacity(1);
+            let ringPlan = [];
+
+            // --- Mode 1: Sequential Fill ---
+            if (totalEvents < maxCapacityRing1) {
+                const orbitRadius = config.centralRadius + config.ringPadding + config.orbitRadius;
+                const halfAngle = Math.asin(Math.min(1, (config.orbitRadius + config.circleSpacing / 2) / orbitRadius));
+                const angleStep = (isNaN(halfAngle) || halfAngle <= 0) ? Math.PI / 6 : (2 * halfAngle * config._anglePaddingMultiplier);
+                for (let i = 0; i < totalEvents; i++) {
+                    const angle = i * angleStep;
+                    const x = centerX + orbitRadius * Math.cos(angle);
+                    const y = centerY + orbitRadius * Math.sin(angle);
+                    const normalizedAngle = (angle + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2);
+                    const hue = getHue(normalizedAngle);
+                    const color = `hsla(${hue}, ${config.colorSaturation}%, ${config.colorLightness}%, 0.9)`;
+                    orbitingCircles.push({
+                        data: eventData[i], radius: config.orbitRadius, x: x, y: y, angle: angle, ringIndex: 1, color: color,
+                    });
+                }
+            }
+            // --- Mode 2: Full Rings ---
+            else {
+                let ringCapacities = []; let cumulativeCapacity = 0; let numRingsNeeded = 0;
+                let currentRingIndex = 1;
+                while (cumulativeCapacity < totalEvents) { // 1. Determine rings needed
+                    const capacity = calculateRingCapacity(currentRingIndex);
+                    if (capacity <= 0) break;
+                    ringCapacities.push(capacity); cumulativeCapacity += capacity;
+                    numRingsNeeded++; currentRingIndex++;
+                    if (currentRingIndex > 50) { console.error("Max rings exceeded"); break; }
+                }
+
+                let circlesPerRing = new Array(numRingsNeeded).fill(0); // 2. Distribute events
+                let totalCapacityForNeededRings = ringCapacities.slice(0, numRingsNeeded).reduce((sum, cap) => sum + cap, 0);
+                let assignedSoFar = 0; let remainders = [];
+                for (let i = 0; i < numRingsNeeded; i++) {
+                    const idealShare = (ringCapacities[i] / totalCapacityForNeededRings) * totalEvents;
+                    circlesPerRing[i] = Math.floor(idealShare);
+                    remainders.push({ index: i, remainder: idealShare - circlesPerRing[i] });
+                    assignedSoFar += circlesPerRing[i];
+                }
+                remainders.sort((a, b) => b.remainder - a.remainder);
+                let remainingToAssign = totalEvents - assignedSoFar;
+                for (let i = 0; i < remainingToAssign; i++) { circlesPerRing[remainders[i % remainders.length].index]++; }
+                while(circlesPerRing[0] < maxCapacityRing1 && numRingsNeeded > 1) { // Enforce ring 1 capacity
+                    let foundDonor = false;
+                    for(let i = numRingsNeeded - 1; i > 0; i--) { if(circlesPerRing[i] > 1) { circlesPerRing[i]--; circlesPerRing[0]++; foundDonor = true; break; } }
+                    if (!foundDonor) break;
+                }
+
+                for (let i = 0; i < numRingsNeeded; i++) { // 3. Create ringPlan
+                     if (circlesPerRing[i] <= 0) continue;
+                     const ringIndex = i + 1;
+                     const orbitRadius = config.centralRadius + config.ringPadding + config.orbitRadius + i * (config.orbitRadius * 2 + config.ringGap);
+                     ringPlan.push({ ringIndex: ringIndex, numCircles: circlesPerRing[i], orbitRadius: orbitRadius });
+                }
+
+                // 4. Place circles based on the ringPlan (with staggering)
+                let eventIndex = 0;
+                ringPlan.forEach(plan => {
+                    if (plan.numCircles <= 0) return; // Should not happen if step 3 is correct, but safety
+                    const angleStep = (2 * Math.PI) / plan.numCircles;
+
+                    // --- Apply Staggering Offset ---
+                    // Offset even-numbered rings (2, 4, ...) by half an angle step
+                    const startAngle = (plan.ringIndex % 2 === 0) ? angleStep / 2 : 0;
+                    // -----------------------------
+
+                    for (let i = 0; i < plan.numCircles; i++) {
+                        if (eventIndex >= totalEvents) break;
+
+                        const angle = startAngle + i * angleStep; // Use startAngle now
+                        const x = centerX + plan.orbitRadius * Math.cos(angle);
+                        const y = centerY + plan.orbitRadius * Math.sin(angle);
+                        const normalizedAngle = (angle + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2);
+                        const hue = getHue(normalizedAngle);
+                        const color = `hsla(${hue}, ${config.colorSaturation}%, ${config.colorLightness}%, 0.9)`;
+
+                        orbitingCircles.push({
+                            data: eventData[eventIndex], radius: config.orbitRadius, x: x, y: y, angle: angle, ringIndex: plan.ringIndex, color: color,
+                        });
+                        eventIndex++;
+                    }
+                });
+            } // End Mode 2
+
+            draw();
+        }
+
+
+        // --- Drawing (No changes) ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (centralCircle) {
+                ctx.beginPath(); ctx.arc(centralCircle.x, centralCircle.y, centralCircle.radius, 0, Math.PI * 2);
+                ctx.fillStyle = centralCircle.color; ctx.fill();
+            }
+            orbitingCircles.forEach(circle => {
+                ctx.beginPath(); ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+                ctx.fillStyle = circle.color; ctx.fill();
+            });
+        }
+
+        // --- Slider Setup (No changes) ---
+        function setupSliders() {
+            const sliders = [
+                { id: 'eventCount', configKey: 'eventCount', isFloat: false, needsLayout: true, needsEventRegen: true },
+                { id: 'centralRadius', configKey: 'centralRadius', isFloat: false, needsLayout: true },
+                { id: 'orbitRadius', configKey: 'orbitRadius', isFloat: false, needsLayout: true },
+                { id: 'ringPadding', configKey: 'ringPadding', isFloat: false, needsLayout: true },
+                { id: 'ringGap', configKey: 'ringGap', isFloat: false, needsLayout: true },
+                { id: 'circleSpacing', configKey: 'circleSpacing', isFloat: false, needsLayout: true },
+                { id: 'colorHueStart', configKey: 'colorHueStart', isFloat: false, needsLayout: false },
+                { id: 'colorHueEnd', configKey: 'colorHueEnd', isFloat: false, needsLayout: false },
+            ];
+             const colorPickers = [ { id: 'centralColor', configKey: 'centralColor', needsLayout: false }, ];
+             sliders.forEach(s => { /* ... slider logic ... */
+                 const input = document.getElementById(s.id); const valueSpan = document.getElementById(`${s.id}Value`); if (!input || !valueSpan) return;
+                 input.value = config[s.configKey]; valueSpan.textContent = input.value;
+                 input.addEventListener('input', (e) => {
+                     const newValue = s.isFloat ? parseFloat(e.target.value) : parseInt(e.target.value, 10); config[s.configKey] = newValue; valueSpan.textContent = newValue.toFixed(s.isFloat ? 1 : 0);
+                     if (s.needsEventRegen) { generateEvents(config.eventCount); calculateLayout(events); } else if (s.needsLayout) { calculateLayout(events); } else {
+                          orbitingCircles.forEach(c => { const normalizedAngle = (c.angle + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2); const hue = getHue(normalizedAngle); c.color = `hsla(${hue}, ${config.colorSaturation}%, ${config.colorLightness}%, 0.9)`; });
+                          draw();
+                     }
+                 });
+             });
+             colorPickers.forEach(p => { /* ... color picker logic ... */
+                  const input = document.getElementById(p.id); if (!input) return; input.value = config[p.configKey];
+                  input.addEventListener('input', (e) => { config[p.configKey] = e.target.value; if(centralCircle) centralCircle.color = config.centralColor; draw(); });
+             });
+        }
+
+        // --- Window Resize Handling (No changes) ---
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth * 0.95; canvas.height = window.innerHeight * 0.95;
+            centerX = canvas.width / 2; centerY = canvas.height / 2;
+            calculateLayout(events);
+        });
+
+        // --- Initialization ---
+        generateEvents(config.eventCount);
+        setupSliders();
+        calculateLayout(events);
+
+    </script>
+</body>
+</html>
