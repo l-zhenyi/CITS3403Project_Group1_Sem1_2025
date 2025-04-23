@@ -304,3 +304,27 @@
         pointer-events: auto !important;
     }
 }
+
+.context-menu {
+    position: absolute;
+    background: rgba(30, 30, 35, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    padding: 8px 0;
+    z-index: 9999;
+    min-width: 180px;
+    backdrop-filter: blur(10px);
+    font-family: 'Inter', sans-serif;
+}
+
+.context-menu-option {
+    padding: 10px 16px;
+    color: #f0f0f5;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.context-menu-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}

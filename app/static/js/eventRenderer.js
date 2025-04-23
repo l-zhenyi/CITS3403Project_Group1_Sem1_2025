@@ -289,3 +289,98 @@ export function createNodeElement(node) {
 
     return el;
 }
+
+function createContextMenuElement() {
+    const menu = document.createElement('div');
+    menu.id = 'custom-context-menu';
+    menu.className = 'context-menu';
+    document.body.appendChild(menu);
+    return menu;
+}
+
+function getActiveGroupId() {
+    const activeLi = document.querySelector('.group-item.active');
+    return activeLi?.dataset.groupId;
+}
+
+function handleContextAction(label, x, y, nodeId) {
+    const groupId = getActiveGroupId(); // implement this if needed
+
+    if (label === 'Create Node') {
+        createNodeAt(x, y, groupId);
+    } else if (label === 'Create Event on Node') {
+        createEventAt(x, y, groupId, nodeId);
+    } else if (label === 'Create Event (Unattached)') {
+        createEventAt(x, y, groupId, null);
+    }
+}
+
+export function showContextMenu({ x, y, onNode, nodeId }) {
+    let menu = document.getElementById('custom-context-menu');
+    if (!menu) menu = createContextMenuElement();
+
+    menu.innerHTML = '';
+    const options = onNode
+        ? ['Create Event on Node']
+        : ['Create Node', 'Create Event (Unattached)'];
+
+    options.forEach(label => {
+        const option = document.createElement('div');
+        option.className = 'context-menu-option';
+        option.textContent = label;
+        option.onclick = () => {
+            menu.style.display = 'none';
+            handleContextAction(label, x, y, nodeId);
+        };
+        menu.appendChild(option);
+    });
+
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.display = 'block';
+}
+
+async function createNodeAt(x, y, groupId) {
+    try {
+        const res = await fetch(`/api/groups/${groupId}/nodes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                label: "New Node",
+                x: x,
+                y: y
+            })
+        });
+        if (!res.ok) throw new Error("Node creation failed");
+        const node = await res.json();
+        const el = createNodeElement(node);
+        document.getElementById('event-panels-container').appendChild(el);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function createEventAt(x, y, groupId, nodeId = null) {
+    try {
+        const res = await fetch(`/api/groups/${groupId}/events`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: "New Event",
+                date: new Date().toISOString(),
+                location: "TBD",
+                description: "Description goes here",
+                x: x,
+                y: y,
+                node_id: nodeId
+            })
+        });
+        if (!res.ok) throw new Error("Event creation failed");
+        const event = await res.json();
+        event.date = new Date(event.date); // parse it for render
+        const el = createEventPanel(event);
+        document.getElementById('event-panels-container').appendChild(el);
+    } catch (err) {
+        console.error(err);
+    }
+}
