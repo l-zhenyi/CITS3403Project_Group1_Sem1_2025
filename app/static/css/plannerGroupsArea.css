@@ -281,94 +281,6 @@
     min-height: 1600px;
     /* Leave space for floating layout */
 }
-
-/* Individual Event Panel Styling (Desktop Collage View) */
-.event-panel {
-    /* Positioning & Box Model */
-    position: absolute;
-    /* Key for collage layout */
-    width: 320px;
-    /* Fixed width for collage */
-    min-height: 210px;
-    /* Minimum height */
-    padding: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 18px;
-    display: flex;
-    /* Use flex for internal layout */
-    flex-direction: column;
-    /* Stack content vertically */
-
-    /* Visual */
-
-}
-
-.event-panel:hover {
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
-    transform: translateY(-3px) scale(1.01);
-    /* Subtle lift effect */
-}
-
-.event-image {
-    /* Box Model */
-    width: 100%;
-    /* Fill panel width */
-    height: 100px;
-    /* Fixed height */
-    margin-bottom: 14px;
-    border-radius: 12px;
-    flex-shrink: 0;
-    /* Prevent image shrinking */
-
-    /* Visual */
-    object-fit: cover;
-    opacity: 0.95;
-    /* Slightly subdued */
-}
-
-.event-panel h3 {
-    /* Box Model */
-    margin-bottom: 5px;
-
-    /* Typography */
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: #fff;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
-}
-
-.event-details {
-    /* Box Model */
-    margin-bottom: 8px;
-
-    /* Typography */
-    font-size: 0.9rem;
-    color: #e5e5ea;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
-}
-
-.event-rsvp {
-    /* Box Model */
-    margin-bottom: 14px;
-
-    /* Typography */
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #BBE1FA;
-    /* Lighter blue, distinct */
-    text-shadow: none;
-}
-
-.event-actions {
-    /* Box Model */
-    display: flex;
-    margin-top: auto;
-    /* Push actions to the bottom */
-    flex-shrink: 0;
-    /* Prevent shrinking */
-    gap: 10px;
-}
-
 .back-button {
     /* Box Model */
     display: none;
@@ -812,41 +724,6 @@
         /* Remove debug background */
     }
 
-    .event-panel {
-        position: relative !important;
-        /* Override absolute */
-        left: auto !important;
-        top: auto !important;
-        width: 100% !important;
-        max-width: 450px;
-        margin: 0 auto 15px auto !important;
-        /* Center and add bottom margin */
-        transform: none !important;
-        /* Remove desktop transforms */
-        opacity: 1 !important;
-        min-height: auto;
-        padding: 15px;
-        border-radius: 14px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(20px) saturate(120%);
-        cursor: default !important;
-        /* No dragging on mobile */
-        user-select: text;
-        /* Allow text selection */
-        z-index: auto;
-    }
-
-    .event-panel:hover {
-        transform: none !important;
-        /* Disable hover transform */
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
-    }
-
-    /* Hide nodes on mobile */
-    .event-node {
-        display: none;
-    }
-
     /* ... (Keep existing mobile flex layout rules for .planner-pane switching) ... */
 
     /* Ensure collage area content scrolls correctly on mobile when active */
@@ -942,64 +819,68 @@
     }
 }
 
-/* Individual Event Panel Styling (Desktop Collage View) */
+/* Circular Panel */
 .event-panel {
-    /* Positioning & Box Model */
-    position: absolute !important;
-    width: 320px;
-    min-height: 210px;
-    padding: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 18px;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    overflow: hidden;
+    position: absolute;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: rgba(200, 200, 210, 0.15);
+    backdrop-filter: blur(8px) saturate(120%);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Background Image */
+.event-panel .event-image {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease, filter 0.4s ease;
+    z-index: 0;
+}
+
+/* Full overlay */
+.event-panel .event-info-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
-    z-index: 10;
-    /* Above nodes */
-
-    /* Visual */
-    background: rgba(170, 170, 175, 0.85);
-    backdrop-filter: blur(30px) saturate(130%);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.28);
-    /* transform-style: preserve-3d; REMOVED - interferes with simple translate */
-    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-        box-shadow 0.3s ease,
-        opacity 0.3s ease;
-    /* Keep opacity transition */
-    cursor: grab;
-    /* Draggable */
-    user-select: none;
-    /* Prevent text selection during drag */
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    text-align: center;
+    padding: 10px;
+    opacity: 0;
+    z-index: 1;
+    transition: opacity 0.3s ease, background 0.3s ease;
+    font-size: 0.85rem;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
 }
 
-/* Wiggle on hover, but NOT when dragging or snapped */
+/* Hover effects */
 .event-panel:hover {
-    animation: wiggle 0.4s ease-in-out infinite;
-    /* Override potential transform from dragging JS */
-    transform: translateY(-3px) scale(1.01) !important;
-    /* Add lift effect */
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+    transform: scale(1.08);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Style while dragging */
-.event-panel.dragging {
-    cursor: grabbing;
-    opacity: 0.85;
-    /* Slight transparency when dragging */
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-    /* Bigger shadow */
-    /* Transform is handled by JS */
-    z-index: 1000;
-    /* Ensure on top */
+.event-panel:hover .event-image {
+    transform: scale(1.15);
+    filter: blur(2px);
 }
 
-
-/* Style when snapped */
-.event-panel.snapped {
-    box-shadow: inset 0 0 8px rgba(0, 180, 255, 0.3),
-        0 0 15px 4px rgba(0, 180, 255, 0.4),
-        /* Outer halo */
-        0 8px 20px rgba(0, 0, 0, 0.25);
-    z-index: 9;
+.event-panel:hover .event-info-overlay {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.35);
 }
 
 /* ... (Keep .event-image, h3, .event-details, .event-rsvp, .event-actions styles) ... */
@@ -1044,49 +925,6 @@
 /* --- Mobile Specific Adjustments --- */
 @media (max-width: 768px) {
     /* ... (Keep existing mobile overrides for layout switching etc.) ... */
-
-    /* Override Event Panel for Mobile Stacked View */
-    .event-panel {
-        /* Reset ALL desktop-specific interactive styles */
-        position: relative !important;
-        left: auto !important;
-        top: auto !important;
-        width: 100% !important;
-        max-width: 450px;
-        margin: 0 auto 15px auto !important;
-        transform: none !important;
-        opacity: 1 !important;
-        min-height: auto;
-        padding: 15px;
-        border-radius: 14px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(20px) saturate(120%);
-        cursor: default !important;
-        /* Not draggable */
-        user-select: text;
-        /* Allow text selection */
-        z-index: auto !important;
-        animation: none !important;
-        /* Disable wiggle */
-    }
-
-    .event-panel:hover {
-        transform: none !important;
-        /* Disable hover transform */
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25) !important;
-        /* Remove halo/wiggle effect */
-        animation: none !important;
-    }
-
-    .event-panel.dragging,
-    .event-panel.snapped,
-    .event-panel.snap-preview {
-        /* Reset visual states */
-        opacity: 1 !important;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important;
-        outline: none !important;
-    }
-
     /* Hide nodes on mobile */
     .event-node {
         display: none !important;

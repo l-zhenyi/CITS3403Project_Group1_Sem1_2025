@@ -1,5 +1,5 @@
 // eventRenderer.js
-import { groupsData, allEventsData, eventsByDate, eventNodes } from './dataHandle.js';
+import { groupsData, allEventsData, eventsByDate } from './dataHandle.js';
 
 const eventPanelsContainer = document.getElementById('event-panels-container');
 const calendarMonthYearEl = document.getElementById('calendar-month-year');
@@ -10,16 +10,6 @@ const collageViewport = document.getElementById('collage-viewport');
 // Radius to snap to node
 const SNAP_RADIUS = 400; // Increased slightly for easier snapping
 const SNAP_RING_RADIUS = 300; // radius from node center to snapped event center
-
-// --- Node Functions ---
-function renderEventNodes(container) {
-    if (!container) return;
-    container.querySelectorAll('.event-node').forEach(el => el.remove()); // Clear old nodes first
-    eventNodes.forEach(node => {
-        const nodeEl = createNodeElement(node);
-        container.appendChild(nodeEl);
-    });
-}
 
 function createNodeElement(node) {
     const nodeEl = document.createElement('div');
@@ -36,32 +26,55 @@ function createNodeElement(node) {
     return nodeEl;
 }
 
-// --- Event Functions ---
 function createEventPanel(event) {
     const panel = document.createElement('div');
     panel.className = 'event-panel';
-    panel.dataset.eventId = event.id; // Add event ID for reference
+    panel.dataset.eventId = event.id;
 
     const dateText = event.formatted_date || formatEventDateForDisplay(event.date);
 
-    panel.innerHTML = `
-        ${event.image_url ? `<img src="${event.image_url}" class="event-image" alt="${event.title}">` : ''}
-        <h3>${event.title}</h3>
-        <p class="event-details">${dateText} ${event.cost_display ? `| ${event.cost_display}` : ''}</p>
-        ${event.location ? `<p class="event-details">📍 ${event.location}</p>` : ''}
-        ${event.rsvp_status ? `<p class="event-rsvp">You are ${event.rsvp_status}</p>` : ''}
-        <div class="event-actions">
-            <button class="button accept">Accept</button>
-            <button class="button decline">Decline</button>
-        </div>
+    // Image element (covers entire panel)
+    const image = document.createElement('img');
+    image.className = 'event-image';
+    image.alt = event.title;
+    image.src = event.image_url || 'https://via.placeholder.com/150x150?text=Event';
+
+    // Info overlay
+    const infoOverlay = document.createElement('div');
+    infoOverlay.className = 'event-info-overlay';
+    infoOverlay.innerHTML = `
+        <div class="event-name">${event.title}</div>
+        ${event.location ? `<div class="event-location">📍 ${event.location}</div>` : ''}
+        <div class="event-details">${dateText}${event.cost_display ? ` | ${event.cost_display}` : ''}</div>
     `;
 
-    // Initial random position (or load saved position later)
+    // Optional RSVP (can be styled later)
+    if (event.rsvp_status) {
+        const rsvp = document.createElement('div');
+        rsvp.className = 'event-rsvp';
+        rsvp.textContent = `You are ${event.rsvp_status}`;
+        infoOverlay.appendChild(rsvp);
+    }
+
+    // Append everything to panel
+    panel.appendChild(image);
+    panel.appendChild(infoOverlay);
+
+    // Optional buttons (kept invisible for now)
+    const actions = document.createElement('div');
+    actions.className = 'event-actions';
+    actions.style.display = 'none'; // Hide for now
+    actions.innerHTML = `
+        <button class="button accept">Accept</button>
+        <button class="button decline">Decline</button>
+    `;
+    panel.appendChild(actions);
+
+    // Position
     panel.style.position = 'absolute';
-    console.log(event.x, event.y);
     panel.style.left = `${event.x}px`;
     panel.style.top = `${event.y}px`;
-    panel.dataset.isSnapped = "false"; // Track snap state
+    panel.dataset.isSnapped = "false";
 
     makeDraggable(panel);
     return panel;
