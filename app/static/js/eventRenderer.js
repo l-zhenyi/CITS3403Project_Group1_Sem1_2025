@@ -77,10 +77,13 @@ function makeDraggable(element, isNode = false) {
         const currentScale = getCurrentZoomScale();
         const elementRect = element.getBoundingClientRect();
 
+        const offsetX = e.offsetX;
+        const offsetY = e.offsetY;
+
         startX = e.pageX;
         startY = e.pageY;
-        elementStartX = (elementRect.left - containerRect.left) / currentScale;
-        elementStartY = (elementRect.top - containerRect.top) / currentScale;
+        elementStartX = (element.offsetLeft || 0) - offsetX;
+        elementStartY = (element.offsetTop || 0) - offsetY;
 
         element.style.transform = '';
 
@@ -175,7 +178,7 @@ export async function renderGroupEvents(groupId) {
     const res = await fetch(`/api/groups/${groupId}/events`);
     const groupData = await res.json();
 
-    const { events, event_nodes } = groupData;
+    const { events, nodes } = groupData;
 
     container.innerHTML = '';
 
@@ -183,7 +186,7 @@ export async function renderGroupEvents(groupId) {
     container.style.minHeight = '1600px';
 
     // --- Render Nodes ---
-    event_nodes.forEach(node => {
+    nodes.forEach(node => {
         const nodeEl = createNodeElement(node);
         container.appendChild(nodeEl);
     });
@@ -303,15 +306,26 @@ function getActiveGroupId() {
     return activeLi?.dataset.groupId;
 }
 
+function getRelativeCoordsToContainer(x, y) {
+    const container = document.getElementById('event-panels-container');
+    const rect = container.getBoundingClientRect();
+    const scale = getCurrentZoomScale();
+    return {
+        x: (x - rect.left) / scale,
+        y: (y - rect.top) / scale
+    };
+}
+
 function handleContextAction(label, x, y, nodeId) {
-    const groupId = getActiveGroupId(); // implement this if needed
+    const groupId = getActiveGroupId();
+    const { x: relX, y: relY } = getRelativeCoordsToContainer(x, y);
 
     if (label === 'Create Node') {
-        createNodeAt(x, y, groupId);
+        createNodeAt(relX, relY, groupId);
     } else if (label === 'Create Event on Node') {
-        createEventAt(x, y, groupId, nodeId);
+        createEventAt(relX, relY, groupId, nodeId);
     } else if (label === 'Create Event (Unattached)') {
-        createEventAt(x, y, groupId, null);
+        createEventAt(relX, relY, groupId, null);
     }
 }
 

@@ -99,12 +99,12 @@ def get_group_events(group_id):
         event.to_dict() for event in group.events
     ]
     nodes = [
-        node.to_dict() for node in group.event_nodes
-    ] if hasattr(group, "event_nodes") else []
+        node.to_dict() for node in group.nodes
+    ] if hasattr(group, "nodes") else []
 
     return jsonify({
         "events": events,
-        "event_nodes": nodes
+        "nodes": nodes
     })
 
 @app.route('/api/groups', methods=['POST'])
