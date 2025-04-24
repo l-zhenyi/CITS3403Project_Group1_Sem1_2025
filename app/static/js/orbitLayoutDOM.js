@@ -5,10 +5,10 @@ console.log("[OrbitLayoutDOM Strict Class v5] Module Loaded.");
 
 // --- Configuration (Defaults from v_FINAL3) ---
 const defaultConfig = {
-  N: 12, centralRadius: 60, ringPadding: 20, ringGap: 8,
+  N: 12, centralRadius: 60, ringPadding: 10, ringGap: 8,
   circleSpacing: 4, minCircleRadius: 2, hoverScale: 3.0,
   animationSpeed: 0.1, repulsionPadding: 4, repulsionIterations: 5,
-  nudgeFactor: 0.02, // This was the default in v_FINAL3
+  nudgeFactor: 0.02, 
 };
 
 // --- Helper Functions (Remain outside the class) ---
@@ -70,22 +70,26 @@ export class OrbitLayoutManager {
     }
 
 
-    // ***** REVERTED CENTER CALCULATION to match v_FINAL3 *****
-    // Calculate center based ONLY on offsetLeft/offsetTop
+    // ***** CENTER & RADIUS CALCULATION (accurate geometry) *****
     const nodeLayoutX = this.nodeEl.offsetLeft;
     const nodeLayoutY = this.nodeEl.offsetTop;
-    // Ignore width/height for center calculation, use top-left corner as origin
     this.nodeCenterX = nodeLayoutX;
     this.nodeCenterY = nodeLayoutY;
 
-    // Use config.centralRadius for the central node's collision size (measured from top-left origin)
-    this.centralNodeCollisionRadius = this.config.centralRadius;
-    this.nodeInfo = { centerX: this.nodeCenterX, centerY: this.nodeCenterY, radius: this.centralNodeCollisionRadius };
+    // Compute an effective collision radius: at least half of the node’s bounding box,
+    // but allow config.centralRadius to enlarge it if the caller wishes.
+    const autoRadius = Math.max(this.nodeEl.offsetWidth, this.nodeEl.offsetHeight) / 2;
+    this.centralNodeCollisionRadius = Math.max(autoRadius, this.config.centralRadius || 0);
 
-    console.log(`[OrbitLayoutDOM v5] Node offsetLeft=${nodeLayoutX}, offsetTop=${nodeLayoutY}`);
-    console.log(`[OrbitLayoutDOM v5] Calculated Node Center (top-left): X=${this.nodeCenterX.toFixed(2)}, Y=${this.nodeCenterY.toFixed(2)}`);
-    console.log(`[OrbitLayoutDOM v5] Using Central Node Collision Radius: ${this.centralNodeCollisionRadius}`);
-    // ***** END REVERTED CENTER CALCULATION *****
+    // Keep config and geometry in sync so later layout maths use the same value
+    this.config.centralRadius = this.centralNodeCollisionRadius;
+
+    this.nodeInfo = {
+      centerX: this.nodeCenterX,
+      centerY: this.nodeCenterY,
+      radius: this.centralNodeCollisionRadius
+    };
+    // ***** END CENTER & RADIUS CALCULATION *****
 
 
     // === Core Layout Logic (Identical structure to v_FINAL3) ===
@@ -241,16 +245,24 @@ export class OrbitLayoutManager {
     const nudgeFactor = this.config.nudgeFactor; // Default 0.02 from config
     elementsData.forEach(data => {
       if (!data.isHovered) {
-        // Calculate distance from potentially collision-adjusted target to initial
-        const distToInitial = distance(data.targetX, data.targetY, data.initialX, data.initialY);
-        // Only nudge if it hasn't been pushed far away by collisions already
-        // Using the same threshold condition as v_FINAL3
         data.targetX = lerp(data.targetX, data.initialX, nudgeFactor);
         data.targetY = lerp(data.targetY, data.initialY, nudgeFactor);
       }
       // Hovered elements do NOT get nudged back - they stay where collision pushed them
     });
     // ***** END NUDGE LOGIC *****
+
+    // --- Ensure elements are fully outside the central node after all iterations ---
+    elementsData.forEach(data => {
+      const elRadius = data.initialRadius * data.targetScale;
+      const dist = distance(centralX, centralY, data.targetX, data.targetY);
+      const requiredDist = centralRadius + elRadius + padding;
+      if (dist < requiredDist) {
+        const angle = Math.atan2(data.targetY - centralY, data.targetX - centralX) || 0;
+        data.targetX = centralX + Math.cos(angle) * requiredDist;
+        data.targetY = centralY + Math.sin(angle) * requiredDist;
+      }
+    });
   }
 
   // --- Animation Loop (Structure identical to v_FINAL3, using instance state) ---
@@ -352,11 +364,6 @@ export class OrbitLayoutManager {
       if (!data || !data.isHovered) { return; }
 
       data.isHovered = false;
-      // Reset self back towards initial state (v_FINAL3 logic)
-      data.targetScale = 1;
-      data.targetX = data.initialX;
-      data.targetY = data.initialY;
-
       // Reset ALL elements including self
       this.activeElements.forEach(el => {
         const otherData = this.elementDataStore.get(el);
