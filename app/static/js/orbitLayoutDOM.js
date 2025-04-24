@@ -73,8 +73,8 @@ export class OrbitLayoutManager {
     // ***** CENTER & RADIUS CALCULATION (accurate geometry) *****
     const nodeLayoutX = this.nodeEl.offsetLeft;
     const nodeLayoutY = this.nodeEl.offsetTop;
-    this.nodeCenterX = nodeLayoutX;
-    this.nodeCenterY = nodeLayoutY;
+    this.nodeCenterX = nodeLayoutX + this.nodeEl.offsetWidth / 2;
+    this.nodeCenterY = nodeLayoutY + this.nodeEl.offsetHeight / 2;
 
     // Compute an effective collision radius: at least half of the node’s bounding box,
     // but allow config.centralRadius to enlarge it if the caller wishes.

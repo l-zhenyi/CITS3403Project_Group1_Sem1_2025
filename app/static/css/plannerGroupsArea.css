@@ -313,22 +313,6 @@
     transform: scale(0.95);
 }
 
-.event-node {
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    color: #fff;
-    font-weight: 600;
-    text-align: center;
-    line-height: 120px;
-    font-size: 1.1rem;
-    backdrop-filter: blur(10px);
-    pointer-events: none;
-    /* We'll toggle this later for interactivity */
-    transform: translate(-50%, -50%);
-}
-
 /* --- Mobile Specific Adjustments --- */
 @media (max-width: 768px) {
     .group-list-area {
@@ -625,35 +609,6 @@
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
 }
 
-/* ... (Keep .event-image, h3, .event-details, .event-rsvp, .event-actions styles) ... */
-
-/* NEW: Event Node Styling */
-.event-node {
-    position: absolute;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: rgba(90, 150, 210, 0.5);
-    /* Distinct color */
-    border: 2px solid rgba(255, 255, 255, 0.6);
-    color: #fff;
-    font-weight: 600;
-    text-align: center;
-    line-height: 120px;
-    font-size: 1.1rem;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(15px) saturate(120%);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    /* Use transform to center precisely on coordinates */
-    transform: translate(-50%, -50%);
-    cursor: default;
-    /* Nodes themselves aren't draggable in this setup */
-    z-index: 0;
-    /* Below event panels */
-    pointer-events: none;
-    /* Don't interfere with event dragging/snapping */
-}
-
 
 /* --- Mobile Specific Adjustments --- */
 @media (max-width: 768px) {
@@ -893,7 +848,6 @@
     backdrop-filter: blur(15px) saturate(120%);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     /* Use transform to center precisely on coordinates */
-    /* transform: translate(-50%, -50%); -- Now handled by JS */
     /* Make nodes interactive and draggable */
     pointer-events: auto;
     cursor: grab;
