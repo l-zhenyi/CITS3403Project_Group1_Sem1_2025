@@ -20,7 +20,7 @@ class RegistrationForm(FlaskForm):
     )
     password = PasswordField(
         'Password',
-        validators=[DataRequired(), Length(min=6)]
+        validators=[DataRequired(), Length(min=3)] #Modified here (Can change)
     )
     password2 = PasswordField(
         'Confirm Password',
@@ -42,3 +42,6 @@ class EditProfileForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()]) 
     about_me = TextAreaField('About me', validators=[Length(min=0, max=140)]) 
     submit = SubmitField('Submit')
+
+class EmptyForm(FlaskForm): 
+    submit = SubmitField('Submit') 
