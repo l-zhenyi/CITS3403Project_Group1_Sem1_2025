@@ -315,8 +315,6 @@
 
 .event-node {
     position: absolute;
-    width: 120px;
-    height: 120px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.15);
     border: 2px solid rgba(255, 255, 255, 0.4);
@@ -625,8 +623,6 @@
 
 .event-panel:hover {
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
-    /* Keep transform for hover effect, drag logic uses style.left/top */
-    transform: translateY(-3px) scale(1.01);
 }
 
 /* ... (Keep .event-image, h3, .event-details, .event-rsvp, .event-actions styles) ... */
@@ -865,12 +861,6 @@
     transition: opacity 0.3s ease, background 0.3s ease;
     font-size: 0.85rem;
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
-}
-
-/* Hover effects */
-.event-panel:hover {
-    transform: scale(1.08);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .event-panel:hover .event-image {

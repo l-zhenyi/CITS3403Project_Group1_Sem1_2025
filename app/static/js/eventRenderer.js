@@ -254,13 +254,14 @@ export async function renderGroupEvents(groupId) {
             eventPanelsContainer.appendChild(panel);
         });
 
-        // --- Initial Layout After Rendering Everything ---
-        // Use the stored node elements for layout
         Object.entries(renderedNodes).forEach(([nodeId, nodeEl]) => {
-            const panelsForNode = eventPanelsContainer.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`);
+            const panelsForNode = Array.from(
+                eventPanelsContainer.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`)
+            );
+
             if (panelsForNode.length > 0) {
-                // Call layout WITH transition for the initial setup
-                layoutEventsAroundNodeDOM(nodeEl, Array.from(panelsForNode), true);
+                // Do layout first
+                layoutEventsAroundNodeDOM(nodeEl, panelsForNode, true);
             }
         });
 
@@ -452,8 +453,8 @@ async function createEventAt(x, y, groupId, nodeId = null) {
         });
 
         if (!res.ok) {
-             const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
-             throw new Error(`Event creation failed: ${errorData.detail || res.statusText}`);
+            const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(`Event creation failed: ${errorData.detail || res.statusText}`);
         }
 
         const event = await res.json();
