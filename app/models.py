@@ -2,21 +2,32 @@ from app import db, login
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from hashlib import md5 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Float, text
 from typing import Annotated, Optional, List
+
+followers = db.Table('followers',
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')), 
+    db.Column('followed_id', db.Integer, db.ForeignKey('user.id')) 
+) 
 
 class User(UserMixin, db.Model): 
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(64), index=True, unique=True)
     email: Mapped[str] = mapped_column(String(120), index=True, unique=True)
-    password_hash: Mapped[str] = mapped_column(String(128))
+    password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     about_me: Mapped[str] = mapped_column(String(140), nullable=True)
-    last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=True)
     groups = relationship("GroupMember", back_populates="user")
     rsvps = relationship("EventRSVP", back_populates="user")
+    posts: Mapped[list["Post"]] = relationship("Post", back_populates="author", lazy="dynamic")
+    followed = relationship( 
+        'User', secondary=followers, 
+        primaryjoin=(followers.c.follower_id == id), 
+        secondaryjoin=(followers.c.followed_id == id), 
+        backref=db.backref('followers', lazy='dynamic'), lazy='dynamic')
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
@@ -31,6 +42,39 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
+
+    def follow(self, user): 
+        if not self.is_following(user): 
+            self.followed.append(user) 
+
+    def unfollow(self, user): 
+        if self.is_following(user): 
+            self.followed.remove(user) 
+            
+    def is_following(self, user):
+        return self.followed.filter( 
+            followers.c.followed_id == user.id).count() > 0
+
+    def followed_posts(self): 
+        followed = Post.query.join( 
+            followers, (followers.c.followed_id == Post.user_id)).filter( 
+                followers.c.follower_id == self.id) 
+        own = Post.query.filter_by(user_id=self.id)
+        return followed.union(own).order_by(Post.timestamp.desc()) 
+
+class Post(db.Model):
+    __tablename__ = "post"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    body: Mapped[str] = mapped_column(String(140))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.now(timezone.utc))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('user.id'))
+    
+    # Relationship to User
+    author: Mapped["User"] = relationship("User", back_populates="posts")
+    
+    def __repr__(self):
+        return f"<Post {self.body}>"
 
 @login.user_loader
 def load_user(id: str) -> Optional[User]:
