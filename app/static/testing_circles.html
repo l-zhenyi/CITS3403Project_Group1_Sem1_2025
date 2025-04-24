@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concentric Rings V16 - Central Repulsion & Top Fill</title>
+    <title>Concentric Rings V21 - Consistent Angle Step</title>
     <style> /* Styling unchanged */
         body { margin: 0; overflow: hidden; background-color: #111; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; color: #eee; }
         canvas { display: block; background-color: #222; border-radius: 8px; cursor: pointer; }
@@ -17,7 +17,7 @@
     </style>
 </head>
 <body>
-     <div id="controls"> <!-- Controls unchanged -->
+     <div id="controls"> <!-- Controls using V15 names -->
         <h4>Layout</h4>
         <label>Count:<input type="range" id="eventCount" min="1" max="500" step="1"> <span id="eventCountValue"></span></label>
         <label>C. Radius:<input type="range" id="centralRadius" min="10" max="100" step="1"> <span id="centralRadiusValue"></span></label>
@@ -40,8 +40,8 @@
     <div id="tooltip"></div>
 
     <script>
-        // --- Configuration (Same as V15) ---
-        const config = { eventCount: 20, centralRadius: 30, circlesPerFullRing: 12, ringPadding: 10, ringGap: 8, circleSpacing: 4, colorHueStart: 180, colorHueEnd: 280, colorSaturation: 70, colorLightness: 60, centralColor: '#FFFFFF', hoverColor: '#FFFF00', hoverScale: 3.0, animationSpeed: 0.08, repulsionPadding: 4, repulsionIterations: 5, _anglePaddingMultiplier: 1.05, _minCircleRadius: 2, };
+        // --- Configuration (V15 Spacing Names) ---
+        const config = { eventCount: 80, centralRadius: 30, circlesPerFullRing: 12, ringPadding: 10, ringGap: 8, circleSpacing: 4, colorHueStart: 180, colorHueEnd: 280, colorSaturation: 70, colorLightness: 60, centralColor: '#FFFFFF', hoverColor: '#FFFF00', hoverScale: 3.0, animationSpeed: 0.08, repulsionPadding: 4, repulsionIterations: 5, _anglePaddingMultiplier: 1.05, _minCircleRadius: 2, };
 
         // --- Sample Data, Canvas, State (Same) ---
         let events = []; function generateEvents(count) { events = Array.from({ length: count }, (_, i) => ({ id: i, name: `Item ${i + 1}` })); }
@@ -56,7 +56,7 @@
         function distance(x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1; return Math.sqrt(dx * dx + dy * dy); }
         function getHue(normalizedAngle) { const hueRange = config.colorHueEnd - config.colorHueStart; let hue; if (hueRange < 0) { hue = (config.colorHueStart + normalizedAngle * (360 + hueRange)) % 360; } else { hue = (config.colorHueStart + normalizedAngle * hueRange) % 360; } return hue < 0 ? hue + 360 : hue; }
 
-        // --- Layout Calculation (V16 - Top Sequential Fill) ---
+        // --- Layout Calculation (V21 - Consistent Angle Step) ---
         function calculateLayout(eventData) {
             orbitingCircles = [];
             const N = config.circlesPerFullRing;
@@ -74,36 +74,38 @@
                 const isLastRing = (ringIndex === numRings);
                 const numCirclesInFullRing = N;
                 const numCirclesActualThisRing = isLastRing ? (totalEvents - eventIndex) : N;
-                const isPlacementFull = (numCirclesActualThisRing === N);
+                // const isPlacementFull = (numCirclesActualThisRing === N); // No longer needed for angle calc logic
 
                 if (numCirclesActualThisRing <= 0) break;
 
-                // --- Calculate Geometry ---
-                const estimatedRadiusForOrbit = config._minCircleRadius;
-                const currentOrbitRadius = lastOrbitRadius + lastCircleRadius + config.ringGap + estimatedRadiusForOrbit;
-                const circumference = 2 * Math.PI * currentOrbitRadius;
-                // Use N for consistent radius calculation
+                // --- Calculate Geometry (V19/V15 Style) ---
+                let estimatedOrbitRadius;
+                if (ringIndex === 1) { estimatedOrbitRadius = config.centralRadius + config.ringPadding + config._minCircleRadius; }
+                else { estimatedOrbitRadius = lastOrbitRadius + lastCircleRadius + config.ringGap + config._minCircleRadius; }
+                const circumference = 2 * Math.PI * estimatedOrbitRadius;
                 const circleRadius = Math.max(config._minCircleRadius, (circumference / numCirclesInFullRing - config.circleSpacing) / 2);
-                const finalOrbitRadius = lastOrbitRadius + lastCircleRadius + config.ringGap + circleRadius;
+                let finalOrbitRadius;
+                 if (ringIndex === 1) { finalOrbitRadius = config.centralRadius + config.ringPadding + circleRadius; }
+                 else { finalOrbitRadius = lastOrbitRadius + lastCircleRadius + config.ringGap + circleRadius; }
+                // --- / Geometry Calculation ---
 
-                // --- Determine Placement Angles ---
-                let angleStep;
-                let startAngle;
+                // --- Determine Placement Angles (V21 Style) ---
+                const topAngle = -Math.PI / 2; // Reference top
+                // ALWAYS calculate angleStep based on N for consistent spacing
+                const angleStep = (2 * Math.PI) / numCirclesInFullRing; // Use N!
 
-                if (isPlacementFull) { // Full ring placement
-                    angleStep = (2 * Math.PI) / numCirclesActualThisRing;
-                    startAngle = (ringIndex > 1 && ringIndex % 2 === 0) ? angleStep / 2 : 0; // Stagger
-                } else { // Partial ring (last one only)
-                    const halfAngle = Math.asin(Math.min(1, (circleRadius + config.circleSpacing / 2) / finalOrbitRadius));
-                    angleStep = (isNaN(halfAngle) || halfAngle <= 0) ? Math.PI / 6 : (2 * halfAngle * config._anglePaddingMultiplier); // Min step
-                    startAngle = -Math.PI / 2; // Start at the top
-                }
+                // Calculate startAngle based on top, applying stagger using the consistent angleStep
+                const startAngle = (ringIndex % 2 === 0) ? topAngle + angleStep / 2 : topAngle;
+                // --- / Angle Calculation ---
+
 
                 // --- Place Circles ---
+                // Loop only up to the actual number needed for this ring
                 for (let i = 0; i < numCirclesActualThisRing; i++) {
                     if (eventIndex >= totalEvents) break;
                     const eventItem = eventData[eventIndex];
-                    const angle = startAngle + i * angleStep; // Start from top for sequential
+                    // Calculate angle using the consistent angleStep
+                    const angle = startAngle + i * angleStep;
                     const x = centerX + finalOrbitRadius * Math.cos(angle);
                     const y = centerY + finalOrbitRadius * Math.sin(angle);
                     const normalizedAngle = (angle + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2);
@@ -112,78 +114,19 @@
                     orbitingCircles.push({ /* ... circle object setup ... */ data: eventItem, originalRadius: circleRadius, radius: circleRadius, targetRadius: circleRadius, x: x, y: y, targetX: x, targetY: y, originalX: x, originalY: y, angle: angle, ringIndex: ringIndex, color: color, originalColor: color, isHovered: false, });
                     eventIndex++;
                 }
-                lastOrbitRadius = finalOrbitRadius; lastCircleRadius = circleRadius;
+                // Update tracking variables for NEXT ring's calculation
+                lastOrbitRadius = finalOrbitRadius;
+                lastCircleRadius = circleRadius;
                 if (eventIndex >= totalEvents) break;
-            }
+            } // End ring loop
+
             currentlyHovered = null; if(tooltip) tooltip.style.display = 'none';
             draw();
         }
 
 
-        // --- Collision/Repulsion (V16 - Include Central Circle) ---
-        function resolveCollisions() {
-             if (config.repulsionIterations === 0 || !centralCircle) return; // Need central circle
-
-             // Combine central and orbiting for checks
-             const circlesToCheck = [centralCircle, ...orbitingCircles];
-
-            for (let iter = 0; iter < config.repulsionIterations; iter++) {
-                for (let i = 0; i < circlesToCheck.length; i++) {
-                    for (let j = i + 1; j < circlesToCheck.length; j++) {
-                        const c1 = circlesToCheck[i];
-                        const c2 = circlesToCheck[j];
-
-                        // Central circle's target radius should always be its original radius
-                        const c1TargetRadius = c1.isCentral ? c1.originalRadius : c1.targetRadius;
-                        const c2TargetRadius = c2.isCentral ? c2.originalRadius : c2.targetRadius;
-
-                        const targetDist = distance(c1.targetX, c1.targetY, c2.targetX, c2.targetY);
-                        const requiredDist = c1TargetRadius + c2TargetRadius + config.repulsionPadding;
-
-                        if (targetDist < requiredDist && targetDist > 0.01) {
-                            const overlap = requiredDist - targetDist;
-                            const angle = Math.atan2(c2.targetY - c1.targetY, c2.targetX - c1.targetX);
-
-                            // Determine push factors - central circle never moves
-                            const pushFactor1 = c1.isCentral || c1.isHovered ? 0 : 0.5;
-                            const pushFactor2 = c2.isCentral || c2.isHovered ? 0 : 0.5;
-
-                            // If one is central, the other takes the full push (if not hovered)
-                            if(c1.isCentral && !c2.isHovered) {
-                                 c2.targetX += Math.cos(angle) * overlap;
-                                 c2.targetY += Math.sin(angle) * overlap;
-                            } else if (c2.isCentral && !c1.isHovered) {
-                                 c1.targetX -= Math.cos(angle) * overlap;
-                                 c1.targetY -= Math.sin(angle) * overlap;
-                            }
-                            // If one is hovered (and not central), the other takes the full push
-                            else if (c1.isHovered && !c2.isCentral && !c2.isHovered) {
-                                 c2.targetX += Math.cos(angle) * overlap;
-                                 c2.targetY += Math.sin(angle) * overlap;
-                            } else if (c2.isHovered && !c1.isCentral && !c1.isHovered) {
-                                 c1.targetX -= Math.cos(angle) * overlap;
-                                 c1.targetY -= Math.sin(angle) * overlap;
-                            }
-                             // Otherwise (neither central nor hovered), apply pairwise push
-                             else if (!c1.isCentral && !c2.isCentral && !c1.isHovered && !c2.isHovered) {
-                                 c1.targetX -= Math.cos(angle) * overlap * pushFactor1; // 0.5
-                                 c1.targetY -= Math.sin(angle) * overlap * pushFactor1;
-                                 c2.targetX += Math.cos(angle) * overlap * pushFactor2; // 0.5
-                                 c2.targetY += Math.sin(angle) * overlap * pushFactor2;
-                             }
-                        }
-                    }
-                }
-            }
-            // Gentle pull back for orbiting circles only
-             orbitingCircles.forEach(c => {
-                 if (!c.isHovered) {
-                     c.targetX = lerp(c.targetX, c.originalX, 0.02);
-                     c.targetY = lerp(c.targetY, c.originalY, 0.02);
-                 }
-             });
-        }
-
+        // --- Collision/Repulsion (Unchanged - V16 logic) ---
+        function resolveCollisions() { /* ... Same pairwise repulsion including central ... */ if (config.repulsionIterations === 0 || !centralCircle) return; const circlesToCheck = [centralCircle, ...orbitingCircles]; for (let iter = 0; iter < config.repulsionIterations; iter++) { for (let i = 0; i < circlesToCheck.length; i++) { for (let j = i + 1; j < circlesToCheck.length; j++) { const c1 = circlesToCheck[i]; const c2 = circlesToCheck[j]; const c1TargetRadius = c1.isCentral ? c1.originalRadius : c1.targetRadius; const c2TargetRadius = c2.isCentral ? c2.originalRadius : c2.targetRadius; const targetDist = distance(c1.targetX, c1.targetY, c2.targetX, c2.targetY); const requiredDist = c1TargetRadius + c2TargetRadius + config.repulsionPadding; if (targetDist < requiredDist && targetDist > 0.01) { const overlap = requiredDist - targetDist; const angle = Math.atan2(c2.targetY - c1.targetY, c2.targetX - c1.targetX); const pushFactor1 = c1.isCentral || c1.isHovered ? 0 : 0.5; const pushFactor2 = c2.isCentral || c2.isHovered ? 0 : 0.5; if(c1.isCentral && !c2.isHovered) { c2.targetX += Math.cos(angle) * overlap; c2.targetY += Math.sin(angle) * overlap; } else if (c2.isCentral && !c1.isHovered) { c1.targetX -= Math.cos(angle) * overlap; c1.targetY -= Math.sin(angle) * overlap; } else if (c1.isHovered && !c2.isCentral && !c2.isHovered) { c2.targetX += Math.cos(angle) * overlap; c2.targetY += Math.sin(angle) * overlap; } else if (c2.isHovered && !c1.isCentral && !c1.isHovered) { c1.targetX -= Math.cos(angle) * overlap; c1.targetY -= Math.sin(angle) * overlap; } else if (!c1.isCentral && !c2.isCentral && !c1.isHovered && !c2.isHovered) { c1.targetX -= Math.cos(angle) * overlap * pushFactor1; c1.targetY -= Math.sin(angle) * overlap * pushFactor1; c2.targetX += Math.cos(angle) * overlap * pushFactor2; c2.targetY += Math.sin(angle) * overlap * pushFactor2; } } } } } orbitingCircles.forEach(c => { if (!c.isHovered) { c.targetX = lerp(c.targetX, c.originalX, 0.02); c.targetY = lerp(c.targetY, c.originalY, 0.02); } }); }
 
         // --- Update Logic (Unchanged) ---
         function updateCircles() { /* ... Same update logic ... */ let newlyHovered = null; if (isMouseOverCanvas) { for (let i = orbitingCircles.length - 1; i >= 0; i--) { const c = orbitingCircles[i]; if (distance(mousePos.x, mousePos.y, c.x, c.y) < c.radius) { newlyHovered = c; break; } } } if (newlyHovered !== currentlyHovered) { if (currentlyHovered) { /* No radius reset */ } orbitingCircles.forEach(c => { c.targetX = c.originalX; c.targetY = c.originalY; c.targetRadius = c.originalRadius; c.isHovered = false; }); if (newlyHovered) { newlyHovered.isHovered = true; newlyHovered.targetRadius = newlyHovered.originalRadius * config.hoverScale; newlyHovered.targetX = newlyHovered.originalX; newlyHovered.targetY = newlyHovered.originalY; currentlyHovered = newlyHovered; } else { currentlyHovered = null; } tooltip.style.display = currentlyHovered ? 'block' : 'none'; if (currentlyHovered) { tooltip.textContent = currentlyHovered.data.name; } } if (currentlyHovered) { tooltip.style.left = `${mousePos.x + 15}px`; tooltip.style.top = `${mousePos.y + 10}px`; } resolveCollisions(); if (currentlyHovered) { currentlyHovered.targetX = currentlyHovered.originalX; currentlyHovered.targetY = currentlyHovered.originalY; } [centralCircle, ...orbitingCircles].forEach(circle => { if (!circle) return; circle.x = lerp(circle.x, circle.targetX, config.animationSpeed); circle.y = lerp(circle.y, circle.targetY, config.animationSpeed); circle.radius = lerp(circle.radius, circle.targetRadius, config.animationSpeed); if (circle.isCentral) { circle.color = config.centralColor; circle.targetRadius = circle.originalRadius; /* Ensure central targetRadius stays correct */ } else { circle.color = circle.isHovered ? config.hoverColor : circle.originalColor; } }); }
@@ -191,13 +134,13 @@
         // --- Drawing (Unchanged) ---
         function draw() { /* ... Same drawing logic ... */ ctx.clearRect(0, 0, canvas.width, canvas.height); const nonHovered = orbitingCircles.filter(c => !c.isHovered); const hovered = orbitingCircles.filter(c => c.isHovered); nonHovered.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, Math.max(1, c.radius), 0, Math.PI * 2); ctx.fillStyle = c.color; ctx.fill(); }); if(centralCircle) { ctx.beginPath(); ctx.arc(centralCircle.x, centralCircle.y, Math.max(1, centralCircle.radius), 0, Math.PI * 2); ctx.fillStyle = centralCircle.color; ctx.fill(); } hovered.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, Math.max(1, c.radius), 0, Math.PI * 2); ctx.fillStyle = c.color; ctx.shadowColor = 'rgba(255, 255, 255, 0.6)'; ctx.shadowBlur = Math.max(5, c.radius * 0.6); ctx.fill(); ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }); }
 
-        // --- Animation Loop, Event Listeners, Slider Setup, Resize (Unchanged) ---
+        // --- Animation Loop, Event Listeners, Resize, Slider Setup (Unchanged) ---
         function animate() { updateCircles(); draw(); requestAnimationFrame(animate); }
         canvas.addEventListener('mousemove', (e) => { isMouseOverCanvas = true; const rect = canvas.getBoundingClientRect(); mousePos.x = e.clientX - rect.left; mousePos.y = e.clientY - rect.top; });
         canvas.addEventListener('mouseenter', () => { isMouseOverCanvas = true; });
         canvas.addEventListener('mouseleave', () => { isMouseOverCanvas = false; if (currentlyHovered) { currentlyHovered.isHovered = false; orbitingCircles.forEach(c => { c.targetX = c.originalX; c.targetY = c.originalY; c.targetRadius = c.originalRadius; c.isHovered = false; }); currentlyHovered = null; tooltip.style.display = 'none'; } });
         window.addEventListener('resize', () => { canvas.width = window.innerWidth * 0.98; canvas.height = window.innerHeight * 0.98; centerX = canvas.width / 2; centerY = canvas.height / 2; calculateLayout(events); });
-        function setupSliders() { /* ... Same slider setup ... */ const sliders = [ { id: 'eventCount', configKey: 'eventCount', isFloat: false, needsLayout: true, needsEventRegen: true }, { id: 'centralRadius', configKey: 'centralRadius', isFloat: false, needsLayout: true }, { id: 'circlesPerFullRing', configKey: 'circlesPerFullRing', isFloat: false, needsLayout: true }, { id: 'ringPadding', configKey: 'ringPadding', isFloat: false, needsLayout: true }, { id: 'ringGap', configKey: 'ringGap', isFloat: false, needsLayout: true }, { id: 'circleSpacing', configKey: 'circleSpacing', isFloat: false, needsLayout: true }, { id: 'hoverScale', configKey: 'hoverScale', isFloat: true }, { id: 'animationSpeed', configKey: 'animationSpeed', isFloat: true }, { id: 'repulsionPadding', configKey: 'repulsionPadding', isFloat: false }, { id: 'repulsionIterations', configKey: 'repulsionIterations', isFloat: false }, { id: 'colorHueStart', configKey: 'colorHueStart', isFloat: false, needsColorRecalc: true }, { id: 'colorHueEnd', configKey: 'colorHueEnd', isFloat: false, needsColorRecalc: true }, ]; const colorPickers = [ { id: 'centralColor', configKey: 'centralColor' }, { id: 'hoverColor', configKey: 'hoverColor' }]; sliders.forEach(s => { const input = document.getElementById(s.id); const valueSpan = document.getElementById(`${s.id}Value`); if (!input || !valueSpan) return; input.value = config[s.configKey]; valueSpan.textContent = parseFloat(input.value).toFixed(s.isFloat ? 1 : 0); input.addEventListener('input', (e) => { const newValue = s.isFloat ? parseFloat(e.target.value) : parseInt(e.target.value, 10); config[s.configKey] = newValue; valueSpan.textContent = newValue.toFixed(s.isFloat ? 1 : 0); if (s.needsEventRegen) { generateEvents(config.eventCount); calculateLayout(events); } else if (s.needsLayout) { calculateLayout(events); } else if (s.needsColorRecalc) { orbitingCircles.forEach(c => { const normalizedAngle = (c.angle + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2); const hue = getHue(normalizedAngle); c.originalColor = `hsla(${hue}, ${config.colorSaturation}%, ${config.colorLightness}%, 0.9)`; if (!c.isHovered) c.color = c.originalColor; }); } if(s.configKey === 'centralRadius' && centralCircle) { centralCircle.targetRadius = newValue; } }); }); colorPickers.forEach(p => { const input = document.getElementById(p.id); if (!input) return; input.value = config[p.configKey]; input.addEventListener('input', (e) => { config[p.configKey] = e.target.value; }); }); }
+        function setupSliders() { /* ... Same slider setup as V19 ... */ const sliders = [ { id: 'eventCount', configKey: 'eventCount', isFloat: false, needsLayout: true, needsEventRegen: true }, { id: 'centralRadius', configKey: 'centralRadius', isFloat: false, needsLayout: true }, { id: 'circlesPerFullRing', configKey: 'circlesPerFullRing', isFloat: false, needsLayout: true }, { id: 'ringPadding', configKey: 'ringPadding', isFloat: false, needsLayout: true }, { id: 'ringGap', configKey: 'ringGap', isFloat: false, needsLayout: true }, { id: 'circleSpacing', configKey: 'circleSpacing', isFloat: false, needsLayout: true }, { id: 'hoverScale', configKey: 'hoverScale', isFloat: true }, { id: 'animationSpeed', configKey: 'animationSpeed', isFloat: true }, { id: 'repulsionPadding', configKey: 'repulsionPadding', isFloat: false }, { id: 'repulsionIterations', configKey: 'repulsionIterations', isFloat: false }, { id: 'colorHueStart', configKey: 'colorHueStart', isFloat: false, needsColorRecalc: true }, { id: 'colorHueEnd', configKey: 'colorHueEnd', isFloat: false, needsColorRecalc: true }, ]; const colorPickers = [ { id: 'centralColor', configKey: 'centralColor' }, { id: 'hoverColor', configKey: 'hoverColor' }]; sliders.forEach(s => { const input = document.getElementById(s.id); const valueSpan = document.getElementById(`${s.id}Value`); if (!input || !valueSpan) return; input.value = config[s.configKey]; valueSpan.textContent = parseFloat(input.value).toFixed(s.isFloat ? 1 : 0); input.addEventListener('input', (e) => { const newValue = s.isFloat ? parseFloat(e.target.value) : parseInt(e.target.value, 10); config[s.configKey] = newValue; valueSpan.textContent = newValue.toFixed(s.isFloat ? 1 : 0); if (s.needsEventRegen) { generateEvents(config.eventCount); calculateLayout(events); } else if (s.needsLayout) { calculateLayout(events); } else if (s.needsColorRecalc) { orbitingCircles.forEach(c => { const normalizedAngle = (c.angle + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2); const hue = getHue(normalizedAngle); c.originalColor = `hsla(${hue}, ${config.colorSaturation}%, ${config.colorLightness}%, 0.9)`; if (!c.isHovered) c.color = c.originalColor; }); } if(s.configKey === 'centralRadius' && centralCircle) { centralCircle.targetRadius = newValue; } }); }); colorPickers.forEach(p => { const input = document.getElementById(p.id); if (!input) return; input.value = config[p.configKey]; input.addEventListener('input', (e) => { config[p.configKey] = e.target.value; }); }); }
 
         // --- Init ---
         generateEvents(config.eventCount); setupSliders(); calculateLayout(events); requestAnimationFrame(animate);
