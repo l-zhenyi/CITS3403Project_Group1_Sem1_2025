@@ -1,432 +1,453 @@
-// --- START OF FILE orbitLayoutDOM.js ---
+// --- START OF FILE orbitLayoutDOM_v5_StrictClass.js ---
+// Aiming for strict functional equivalence with orbitLayoutDOM v_FINAL3 within a class structure.
 
-// Store state associated with each event element
-const elementDataStore = new WeakMap(); // WeakMap<Element, OrbitData>
-let animationFrameId = null;
-let activeElements = new Set(); // Keep track of elements managed by the animation loop
+console.log("[OrbitLayoutDOM Strict Class v5] Module Loaded.");
 
-// --- Configuration (Matching testing_circles.html defaults + interaction) ---
+// --- Configuration (Defaults from v_FINAL3) ---
 const defaultConfig = {
-    // Layout Geometry
-    N: 12,
-    centralRadius: 60,       // This is now the conceptual radius for the *central node itself* for collision
-    ringPadding: 10,       // Still the space between central node radius and first orbit path
-    ringGap: 8,
-    circleSpacing: 4,
-    minCircleRadius: 2,
-
-    // Interaction (from canvas example)
-    hoverScale: 3.0,
-    animationSpeed: 0.08,
-    repulsionPadding: 4,   // Padding applied between elements AND between elements and central node
-    repulsionIterations: 5,
-    nudgeFactor: 0.02,
+    N: 12, centralRadius: 60, ringPadding: 20, ringGap: 8,
+    circleSpacing: 4, minCircleRadius: 2, hoverScale: 3.0,
+    animationSpeed: 0.08, repulsionPadding: 4, repulsionIterations: 5,
+    nudgeFactor: 0.02, // This was the default in v_FINAL3
 };
 
-// Simple lerp function
-function lerp(a, b, t) {
-    return a * (1 - t) + b * t;
-}
-
-// Distance between two points
+// --- Helper Functions (Remain outside the class) ---
+function lerp(a, b, t) { return a * (1 - t) + b * t; }
 function distance(x1, y1, x2, y2) {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    return Math.sqrt(dx * dx + dy * dy);
+    const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt(dx * dx + dy * dy);
 }
 
-/**
- * FINAL LAYOUT v2: With Central Node Collision & Direct Hover
- * - Calculates initial layout using offsetLeft/Top + style.left/top.
- * - Includes central node in collision detection.
- * - Animates via transform: translate() scale().
- * - Uses direct pointerenter/leave for hover.
- */
-export function layoutEventsAroundNodeDOM(nodeEl, eventEls, options = {}) {
-    console.log("%c[orbitLayoutDOM v_FINAL2] Starting layout...", "color: green; font-weight: bold;");
-    if (!nodeEl) { console.error("[orbitLayoutDOM v_FINAL2] ERROR: Central node element not provided."); return; }
-    if (!eventEls || eventEls.length === 0) { console.warn("[orbitLayoutDOM v_FINAL2] No event elements provided."); return; }
+export class OrbitLayoutManager {
+    // Per-instance state
+    nodeEl = null;
+    eventEls = [];
+    config = {};
+    elementDataStore = new WeakMap(); // Specific to this instance
+    activeElements = new Set();      // Specific to this instance
+    animationFrameId = null;         // Specific to this instance
+    nodeCenterX = 0;                 // Based on offsetLeft (like v_FINAL3)
+    nodeCenterY = 0;                 // Based on offsetTop (like v_FINAL3)
+    centralNodeCollisionRadius = 0;
+    nodeInfo = {};
+    isRunning = false;
 
-    const config = { ...defaultConfig, ...options };
-    console.log("[orbitLayoutDOM v_FINAL2] Using Configuration:", config);
+    // --- Constructor ---
+    constructor(nodeEl, eventEls, options = {}) {
+        console.log(`%c[OrbitLayoutDOM v5] Creating for node:`, "color: darkcyan; font-weight: bold;", nodeEl);
+        if (!nodeEl) { throw new Error("[OrbitLayoutDOM v5] ERROR: Central node element not provided."); }
 
-    // Clear previous state and stop animation
-    activeElements.clear();
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
+        this.nodeEl = nodeEl;
+        this.eventEls = Array.isArray(eventEls) ? [...eventEls] : (eventEls instanceof NodeList ? Array.from(eventEls) : (eventEls ? [eventEls] : []));
+
+        this.config = { ...defaultConfig, ...options }; // Use v_FINAL3 defaults
+        console.log("[OrbitLayoutDOM v5] Using Configuration:", this.config);
+
+        this.performLayout();
+        this.isRunning = true;
     }
 
-    // --- Coordinate Setup & Validation ---
-    const container = nodeEl.offsetParent;
-    if (!container) {
-        console.error("%c[orbitLayoutDOM v_FINAL2] FATAL ERROR: nodeEl.offsetParent is null.", "color: red; font-weight: bold;"); return;
-    }
-    const containerStyle = window.getComputedStyle(container);
-    if (containerStyle.position === 'static') {
-         console.error(`%c[orbitLayoutDOM v_FINAL2] CRITICAL ISSUE: offsetParent <${container.tagName}> has 'position: static'.`, "color: red; font-weight: bold;");
-         console.error("SOLUTION: Set 'position: relative;' or 'position: absolute;' on the container.");
-    }
-    const nodeTransform = window.getComputedStyle(nodeEl).transform;
-    if (nodeTransform && nodeTransform !== 'none') {
-        console.warn(`%c[orbitLayoutDOM v_FINAL2] POTENTIAL ISSUE: Node element has CSS transform:`, "color: orange;", nodeTransform);
-        console.warn("Layout center based on pre-transform position.");
-    }
-    // --- End Validation ---
+    // --- Core Layout Method ---
+    performLayout() {
+        console.log(`%c[OrbitLayoutDOM v5] Performing layout for:`, "color: darkcyan;", this.nodeEl);
+        if (!this.nodeEl) { console.error("[OrbitLayoutDOM v5] Layout aborted: Central node missing."); return; }
 
-    // Calculate initial node center relative to the CONTAINER's top-left (0,0)
-    const nodeLayoutX = nodeEl.offsetLeft;
-    const nodeLayoutY = nodeEl.offsetTop;
-    const nodeLayoutWidth = nodeEl.offsetWidth;
-    const nodeLayoutHeight = nodeEl.offsetHeight;
-    const nodeCenterX = nodeLayoutX;
-    const nodeCenterY = nodeLayoutY;
-    // Use config.centralRadius for the central node's collision size
-    const centralNodeCollisionRadius = config.centralRadius;
+        this._cleanupInstance(/* keepNodeEl */ true);
 
-
-    console.log(`[orbitLayoutDOM v_FINAL2] Node offsetLeft=${nodeLayoutX}, offsetTop=${nodeLayoutY}, offsetWidth=${nodeLayoutWidth}, offsetHeight=${nodeLayoutHeight}`);
-    console.log(`[orbitLayoutDOM v_FINAL2] Calculated Node Center: X=${nodeCenterX.toFixed(2)}, Y=${nodeCenterY.toFixed(2)}`);
-    console.log(`[orbitLayoutDOM v_FINAL2] Using Central Node Collision Radius: ${centralNodeCollisionRadius}`);
-
-
-    // === Core Layout Logic (Static part) ===
-    // Note: Layout calculations still use centralRadius for spacing *from* the center,
-    // collision uses it for the central object's *size*.
-    const N = config.N;
-    const totalEvents = eventEls.length;
-    if (totalEvents === 0 || N <= 0) return;
-
-    const numRings = Math.ceil(totalEvents / N);
-    let eventIndex = 0;
-    // The 'lastOrbitRadius' starts conceptually from the edge defined by config.centralRadius
-    let lastOrbitRadius_Layout = config.centralRadius;
-    let lastCircleRadius = 0;
-    const angleOffset = -Math.PI / 2;
-
-    for (let ringIdx = 0; ringIdx < numRings; ringIdx++) {
-        const ringIndex = ringIdx + 1;
-        const isLastRing = (ringIndex === numRings);
-        const numCirclesActualThisRing = isLastRing ? (totalEvents - eventIndex) : N;
-        if (numCirclesActualThisRing <= 0) break;
-
-        // Calculate Geometry (Uses config.centralRadius for spacing, not collision)
-        let estimatedOrbitRadius;
-        if (ringIndex === 1) { estimatedOrbitRadius = lastOrbitRadius_Layout + config.ringPadding + config.minCircleRadius; }
-        else { estimatedOrbitRadius = lastOrbitRadius_Layout + lastCircleRadius + config.ringGap + config.minCircleRadius; }
-        const circumference = 2 * Math.PI * estimatedOrbitRadius;
-        const idealRadiusBasedOnN = (circumference / N - config.circleSpacing) / 2;
-        const circleRadius = Math.max(config.minCircleRadius, idealRadiusBasedOnN);
-        let finalOrbitRadius;
-        if (ringIndex === 1) { finalOrbitRadius = lastOrbitRadius_Layout + config.ringPadding + circleRadius; }
-        else { finalOrbitRadius = lastOrbitRadius_Layout + lastCircleRadius + config.ringGap + circleRadius; }
-
-        // Determine Placement Angles (Identical)
-        const angleStep = (2 * Math.PI) / N;
-        const startAngle = (ringIndex % 2 === 0) ? angleOffset + angleStep / 2 : angleOffset;
-
-        // Place Circles (Set initial state and position)
-        for (let i = 0; i < numCirclesActualThisRing; i++) {
-            if (eventIndex >= totalEvents) break;
-            const el = eventEls[eventIndex];
-            if (!el) { eventIndex++; continue; }
-            activeElements.add(el);
-
-            const angle = startAngle + i * angleStep;
-            const diameter = circleRadius * 2;
-
-            const initialTargetCenterX = nodeCenterX + finalOrbitRadius * Math.cos(angle);
-            const initialTargetCenterY = nodeCenterY + finalOrbitRadius * Math.sin(angle);
-            const initialTargetLeft = initialTargetCenterX - circleRadius;
-            const initialTargetTop = initialTargetCenterY - circleRadius;
-
-            // Apply initial styles
-            el.style.position = 'absolute';
-            el.style.width = `${diameter}px`;
-            el.style.height = `${diameter}px`;
-            el.style.borderRadius = '50%';
-            el.style.left = `${initialTargetLeft}px`;
-            el.style.top = `${initialTargetTop}px`;
-            el.style.transformOrigin = 'center center';
-            el.style.transform = 'translate(0px, 0px) scale(1)';
-            el.style.willChange = 'transform';
-            el.style.transition = 'none';
-
-            // Store state
-            const data = {
-                initialX: initialTargetCenterX, initialY: initialTargetCenterY, initialRadius: circleRadius,
-                currentX: initialTargetCenterX, currentY: initialTargetCenterY, currentScale: 1,
-                targetX: initialTargetCenterX, targetY: initialTargetCenterY, targetScale: 1,
-                isHovered: false, originalZIndex: el.style.zIndex || '1', config: config,
-                 // Store central node info needed for collision checks later
-                 nodeInfo: { centerX: nodeCenterX, centerY: nodeCenterY, radius: centralNodeCollisionRadius }
-            };
-            elementDataStore.set(el, data);
-
-            // Set up direct hover listeners
-            setupHoverInteraction(el);
-
-            eventIndex++;
+        const container = this.nodeEl.offsetParent;
+        if (!container) {
+            console.error(`%c[OrbitLayoutDOM v5] FATAL ERROR: nodeEl.offsetParent is null for node:`, "color: red; font-weight: bold;", this.nodeEl);
+            this.isRunning = false; return;
         }
-        // Update layout tracking variables for NEXT ring
-        lastOrbitRadius_Layout = finalOrbitRadius;
-        lastCircleRadius = circleRadius;
-        if (eventIndex >= totalEvents) break;
+        // Basic validation (like v_FINAL3)
+        const containerStyle = window.getComputedStyle(container);
+        if (containerStyle.position === 'static') {
+            console.warn(`%c[OrbitLayoutDOM v5] WARNING: offsetParent <${container.tagName}> has 'position: static'.`, "color: orange; font-weight: bold;", `Set 'position: relative;' or 'absolute'.`);
+        }
+        const nodeTransform = window.getComputedStyle(this.nodeEl).transform;
+         if (nodeTransform && nodeTransform !== 'none') {
+             console.warn(`%c[OrbitLayoutDOM v5] POTENTIAL ISSUE: Node element has CSS transform:`, "color: orange;", nodeTransform);
+             console.warn("Layout center based on pre-transform offsetLeft/offsetTop.");
+         }
+
+
+        // ***** REVERTED CENTER CALCULATION to match v_FINAL3 *****
+        // Calculate center based ONLY on offsetLeft/offsetTop
+        const nodeLayoutX = this.nodeEl.offsetLeft;
+        const nodeLayoutY = this.nodeEl.offsetTop;
+        // Ignore width/height for center calculation, use top-left corner as origin
+        this.nodeCenterX = nodeLayoutX;
+        this.nodeCenterY = nodeLayoutY;
+
+        // Use config.centralRadius for the central node's collision size (measured from top-left origin)
+        this.centralNodeCollisionRadius = this.config.centralRadius;
+        this.nodeInfo = { centerX: this.nodeCenterX, centerY: this.nodeCenterY, radius: this.centralNodeCollisionRadius };
+
+        console.log(`[OrbitLayoutDOM v5] Node offsetLeft=${nodeLayoutX}, offsetTop=${nodeLayoutY}`);
+        console.log(`[OrbitLayoutDOM v5] Calculated Node Center (top-left): X=${this.nodeCenterX.toFixed(2)}, Y=${this.nodeCenterY.toFixed(2)}`);
+        console.log(`[OrbitLayoutDOM v5] Using Central Node Collision Radius: ${this.centralNodeCollisionRadius}`);
+        // ***** END REVERTED CENTER CALCULATION *****
+
+
+        // === Core Layout Logic (Identical structure to v_FINAL3) ===
+        const N = this.config.N;
+        const totalEvents = this.eventEls.length;
+        if (totalEvents === 0 || N <= 0) { this.isRunning = false; return; }
+
+        const numRings = Math.ceil(totalEvents / N);
+        let eventIndex = 0;
+        let lastOrbitRadius_Layout = this.config.centralRadius;
+        let lastCircleRadius = 0;
+        const angleOffset = -Math.PI / 2;
+
+        for (let ringIdx = 0; ringIdx < numRings; ringIdx++) {
+            const ringIndex = ringIdx + 1;
+            const isLastRing = (ringIndex === numRings);
+            const numCirclesActualThisRing = isLastRing ? (totalEvents - eventIndex) : N;
+            if (numCirclesActualThisRing <= 0) break;
+
+            let estimatedOrbitRadius, finalOrbitRadius, circleRadius;
+            // Calculate Geometry (Identical to v_FINAL3)
+            if (ringIndex === 1) { estimatedOrbitRadius = lastOrbitRadius_Layout + this.config.ringPadding + this.config.minCircleRadius; }
+            else { estimatedOrbitRadius = lastOrbitRadius_Layout + lastCircleRadius + this.config.ringGap + this.config.minCircleRadius; }
+            const circumference = 2 * Math.PI * estimatedOrbitRadius;
+            const idealRadiusBasedOnN = (circumference / N - this.config.circleSpacing) / 2;
+            circleRadius = Math.max(this.config.minCircleRadius, idealRadiusBasedOnN);
+            if (ringIndex === 1) { finalOrbitRadius = lastOrbitRadius_Layout + this.config.ringPadding + circleRadius; }
+            else { finalOrbitRadius = lastOrbitRadius_Layout + lastCircleRadius + this.config.ringGap + circleRadius; }
+
+            const angleStep = (2 * Math.PI) / N;
+            const startAngle = (ringIndex % 2 === 0) ? angleOffset + angleStep / 2 : angleOffset;
+
+            for (let i = 0; i < numCirclesActualThisRing; i++) {
+                if (eventIndex >= totalEvents) break;
+                const el = this.eventEls[eventIndex];
+                if (!el) { eventIndex++; continue; }
+                this.activeElements.add(el);
+
+                const angle = startAngle + i * angleStep;
+                const diameter = circleRadius * 2;
+                // Calculate positions relative to the (potentially incorrect top-left) nodeCenterX/Y
+                const initialTargetCenterX = this.nodeCenterX + finalOrbitRadius * Math.cos(angle);
+                const initialTargetCenterY = this.nodeCenterY + finalOrbitRadius * Math.sin(angle);
+                const initialTargetLeft = initialTargetCenterX - circleRadius;
+                const initialTargetTop = initialTargetCenterY - circleRadius;
+
+                // Apply initial styles (Identical to v_FINAL3)
+                el.style.position = 'absolute';
+                el.style.width = `${diameter}px`; el.style.height = `${diameter}px`;
+                el.style.borderRadius = '50%';
+                el.style.left = `${initialTargetLeft.toFixed(3)}px`;
+                el.style.top = `${initialTargetTop.toFixed(3)}px`;
+                el.style.transformOrigin = 'center center';
+                el.style.transform = 'translate(0px, 0px) scale(1)';
+                el.style.willChange = 'transform'; el.style.transition = 'none';
+
+                // Store state (Identical to v_FINAL3, references instance config/nodeInfo)
+                const data = {
+                    initialX: initialTargetCenterX, initialY: initialTargetCenterY, initialRadius: circleRadius,
+                    currentX: initialTargetCenterX, currentY: initialTargetCenterY, currentScale: 1,
+                    targetX: initialTargetCenterX, targetY: initialTargetCenterY, targetScale: 1,
+                    isHovered: false, originalZIndex: el.style.zIndex || '1', config: this.config,
+                    nodeInfo: this.nodeInfo
+                };
+                this.elementDataStore.set(el, data);
+                this._setupHoverInteraction(el);
+
+                eventIndex++;
+            }
+            lastOrbitRadius_Layout = finalOrbitRadius;
+            lastCircleRadius = circleRadius;
+            if (eventIndex >= totalEvents) break;
+        }
+
+        console.log(`%c[OrbitLayoutDOM v5] Static layout finished for ${this.activeElements.size} elements.`, "color: darkcyan;");
+        this.isRunning = true;
+        this._startAnimationLoop();
     }
 
-    console.log("%c[orbitLayoutDOM v_FINAL2] Static layout finished.", "color: green;");
-    if (activeElements.size > 0) {
-        startAnimationLoop();
-    }
-}
+    // --- Collision Resolution (Logic strictly from v_FINAL3) ---
+    _resolveDomCollisions(elementsData) {
+        const iterations = this.config.repulsionIterations;
+        const padding = this.config.repulsionPadding;
+        if (iterations === 0 || elementsData.length === 0) return;
 
+        // Central node info comes from this.nodeInfo (based on top-left offset)
+        const centralX = this.nodeInfo.centerX;
+        const centralY = this.nodeInfo.centerY;
+        const centralRadius = this.nodeInfo.radius;
 
-/**
- * Resolves collisions between elements AND against the central node.
- * Modifies targetX/targetY in elementDataStore.
- */
-function resolveDomCollisions(elementsData, config) {
-    const iterations = config.repulsionIterations;
-    const padding = config.repulsionPadding;
-    if (iterations === 0 || elementsData.length === 0) return;
+        for (let iter = 0; iter < iterations; iter++) {
+            // 1. Element vs Element Collision (Identical push logic to v_FINAL3)
+            for (let i = 0; i < elementsData.length; i++) {
+                for (let j = i + 1; j < elementsData.length; j++) {
+                    const aData = elementsData[i]; const bData = elementsData[j];
+                    const aRadius = aData.initialRadius * aData.targetScale;
+                    const bRadius = bData.initialRadius * bData.targetScale;
+                    const ax = aData.targetX; const ay = aData.targetY;
+                    const bx = bData.targetX; const by = bData.targetY;
+                    const targetDist = distance(ax, ay, bx, by);
+                    const requiredDist = aRadius + bRadius + padding;
 
-    // Get central node info from the first element (assuming it's consistent)
-    const nodeInfo = elementsData[0].nodeInfo;
-    if (!nodeInfo) {
-        console.warn("Node info missing from element data, cannot perform central collision.");
-        return;
-    }
-    const centralX = nodeInfo.centerX;
-    const centralY = nodeInfo.centerY;
-    const centralRadius = nodeInfo.radius;
+                    if (targetDist < requiredDist && targetDist > 0.01) {
+                        const overlap = requiredDist - targetDist;
+                        const angle = Math.atan2(by - ay, bx - ax);
+                        const pushFactorA = aData.isHovered ? 0 : (bData.isHovered ? 1 : 0.5);
+                        const pushFactorB = bData.isHovered ? 0 : (aData.isHovered ? 1 : 0.5);
 
-    for (let iter = 0; iter < iterations; iter++) {
-        // 1. Element vs Element Collision
-        for (let i = 0; i < elementsData.length; i++) {
-            for (let j = i + 1; j < elementsData.length; j++) {
-                const aData = elementsData[i];
-                const bData = elementsData[j];
+                        if (pushFactorA + pushFactorB > 0) {
+                            const totalPushFactor = pushFactorA + pushFactorB;
+                            const scaledOverlap = overlap / totalPushFactor;
+                            const pushX = Math.cos(angle) * scaledOverlap;
+                            const pushY = Math.sin(angle) * scaledOverlap;
 
-                const aRadius = aData.initialRadius * aData.targetScale;
-                const bRadius = bData.initialRadius * bData.targetScale;
-                const ax = aData.targetX; const ay = aData.targetY;
-                const bx = bData.targetX; const by = bData.targetY;
-
-                const targetDist = distance(ax, ay, bx, by);
-                const requiredDist = aRadius + bRadius + padding;
-
-                if (targetDist < requiredDist && targetDist > 0.01) {
-                    const overlap = requiredDist - targetDist;
-                    const angle = Math.atan2(by - ay, bx - ax);
-                    const pushFactorA = aData.isHovered ? 0 : (bData.isHovered ? 1 : 0.5);
-                    const pushFactorB = bData.isHovered ? 0 : (aData.isHovered ? 1 : 0.5);
-
-                    if (pushFactorA + pushFactorB > 0) {
-                        const totalPushFactor = pushFactorA + pushFactorB;
-                        const scaledOverlap = overlap / totalPushFactor;
-                        const pushX = Math.cos(angle) * scaledOverlap;
-                        const pushY = Math.sin(angle) * scaledOverlap;
-                        aData.targetX -= pushX * pushFactorA;
-                        aData.targetY -= pushY * pushFactorA;
-                        bData.targetX += pushX * pushFactorB;
-                        bData.targetY += pushY * pushFactorB;
+                            // Apply push logic exactly as in v_FINAL3
+                            if (!aData.isHovered) {
+                                aData.targetX -= pushX * pushFactorA;
+                                aData.targetY -= pushY * pushFactorA;
+                            }
+                             if (!bData.isHovered) {
+                                bData.targetX += pushX * pushFactorB;
+                                bData.targetY += pushY * pushFactorB;
+                             }
+                             if(pushFactorA === 0.5 && pushFactorB === 0.5){ // Both non-hovered
+                                 aData.targetX -= pushX * pushFactorA;
+                                 aData.targetY -= pushY * pushFactorA;
+                                 bData.targetX += pushX * pushFactorB;
+                                 bData.targetY += pushY * pushFactorB;
+                             }
+                        }
                     }
                 }
-            }
-        } // End Element vs Element
+            } // End Element vs Element
 
-        // 2. Element vs Central Node Collision
-        for (let i = 0; i < elementsData.length; i++) {
-             const elData = elementsData[i];
+            // 2. Element vs Central Node Collision (Identical logic to v_FINAL3 - checks all elements)
+            for (let i = 0; i < elementsData.length; i++) {
+                 const elData = elementsData[i];
+                 const elRadius = elData.initialRadius * elData.targetScale;
+                 const elX = elData.targetX; const elY = elData.targetY;
+                 const distFromCenter = distance(centralX, centralY, elX, elY);
+                 const requiredDistFromCenter = centralRadius + elRadius + padding;
 
-             // Hovered elements don't get pushed by the center (consistency with canvas)
-             if (elData.isHovered) continue;
+                 if (distFromCenter < requiredDistFromCenter && distFromCenter > 0.01) {
+                     const overlap = requiredDistFromCenter - distFromCenter;
+                     const angle = Math.atan2(elY - centralY, elX - centralX);
+                     elData.targetX += Math.cos(angle) * overlap;
+                     elData.targetY += Math.sin(angle) * overlap;
+                 }
+            } // End Element vs Center
+        } // End iterations
 
-             const elRadius = elData.initialRadius * elData.targetScale; // Use scaled radius
-             const elX = elData.targetX;
-             const elY = elData.targetY;
-
-             const distFromCenter = distance(centralX, centralY, elX, elY);
-             // Required distance includes central node's radius, element's radius, and padding
-             const requiredDistFromCenter = centralRadius + elRadius + padding;
-
-             if (distFromCenter < requiredDistFromCenter && distFromCenter > 0.01) {
-                 const overlap = requiredDistFromCenter - distFromCenter;
-                 const angle = Math.atan2(elY - centralY, elX - centralX); // Angle from center to element
-
-                 // Push the element directly away from the center
-                 elData.targetX += Math.cos(angle) * overlap;
-                 elData.targetY += Math.sin(angle) * overlap;
-             }
-        } // End Element vs Center
-
-    } // End iterations
-
-    // Nudge non-hovered elements gently back towards their initial position
-    const nudgeFactor = config.nudgeFactor || 0.02;
-    elementsData.forEach(data => {
-        if (!data.isHovered) {
-            data.targetX = lerp(data.targetX, data.initialX, nudgeFactor);
-            data.targetY = lerp(data.targetY, data.initialY, nudgeFactor);
-        }
-    });
-}
-
-
-/**
- * The main animation loop using requestAnimationFrame.
- */
-function animationStep() {
-    let needsAnotherFrame = false;
-
-    // 1. Collect data
-    const elementsData = [];
-    let currentConfig = defaultConfig;
-    for (const el of activeElements) {
-        const data = elementDataStore.get(el);
-        if (data) {
-            elementsData.push(data);
-            if (elementsData.length === 1) currentConfig = data.config;
-        }
-    }
-
-    // 2. Resolve Collisions (includes central node)
-    if (elementsData.length > 0) {
-       resolveDomCollisions(elementsData, currentConfig);
-    }
-
-    // 3. Interpolate and Apply Styles
-    for (const data of elementsData) {
-       const el = [...activeElements].find(element => elementDataStore.get(element) === data);
-       if (!el) continue;
-
-        const speed = data.config.animationSpeed;
-
-        // Interpolate center position and scale
-        data.currentX = lerp(data.currentX, data.targetX, speed);
-        data.currentY = lerp(data.currentY, data.targetY, speed);
-        data.currentScale = lerp(data.currentScale, data.targetScale, speed);
-
-        // Check if animation is still needed
-        const dx = data.targetX - data.currentX;
-        const dy = data.targetY - data.currentY;
-        const ds = data.targetScale - data.currentScale;
-        if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1 || Math.abs(ds) > 0.01) {
-            needsAnotherFrame = true;
-        } else {
-            // Snap to target
-            data.currentX = data.targetX; data.currentY = data.targetY; data.currentScale = data.targetScale;
-        }
-
-        // Apply styles: delta translate + scale
-        const deltaTranslateX = data.currentX - data.initialX;
-        const deltaTranslateY = data.currentY - data.initialY;
-        el.style.transform = `translate(${deltaTranslateX.toFixed(3)}px, ${deltaTranslateY.toFixed(3)}px) scale(${data.currentScale.toFixed(3)})`;
-        el.style.zIndex = data.isHovered ? '10' : data.originalZIndex;
-    }
-
-    // 4. Request next frame
-    if (needsAnotherFrame) {
-        animationFrameId = requestAnimationFrame(animationStep);
-    } else {
-        animationFrameId = null;
-        console.log("[orbitLayoutDOM v_FINAL2] Animation loop stopped.");
-    }
-}
-
-/** Starts the animation loop if it's not already running */
-function startAnimationLoop() {
-    if (!animationFrameId) {
-        console.log("[orbitLayoutDOM v_FINAL2] Animation loop starting...");
-        animationFrameId = requestAnimationFrame(animationStep);
-    }
-}
-
-/**
- * Sets up DIRECT hover listeners for a single element.
- */
-function setupHoverInteraction(panel) {
-    // Added check to ensure listeners aren't attached multiple times
-    if (panel._orbitHoverListenersAttached_vF2) return;
-
-    console.log(`[orbitLayoutDOM v_FINAL2] Attaching hover listeners to:`, panel);
-    panel.addEventListener('pointerenter', (event) => {
-        // Optional: Log the event target to ensure it's the expected element
-        // console.log('Pointer Enter:', event.target);
-        const data = elementDataStore.get(panel);
-        if (!data || data.isHovered) {
-             // console.log('Hover ignored (no data or already hovered)');
-            return;
-        }
-        // console.log('Hover Start:', panel);
-
-        data.isHovered = true;
-        data.targetScale = data.config.hoverScale;
-        data.targetX = data.initialX; // Keep hovered item's target stable
-        data.targetY = data.initialY;
-
-        // Reset targets for OTHERS
-        activeElements.forEach(el => {
-            if (el !== panel) {
-                const otherData = elementDataStore.get(el);
-                if (otherData) {
-                    otherData.targetX = otherData.initialX;
-                    otherData.targetY = otherData.initialY;
-                    otherData.targetScale = 1;
-                    otherData.isHovered = false;
+        // ***** NUDGE LOGIC (Identical to v_FINAL3) *****
+        const nudgeFactor = this.config.nudgeFactor; // Default 0.02 from config
+        elementsData.forEach(data => {
+            if (!data.isHovered) {
+                // Calculate distance from potentially collision-adjusted target to initial
+                const distToInitial = distance(data.targetX, data.targetY, data.initialX, data.initialY);
+                // Only nudge if it hasn't been pushed far away by collisions already
+                // Using the same threshold condition as v_FINAL3
+                if (distToInitial < data.initialRadius * 3) {
+                     data.targetX = lerp(data.targetX, data.initialX, nudgeFactor);
+                     data.targetY = lerp(data.targetY, data.initialY, nudgeFactor);
                 }
             }
+            // Hovered elements do NOT get nudged back - they stay where collision pushed them
         });
-        startAnimationLoop();
-    });
+        // ***** END NUDGE LOGIC *****
+    }
 
-    panel.addEventListener('pointerleave', (event) => {
-         // console.log('Pointer Leave:', event.target);
-         const data = elementDataStore.get(panel);
-        if (!data || !data.isHovered) {
-             // console.log('Hover End ignored (no data or not hovered)');
-            return;
+    // --- Animation Loop (Structure identical to v_FINAL3, using instance state) ---
+    _animationStep = () => {
+        if (!this.isRunning) return;
+        let needsAnotherFrame = false;
+        const elementsData = [];
+
+        // Collect data ONLY from elements managed by THIS instance
+        for (const el of this.activeElements) {
+            const data = this.elementDataStore.get(el);
+            if (data) { elementsData.push(data); }
         }
-         // console.log('Hover End:', panel);
+        // Post-iteration cleanup (safer)
+        const elementsToRemove = [];
+        this.activeElements.forEach(el => {
+            if (!this.elementDataStore.has(el)) { elementsToRemove.push(el); }
+        });
+        elementsToRemove.forEach(el => this.activeElements.delete(el));
 
-        data.isHovered = false;
-        // Reset self
-        data.targetScale = 1;
-        data.targetX = data.initialX;
-        data.targetY = data.initialY;
+        if (elementsData.length === 0) { this.animationFrameId = null; return; }
 
-        // Reset ALL targets to initial (allows smooth return)
-        activeElements.forEach(el => {
-            const otherData = elementDataStore.get(el);
-            if (otherData) {
-                otherData.targetX = otherData.initialX;
-                otherData.targetY = otherData.initialY;
-                otherData.targetScale = 1;
+        // Resolve Collisions for this instance's elements
+        this._resolveDomCollisions(elementsData); // Uses v_FINAL3 logic
+
+        // Interpolate and Apply Styles (Identical logic to v_FINAL3)
+        for (const data of elementsData) {
+           const el = [...this.activeElements].find(element => this.elementDataStore.get(element) === data);
+           if (!el) continue;
+            const speed = data.config.animationSpeed;
+            data.currentX = lerp(data.currentX, data.targetX, speed);
+            data.currentY = lerp(data.currentY, data.targetY, speed);
+            data.currentScale = lerp(data.currentScale, data.targetScale, speed);
+
+            const dx = data.targetX - data.currentX;
+            const dy = data.targetY - data.currentY;
+            const ds = data.targetScale - data.currentScale;
+            if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1 || Math.abs(ds) > 0.01) {
+                needsAnotherFrame = true;
+            } else {
+                data.currentX = data.targetX; data.currentY = data.targetY; data.currentScale = data.targetScale;
+            }
+
+            const deltaTranslateX = data.currentX - data.initialX;
+            const deltaTranslateY = data.currentY - data.initialY;
+            el.style.transform = `translate(${deltaTranslateX.toFixed(3)}px, ${deltaTranslateY.toFixed(3)}px) scale(${data.currentScale.toFixed(3)})`;
+            el.style.zIndex = data.isHovered ? '10' : data.originalZIndex;
+        }
+
+        // Request next frame or stop for THIS instance
+        if (needsAnotherFrame && this.activeElements.size > 0 && this.isRunning) {
+            this.animationFrameId = requestAnimationFrame(this._animationStep);
+        } else {
+            this.animationFrameId = null;
+        }
+    }
+
+    // --- Start Animation Loop (Method) ---
+    _startAnimationLoop() {
+        if (!this.animationFrameId && this.activeElements.size > 0 && this.isRunning) {
+            this.animationFrameId = requestAnimationFrame(this._animationStep);
+        }
+    }
+
+    // --- Setup Hover Interaction (Logic strictly from v_FINAL3) ---
+    _setupHoverInteraction(panel) {
+        const listenerFlag = '_orbitHoverListenersAttached_v5';
+        if (panel[listenerFlag]) return;
+
+        const handlePointerEnter = (event) => {
+            if (!this.isRunning) return;
+            const data = this.elementDataStore.get(panel);
+            if (!data || data.isHovered) { return; }
+
+            data.isHovered = true;
+            data.targetScale = data.config.hoverScale;
+            // Keep target X/Y at initial unless pushed by central collision (v_FINAL3 logic)
+            data.targetX = data.initialX;
+            data.targetY = data.initialY;
+
+            // Reset targets only for OTHER non-hovered elements (v_FINAL3 logic)
+            this.activeElements.forEach(el => {
+                if (el !== panel) {
+                    const otherData = this.elementDataStore.get(el);
+                    if (otherData && !otherData.isHovered) {
+                        otherData.targetX = otherData.initialX;
+                        otherData.targetY = otherData.initialY;
+                        otherData.targetScale = 1;
+                    } else if (otherData) {
+                         otherData.isHovered = false;
+                         otherData.targetScale = 1;
+                         otherData.targetX = otherData.initialX;
+                         otherData.targetY = otherData.initialY;
+                    }
+                }
+            });
+            this._startAnimationLoop();
+        };
+
+        const handlePointerLeave = (event) => {
+             if (!this.isRunning) return;
+             const data = this.elementDataStore.get(panel);
+            if (!data || !data.isHovered) { return; }
+
+            data.isHovered = false;
+            // Reset self back towards initial state (v_FINAL3 logic)
+            data.targetScale = 1;
+            data.targetX = data.initialX;
+            data.targetY = data.initialY;
+
+            // No explicit reset of others needed here in v_FINAL3 logic, nudge/collision handles it.
+            this._startAnimationLoop();
+        };
+
+        panel.addEventListener('pointerenter', handlePointerEnter);
+        panel.addEventListener('pointerleave', handlePointerLeave);
+        panel[listenerFlag] = { enter: handlePointerEnter, leave: handlePointerLeave };
+
+         // Cleanup mechanism (consistent with v4)
+         if (!panel._orbitCleanups) { panel._orbitCleanups = new Map(); }
+         panel._orbitCleanups.set(this, () => {
+             panel.removeEventListener('pointerenter', handlePointerEnter);
+             panel.removeEventListener('pointerleave', handlePointerLeave);
+             delete panel[listenerFlag];
+             panel._orbitCleanups.delete(this);
+             if (panel._orbitCleanups.size === 0) { delete panel._orbitCleanups; }
+         });
+    }
+
+     // --- Internal Cleanup Helper (Identical to v4) ---
+     _cleanupInstance(keepNodeEl = false) {
+        console.log(`%c[OrbitLayoutDOM v5] Cleaning up instance for:`, "color: red;", this.nodeEl);
+        this.isRunning = false;
+        if (this.animationFrameId) { cancelAnimationFrame(this.animationFrameId); this.animationFrameId = null; }
+        this.activeElements.forEach(el => {
+             if (el._orbitCleanups && el._orbitCleanups.has(this)) {
+                 el._orbitCleanups.get(this)();
+             }
+            this.elementDataStore.delete(el);
+        });
+        this.activeElements.clear();
+        if (!keepNodeEl) { this.nodeEl = null; this.eventEls = []; }
+     }
+
+
+    // --- Public Methods (Structure identical to v4) ---
+
+    /** Recalculates layout, useful after node moves or element list changes */
+    updateLayout(newEventEls = null) {
+        console.log(`%c[OrbitLayoutDOM v5] updateLayout called for:`, "color: blueviolet;", this.nodeEl);
+        if (newEventEls !== null) {
+             const oldElements = new Set(this.activeElements);
+             const newElements = new Set(Array.isArray(newEventEls) ? newEventEls : Array.from(newEventEls));
+             oldElements.forEach(oldEl => {
+                 if (!newElements.has(oldEl)) {
+                     if (oldEl._orbitCleanups && oldEl._orbitCleanups.has(this)) { oldEl._orbitCleanups.get(this)(); }
+                     this.elementDataStore.delete(oldEl);
+                 }
+             });
+            this.eventEls = Array.isArray(newEventEls) ? [...newEventEls] : Array.from(newEventEls);
+        }
+        // Re-run the core layout logic (which uses the offsetLeft/Top center calc)
+        this.performLayout();
+    }
+
+    /** Updates configuration options dynamically */
+    updateConfiguration(newOptions) {
+        console.log("[OrbitLayoutDOM v5] Updating configuration:", newOptions);
+        const oldCentralRadius = this.config.centralRadius;
+        this.config = { ...this.config, ...newOptions };
+
+        if ('centralRadius' in newOptions && this.nodeInfo && oldCentralRadius !== this.config.centralRadius) {
+            // Update radius based on offsetLeft/Top center
+            this.nodeInfo.radius = this.config.centralRadius;
+        }
+
+        this.activeElements.forEach(el => {
+            const data = this.elementDataStore.get(el);
+            if (data) {
+                data.config = this.config; // Update config reference
+                data.nodeInfo = this.nodeInfo; // Update nodeInfo reference
             }
         });
-        startAnimationLoop();
-    });
 
-    panel._orbitHoverListenersAttached_vF2 = true; // Use a unique flag
-}
-
-// Optional: Function to update configuration dynamically
-export function updateOrbitConfiguration(newOptions) {
-    console.log("[orbitLayoutDOM v_FINAL2] Updating configuration:", newOptions);
-    activeElements.forEach(el => {
-        const data = elementDataStore.get(el);
-        if(data) {
-             // Merge new options into the existing config for this element
-             data.config = { ...data.config, ...newOptions };
-              // Also update the stored nodeInfo if centralRadius changed
-             if ('centralRadius' in newOptions && data.nodeInfo) {
-                 data.nodeInfo.radius = data.config.centralRadius;
-             }
+        // Restart loop if interaction params changed
+        if ('animationSpeed' in newOptions || 'repulsionPadding' in newOptions || 'repulsionIterations' in newOptions || 'hoverScale' in newOptions || 'nudgeFactor' in newOptions || 'centralRadius' in newOptions) {
+            this._startAnimationLoop();
         }
-    });
-    if ('animationSpeed' in newOptions || 'repulsionPadding' in newOptions || 'repulsionIterations' in newOptions || 'hoverScale' in newOptions || 'centralRadius' in newOptions) {
-         startAnimationLoop(); // Restart loop if interaction params change
+    }
+
+    /** Call this to completely stop and remove the layout */
+    destroy() {
+        this._cleanupInstance(/* keepNodeEl */ false);
+        console.log(`%c[OrbitLayoutDOM v5] Destroyed instance for node:`, "color: red; font-weight: bold;", this.nodeEl);
     }
 }
 
-// --- END OF FILE orbitLayoutDOM.js ---
+// --- END OF FILE orbitLayoutDOM_v5_StrictClass.js ---
