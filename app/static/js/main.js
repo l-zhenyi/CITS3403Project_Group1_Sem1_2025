@@ -243,13 +243,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('event-panels-container')?.addEventListener('contextmenu', (e) => {
         e.preventDefault();
 
-        const node = e.target.closest('.event-node');
-        showContextMenu({
-            x: e.pageX,
-            y: e.pageY,
-            onNode: !!node,
-            nodeId: node?.dataset.nodeId || null
-        });
+        const types = ['event-node', 'event-panel', 'group-card']; // Add more types here as needed
+
+        const target = types
+            .map(type => ({ type, element: e.target.closest(`.${type}`) }))
+            .find(({ element }) => element);
+
+        if (target && target.element) {
+            const { type, element } = target;
+            const idAttr = type === 'event-panel' ? 'eventId' : 'nodeId'; // Customize per type if needed
+            const id = element.dataset[idAttr];
+
+            showContextMenu({
+                x: e.pageX,
+                y: e.pageY,
+                type, // string like 'event-node'
+                id,
+            });
+        }
     });
 
 }); // End DOMContentLoaded

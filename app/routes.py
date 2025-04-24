@@ -94,16 +94,11 @@ def get_group_events(group_id):
     group = db.session.get(Group, group_id)
     if not group:
         return jsonify({"error": "Group not found"}), 404
-
-    events = [
-        event.to_dict() for event in group.events
-    ]
     nodes = [
         node.to_dict() for node in group.nodes
     ] if hasattr(group, "nodes") else []
 
     return jsonify({
-        "events": events,
         "nodes": nodes
     })
 
@@ -157,47 +152,48 @@ def create_event(group_id):
     # event.to_dict() will now include the saved node_id
     return jsonify(event.to_dict()), 201
 
-@app.route('/api/events/<int:event_id>', methods=['PATCH'])
-def update_event_position(event_id):
+@app.route('/api/events/<event_id>', methods=['PATCH'])
+def rename_event(event_id):
+    event = Event.query.get_or_404(event_id)
     data = request.get_json()
-    event = db.session.get(Event, event_id)
-    if not event:
-        return jsonify({"error": "Event not found"}), 404
-
-    if 'x' in data:
-        event.x = data['x']
-    if 'y' in data:
-        event.y = data['y']
-
+    if 'title' in data:
+        event.title = data['title']
+    
     db.session.commit()
-    return jsonify(event.to_dict())
-
-@app.route('/api/groups/<int:group_id>/nodes', methods=['POST'])
-def create_node(group_id):
-    group = Group.query.get_or_404(group_id)
-    data = request.json
-
-    label = data.get('label', 'Untitled')
-    x = data.get('x', 400)
-    y = data.get('y', 300)
-
-    new_node = Node(label=label, x=x, y=y, group=group)
-    db.session.add(new_node)
-    db.session.commit()
-
-    return jsonify(new_node.to_dict()), 201
+    return jsonify(event.to_dict()) 
 
 @app.route('/api/nodes/<int:node_id>', methods=['PATCH'])
 def update_node(node_id):
     node = Node.query.get_or_404(node_id)
-    data = request.json
+    data = request.get_json()
 
+    # Allow renaming
     if 'label' in data:
         node.label = data['label']
+
+    # Existing position update
     if 'x' in data:
         node.x = data['x']
     if 'y' in data:
         node.y = data['y']
 
     db.session.commit()
-    return jsonify({'success': True})
+    return jsonify(node.to_dict()) 
+
+@app.route('/api/events/<int:event_id>', methods=['DELETE'])
+def delete_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    db.session.delete(event)
+    db.session.commit()
+    return '', 204
+
+@app.route('/api/nodes/<int:node_id>', methods=['DELETE'])
+def delete_node(node_id):
+    node = Node.query.get_or_404(node_id)
+
+    for event in node.events:
+        db.session.delete(event)
+
+    db.session.delete(node)
+    db.session.commit()
+    return '', 204

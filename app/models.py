@@ -48,10 +48,6 @@ class Group(db.Model):
         back_populates="group", cascade="all, delete-orphan"
     )
 
-    events: Mapped[List["Event"]] = relationship(
-        back_populates="group", cascade="all, delete-orphan"
-    )
-
     nodes: Mapped[List["Node"]] = relationship(
         back_populates="group", cascade="all, delete-orphan"
     )
@@ -118,8 +114,6 @@ class Event(db.Model):
     x: Mapped[float] = mapped_column(Float, nullable=True)
     y: Mapped[float] = mapped_column(Float, nullable=True)
 
-    # Foreign keys
-    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"))
     node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
 
     # Relationships

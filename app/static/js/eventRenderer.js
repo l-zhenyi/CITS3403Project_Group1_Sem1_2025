@@ -355,27 +355,37 @@ function createContextMenuElement() {
     return menu;
 }
 
-function handleContextAction(label, x, y, nodeId) {
+function handleContextAction(label, x, y, id) {
     const groupId = getActiveGroupId();
     const { x: relX, y: relY } = getRelativeCoordsToContainer(x, y);
 
-    if (label === 'Create Node') {
-        createNodeAt(relX, relY, groupId);
-    } else if (label === 'Create Event on Node') {
-        createEventAt(relX, relY, groupId, nodeId);
-    } else if (label === 'Create Event (Unattached)') {
-        createEventAt(relX, relY, groupId, null);
-    }
+    // Map context menu options to actions, generic by type/id
+    const actions = {
+        'Create Node': () => createNodeAt(relX, relY, groupId),
+        'Create Event on Node': () => createEventAt(relX, relY, groupId, id),
+        'Create Event (Unattached)': () => createEventAt(relX, relY, groupId, null),
+        'Rename Event': () => renameEvent(id),
+        'Delete Event': () => deleteEvent(id),
+        'Rename Node': () => renameNode(id),
+        'Delete Node': () => deleteNode(id)
+    };
+    const action = actions[label];
+    if (action) action();
 }
 
-export function showContextMenu({ x, y, onNode, nodeId }) {
+// type: 'event-panel', 'event-node', 'canvas', etc.
+export function showContextMenu({ x, y, type, id }) {
     let menu = document.getElementById('custom-context-menu');
     if (!menu) menu = createContextMenuElement();
 
     menu.innerHTML = '';
-    const options = onNode
-        ? ['Create Event on Node']
-        : ['Create Node', 'Create Event (Unattached)'];
+    // Option mapping by type
+    const optionsMap = {
+        'event-panel': ['Rename Event', 'Delete Event'],
+        'event-node': ['Create Event on Node', 'Rename Node', 'Delete Node'],
+        'canvas': ['Create Node', 'Create Event (Unattached)']
+    };
+    const options = optionsMap[type] || [];
 
     options.forEach(label => {
         const option = document.createElement('div');
@@ -383,7 +393,7 @@ export function showContextMenu({ x, y, onNode, nodeId }) {
         option.textContent = label;
         option.onclick = () => {
             menu.style.display = 'none';
-            handleContextAction(label, x, y, nodeId);
+            handleContextAction(label, x, y, id);
         };
         menu.appendChild(option);
     });
@@ -391,6 +401,64 @@ export function showContextMenu({ x, y, onNode, nodeId }) {
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
     menu.style.display = 'block';
+}
+
+function renameEvent(eventId) {
+    const panel = document.querySelector(`.event-panel[data-event-id="${eventId}"]`);
+    if (!panel) return;
+    const currentName = panel.querySelector('.event-name')?.textContent || '';
+    const newName = prompt('Rename event:', currentName);
+    if (!newName) return;
+
+    fetch(`/api/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newName })
+    }).then(res => res.json())
+      .then(data => {
+          const nameEl = panel.querySelector('.event-name');
+          if (nameEl) nameEl.textContent = data.title;
+      });
+}
+
+function deleteEvent(eventId) {
+    console.log(`Deleting event with ID: ${eventId}`);
+    const panel = document.querySelector(`.event-panel[data-event-id="${eventId}"]`);
+    if (!panel) return;
+
+    fetch(`/api/events/${eventId}`, { method: 'DELETE' })
+        .then(res => {
+            if (res.ok) panel.remove();
+        })
+        .catch(err => console.error('Failed to delete event:', err));
+}
+
+function renameNode(nodeId) {
+    const panel = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
+    if (!panel) return;
+    const currentLabel = panel.textContent || '';
+    const newLabel = prompt('Rename node:', currentLabel);
+    if (!newLabel) return;
+
+    fetch(`/api/nodes/${nodeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: newLabel })
+    }).then(res => res.json())
+      .then(data => {
+          panel.textContent = data.label;
+      });
+}
+
+function deleteNode(nodeId) {
+    const panel = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
+    if (!panel) return;
+
+    fetch(`/api/nodes/${nodeId}`, { method: 'DELETE' })
+        .then(res => {
+            if (res.ok) panel.remove();
+        })
+        .catch(err => console.error('Failed to delete node:', err));
 }
 
 async function createNodeAt(x, y, groupId) {
