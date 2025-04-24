@@ -1,6 +1,6 @@
 // main.js
-import { loadData, groupsData } from './dataHandle.js';
-import { renderGroupEvents } from './eventRenderer.js';
+import { loadGroups, groupsData, parseHash } from './dataHandle.js';
+import { renderGroupEvents, showContextMenu } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
 import { hookDemoButtons, hookEventFilterBar } from './eventActions.js';
 
@@ -52,20 +52,20 @@ function setupZoomAndPan() {
     });
 
     let lastMove = 0;
-window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const now = performance.now();
-    if (now - lastMove < 16) return; // ~60fps
-    lastMove = now;
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const now = performance.now();
+        if (now - lastMove < 16) return; // ~60fps
+        lastMove = now;
 
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    panX += dx;
-    panY += dy;
-    startX = e.clientX;
-    startY = e.clientY;
-    applyTransform();
-});
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        panX += dx;
+        panY += dy;
+        startX = e.clientX;
+        startY = e.clientY;
+        applyTransform();
+    });
 
     window.addEventListener('mouseup', () => {
         isDragging = false;
@@ -96,13 +96,32 @@ window.addEventListener('mousemove', (e) => {
     }, { passive: false });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadGroups(); // Must complete before group selection works
     setupViewSwitching();
     hookDemoButtons();
     hookEventFilterBar();
     hookCalendarNavigation();
     setupZoomAndPan();
+
+    const { view, groupId } = parseHash();
+    console.log("Parsed hash:", view, groupId);
+
+    if (view === "calendar") {
+        switchView("calendar");
+    } else if (view === "events") {
+        switchView("events");
+    } else {
+        // groups view
+        if (groupId) {
+            const li = document.querySelector(`.group-item[data-group-id="${groupId}"]`);
+            if (li) li.click();
+        } else {
+            const firstLi = document.querySelector(".group-item");
+            if (firstLi) firstLi.click(); // fallback
+        }
+        switchView("groups");
+    }
 
     const groupListUL = document.querySelector('.group-list-area ul');
     const activeGroupNameEl = document.getElementById('active-group-name');
@@ -176,30 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Auto-render first group on load (existing) ---
-    // ... (keep existing logic, ensure switchView('groups') is called for desktop) ...
-    const firstGroup = groupsData[0];
-    if (firstGroup) {
-        const li = groupListUL?.querySelector(`.group-item[data-group-id="${firstGroup.id}"]`);
-        const isMobileOnLoad = window.innerWidth <= 768;
-
-        if (!isMobileOnLoad) {
-            if (li) li.classList.add('active');
-            if (activeGroupNameEl) activeGroupNameEl.textContent = `${firstGroup.name} Events`;
-            if (activeGroupAvatarEl) activeGroupAvatarEl.src = firstGroup.avatar_url;
-            switchView('groups'); // Triggers initial render for desktop
-        } else {
-            switchView('groups'); // Show group list on mobile
-            if (activeGroupNameEl) activeGroupNameEl.textContent = `Select a Group`;
-            if (activeGroupAvatarEl) activeGroupAvatarEl.src = '';
-        }
-    } else {
-        const container = document.getElementById('event-panels-container');
-        if (container) container.innerHTML = '<p class="no-events-message">No groups available.</p>';
-        if (activeGroupNameEl) activeGroupNameEl.textContent = 'No Groups';
-    }
-
-
     // --- Resize Handler ---
     // ... (keep existing resize handler logic) ...
     const handleResize = debounce(() => {
@@ -240,7 +235,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 250);
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('click', () => {
+        const menu = document.getElementById('custom-context-menu');
+        if (menu) menu.style.display = 'none';
+    });
 
+    document.getElementById('event-panels-container')?.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+
+        const node = e.target.closest('.event-node');
+        showContextMenu({
+            x: e.pageX,
+            y: e.pageY,
+            onNode: !!node,
+            nodeId: node?.dataset.nodeId || null
+        });
+    });
 
 }); // End DOMContentLoaded

@@ -1,70 +1,17 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User 
+from app.models import User, Group, GroupMember, Event, EventRSVP, Node
 from urllib.parse import urlparse
 from datetime import datetime
+from dateutil.parser import isoparse
 
-groups = [
-    {
-        'id': 'hikers',
-        'name': 'Weekend Hikers',
-        'avatar_url': 'https://via.placeholder.com/40/A0AECF/FFFFFF?text=G1',
-        'upcoming_event_count': 2, # Example calculation
-        'events': [
-            {
-                'id': 1,
-                'title': 'Mountain Hike Day',
-                'image_url': 'https://via.placeholder.com/150/BEE3F8/2A4365?text=Hike+Img',
-                'date_iso': '2023-11-25T09:00:00', # ISO format for JS parsing
-                'formatted_date': 'Sat, Nov 25 @ 9:00 AM', # Pre-formatted for display
-                'cost_display': '$5',
-                'location': 'Eagle Peak Trail',
-                'rsvp_status': 'Going'
-            },
-            {
-                'id': 5,
-                'title': 'Coastal Trail Walk',
-                'image_url': 'https://via.placeholder.com/150/A0AECF/FFFFFF?text=Walk+Img',
-                'date_iso': '2023-12-02T10:00:00',
-                'formatted_date': 'Sat, Dec 2 @ 10:00 AM',
-                'cost_display': 'Free',
-                'location': 'Seaview Path',
-                'rsvp_status': 'Invited'
-            },
-             { # Example Past Event for filtering
-                'id': 8,
-                'title': 'Previous Hike Prep Meeting',
-                'image_url': 'https://via.placeholder.com/150/A0AECF/999999?text=Past+Hike',
-                'date_iso': '2023-10-15T19:00:00',
-                'formatted_date': 'Sun, Oct 15 @ 7:00 PM',
-                'cost_display': 'Free',
-                'location': 'Online',
-                'rsvp_status': 'Going'
-            },
-        ]
-    },
-    {
-        'id': 'boardgames',
-        'name': 'Board Game Geeks',
-        'avatar_url': 'https://via.placeholder.com/40/FEEBC8/9C4221?text=G2',
-        'upcoming_event_count': 1,
-        'events': [
-            # ... events for board game geeks ...
-        ]
-    },
-    # ... more groups
-]
-
-user = {
-    'username': 'johndoe',
-}
 @app.route('/')
 @app.route('/index') 
 @login_required 
 def index():
-    return render_template('index.html', title='Home Page', groups=groups)
+    return render_template('index.html', title='Home Page')
 
 @app.before_request 
 def before_request(): 
@@ -109,74 +56,23 @@ def logout():
 @app.route('/profile')
 @login_required 
 def profile():
-    return render_template('profile.html', user=user, groups=groups)
+    return render_template('profile.html', user=user)
 
 @app.route('/explore')
 @login_required 
 def explore():
-    return render_template('explore.html', groups=groups)
+    return render_template('explore.html')
 
 @app.route('/planner')
 @login_required 
 def planner():
-    return render_template('planner.html', groups=groups)
+    return render_template('planner.html')
 
 @app.route('/user/<username>') 
 @login_required 
 def user(username): 
     user = User.query.filter_by(username=username).first_or_404() 
-    groups = [
-        {
-            'id': 'hikers',
-            'name': 'Weekend Hikers',
-            'avatar_url': 'https://via.placeholder.com/40/A0AECF/FFFFFF?text=G1',
-            'upcoming_event_count': 2, # Example calculation
-            'events': [
-                {
-                    'id': 1,
-                    'title': 'Mountain Hike Day',
-                    'image_url': 'https://via.placeholder.com/150/BEE3F8/2A4365?text=Hike+Img',
-                    'date_iso': '2023-11-25T09:00:00', # ISO format for JS parsing
-                    'formatted_date': 'Sat, Nov 25 @ 9:00 AM', # Pre-formatted for display
-                    'cost_display': '$5',
-                    'location': 'Eagle Peak Trail',
-                    'rsvp_status': 'Going'
-                },
-                {
-                    'id': 5,
-                    'title': 'Coastal Trail Walk',
-                    'image_url': 'https://via.placeholder.com/150/A0AECF/FFFFFF?text=Walk+Img',
-                    'date_iso': '2023-12-02T10:00:00',
-                    'formatted_date': 'Sat, Dec 2 @ 10:00 AM',
-                    'cost_display': 'Free',
-                    'location': 'Seaview Path',
-                    'rsvp_status': 'Invited'
-                },
-                { # Example Past Event for filtering
-                    'id': 8,
-                    'title': 'Previous Hike Prep Meeting',
-                    'image_url': 'https://via.placeholder.com/150/A0AECF/999999?text=Past+Hike',
-                    'date_iso': '2023-10-15T19:00:00',
-                    'formatted_date': 'Sun, Oct 15 @ 7:00 PM',
-                    'cost_display': 'Free',
-                    'location': 'Online',
-                    'rsvp_status': 'Going'
-                },
-            ]
-        },
-        {
-            'id': 'boardgames',
-            'name': 'Board Game Geeks',
-            'avatar_url': 'https://via.placeholder.com/40/FEEBC8/9C4221?text=G2',
-            'upcoming_event_count': 1,
-            'events': [
-                # ... events for board game geeks ...
-            ]
-        },
-        # ... more groups
-    ]
-
-    return render_template('user.html', user=user, groups=groups)
+    return render_template('user.html', user=user)
  
 @app.route('/edit_profile', methods=['GET', 'POST']) 
 @login_required 
@@ -192,3 +88,105 @@ def edit_profile():
         form.username.data = current_user.username 
         form.about_me.data = current_user.about_me 
     return render_template('edit_profile.html', title='Edit Profile', form=form)
+
+@app.route("/api/groups/<int:group_id>/events")
+def get_group_events(group_id):
+    group = db.session.get(Group, group_id)
+    if not group:
+        return jsonify({"error": "Group not found"}), 404
+
+    events = [
+        event.to_dict() for event in group.events
+    ]
+    nodes = [
+        node.to_dict() for node in group.nodes
+    ] if hasattr(group, "nodes") else []
+
+    return jsonify({
+        "events": events,
+        "nodes": nodes
+    })
+
+@app.route('/api/groups', methods=['POST'])
+def create_group():
+    data = request.get_json()
+    group = Group(
+        name=data.get("name"),
+        avatar_url=data.get("avatar_url"),
+        about="New group"
+    )
+    db.session.add(group)
+    db.session.commit()
+    return jsonify(group.to_dict()), 201
+
+@app.route('/api/groups', methods=['GET'])
+def get_groups():
+    groups = Group.query.all()
+    return jsonify([g.to_dict() for g in groups])
+
+@app.route('/api/groups/<int:group_id>/events', methods=['POST'])
+def create_event(group_id):
+    data = request.get_json()
+    iso_str = data.get("date")
+    try:
+        parsed_date = isoparse(iso_str)
+    except ValueError:
+        return jsonify({"error": "Invalid date format"}), 400
+
+    event = Event(
+        title=data.get("title"),
+        date=parsed_date,
+        location=data.get("location"),
+        group_id=group_id,
+        description=data.get("description"),
+        x=data.get("x"),
+        y=data.get("y")
+    )
+    db.session.add(event)
+    db.session.commit()
+    return jsonify(event.to_dict()), 201
+
+@app.route('/api/events/<int:event_id>', methods=['PATCH'])
+def update_event_position(event_id):
+    data = request.get_json()
+    event = db.session.get(Event, event_id)
+    if not event:
+        return jsonify({"error": "Event not found"}), 404
+
+    if 'x' in data:
+        event.x = data['x']
+    if 'y' in data:
+        event.y = data['y']
+
+    db.session.commit()
+    return jsonify(event.to_dict())
+
+@app.route('/api/groups/<int:group_id>/nodes', methods=['POST'])
+def create_node(group_id):
+    group = Group.query.get_or_404(group_id)
+    data = request.json
+
+    label = data.get('label', 'Untitled')
+    x = data.get('x', 400)
+    y = data.get('y', 300)
+
+    new_node = Node(label=label, x=x, y=y, group=group)
+    db.session.add(new_node)
+    db.session.commit()
+
+    return jsonify(new_node.to_dict()), 201
+
+@app.route('/api/nodes/<int:node_id>', methods=['PATCH'])
+def update_node(node_id):
+    node = Node.query.get_or_404(node_id)
+    data = request.json
+
+    if 'label' in data:
+        node.label = data['label']
+    if 'x' in data:
+        node.x = data['x']
+    if 'y' in data:
+        node.y = data['y']
+
+    db.session.commit()
+    return jsonify({'success': True})
