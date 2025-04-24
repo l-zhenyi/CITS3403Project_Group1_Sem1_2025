@@ -205,7 +205,8 @@ export async function renderGroupEvents(groupId) {
         const res = await fetch(`/api/groups/${groupId}/events`);
         if (!res.ok) throw new Error(`Failed to fetch group events: ${res.statusText}`);
         const groupData = await res.json();
-        const { events, nodes } = groupData;
+        const { nodes } = groupData;
+const events = nodes.flatMap(node => node.events || []);
 
         // --- 3a. Cleanup old instances BEFORE clearing DOM ---
         console.log(`[renderGroupEvents] Cleaning up ${layoutInstances.size} old layout instances.`);
@@ -383,7 +384,7 @@ export function showContextMenu({ x, y, type, id }) {
     const optionsMap = {
         'event-panel': ['Rename Event', 'Delete Event'],
         'event-node': ['Create Event on Node', 'Rename Node', 'Delete Node'],
-        'canvas': ['Create Node', 'Create Event (Unattached)']
+        'canvas': ['Create Node']
     };
     const options = optionsMap[type] || [];
 

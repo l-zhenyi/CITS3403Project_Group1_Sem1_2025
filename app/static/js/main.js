@@ -257,8 +257,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             showContextMenu({
                 x: e.pageX,
                 y: e.pageY,
-                type, // string like 'event-node'
+                type,
                 id,
+            });
+        } else {
+            // If click is on empty space inside the collage viewport
+            showContextMenu({
+                x: e.pageX,
+                y: e.pageY,
+                type: 'canvas',
+                id: null
             });
         }
     });

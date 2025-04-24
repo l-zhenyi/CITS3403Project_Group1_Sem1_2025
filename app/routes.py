@@ -95,7 +95,7 @@ def get_group_events(group_id):
     if not group:
         return jsonify({"error": "Group not found"}), 404
     nodes = [
-        node.to_dict() for node in group.nodes
+        node.to_dict(include_events=True) for node in group.nodes
     ] if hasattr(group, "nodes") else []
 
     return jsonify({
@@ -138,19 +138,29 @@ def create_event(group_id):
         title=data.get("title", "Untitled Event"), # Add default title
         date=parsed_date,
         location=data.get("location", "TBD"), # Add default location
-        group_id=group_id,
         description=data.get("description"),
         x=data.get("x"),
         y=data.get("y"),
-        # --- THIS LINE WAS MISSING ---
-        node_id=data.get("node_id") # Add this line! Pass None if not in data
-        # -----------------------------
+        node_id=data.get("node_id")
     )
     db.session.add(event)
     db.session.commit()
 
     # event.to_dict() will now include the saved node_id
     return jsonify(event.to_dict()), 201
+
+@app.route('/api/groups/<int:group_id>/nodes', methods=['POST'])
+def create_node(group_id):
+    data = request.get_json()
+    node = Node(
+        label=data.get("label", "Untitled Node"), # Add default label
+        x=data.get("x", 0), # Default x position
+        y=data.get("y", 0), # Default y position
+        group_id=group_id
+    )
+    db.session.add(node)
+    db.session.commit()
+    return jsonify(node.to_dict()), 201
 
 @app.route('/api/events/<event_id>', methods=['PATCH'])
 def rename_event(event_id):

@@ -131,7 +131,6 @@ class Event(db.Model):
             "rsvp_status": self.rsvp_status,
             "x": self.x,
             "y": self.y,
-            "group_id": self.group_id,
             "node_id": self.node_id
         }
     
