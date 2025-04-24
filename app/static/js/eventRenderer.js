@@ -12,14 +12,6 @@ const collageViewport = document.getElementById('collage-viewport');
 // 2. Store layout instances (Node Element -> Layout Manager Instance)
 const layoutInstances = new Map();
 
-// Default options for the layout manager (customize as needed)
-const defaultOrbitOptions = {
-    centralRadius: 45, // Example: smaller radius for nodes
-    hoverScale: 2.5,
-    repulsionPadding: 5,
-    // Add other defaultConfig overrides if necessary
-};
-
 
 // createEventPanel function remains mostly the same
 // (Ensure data-snapped-to-node is correctly set as before)
@@ -258,7 +250,7 @@ export async function renderGroupEvents(groupId) {
             if (panelsForNode.length > 0) {
                 console.log(` -> Found ${panelsForNode.length} panels for node ${nodeId}. Creating layout instance.`);
                 // Create a NEW instance for this node element
-                const newInstance = new OrbitLayoutManager(nodeEl, panelsForNode, defaultOrbitOptions);
+                const newInstance = new OrbitLayoutManager(nodeEl, panelsForNode);
                 layoutInstances.set(nodeEl, newInstance); // Store the instance
             } else {
                 // console.log(` -> No panels found for node ${nodeId}. Skipping layout instance.`);
@@ -477,7 +469,7 @@ async function createEventAt(x, y, groupId, nodeId = null) {
                 } else {
                     // No instance existed (first event for this node?), create one
                     console.log(` -> Creating new layout instance for node ${nodeId} with ${updatedPanelsArray.length} panels.`);
-                    const newInstance = new OrbitLayoutManager(nodeEl, updatedPanelsArray, defaultOrbitOptions);
+                    const newInstance = new OrbitLayoutManager(nodeEl, updatedPanelsArray);
                     layoutInstances.set(nodeEl, newInstance);
                 }
             } else {
