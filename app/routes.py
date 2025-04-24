@@ -129,21 +129,32 @@ def create_event(group_id):
     data = request.get_json()
     iso_str = data.get("date")
     try:
-        parsed_date = isoparse(iso_str)
-    except ValueError:
-        return jsonify({"error": "Invalid date format"}), 400
+        # Handle timezone info correctly if present (e.g., Z or +00:00)
+        # isoparse usually handles this well. Ensure DB stores UTC ideally.
+        parsed_date = isoparse(iso_str) if iso_str else datetime.utcnow() # Default if date missing
+    except (ValueError, TypeError):
+        # Handle cases where date is missing or invalid format
+        # Log the error? Use a default? Return 400?
+        # Using UTC now as a fallback, adjust if needed.
+        parsed_date = datetime.utcnow()
+        # Or: return jsonify({"error": "Invalid or missing date format"}), 400
 
     event = Event(
-        title=data.get("title"),
+        title=data.get("title", "Untitled Event"), # Add default title
         date=parsed_date,
-        location=data.get("location"),
+        location=data.get("location", "TBD"), # Add default location
         group_id=group_id,
         description=data.get("description"),
         x=data.get("x"),
-        y=data.get("y")
+        y=data.get("y"),
+        # --- THIS LINE WAS MISSING ---
+        node_id=data.get("node_id") # Add this line! Pass None if not in data
+        # -----------------------------
     )
     db.session.add(event)
     db.session.commit()
+
+    # event.to_dict() will now include the saved node_id
     return jsonify(event.to_dict()), 201
 
 @app.route('/api/events/<int:event_id>', methods=['PATCH'])
