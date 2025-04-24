@@ -108,7 +108,7 @@
                     const angle = startAngle + i * angleStep;
                     const x = centerX + finalOrbitRadius * Math.cos(angle);
                     const y = centerY + finalOrbitRadius * Math.sin(angle);
-                    const normalizedAngle = (angle + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2);
+                    const normalizedAngle = (((angle + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2));
                     const hue = getHue(normalizedAngle);
                     const color = `hsla(${hue}, ${config.colorSaturation}%, ${config.colorLightness}%, 0.9)`;
                     orbitingCircles.push({ /* ... circle object setup ... */ data: eventItem, originalRadius: circleRadius, radius: circleRadius, targetRadius: circleRadius, x: x, y: y, targetX: x, targetY: y, originalX: x, originalY: y, angle: angle, ringIndex: ringIndex, color: color, originalColor: color, isHovered: false, });
