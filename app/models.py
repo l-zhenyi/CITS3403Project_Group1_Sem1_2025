@@ -52,7 +52,7 @@ class Group(db.Model):
         back_populates="group", cascade="all, delete-orphan"
     )
 
-    def to_dict(self, include_events=True, include_nodes=True):
+    def to_dict(self, include_nodes=True):
         data = {
             "id": self.id,
             "name": self.name,
@@ -62,9 +62,6 @@ class Group(db.Model):
 
         if include_nodes:
             data["event_nodes"] = [node.to_dict() for node in self.nodes]
-
-        if include_events:
-            data["events"] = [event.to_dict() for event in self.events]
 
         return data
 
@@ -117,7 +114,6 @@ class Event(db.Model):
     node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
 
     # Relationships
-    group = relationship("Group", back_populates="events")
     node = relationship("Node", back_populates="events")
 
     attendees = relationship("EventRSVP", back_populates="event", cascade="all, delete-orphan")
