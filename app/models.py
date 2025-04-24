@@ -13,7 +13,7 @@ class User(UserMixin, db.Model):
     username: Mapped[str] = mapped_column(String(64), index=True, unique=True)
     email: Mapped[str] = mapped_column(String(120), index=True, unique=True)
     password_hash: Mapped[str] = mapped_column(String(128))
-    about_me: Mapped[str] = mapped_column(String(140), default="")
+    about_me: Mapped[str] = mapped_column(String(140), nullable=True)
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     groups = relationship("GroupMember", back_populates="user")
     rsvps = relationship("EventRSVP", back_populates="user")
