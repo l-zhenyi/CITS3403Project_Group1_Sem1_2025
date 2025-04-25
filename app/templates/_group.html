@@ -1,0 +1,24 @@
+<p>
+    {% if user.groups.count() > 0 %}
+    <ul class="dashboard-group-list">
+        {% for group_member in user.groups %}
+            <li class="dashboard-group-item">
+                <h3><a href="{{ url_for('view_group', group_id=group_member.group.id) }}">{{ group_member.group.name }}</a></h3>
+                {% if group_member.group.about %}
+                    <p class="group-description">{{ group_member.group.about }}</p>
+                {% endif %}
+                <p class="group-members-list">
+                    <span class="label">Members:</span>
+                    {% if group_member.group.members and group_member.group.members|length > 0 %}
+                        {{ group_member.group.members | map(attribute='user.username') | join(', ') }}
+                    {% else %}
+                        <span class="no-members">None</span>
+                    {% endif %}
+                </p>
+            </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+        <p class="no-groups-message glassy">You are not part of any groups yet.</p>
+    {% endif %}
+</p>

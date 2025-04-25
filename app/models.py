@@ -1,7 +1,7 @@
 from app import db, login
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
-from hashlib import md5 
+from hashlib import md5
 from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Float, text
@@ -12,7 +12,12 @@ followers = db.Table('followers',
     db.Column('followed_id', db.Integer, db.ForeignKey('user.id')) 
 ) 
 
-class User(UserMixin, db.Model): 
+group_members = db.Table('group_members',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('group_id', db.Integer, db.ForeignKey('group.id'))
+)
+
+class User(UserMixin, db.Model):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(64), index=True, unique=True)
@@ -20,7 +25,7 @@ class User(UserMixin, db.Model):
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     about_me: Mapped[str] = mapped_column(String(140), nullable=True)
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=True)
-    groups = relationship("GroupMember", back_populates="user")
+    groups = relationship("GroupMember", back_populates="user", lazy="dynamic")
     rsvps = relationship("EventRSVP", back_populates="user")
     posts: Mapped[list["Post"]] = relationship("Post", back_populates="author", lazy="dynamic")
     followed = relationship( 
@@ -61,6 +66,14 @@ class User(UserMixin, db.Model):
                 followers.c.follower_id == self.id) 
         own = Post.query.filter_by(user_id=self.id)
         return followed.union(own).order_by(Post.timestamp.desc()) 
+    
+    def group_posts(self, group_id: int):
+        return Post.query.join(GroupMember).filter(
+            GroupMember.user_id == self.id,
+            GroupMember.group_id == group_id,
+            Post.user_id == self.id,
+            Post.group_id == group_id
+        ).order_by(Post.timestamp.desc())
 
 class Post(db.Model):
     __tablename__ = "post"
@@ -69,6 +82,9 @@ class Post(db.Model):
     body: Mapped[str] = mapped_column(String(140))
     timestamp: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.now(timezone.utc))
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey('user.id'))
+    group_id: Mapped[Optional[int]] = mapped_column(ForeignKey("groups.id"), nullable=True)
+    group: Mapped[Optional["Group"]] = relationship(back_populates="posts")
+
     
     # Relationship to User
     author: Mapped["User"] = relationship("User", back_populates="posts")
@@ -91,6 +107,10 @@ class Group(db.Model):
     members: Mapped[List["GroupMember"]] = relationship(
         back_populates="group", cascade="all, delete-orphan"
     )
+
+    posts: Mapped[List["Post"]] = relationship(
+    back_populates="group", cascade="all, delete-orphan"
+)
 
     events: Mapped[List["Event"]] = relationship(
         back_populates="group", cascade="all, delete-orphan"
@@ -115,7 +135,6 @@ class Group(db.Model):
             data["events"] = [event.to_dict() for event in self.events]
 
         return data
-
 
 class Node(db.Model):
     __tablename__ = "nodes"
@@ -196,8 +215,8 @@ class GroupMember(db.Model):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"))
 
-    user = relationship("User", back_populates="groups")
-    group = relationship("Group", back_populates="members")
+    user: Mapped["User"] = relationship(back_populates="groups")
+    group: Mapped["Group"] = relationship(back_populates="members")
 
 class EventRSVP(db.Model):
     __tablename__ = "event_rsvp"

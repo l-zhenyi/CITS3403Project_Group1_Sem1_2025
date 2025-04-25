@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Hi, {{ current_user.username }}!</h1>
+    <p>Get started by creating your group! Fill in the details below:</p>
+
+    <!-- Display errors if form has any -->
+    {% if form.errors %}
+        <ul style="color: red;">
+            {% for field, errors in form.errors.items() %}
+                {% for error in errors %}
+                    <li><strong>{{ field }}:</strong> {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <!-- Create group form -->
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <div>
+            <label for="name">Group Name:</label>
+            {{ form.name(size=32) }}
+            {% for error in form.name.errors %}
+                <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div>
+            <label for="about">About:</label>
+            {{ form.about(rows=4, cols=32) }}
+            {% for error in form.about.errors %}
+                <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div>
+            <button type="submit">Create Group</button>
+        </div>
+    </form>
+{% endblock %}

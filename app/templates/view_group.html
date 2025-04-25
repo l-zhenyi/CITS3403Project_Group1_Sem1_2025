@@ -1,0 +1,43 @@
+{% extends "base.html" %} 
+{% block content %} 
+
+<h1>{{ group.name }}</h1>
+<img src="{{ group.avatar_url }}" alt="Group Avatar">
+<p>{{ group.about }}</p>
+<h3>Members</h3>
+<h3>Group Posts</h3>
+{% if form %}
+<form action="" method="post">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.post.label }}<br>
+        {{ form.post(cols=32, rows=4) }}<br>
+        {% for error in form.post.errors %}
+        <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </p>
+    <p>{{ form.submit() }}</p>
+</form>
+{% endif %}
+    
+{% if posts %}
+    <ul class="post-list">
+        {% for post in posts %}
+            {% include '_post.html' %}
+        {% endfor %}
+    </ul>
+
+    <div class="pagination-links">
+        {% if prev_url %}
+            <a href="{{ prev_url }}">Newer posts</a>
+        {% endif %}
+        {% if next_url %}
+            <a href="{{ next_url }}">Older posts</a>
+        {% endif %}
+    </div>
+{% else %}
+    <p>No posts in this group yet.</p>
+{% endif %}
+
+
+{% endblock %} 

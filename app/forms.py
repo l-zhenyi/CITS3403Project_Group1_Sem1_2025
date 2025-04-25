@@ -45,3 +45,12 @@ class EditProfileForm(FlaskForm):
 
 class EmptyForm(FlaskForm): 
     submit = SubmitField('Submit') 
+
+class PostForm(FlaskForm): 
+    post = TextAreaField('Say something', validators=[ 
+    DataRequired(), Length(min=1, max=140)]) 
+    submit = SubmitField('Submit') 
+
+class CreateGroupForm(FlaskForm):
+    name = StringField("Group Name", validators=[DataRequired(), Length(max=100)])
+    about = TextAreaField("About", validators=[Length(max=255)])
