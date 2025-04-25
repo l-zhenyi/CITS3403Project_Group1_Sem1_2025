@@ -14,7 +14,7 @@ followers = db.Table('followers',
 
 group_members = db.Table('group_members',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
-    db.Column('group_id', db.Integer, db.ForeignKey('group.id'))
+    db.Column('group_id', db.Integer, db.ForeignKey('groups.id'))
 )
 
 class User(UserMixin, db.Model):
