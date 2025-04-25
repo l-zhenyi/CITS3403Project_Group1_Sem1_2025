@@ -1,5 +1,5 @@
 <p>
-    {% if user.groups.count() > 0 %}
+    {% if current_user.groups.count() > 0 %}
     <ul class="dashboard-group-list">
         {% for group_member in user.groups %}
             <li class="dashboard-group-item">
