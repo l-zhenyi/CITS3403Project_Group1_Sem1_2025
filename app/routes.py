@@ -4,7 +4,7 @@ from app.forms import LoginForm, RegistrationForm, EditProfileForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, Group, GroupMember, Event, EventRSVP, Node
 from urllib.parse import urlparse
-from datetime import datetime
+from datetime import datetime, timezone
 from dateutil.parser import isoparse
 
 @app.route('/')
@@ -16,7 +16,7 @@ def index():
 @app.before_request 
 def before_request(): 
     if current_user.is_authenticated: 
-        current_user.last_seen = datetime.utcnow() 
+        current_user.last_seen = datetime.now(timezone.utc) 
         db.session.commit() 
 
 @app.route('/login', methods=['GET', 'POST']) 
@@ -126,12 +126,12 @@ def create_event(group_id):
     try:
         # Handle timezone info correctly if present (e.g., Z or +00:00)
         # isoparse usually handles this well. Ensure DB stores UTC ideally.
-        parsed_date = isoparse(iso_str) if iso_str else datetime.utcnow() # Default if date missing
+        parsed_date = isoparse(iso_str) if iso_str else datetime.now(timezone.utc)
     except (ValueError, TypeError):
         # Handle cases where date is missing or invalid format
         # Log the error? Use a default? Return 400?
         # Using UTC now as a fallback, adjust if needed.
-        parsed_date = datetime.utcnow()
+        parsed_date = datetime.now(timezone.utc)
         # Or: return jsonify({"error": "Invalid or missing date format"}), 400
 
     event = Event(
