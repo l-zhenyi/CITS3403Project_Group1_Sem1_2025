@@ -17,23 +17,33 @@ group_members = db.Table('group_members',
     db.Column('group_id', db.Integer, db.ForeignKey('groups.id'))
 )
 
-class User(UserMixin, db.Model):
+class User(UserMixin,db.Model):
     __tablename__ = "user"
+    
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(64), index=True, unique=True)
     email: Mapped[str] = mapped_column(String(120), index=True, unique=True)
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     about_me: Mapped[str] = mapped_column(String(140), nullable=True)
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=True)
-    groups = relationship("GroupMember", back_populates="user", lazy="dynamic")
-    rsvps = relationship("EventRSVP", back_populates="user")
+    
+    groups: Mapped[list["GroupMember"]] = relationship("GroupMember", back_populates="user", lazy="dynamic")
+    rsvps: Mapped[list["EventRSVP"]] = relationship("EventRSVP", back_populates="user")
     posts: Mapped[list["Post"]] = relationship("Post", back_populates="author", lazy="dynamic")
-    followed = relationship( 
-        'User', secondary=followers, 
-        primaryjoin=(followers.c.follower_id == id), 
-        secondaryjoin=(followers.c.followed_id == id), 
-        backref=db.backref('followers', lazy='dynamic'), lazy='dynamic')
 
+    followed: Mapped[list["User"]] = relationship(
+        "User",
+        secondary=followers,
+        primaryjoin=(followers.c.follower_id == id),
+        secondaryjoin=(followers.c.followed_id == id),
+        backref=db.backref("followers", lazy="dynamic"),
+        lazy="dynamic"
+    )
+
+    messages_sent: Mapped[List["Message"]] = relationship("Message", foreign_keys="[Message.sender_id]", back_populates="sender")
+    messages_received: Mapped[List["Message"]] = relationship("Message", foreign_keys="[Message.recipient_id]", back_populates="recipient")
+
+    last_message_read_time: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     def __repr__(self) -> str:
         return f"<User {self.username}>"
     
@@ -74,6 +84,15 @@ class User(UserMixin, db.Model):
             Post.user_id == self.id,
             Post.group_id == group_id
         ).order_by(Post.timestamp.desc())
+    
+    def new_messages(self): 
+        last_read_time = self.last_message_read_time or datetime(1900, 1, 1) 
+        return Message.query.filter_by(recipient=self).filter( 
+        Message.timestamp > last_read_time).count() 
+    
+    def search_users_by_username(search_term):
+    # Case insensitive search for usernames that match the search_term
+        return User.query.filter(User.username.ilike(f'%{search_term}%')).all()
 
 class Post(db.Model):
     __tablename__ = "post"
@@ -222,3 +241,20 @@ class InvitedGuest(db.Model):
     name: Mapped[str] = mapped_column(String(120), nullable=True)
 
     event = relationship("Event", back_populates="guests")
+
+class Message(db.Model):
+    __tablename__ = "message"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("user.id"),  nullable=False)
+    recipient_id: Mapped[int] = mapped_column(ForeignKey("user.id"),  nullable=False)
+    body: Mapped[str] = mapped_column(String(140),  nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.now(timezone.utc))
+
+    sender: Mapped["User"] = relationship("User", foreign_keys=[sender_id], back_populates="messages_sent")
+    recipient: Mapped["User"] = relationship("User", foreign_keys=[recipient_id], back_populates="messages_received")
+
+    def __repr__(self):
+        return f"<Message {self.body}>"
+
+    
