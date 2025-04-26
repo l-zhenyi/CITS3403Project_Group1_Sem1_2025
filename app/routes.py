@@ -241,7 +241,7 @@ def delete_event(event_id):
     event = Event.query.get_or_404(event_id)
     db.session.delete(event)
     db.session.commit()
-    return '', 204
+    return jsonify({'success': True})
 
 @app.route('/api/nodes/<int:node_id>', methods=['DELETE'])
 def delete_node(node_id):
@@ -252,8 +252,6 @@ def delete_node(node_id):
 
     db.session.delete(node)
     db.session.commit()
-    return '', 204
-=======
     return jsonify({'success': True})
 
 @app.route('/follow/<username>', methods=['POST']) 
