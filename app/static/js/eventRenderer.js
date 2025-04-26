@@ -206,7 +206,7 @@ export async function renderGroupEvents(groupId) {
         if (!res.ok) throw new Error(`Failed to fetch group events: ${res.statusText}`);
         const groupData = await res.json();
         const { nodes } = groupData;
-const events = nodes.flatMap(node => node.events || []);
+        const events = nodes.flatMap(node => node.events || []);
 
         // --- 3a. Cleanup old instances BEFORE clearing DOM ---
         console.log(`[renderGroupEvents] Cleaning up ${layoutInstances.size} old layout instances.`);
@@ -363,8 +363,7 @@ function handleContextAction(label, x, y, id) {
     // Map context menu options to actions, generic by type/id
     const actions = {
         'Create Node': () => createNodeAt(relX, relY, groupId),
-        'Create Event on Node': () => createEventAt(relX, relY, groupId, id),
-        'Create Event (Unattached)': () => createEventAt(relX, relY, groupId, null),
+        'Create Event on Node': () => createEvent(groupId, id),
         'Rename Event': () => renameEvent(id),
         'Delete Event': () => deleteEvent(id),
         'Rename Node': () => renameNode(id),
@@ -416,10 +415,10 @@ function renameEvent(eventId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newName })
     }).then(res => res.json())
-      .then(data => {
-          const nameEl = panel.querySelector('.event-name');
-          if (nameEl) nameEl.textContent = data.title;
-      });
+        .then(data => {
+            const nameEl = panel.querySelector('.event-name');
+            if (nameEl) nameEl.textContent = data.title;
+        });
 }
 
 function deleteEvent(eventId) {
@@ -429,7 +428,11 @@ function deleteEvent(eventId) {
 
     fetch(`/api/events/${eventId}`, { method: 'DELETE' })
         .then(res => {
-            if (res.ok) panel.remove();
+            if (!res.ok) throw new Error('Delete failed');
+            return res.json(); // read the JSON response
+        })
+        .then(data => {
+            if (data.success) panel.remove();
         })
         .catch(err => console.error('Failed to delete event:', err));
 }
@@ -446,9 +449,9 @@ function renameNode(nodeId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: newLabel })
     }).then(res => res.json())
-      .then(data => {
-          panel.textContent = data.label;
-      });
+        .then(data => {
+            panel.textContent = data.label;
+        });
 }
 
 function deleteNode(nodeId) {
@@ -457,7 +460,11 @@ function deleteNode(nodeId) {
 
     fetch(`/api/nodes/${nodeId}`, { method: 'DELETE' })
         .then(res => {
-            if (res.ok) panel.remove();
+            if (!res.ok) throw new Error('Delete failed');
+            return res.json();
+        })
+        .then(data => {
+            if (data.success) panel.remove();
         })
         .catch(err => console.error('Failed to delete node:', err));
 }
@@ -497,12 +504,11 @@ function getRelativeCoordsToContainer(x, y) {
     };
 }
 
-// --- Modified createEventAt ---
-async function createEventAt(x, y, groupId, nodeId = null) {
+async function createEvent(groupId, nodeId = null) {
     try {
         const eventData = {
             title: "New Event", date: new Date().toISOString(), location: "TBD",
-            description: "Description goes here", x: x, y: y, node_id: nodeId
+            description: "Description goes here", node_id: nodeId
         };
 
         const res = await fetch(`/api/groups/${groupId}/events`, {

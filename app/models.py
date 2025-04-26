@@ -110,7 +110,7 @@ class Group(db.Model):
 
     posts: Mapped[List["Post"]] = relationship(
     back_populates="group", cascade="all, delete-orphan"
-)
+    )
 
     nodes: Mapped[List["Node"]] = relationship(
         back_populates="group", cascade="all, delete-orphan"
@@ -171,9 +171,6 @@ class Event(db.Model):
     cost_display: Mapped[str] = mapped_column(String(50), nullable=True)
     rsvp_status: Mapped[str] = mapped_column(String(50), nullable=True)
 
-    x: Mapped[float] = mapped_column(Float, nullable=True)
-    y: Mapped[float] = mapped_column(Float, nullable=True)
-
     node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
 
     # Relationships
@@ -192,8 +189,6 @@ class Event(db.Model):
             "image_url": self.image_url,
             "cost_display": self.cost_display,
             "rsvp_status": self.rsvp_status,
-            "x": self.x,
-            "y": self.y,
             "node_id": self.node_id
         }
     

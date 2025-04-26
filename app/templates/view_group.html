@@ -1,6 +1,7 @@
-{% extends "base.html" %} 
-{% block content %} 
+{% extends "base.html" %}
 
+{% block content %} 
+<div class="view-posts">
 <h1>{{ group.name }}</h1>
 <img src="{{ group.avatar_url }}" alt="Group Avatar">
 <p>{{ group.about }}</p>
@@ -26,18 +27,27 @@
             {% include '_post.html' %}
         {% endfor %}
     </ul>
-
-    <div class="pagination-links">
-        {% if prev_url %}
-            <a href="{{ prev_url }}">Newer posts</a>
-        {% endif %}
-        {% if next_url %}
-            <a href="{{ next_url }}">Older posts</a>
-        {% endif %}
-    </div>
+    <nav aria-label="Post navigation">
+        <ul class="pagination">
+            {% if prev_url %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ prev_url }}">
+                        <span aria-hidden="true">&larr;</span> Newer posts
+                    </a>
+                </li>
+            {% endif %}
+            {% if next_url %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ next_url }}">
+                        Older posts <span aria-hidden="true">&rarr;</span>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
 {% else %}
     <p>No posts in this group yet.</p>
 {% endif %}
-
+</div>
 
 {% endblock %} 
