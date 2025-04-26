@@ -321,23 +321,30 @@ def create_group():
 def view_group(group_id):
     group = Group.query.get_or_404(group_id)
     form = PostForm()
-    
+
+    # Handle post creation
     if form.validate_on_submit():
         post = Post(
-            body=form.post.data,  # or form.content.data if that's your field
+            body=form.post.data,
             author=current_user,
             group=group,
-            timestamp=datetime.now(timezone.utc) 
+            timestamp=datetime.now(timezone.utc)
         )
         db.session.add(post)
         db.session.commit()
         flash("Post created!")
         return redirect(url_for("view_group", group_id=group.id))
 
+    # Pagination logic for posts
     page = request.args.get('page', 1, type=int)
     pagination = Post.query.filter_by(group_id=group.id) \
         .order_by(Post.timestamp.desc()) \
-        .paginate(page=page, per_page=10, error_out=False)
+        .paginate(page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
     posts = pagination.items
+    
+    # URLs for pagination links
+    next_url = url_for('view_group', group_id=group.id, page=pagination.next_num) if pagination.has_next else None
+    prev_url = url_for('view_group', group_id=group.id, page=pagination.prev_num) if pagination.has_prev else None
 
-    return render_template("view_group.html", group=group, posts=posts, form=form, pagination=pagination)
+    return render_template("view_group.html", group=group, posts=posts, form=form, pagination=pagination,
+                           prev_url=prev_url, next_url=next_url)
