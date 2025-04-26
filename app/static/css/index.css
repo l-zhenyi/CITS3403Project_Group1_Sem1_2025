@@ -167,12 +167,6 @@
     }
 }
 
-.description {
-    align-self: flex-start;  
-    width: 600px;            
-    margin-left: 0;
-}
-
 .main-footer {
     width: 100%;
     background-color: rgba(255, 255, 255, 0.05);
@@ -196,3 +190,67 @@
     color: #aaa;
     margin-top: 5px;
 }
+
+/* --- Responsive adjustments for carousel slides --- */
+@media screen and (max-width: 768px) {
+    .carousel-inner {
+        display: flex;
+    };
+    .carousel-item {
+        display:block;
+        margin-right: 0;
+        flex: 0 0 calc(100%/3);
+    }
+}
+
+.carousel-inner {
+    padding: 1em;
+}
+
+.card {
+    margin: 0 .5em;
+}
+
+.flex-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 2rem;
+    width: 100%;
+}
+
+.dashboard-pane.description,
+.second-description {
+    flex: 1 1 45%; 
+    min-width: 300px;
+}
+
+
+.second-description {
+    margin-left: auto;
+}
+
+@media (max-width: 768px) {
+    .flex-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .dashboard-pane.description,
+    .second-description {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    background-color: black; 
+    border-radius: 100%; 
+    padding: 2px; 
+}
+
+
+
+
