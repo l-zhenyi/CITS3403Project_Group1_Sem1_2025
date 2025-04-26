@@ -80,24 +80,10 @@ function createEventPanel(event) {
     return panel;
 }
 
-// --- Modified makeDraggableNode ---
+// --- Fully replaced makeDraggableNode ---
 function makeDraggableNode(element) {
     let isDragging = false;
     let startX, startY, initialNodeLeft, initialNodeTop;
-
-    element.addEventListener('mousedown', (e) => {
-        if (e.target !== element) return;
-        e.stopPropagation();
-        isDragging = true;
-        element.classList.add('dragging');
-        element.style.zIndex = 1000;
-        startX = e.pageX;
-        startY = e.pageY;
-        initialNodeLeft = parseFloat(element.style.left) || 0;
-        initialNodeTop = parseFloat(element.style.top) || 0;
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp, { once: true });
-    });
 
     function onMouseMove(e) {
         if (!isDragging) return;
@@ -110,14 +96,9 @@ function makeDraggableNode(element) {
         element.style.left = `${newX}px`;
         element.style.top = `${newY}px`;
 
-        // 4. Update layout instance during drag
         const instance = layoutInstances.get(element);
         if (instance) {
-            // console.log(`Dragging node ${element.dataset.nodeId}, updating layout instance.`);
-            // updateLayout() recalculates based on the node's current position
             instance.updateLayout();
-        } else {
-            // console.log(`Dragging node ${element.dataset.nodeId}, no layout instance found.`);
         }
     }
 
@@ -127,16 +108,48 @@ function makeDraggableNode(element) {
         element.classList.remove('dragging');
         element.style.zIndex = '';
         document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
 
-        // Optional: Trigger one final update on mouse up if needed,
-        // though continuous update in onMouseMove might suffice.
-        // The animation loop within the instance handles smoothing.
         const instance = layoutInstances.get(element);
         if (instance) {
-            // console.log(`Drag end node ${element.dataset.nodeId}, final update layout instance.`);
             instance.updateLayout();
         }
+
+        const nodeId = element.dataset.nodeId;
+        if (nodeId) {
+            const x = parseFloat(element.style.left) || 0;
+            const y = parseFloat(element.style.top) || 0;
+            fetch(`/api/nodes/${nodeId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ x, y })
+            })
+            .then(res => {
+                if (!res.ok) console.error(`Failed to update node ${nodeId} position.`);
+                return res.json();
+            })
+            .then(data => {
+                console.log(`Node ${nodeId} position updated`, data);
+            })
+            .catch(err => console.error(`Error updating node ${nodeId}:`, err));
+        }
     }
+
+    element.addEventListener('mousedown', (e) => {
+        if (e.target !== element) return;
+        e.stopPropagation();
+        isDragging = true;
+        element.classList.add('dragging');
+        element.style.zIndex = 1000;
+        startX = e.pageX;
+        startY = e.pageY;
+        initialNodeLeft = parseFloat(element.style.left) || 0;
+        initialNodeTop = parseFloat(element.style.top) || 0;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
 }
 
 function getCurrentZoomScale() {
