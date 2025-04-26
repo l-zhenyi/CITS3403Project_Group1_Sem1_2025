@@ -1,21 +1,22 @@
 {% extends "base.html" %}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" type="text/css">
 {% endblock %}
 
 {% block content %}
 <div class="auth-wrapper">
-<div class="auth-container"> {# New wrapper class for potential centering #}
-    <div class="glassy auth-pane"> {# Centered pane for authentication forms #}
+    {# Spacer Left #}
+    <div class="auth-spacer-left"></div>
+
+    {# Auth Pane (Fixed Width) #}
+    <div class="auth-pane glassy">
         <form action="" method="post" novalidate class="auth-form">
             {{ form.hidden_tag() }}
             <h1>Sign In</h1>
 
             <div class="form-field">
-                {# Use label tag for accessibility, styled by CSS #}
-                {{ form.username.label(class_="form-label") }}<br> {# Keep <br> or use block label #}
-                {# Add class for styling input fields #}
+                {{ form.username.label(class_="form-label") }}<br>
                 {{ form.username(class_="form-input", size=32, placeholder="Enter your username") }}<br>
                 {% for error in form.username.errors %}
                 <span class="form-error">[{{ error }}]</span><br>
@@ -31,39 +32,40 @@
             </div>
 
             <div class="form-field form-field-checkbox">
-                 {# Style checkbox and its label #}
                 {{ form.remember_me(class_="form-checkbox") }}
                 {{ form.remember_me.label(class_="form-label-inline") }}
             </div>
 
             <div class="form-actions">
-                {# Apply button styles to the submit input #}
                 {{ form.submit(class_="button accept") }}
             </div>
 
-             <p class="auth-switch">
+            <p class="auth-switch">
                 New user? <a href="{{ url_for('register') }}">Click to Register!</a>
-             </p>
+            </p>
         </form>
-    </div> {# End auth-pane #}
-</div> {# End auth-container #}
+    </div>
 
-    <div class="auth-description">
+    {# Description (Shrinkable) - Now a direct child #}
+    <div class="auth-description glassy">
         <h2>Welcome to Our App!</h2>
         <h3><i>Plan together. Plan smarter.</i></h3>
         <p style="line-height: 1.8;">
             Get the group trip out of the group chat,<br>
             and the group chat out of the group trip —<br>
             all in one place!<br><br>
-        
+
             Create groups, message each other, split expenses, and track your spending —<br>
             all right here on our website.<br><br>
-        
-            What are you waiting for? Log in or register now with your friends 
+
+            What are you waiting for? Log in or register now with your friends
             to start planning your next awesome getaway.<br><br>
-        
+
             <i>Best of all? We're completely ad-free, with every feature unlocked.</i>
         </p>
     </div>
+
+    {# Spacer Right #}
+    <div class="auth-spacer-right"></div>
 </div>
 {% endblock %}
