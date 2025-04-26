@@ -1,22 +1,52 @@
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User, Group, GroupMember, Event, EventRSVP, Node
+from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post
 from urllib.parse import urlparse
-from datetime import datetime
+from datetime import datetime, timezone
 from dateutil.parser import isoparse
 
-@app.route('/')
-@app.route('/index') 
+@app.route('/', methods=['GET', 'POST']) 
+@app.route('/index', methods=['GET', 'POST'])
 @login_required 
 def index():
-    return render_template('index.html', title='Home Page')
+    form = PostForm() 
+    if form.validate_on_submit(): 
+        post = Post(body=form.post.data, author=current_user) 
+        db.session.add(post) 
+        db.session.commit() 
+        flash('Your post is now live!') 
+        return redirect(url_for('index'))
+
+    page = request.args.get('page', 1, type=int) 
+    posts = current_user.followed_posts().paginate(
+        page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False
+    )
+    next_url = url_for('index', page=posts.next_num) if posts.has_next else None 
+    prev_url = url_for('index', page=posts.prev_num) if posts.has_prev else None 
+
+    groups = (
+        Group.query.join(GroupMember)
+        .filter(GroupMember.user_id == current_user.id)
+        .all()
+    )
+
+    return render_template(
+        'index.html',
+        title='Home',
+        form=form,
+        posts=posts.items,
+        next_url=next_url,
+        prev_url=prev_url,
+        groups=groups,
+        user=current_user
+    )
 
 @app.before_request 
 def before_request(): 
     if current_user.is_authenticated: 
-        current_user.last_seen = datetime.utcnow() 
+        current_user.last_seen = datetime.now(timezone.utc) 
         db.session.commit() 
 
 @app.route('/login', methods=['GET', 'POST']) 
@@ -56,12 +86,12 @@ def logout():
 @app.route('/profile')
 @login_required 
 def profile():
-    return render_template('profile.html', user=user)
+    return render_template('profile.html', user=current_user)
 
 @app.route('/explore')
 @login_required 
 def explore():
-    return render_template('explore.html')
+    return render_template("explore.html", title='Explore')
 
 @app.route('/planner')
 @login_required 
@@ -71,8 +101,23 @@ def planner():
 @app.route('/user/<username>') 
 @login_required 
 def user(username): 
-    user = User.query.filter_by(username=username).first_or_404() 
-    return render_template('user.html', user=user)
+    user = User.query.filter_by(username=username).first_or_404()
+    page = request.args.get('page', 1, type=int) 
+    posts = current_user.followed_posts().paginate(
+        page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False
+    )
+    next_url = url_for('user', username=user.username, page=posts.next_num) \
+        if posts.has_next else None 
+    prev_url = url_for('user', username=user.username, page=posts.prev_num) \
+        if posts.has_prev else None
+    form = EmptyForm()
+    groups = (
+        Group.query.join(GroupMember)
+        .filter(GroupMember.user_id == user.id)
+        .all()
+    )
+    return render_template('user.html', user=current_user, posts=posts.items, 
+                           next_url=next_url, prev_url=prev_url, form=form, group=groups)
  
 @app.route('/edit_profile', methods=['GET', 'POST']) 
 @login_required 
@@ -107,8 +152,9 @@ def get_group_events(group_id):
         "nodes": nodes
     })
 
+# I changed the name because I'm using a form for create_group
 @app.route('/api/groups', methods=['POST'])
-def create_group():
+def create_group_api():
     data = request.get_json()
     group = Group(
         name=data.get("name"),
@@ -190,3 +236,92 @@ def update_node(node_id):
 
     db.session.commit()
     return jsonify({'success': True})
+
+@app.route('/follow/<username>', methods=['POST']) 
+@login_required 
+def follow(username): 
+    form = EmptyForm() 
+    if form.validate_on_submit(): 
+        user = User.query.filter_by(username=username).first() 
+        if user is None: 
+            flash('User {} not found.'.format(username)) 
+            return redirect(url_for('index')) 
+        if user == current_user: 
+            flash('You cannot follow yourself!') 
+            return redirect(url_for('user', username=username)) 
+        current_user.follow(user) 
+        db.session.commit() 
+        flash('You are following {}!'.format(username)) 
+        return redirect(url_for('user', username=username)) 
+    else: 
+        return redirect(url_for('index')) 
+ 
+@app.route('/unfollow/<username>', methods=['POST']) 
+@login_required 
+def unfollow(username): 
+    form = EmptyForm() 
+    if form.validate_on_submit(): 
+        user = User.query.filter_by(username=username).first() 
+        if user is None: 
+            flash('User {} not found.'.format(username)) 
+            return redirect(url_for('index')) 
+        if user == current_user: 
+            flash('You cannot unfollow yourself!') 
+            return redirect(url_for('user', username=username)) 
+        current_user.unfollow(user) 
+        db.session.commit() 
+        flash('You are not following {}.'.format(username)) 
+        return redirect(url_for('user', username=username)) 
+    else: 
+        return redirect(url_for('index'))
+
+@app.route("/create_group", methods=["GET", "POST"])
+def create_group():
+    form = CreateGroupForm()
+
+    if form.validate_on_submit():
+        # Get form data
+        group_name = form.name.data
+        about = form.about.data
+        
+        # Create and save the group
+        new_group = Group(name=group_name, about=about)
+        db.session.add(new_group)
+        db.session.commit()
+
+        # Automatically add the creator as the first member (assuming user is logged in)
+        new_member = GroupMember(group_id=new_group.id, user_id=current_user.id)
+        db.session.add(new_member)
+        db.session.commit()
+
+        flash("Group created successfully!", "success")
+        return redirect(url_for("view_group", group_id=new_group.id))
+
+    return render_template("create_group.html", form=form)
+
+@app.route("/groups/<int:group_id>", methods=["GET", "POST"])
+@login_required
+def view_group(group_id):
+    group = Group.query.get_or_404(group_id)
+    form = PostForm()
+    
+    if form.validate_on_submit():
+        post = Post(
+            body=form.post.data,  # or form.content.data if that's your field
+            author=current_user,
+            group=group,
+            timestamp=datetime.now(timezone.utc) 
+        )
+        db.session.add(post)
+        db.session.commit()
+        flash("Post created!")
+        return redirect(url_for("view_group", group_id=group.id))
+
+    page = request.args.get('page', 1, type=int)
+    pagination = Post.query.filter_by(group_id=group.id) \
+        .order_by(Post.timestamp.desc()) \
+        .paginate(page=page, per_page=10, error_out=False)
+    posts = pagination.items
+
+    return render_template("view_group.html", group=group, posts=posts, form=form, pagination=pagination)
+
