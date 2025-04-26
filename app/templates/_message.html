@@ -1,0 +1,11 @@
+<table> 
+    <tr valign="top"> 
+        <td><img src="{{ message.sender.avatar(36) }}"></td> 
+        <td> 
+            <a href="{{ url_for('user', username=message.sender.username) }}"> 
+                {{ message.sender.username }} 
+            </a> 
+            says:<br>{{ message.body }} 
+        </td> 
+    </tr> 
+</table> 
