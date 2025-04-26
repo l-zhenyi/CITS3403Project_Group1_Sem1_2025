@@ -15,7 +15,12 @@ it comes to splitting costs fairly.
 # Installation and running 
 ```
 python3 -m venv venv
+
+# If using MacOS or Linux
 source venv/bin/activate
+# If using Winddows
+venv/Scripts/activate
+
 pip install -r requirements.txt
 flask db upgrade
 flask run
