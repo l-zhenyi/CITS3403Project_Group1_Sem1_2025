@@ -112,15 +112,11 @@ class Group(db.Model):
     back_populates="group", cascade="all, delete-orphan"
 )
 
-    events: Mapped[List["Event"]] = relationship(
-        back_populates="group", cascade="all, delete-orphan"
-    )
-
     nodes: Mapped[List["Node"]] = relationship(
         back_populates="group", cascade="all, delete-orphan"
     )
 
-    def to_dict(self, include_events=True, include_nodes=True):
+    def to_dict(self, include_nodes=True):
         data = {
             "id": self.id,
             "name": self.name,
@@ -130,9 +126,6 @@ class Group(db.Model):
 
         if include_nodes:
             data["event_nodes"] = [node.to_dict() for node in self.nodes]
-
-        if include_events:
-            data["events"] = [event.to_dict() for event in self.events]
 
         return data
 
@@ -181,12 +174,9 @@ class Event(db.Model):
     x: Mapped[float] = mapped_column(Float, nullable=True)
     y: Mapped[float] = mapped_column(Float, nullable=True)
 
-    # Foreign keys
-    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"))
     node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
 
     # Relationships
-    group = relationship("Group", back_populates="events")
     node = relationship("Node", back_populates="events")
 
     attendees = relationship("EventRSVP", back_populates="event", cascade="all, delete-orphan")
@@ -204,7 +194,6 @@ class Event(db.Model):
             "rsvp_status": self.rsvp_status,
             "x": self.x,
             "y": self.y,
-            "group_id": self.group_id,
             "node_id": self.node_id
         }
     

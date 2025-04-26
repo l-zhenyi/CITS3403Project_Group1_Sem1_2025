@@ -1,5 +1,7 @@
 // eventRenderer.js
 import { groupsData, allEventsData, eventsByDate } from './dataHandle.js';
+// 1. Import the class
+import { OrbitLayoutManager } from './orbitLayoutDOM.js'; // Adjust path if needed
 
 const eventPanelsContainer = document.getElementById('event-panels-container');
 const calendarMonthYearEl = document.getElementById('calendar-month-year');
@@ -7,29 +9,45 @@ const calendarGridEl = document.getElementById('calendar-grid');
 const eventListContainer = document.getElementById('event-list-container');
 const collageViewport = document.getElementById('collage-viewport');
 
+// 2. Store layout instances (Node Element -> Layout Manager Instance)
+const layoutInstances = new Map();
+
+
+// createEventPanel function remains mostly the same
+// (Ensure data-snapped-to-node is correctly set as before)
 function createEventPanel(event) {
+    // console.log("Creating panel for event:", event); // Keep for debugging if needed
     const panel = document.createElement('div');
     panel.className = 'event-panel';
-    panel.dataset.eventId = event.id;
+    if (event.id) {
+        panel.dataset.eventId = event.id;
+    } else {
+        console.warn("Event object missing 'id':", event);
+    }
 
-    const dateText = event.formatted_date || formatEventDateForDisplay(event.date);
+    // Ensure data-snapped-to-node is set correctly
+    if (event.node_id !== null && event.node_id !== undefined && String(event.node_id).trim() !== '') {
+        // console.log(` -> Setting data-snapped-to-node="${String(event.node_id)}" for event ${event.id}`);
+        panel.dataset.snappedToNode = String(event.node_id);
+    } else {
+        // console.log(` -> NOT setting data-snapped-to-node for event ${event.id}. Reason: event.node_id is`, event.node_id);
+    }
 
-    // Image element (covers entire panel)
+    const dateText = event.formatted_date || (event.date ? formatEventDateForDisplay(new Date(event.date)) : 'No Date');
     const image = document.createElement('img');
     image.className = 'event-image';
-    image.alt = event.title;
+    image.alt = event.title || 'Event Image';
     image.src = event.image_url || 'https://via.placeholder.com/150x150?text=Event';
+    image.onerror = () => { image.src = 'https://via.placeholder.com/150x150?text=Error'; };
 
-    // Info overlay
     const infoOverlay = document.createElement('div');
     infoOverlay.className = 'event-info-overlay';
     infoOverlay.innerHTML = `
-        <div class="event-name">${event.title}</div>
+        <div class="event-name">${event.title || 'Untitled Event'}</div>
         ${event.location ? `<div class="event-location">📍 ${event.location}</div>` : ''}
         <div class="event-details">${dateText}${event.cost_display ? ` | ${event.cost_display}` : ''}</div>
     `;
 
-    // Optional RSVP (can be styled later)
     if (event.rsvp_status) {
         const rsvp = document.createElement('div');
         rsvp.className = 'event-rsvp';
@@ -37,102 +55,110 @@ function createEventPanel(event) {
         infoOverlay.appendChild(rsvp);
     }
 
-    // Append everything to panel
     panel.appendChild(image);
     panel.appendChild(infoOverlay);
 
-    // Optional buttons (kept invisible for now)
     const actions = document.createElement('div');
     actions.className = 'event-actions';
-    actions.style.display = 'none'; // Hide for now
+    actions.style.display = 'none';
     actions.innerHTML = `
         <button class="button accept">Accept</button>
         <button class="button decline">Decline</button>
     `;
     panel.appendChild(actions);
 
-    // Position
     panel.style.position = 'absolute';
-    panel.style.left = `${event.x}px`;
-    panel.style.top = `${event.y}px`;
+    // Use event.x/y only if NOT snapped, otherwise layout manager handles it
+    if (!panel.dataset.snappedToNode) {
+        panel.style.left = `${Number(event.x || 0)}px`;
+        panel.style.top = `${Number(event.y || 0)}px`;
+    } else {
+        // Let layout manager position initially based on its calculation
+        // Might need a brief 'visibility: hidden' then 'visible' if initial flash is an issue
+    }
 
-    // No dragging for event panels
     return panel;
 }
 
-// --- Dragging Functions ---
-function makeDraggable(element, isNode = false) {
-    if (!isNode) return;
-
+// --- Modified makeDraggableNode ---
+function makeDraggableNode(element) {
     let isDragging = false;
-    let startX, startY, elementStartX, elementStartY;
+    let startX, startY, initialNodeLeft, initialNodeTop;
 
     element.addEventListener('mousedown', (e) => {
+        if (e.target !== element) return;
         e.stopPropagation();
         isDragging = true;
         element.classList.add('dragging');
         element.style.zIndex = 1000;
-
-        const containerRect = eventPanelsContainer.getBoundingClientRect();
-        const currentScale = getCurrentZoomScale();
-        const elementRect = element.getBoundingClientRect();
-
-        const offsetX = e.offsetX;
-        const offsetY = e.offsetY;
-
         startX = e.pageX;
         startY = e.pageY;
-        elementStartX = (element.offsetLeft || 0) - offsetX;
-        elementStartY = (element.offsetTop || 0) - offsetY;
-
-        element.style.transform = '';
-
+        initialNodeLeft = parseFloat(element.style.left) || 0;
+        initialNodeTop = parseFloat(element.style.top) || 0;
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp, { once: true });
     });
 
     function onMouseMove(e) {
         if (!isDragging) return;
-
+        e.preventDefault();
         const scale = getCurrentZoomScale();
         const dx = (e.pageX - startX) / scale;
         const dy = (e.pageY - startY) / scale;
-
-        const newX = elementStartX + dx;
-        const newY = elementStartY + dy;
-
+        const newX = initialNodeLeft + dx;
+        const newY = initialNodeTop + dy;
         element.style.left = `${newX}px`;
         element.style.top = `${newY}px`;
+
+        // 4. Update layout instance during drag
+        const instance = layoutInstances.get(element);
+        if (instance) {
+            // console.log(`Dragging node ${element.dataset.nodeId}, updating layout instance.`);
+            // updateLayout() recalculates based on the node's current position
+            instance.updateLayout();
+        } else {
+            // console.log(`Dragging node ${element.dataset.nodeId}, no layout instance found.`);
+        }
     }
 
-    function onMouseUp(e) {
+    function onMouseUp() {
         if (!isDragging) return;
         isDragging = false;
         element.classList.remove('dragging');
-        element.style.zIndex = 5;
-
+        element.style.zIndex = '';
         document.removeEventListener('mousemove', onMouseMove);
 
-        const finalX = parseFloat(element.style.left || 0);
-        const finalY = parseFloat(element.style.top || 0);
-
-        const nodeId = element.dataset.nodeId;
-        fetch(`/api/nodes/${nodeId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ x: finalX, y: finalY })
-        }).catch(err => console.warn("Failed to update node position:", err));
+        // Optional: Trigger one final update on mouse up if needed,
+        // though continuous update in onMouseMove might suffice.
+        // The animation loop within the instance handles smoothing.
+        const instance = layoutInstances.get(element);
+        if (instance) {
+            // console.log(`Drag end node ${element.dataset.nodeId}, final update layout instance.`);
+            instance.updateLayout();
+        }
     }
 }
 
 function getCurrentZoomScale() {
+    // If eventPanelsContainer doesn't exist yet, return 1
     if (!eventPanelsContainer) return 1;
     const transform = eventPanelsContainer.style.transform;
     const match = transform.match(/scale\(([\d.]+)\)/);
     return match ? parseFloat(match[1]) : 1;
 }
 
-
+// createNodeElement remains the same
+export function createNodeElement(node) {
+    const el = document.createElement('div');
+    el.className = 'event-node';
+    el.id = `node-${node.id}`;
+    el.dataset.nodeId = node.id;
+    el.style.left = `${Number(node.x || 0)}px`;
+    el.style.top = `${Number(node.y || 0)}px`;
+    el.textContent = node.label || 'Untitled';
+    makeDraggableNode(el); // Attach drag handler
+    return el;
+}
 
 export function renderAllEventsList(filter = 'upcoming') {
     if (!eventListContainer) return;
@@ -156,8 +182,6 @@ export function renderAllEventsList(filter = 'upcoming') {
             <p class="tile-detail">✔️ RSVP: ${event.rsvp_status || 'Invited'}</p>
         </div>
     `).join('');
-
-    if (eventsViewArea) eventsViewArea.scrollTop = 0;
 }
 
 function formatEventDateForDisplay(date) {
@@ -171,35 +195,79 @@ function formatEventDateForDisplay(date) {
     });
 }
 
+
+
+// --- Modified renderGroupEvents ---
 export async function renderGroupEvents(groupId) {
-    const container = document.getElementById('event-panels-container');
-    if (!container) return;
+    if (!eventPanelsContainer) return;
 
-    const res = await fetch(`/api/groups/${groupId}/events`);
-    const groupData = await res.json();
+    try {
+        const res = await fetch(`/api/groups/${groupId}/events`);
+        if (!res.ok) throw new Error(`Failed to fetch group events: ${res.statusText}`);
+        const groupData = await res.json();
+        const { nodes } = groupData;
+const events = nodes.flatMap(node => node.events || []);
 
-    const { events, nodes } = groupData;
+        // --- 3a. Cleanup old instances BEFORE clearing DOM ---
+        console.log(`[renderGroupEvents] Cleaning up ${layoutInstances.size} old layout instances.`);
+        layoutInstances.forEach((instance, nodeEl) => {
+            // Check if the nodeEl is still within the container we are about to clear
+            if (eventPanelsContainer.contains(nodeEl)) {
+                console.log(` -> Destroying instance for node:`, nodeEl);
+                instance.destroy(); // Call the class's cleanup method
+            } else {
+                console.warn(" -> Stale instance found for node not in container?", nodeEl);
+            }
+        });
+        layoutInstances.clear(); // Clear the map
+        // --- End Cleanup ---
 
-    container.innerHTML = '';
+        eventPanelsContainer.innerHTML = ''; // Clear previous DOM content
 
-    container.style.minWidth = '2000px';
-    container.style.minHeight = '1600px';
+        const renderedNodes = {}; // Keep track of newly rendered node elements
 
-    // --- Render Nodes ---
-    nodes.forEach(node => {
-        const nodeEl = createNodeElement(node);
-        container.appendChild(nodeEl);
-    });
+        // --- Render Nodes ---
+        nodes.forEach(node => {
+            const nodeEl = createNodeElement(node);
+            eventPanelsContainer.appendChild(nodeEl);
+            renderedNodes[node.id] = nodeEl;
+        });
 
-    // --- Render Events ---
-    events.forEach(event => {
-        event.date = new Date(event.date);
-        const panel = createEventPanel(event);
-        container.appendChild(panel);
-    });
-    const isMobile = window.innerWidth <= 768;
+        // --- Render Events ---
+        events.forEach(event => {
+            event.date = event.date ? new Date(event.date) : null;
+            const panel = createEventPanel(event);
+            eventPanelsContainer.appendChild(panel);
+        });
+
+        // --- 3b. Initialize or Update Layout Instances ---
+        console.log("[renderGroupEvents] Initializing layout instances...");
+        Object.entries(renderedNodes).forEach(([nodeId, nodeEl]) => {
+            // Find all event panels *just rendered* that are snapped to this node
+            const panelsForNode = Array.from(
+                eventPanelsContainer.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`)
+            );
+
+            if (panelsForNode.length > 0) {
+                console.log(` -> Found ${panelsForNode.length} panels for node ${nodeId}. Creating layout instance.`);
+                // Create a NEW instance for this node element
+                const newInstance = new OrbitLayoutManager(nodeEl, panelsForNode);
+                layoutInstances.set(nodeEl, newInstance); // Store the instance
+            } else {
+                // console.log(` -> No panels found for node ${nodeId}. Skipping layout instance.`);
+            }
+        });
+        console.log(`[renderGroupEvents] Layout initialization complete. ${layoutInstances.size} instances active.`);
+
+
+    } catch (error) {
+        console.error("Error rendering group events:", error);
+        eventPanelsContainer.innerHTML = `<p class="error-message">Could not load events for this group.</p>`;
+        // Also clear instances map in case of error after some were created but before full render
+        layoutInstances.forEach(instance => instance.destroy());
+        layoutInstances.clear();
+    }
 }
-
 
 export function renderCalendar(year, month) {
     // Ensure elements exist
@@ -280,19 +348,6 @@ export function renderCalendar(year, month) {
 
 }
 
-export function createNodeElement(node) {
-    const el = document.createElement('div');
-    el.className = 'event-node';
-    el.dataset.nodeId = node.id;
-    el.style.left = `${node.x}px`;
-    el.style.top = `${node.y}px`;
-    el.textContent = node.label || 'Untitled';
-
-    makeDraggable(el, true);
-
-    return el;
-}
-
 function createContextMenuElement() {
     const menu = document.createElement('div');
     menu.id = 'custom-context-menu';
@@ -301,42 +356,37 @@ function createContextMenuElement() {
     return menu;
 }
 
-function getActiveGroupId() {
-    const activeLi = document.querySelector('.group-item.active');
-    return activeLi?.dataset.groupId;
-}
-
-function getRelativeCoordsToContainer(x, y) {
-    const container = document.getElementById('event-panels-container');
-    const rect = container.getBoundingClientRect();
-    const scale = getCurrentZoomScale();
-    return {
-        x: (x - rect.left) / scale,
-        y: (y - rect.top) / scale
-    };
-}
-
-function handleContextAction(label, x, y, nodeId) {
+function handleContextAction(label, x, y, id) {
     const groupId = getActiveGroupId();
     const { x: relX, y: relY } = getRelativeCoordsToContainer(x, y);
 
-    if (label === 'Create Node') {
-        createNodeAt(relX, relY, groupId);
-    } else if (label === 'Create Event on Node') {
-        createEventAt(relX, relY, groupId, nodeId);
-    } else if (label === 'Create Event (Unattached)') {
-        createEventAt(relX, relY, groupId, null);
-    }
+    // Map context menu options to actions, generic by type/id
+    const actions = {
+        'Create Node': () => createNodeAt(relX, relY, groupId),
+        'Create Event on Node': () => createEventAt(relX, relY, groupId, id),
+        'Create Event (Unattached)': () => createEventAt(relX, relY, groupId, null),
+        'Rename Event': () => renameEvent(id),
+        'Delete Event': () => deleteEvent(id),
+        'Rename Node': () => renameNode(id),
+        'Delete Node': () => deleteNode(id)
+    };
+    const action = actions[label];
+    if (action) action();
 }
 
-export function showContextMenu({ x, y, onNode, nodeId }) {
+// type: 'event-panel', 'event-node', 'canvas', etc.
+export function showContextMenu({ x, y, type, id }) {
     let menu = document.getElementById('custom-context-menu');
     if (!menu) menu = createContextMenuElement();
 
     menu.innerHTML = '';
-    const options = onNode
-        ? ['Create Event on Node']
-        : ['Create Node', 'Create Event (Unattached)'];
+    // Option mapping by type
+    const optionsMap = {
+        'event-panel': ['Rename Event', 'Delete Event'],
+        'event-node': ['Create Event on Node', 'Rename Node', 'Delete Node'],
+        'canvas': ['Create Node']
+    };
+    const options = optionsMap[type] || [];
 
     options.forEach(label => {
         const option = document.createElement('div');
@@ -344,7 +394,7 @@ export function showContextMenu({ x, y, onNode, nodeId }) {
         option.textContent = label;
         option.onclick = () => {
             menu.style.display = 'none';
-            handleContextAction(label, x, y, nodeId);
+            handleContextAction(label, x, y, id);
         };
         menu.appendChild(option);
     });
@@ -352,6 +402,64 @@ export function showContextMenu({ x, y, onNode, nodeId }) {
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
     menu.style.display = 'block';
+}
+
+function renameEvent(eventId) {
+    const panel = document.querySelector(`.event-panel[data-event-id="${eventId}"]`);
+    if (!panel) return;
+    const currentName = panel.querySelector('.event-name')?.textContent || '';
+    const newName = prompt('Rename event:', currentName);
+    if (!newName) return;
+
+    fetch(`/api/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newName })
+    }).then(res => res.json())
+      .then(data => {
+          const nameEl = panel.querySelector('.event-name');
+          if (nameEl) nameEl.textContent = data.title;
+      });
+}
+
+function deleteEvent(eventId) {
+    console.log(`Deleting event with ID: ${eventId}`);
+    const panel = document.querySelector(`.event-panel[data-event-id="${eventId}"]`);
+    if (!panel) return;
+
+    fetch(`/api/events/${eventId}`, { method: 'DELETE' })
+        .then(res => {
+            if (res.ok) panel.remove();
+        })
+        .catch(err => console.error('Failed to delete event:', err));
+}
+
+function renameNode(nodeId) {
+    const panel = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
+    if (!panel) return;
+    const currentLabel = panel.textContent || '';
+    const newLabel = prompt('Rename node:', currentLabel);
+    if (!newLabel) return;
+
+    fetch(`/api/nodes/${nodeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: newLabel })
+    }).then(res => res.json())
+      .then(data => {
+          panel.textContent = data.label;
+      });
+}
+
+function deleteNode(nodeId) {
+    const panel = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
+    if (!panel) return;
+
+    fetch(`/api/nodes/${nodeId}`, { method: 'DELETE' })
+        .then(res => {
+            if (res.ok) panel.remove();
+        })
+        .catch(err => console.error('Failed to delete node:', err));
 }
 
 async function createNodeAt(x, y, groupId) {
@@ -374,27 +482,73 @@ async function createNodeAt(x, y, groupId) {
     }
 }
 
+function getActiveGroupId() {
+    const activeLi = document.querySelector('.group-item.active');
+    return activeLi?.dataset.groupId;
+}
+
+function getRelativeCoordsToContainer(x, y) {
+    const container = document.getElementById('event-panels-container');
+    const rect = container.getBoundingClientRect();
+    const scale = getCurrentZoomScale();
+    return {
+        x: (x - rect.left) / scale,
+        y: (y - rect.top) / scale
+    };
+}
+
+// --- Modified createEventAt ---
 async function createEventAt(x, y, groupId, nodeId = null) {
     try {
+        const eventData = {
+            title: "New Event", date: new Date().toISOString(), location: "TBD",
+            description: "Description goes here", x: x, y: y, node_id: nodeId
+        };
+
         const res = await fetch(`/api/groups/${groupId}/events`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: "New Event",
-                date: new Date().toISOString(),
-                location: "TBD",
-                description: "Description goes here",
-                x: x,
-                y: y,
-                node_id: nodeId
-            })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData)
         });
-        if (!res.ok) throw new Error("Event creation failed");
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(`Event creation failed: ${errorData.detail || res.statusText}`);
+        }
+
         const event = await res.json();
-        event.date = new Date(event.date); // parse it for render
-        const el = createEventPanel(event);
-        document.getElementById('event-panels-container').appendChild(el);
+        event.date = new Date(event.date);
+        const newPanel = createEventPanel(event); // Create the DOM element
+
+        const container = document.getElementById('event-panels-container');
+        if (!container) throw new Error("Event container not found");
+        container.appendChild(newPanel); // Add to DOM
+
+        // --- 5. Trigger Layout Update using Instance ---
+        if (nodeId) {
+            const nodeEl = container.querySelector(`.event-node[data-node-id="${nodeId}"]`);
+            if (nodeEl) {
+                const instance = layoutInstances.get(nodeEl);
+                const updatedPanelsForNode = container.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`);
+                const updatedPanelsArray = Array.from(updatedPanelsForNode);
+
+                if (instance) {
+                    // Instance exists, update it with the new list of panels
+                    console.log(` -> Updating existing layout instance for node ${nodeId} with ${updatedPanelsArray.length} panels.`);
+                    instance.updateLayout(updatedPanelsArray);
+                } else {
+                    // No instance existed (first event for this node?), create one
+                    console.log(` -> Creating new layout instance for node ${nodeId} with ${updatedPanelsArray.length} panels.`);
+                    const newInstance = new OrbitLayoutManager(nodeEl, updatedPanelsArray);
+                    layoutInstances.set(nodeEl, newInstance);
+                }
+            } else {
+                console.warn(`Node element with ID ${nodeId} not found for layout after creating event.`);
+            }
+        }
+        // No layout needed for unattached events
+
     } catch (err) {
-        console.error(err);
+        console.error("Error creating event:", err);
+        alert(`Failed to create event: ${err.message}`);
     }
 }

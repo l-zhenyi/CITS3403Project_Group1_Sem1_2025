@@ -139,16 +139,11 @@ def get_group_events(group_id):
     group = db.session.get(Group, group_id)
     if not group:
         return jsonify({"error": "Group not found"}), 404
-
-    events = [
-        event.to_dict() for event in group.events
-    ]
     nodes = [
-        node.to_dict() for node in group.nodes
+        node.to_dict(include_events=True) for node in group.nodes
     ] if hasattr(group, "nodes") else []
 
     return jsonify({
-        "events": events,
         "nodes": nodes
     })
 
@@ -175,66 +170,90 @@ def create_event(group_id):
     data = request.get_json()
     iso_str = data.get("date")
     try:
-        parsed_date = isoparse(iso_str)
-    except ValueError:
-        return jsonify({"error": "Invalid date format"}), 400
+        # Handle timezone info correctly if present (e.g., Z or +00:00)
+        # isoparse usually handles this well. Ensure DB stores UTC ideally.
+        parsed_date = isoparse(iso_str) if iso_str else datetime.now(timezone.utc)
+    except (ValueError, TypeError):
+        # Handle cases where date is missing or invalid format
+        # Log the error? Use a default? Return 400?
+        # Using UTC now as a fallback, adjust if needed.
+        parsed_date = datetime.now(timezone.utc)
+        # Or: return jsonify({"error": "Invalid or missing date format"}), 400
 
     event = Event(
-        title=data.get("title"),
+        title=data.get("title", "Untitled Event"), # Add default title
         date=parsed_date,
-        location=data.get("location"),
-        group_id=group_id,
+        location=data.get("location", "TBD"), # Add default location
         description=data.get("description"),
         x=data.get("x"),
-        y=data.get("y")
+        y=data.get("y"),
+        node_id=data.get("node_id")
     )
     db.session.add(event)
     db.session.commit()
+
+    # event.to_dict() will now include the saved node_id
     return jsonify(event.to_dict()), 201
-
-@app.route('/api/events/<int:event_id>', methods=['PATCH'])
-def update_event_position(event_id):
-    data = request.get_json()
-    event = db.session.get(Event, event_id)
-    if not event:
-        return jsonify({"error": "Event not found"}), 404
-
-    if 'x' in data:
-        event.x = data['x']
-    if 'y' in data:
-        event.y = data['y']
-
-    db.session.commit()
-    return jsonify(event.to_dict())
 
 @app.route('/api/groups/<int:group_id>/nodes', methods=['POST'])
 def create_node(group_id):
-    group = Group.query.get_or_404(group_id)
-    data = request.json
-
-    label = data.get('label', 'Untitled')
-    x = data.get('x', 400)
-    y = data.get('y', 300)
-
-    new_node = Node(label=label, x=x, y=y, group=group)
-    db.session.add(new_node)
+    data = request.get_json()
+    node = Node(
+        label=data.get("label", "Untitled Node"), # Add default label
+        x=data.get("x", 0), # Default x position
+        y=data.get("y", 0), # Default y position
+        group_id=group_id
+    )
+    db.session.add(node)
     db.session.commit()
+    return jsonify(node.to_dict()), 201
 
-    return jsonify(new_node.to_dict()), 201
+@app.route('/api/events/<event_id>', methods=['PATCH'])
+def rename_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    data = request.get_json()
+    if 'title' in data:
+        event.title = data['title']
+    
+    db.session.commit()
+    return jsonify(event.to_dict()) 
 
 @app.route('/api/nodes/<int:node_id>', methods=['PATCH'])
 def update_node(node_id):
     node = Node.query.get_or_404(node_id)
-    data = request.json
+    data = request.get_json()
 
+    # Allow renaming
     if 'label' in data:
         node.label = data['label']
+
+    # Existing position update
     if 'x' in data:
         node.x = data['x']
     if 'y' in data:
         node.y = data['y']
 
     db.session.commit()
+    return jsonify(node.to_dict()) 
+
+@app.route('/api/events/<int:event_id>', methods=['DELETE'])
+def delete_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    db.session.delete(event)
+    db.session.commit()
+    return '', 204
+
+@app.route('/api/nodes/<int:node_id>', methods=['DELETE'])
+def delete_node(node_id):
+    node = Node.query.get_or_404(node_id)
+
+    for event in node.events:
+        db.session.delete(event)
+
+    db.session.delete(node)
+    db.session.commit()
+    return '', 204
+=======
     return jsonify({'success': True})
 
 @app.route('/follow/<username>', methods=['POST']) 
@@ -324,7 +343,7 @@ def view_group(group_id):
         .order_by(Post.timestamp.desc()) \
         .paginate(page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
     posts = pagination.items
-
+    
     # URLs for pagination links
     next_url = url_for('view_group', group_id=group.id, page=pagination.next_num) if pagination.has_next else None
     prev_url = url_for('view_group', group_id=group.id, page=pagination.prev_num) if pagination.has_prev else None
