@@ -363,8 +363,7 @@ function handleContextAction(label, x, y, id) {
     // Map context menu options to actions, generic by type/id
     const actions = {
         'Create Node': () => createNodeAt(relX, relY, groupId),
-        'Create Event on Node': () => createEventAt(relX, relY, groupId, id),
-        'Create Event (Unattached)': () => createEventAt(relX, relY, groupId, null),
+        'Create Event on Node': () => createEvent(groupId, id),
         'Rename Event': () => renameEvent(id),
         'Delete Event': () => deleteEvent(id),
         'Rename Node': () => renameNode(id),
@@ -505,12 +504,11 @@ function getRelativeCoordsToContainer(x, y) {
     };
 }
 
-// --- Modified createEventAt ---
-async function createEventAt(x, y, groupId, nodeId = null) {
+async function createEvent(groupId, nodeId = null) {
     try {
         const eventData = {
             title: "New Event", date: new Date().toISOString(), location: "TBD",
-            description: "Description goes here", x: x, y: y, node_id: nodeId
+            description: "Description goes here", node_id: nodeId
         };
 
         const res = await fetch(`/api/groups/${groupId}/events`, {
