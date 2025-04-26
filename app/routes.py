@@ -1,8 +1,8 @@
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post
+from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
@@ -39,8 +39,8 @@ def index():
         posts=posts.items,
         next_url=next_url,
         prev_url=prev_url,
-        groups=groups,
-        user=current_user
+        groups=groups, 
+        user = current_user
     )
 
 @app.before_request 
@@ -116,7 +116,7 @@ def user(username):
         .filter(GroupMember.user_id == user.id)
         .all()
     )
-    return render_template('user.html', user=current_user, posts=posts.items, 
+    return render_template('user.html', user=user, posts=posts.items, 
                            next_url=next_url, prev_url=prev_url, form=form, group=groups)
  
 @app.route('/edit_profile', methods=['GET', 'POST']) 
@@ -339,3 +339,52 @@ def view_group(group_id):
 
     return render_template("view_group.html", group=group, posts=posts, form=form, pagination=pagination,
                            prev_url=prev_url, next_url=next_url)
+
+ 
+@app.route('/send_message/<recipient>', methods=['GET', 'POST']) 
+@login_required 
+def send_message(recipient): 
+    user = User.query.filter_by(username=recipient).first_or_404() 
+    form = MessageForm()
+    if form.validate_on_submit(): 
+        msg = Message(sender=current_user, recipient=user, 
+                      body=form.message.data) 
+        db.session.add(msg) 
+        db.session.commit() 
+        flash(('Your message has been sent.')) 
+        return redirect(url_for('user', username=recipient)) 
+    return render_template('send_message.html', title=('Send Message'), 
+                           form=form, recipient=recipient) 
+
+@app.route('/messages') 
+@login_required 
+def messages(): 
+    current_user.last_message_read_time = datetime.now(timezone.utc) 
+    db.session.commit() 
+    page = request.args.get('page', 1, type=int) 
+    messages = Message.query.filter_by(recipient_id=current_user.id) \
+        .order_by(Message.timestamp.desc()) \
+        .paginate(page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
+
+    # Handle next and previous pagination URLs
+    next_url = url_for('messages', page=messages.next_num) if messages.has_next else None 
+    prev_url = url_for('messages', page=messages.prev_num) if messages.has_prev else None 
+    
+    return render_template('messages.html', 
+                           messages=messages.items, 
+                           next_url=next_url, 
+                           prev_url=prev_url)
+
+@app.route('/search', methods=['GET'])
+def search_users():
+    # Get the search term from the query string
+    search_query = request.args.get('username', '')
+
+    if search_query:
+        # Query the database for users whose username contains the search term (case insensitive)
+        users = User.query.filter(User.username.ilike(f'%{search_query}%')).all()
+    else:
+        # If no search query, return all users (or you can return an empty list)
+        users = []
+
+    return render_template('search_users.html', users=users)
