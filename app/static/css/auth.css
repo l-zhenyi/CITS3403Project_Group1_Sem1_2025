@@ -6,60 +6,63 @@ Authentication Page Styles (Login/Register)
 
 .auth-wrapper {
     display: flex;
+    justify-content: center; /* Center flex items (the pane) horizontally */
     align-items: center; /* Vertically center items */
     min-height: 100vh;
     width: 100%;
     padding: 16px; /* Padding around the edges */
     box-sizing: border-box;
     overflow-x: hidden; /* Prevent horizontal scrollbars */
-}
-
-/* Spacers will grow/shrink equally around the pane+description */
-.auth-spacer-left {
-    flex: 1 1 0px; /* Grow, shrink, zero basis */
-    order: 1;
-    min-width: 10px; /* Prevent collapsing */
+    position: relative; /* Needed for absolute positioning of description */
 }
 
 .auth-pane {
     display: flex;
     flex-direction: column;
-    flex: 0 0 450px; /* Don't grow, DON'T SHRINK, base width 450px */
-    max-width: 450px;
-    max-height: calc(100vh - 100px);
-    overflow-y: auto;
+    /* Let flexbox center it, no need for specific flex value */
+    width: 450px; /* Fixed width */
+    max-width: 90%; /* Prevent overflow on very narrow screens */
+    height: calc(100vh - 250px); 
+    overflow-y: auto; /* Scroll pane content if needed */
     box-sizing: border-box;
     padding: 25px 40px;
     border-radius: 18px;
-    order: 2;
-    /* Add margin for gap */
-    margin: 0 40px; /* Creates 40px gap on left AND right */
+
+    /* Centered by auth-wrapper's justify-content/align-items */
+    /* Remove calc margins */
+    margin: 10px 0; /* Simple vertical margin */
+    z-index: 2; /* Ensure pane is above description if they could overlap */
 }
 
+/* --- Description Styles --- */
 .auth-description {
-    flex: 0 1 400px; /* Don't grow, CAN SHRINK, base width 400px */
-    max-width: 400px;
-    min-width: 200px; /* Lower min-width for more shrinking */
+    /* --- Positioning --- */
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+
+    /* --- Natural height + capping --- */
+    /* No height set! Only cap it */
+    height: calc(100vh - 300px);
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    /* --- Sizing --- */
+    width: clamp(200px, calc(50vw - 250px), 400px);
+
+    /* --- Styling --- */
     padding: 25px 30px;
     border-radius: 18px;
     color: #f0f0f5;
     font-size: 1rem;
     line-height: 1.6;
     box-sizing: border-box;
-    overflow-y: auto;
-    overflow-x: hidden;
-    max-height: calc(100vh - 100px);
-    order: 3;
-    /* No specific margin needed, pane margin creates gap */
+    margin: 0;
 }
 
-.auth-spacer-right {
-    flex: 1 1 0px; /* Grow, shrink, zero basis */
-    order: 4;
-    min-width: 10px; /* Prevent collapsing */
-}
-
-/* --- Form Styles (Keep these as they were) --- */
+/* --- Form Styles (Keep as is) --- */
 .auth-form h1,
 .auth-form h2 {
     color: #fff;
@@ -87,91 +90,11 @@ Authentication Page Styles (Login/Register)
 
 
 /* --- Responsive --- */
-/* Breakpoint when stacking occurs (approx pane 450 + margins 80 + desc min 200 + padding 32 + spacer min 20 = ~782px) */
-@media (max-width: 800px) {
-    .auth-wrapper {
-        flex-direction: column; /* Stack items vertically */
-        justify-content: center; /* Center the column vertically */
-        gap: 25px; /* Vertical gap when stacked */
-        padding: 16px;
-    }
-
-    /* Hide spacers when stacked */
-    .auth-spacer-left,
-    .auth-spacer-right {
-        display: none;
-    }
-
-    .auth-pane {
-        /* Center horizontally within the column */
-        margin-left: auto;
-        margin-right: auto; /* Reset side margins */
-        /* Adjust vertical margins for spacing when stacked */
-        margin-top: 20px; /* Add space at the top */
-        margin-bottom: 0; /* Gap handles space below */
-        flex-basis: auto; /* Allow natural width up to max-width */
-        width: 100%; /* Take available width */
-        max-width: 450px; /* Keep max-width */
-        max-height: calc(100vh - 120px); /* Adjust max-height */
-        order: 1; /* Ensure pane comes first visually when stacked */
-    }
-
-     .auth-description {
-        /* Center horizontally within the column */
-        margin-left: auto;
-        margin-right: auto;
-        /* Reset vertical margins */
-        margin-top: 0;
-        margin-bottom: 20px; /* Space at the bottom */
-        flex-basis: auto; /* Allow natural width up to max-width */
-        /* Reset flex shrink/basis from desktop */
-        flex-grow: 0;
-        flex-shrink: 1;
-        width: 100%; /* Take available width */
-        max-width: 400px; /* Keep max-width */
-        min-width: 0; /* Remove min-width constraint when stacked */
-        max-height: calc(100vh - 120px); /* Adjust max-height */
-        order: 2; /* Ensure description comes second when stacked */
-        /* Description is VISIBLE here by default */
-     }
-
-    /* --- Keep other mobile adjustments --- */
-    .auth-form h1, .auth-form h2 { font-size: 1.5rem; margin-bottom: 15px; }
-    .form-field { margin-bottom: 12px; }
-    .form-field:last-of-type { margin-bottom: 18px; }
-    .form-field-checkbox { margin-bottom: 18px; }
-    .form-input { padding: 10px 12px; }
-    .form-actions { margin-top: 15px; }
-    .auth-switch { margin-top: 18px; }
-}
 
 /* Styles for phone screens - Hide description */
-@media (max-width: 600px) { /* Adjust this breakpoint as needed */
-    .auth-wrapper {
-        padding: 10px;
-        gap: 20px;
-        justify-content: flex-start; /* Align pane to top on very small screens */
-        padding-top: 30px; /* Add some top padding */
-    }
-
+@media (max-width: 900px) { /* Adjust this breakpoint as needed */
     /* Hide the description completely */
     .auth-description {
         display: none;
-    }
-
-    .auth-pane {
-        /* Ensure it fits within padding */
-        max-width: calc(100% - 20px); /* wrapper padding * 2 */
-        padding-left: 20px;
-        padding-right: 20px;
-        width: 100%; /* Use full available width */
-        margin-top: 0; /* Remove extra top margin */
-        margin-bottom: 20px; /* Space at bottom */
-        max-height: calc(100vh - 60px); /* Adjust max-height */
-    }
-
-    .auth-form h1,
-    .auth-form h2 {
-        font-size: 1.3rem;
     }
 }

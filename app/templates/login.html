@@ -6,10 +6,8 @@
 
 {% block content %}
 <div class="auth-wrapper">
-    {# Spacer Left #}
-    <div class="auth-spacer-left"></div>
+    {# No wrappers or spacers needed #}
 
-    {# Auth Pane (Fixed Width) #}
     <div class="auth-pane glassy">
         <form action="" method="post" novalidate class="auth-form">
             {{ form.hidden_tag() }}
@@ -46,7 +44,6 @@
         </form>
     </div>
 
-    {# Description (Shrinkable) - Now a direct child #}
     <div class="auth-description glassy">
         <h2>Welcome to Our App!</h2>
         <h3><i>Plan together. Plan smarter.</i></h3>
@@ -65,7 +62,5 @@
         </p>
     </div>
 
-    {# Spacer Right #}
-    <div class="auth-spacer-right"></div>
 </div>
 {% endblock %}
