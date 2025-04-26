@@ -5,6 +5,7 @@
 {% endblock %}
 
 {% block content %}
+<div class="auth-wrapper">
 <div class="auth-container"> {# New wrapper class for potential centering #}
     <div class="glassy auth-pane"> {# Centered pane for authentication forms #}
         <form action="" method="post" novalidate class="auth-form">
@@ -46,4 +47,23 @@
         </form>
     </div> {# End auth-pane #}
 </div> {# End auth-container #}
+
+    <div class="auth-description">
+        <h2>Welcome to Our App!</h2>
+        <h3><i>Plan together. Plan smarter.</i></h3>
+        <p style="line-height: 1.8;">
+            Get the group trip out of the group chat,<br>
+            and the group chat out of the group trip —<br>
+            all in one place!<br><br>
+        
+            Create groups, message each other, split expenses, and track your spending —<br>
+            all right here on our website.<br><br>
+        
+            What are you waiting for? Log in or register now with your friends 
+            to start planning your next awesome getaway.<br><br>
+        
+            <i>Best of all? We're completely ad-free, with every feature unlocked.</i>
+        </p>
+    </div>
+</div>
 {% endblock %}
