@@ -108,6 +108,11 @@ class GroupModelCase(unittest.TestCase):
         self.app_context.push()
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
         db.create_all()
+    
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
 
     def test_create_group(self):
         # Create a test user
