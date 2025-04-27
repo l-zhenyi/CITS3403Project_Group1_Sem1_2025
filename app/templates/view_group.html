@@ -6,6 +6,15 @@
 <img src="{{ group.avatar_url }}" alt="Group Avatar">
 <p>{{ group.about }}</p>
 <h3>Members</h3>
+<span class="label">Members:</span>
+{% if group.members and group.members|length > 0 %}
+    {{ group.members | map(attribute='user.username') | join(', ') }}
+{% else %}
+    <span class="no-members">None</span> {# Specific class for styling 'None' #}
+{% endif %}
+<a href="{{ url_for('add_members', group_id=group.id) }}" class="btn btn-primary">
+    Add Members
+</a>
 <h3>Group Posts</h3>
 {% if form %}
 <form action="" method="post">
