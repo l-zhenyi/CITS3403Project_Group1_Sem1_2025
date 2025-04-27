@@ -6,6 +6,7 @@ from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, M
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
+from sqlalchemy.orm import aliased
 
 @app.route('/', methods=['GET', 'POST']) 
 @app.route('/index', methods=['GET', 'POST'])
@@ -116,17 +117,20 @@ def user(username):
     # Initialize the form
     form = EmptyForm()
 
-    # Fetch groups
-    if user == current_user:
-        # For the current user's profile, show the groups they are a part of
-        groups = current_user.groups
-    else:
-        # For another user's profile, show the groups they share with the current user
-        groups = [group for group in current_user.groups if group in user.groups]
+    group_member_alias = aliased(GroupMember)
+
+    shared_groups = (
+        Group.query
+        .join(GroupMember, Group.id == GroupMember.group_id)  # Join with first group_member
+        .filter(GroupMember.user_id == current_user.id)
+        .join(group_member_alias, Group.id == group_member_alias.group_id)  # Join with second group_member using alias
+        .filter(group_member_alias.user_id == user.id)
+        .all()
+    )
     
     # Render the template with the filtered groups
     return render_template('user.html', user=user, posts=posts.items, 
-                           next_url=next_url, prev_url=prev_url, form=form, groups=groups)
+                           next_url=next_url, prev_url=prev_url, form=form, groups=shared_groups)
  
 @app.route('/edit_profile', methods=['GET', 'POST']) 
 @login_required 
