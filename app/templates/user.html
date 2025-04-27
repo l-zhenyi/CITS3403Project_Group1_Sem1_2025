@@ -43,11 +43,36 @@
     </tr>
 </table>
 
-<hr> 
-
-<p><a href="{{ url_for('create_group') }}">Create a new group</a></p>
+<hr>
+{% if user == current_user %}
+    <p><a href="{{ url_for('create_group') }}">Create a new group</a></p>
+    <h3>Your Groups</h3>
+    {% if groups %}
+        <ul>
+            {% for group in groups %}
+                <li>{{ group.name }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>You are not a member of any group.</p>
+    {% endif %}
+{% else %}
+    <!-- Only display shared groups between current_user and user -->
+    {% if groups %}
+        <h3>Groups you share with {{ user.username }}</h3>
+        <ul>
+            {% for group in groups %}
+                <li>{{ group.name }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>You don't share any groups with {{ user.username }}.</p>
+    {% endif %}
+{% endif %}
 
 <p>
     {% include '_group.html' %}
-</p> 
+</p>
+
+
 {% endblock %}
