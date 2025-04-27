@@ -1,14 +1,228 @@
 {% extends "base.html" %}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}" type="text/css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 {% endblock %}
 
 
-{% block content %} 
-<p><a href="{{ url_for('create_group') }}">Create a new group</a></p>
+{% block content %}
+<h1>Hi, {{ current_user.username }}!</h1>
+{# Use planner-interface for consistency, allows potential centering/padding #}
+<div class="dashboard-container"> {# Add specific container class #}
 
-<p>
-    {% include '_group.html' %}
-</p> 
+    {# Single pane for dashboard content #}
+    <div class="glassy dashboard-pane"> {# Add specific pane class, remove inline styles #}
+        {# Use current_user if using Flask-Login, check authentication #}
+        <h1>Welcome, {{ current_user.username if current_user.is_authenticated else 'Guest' }}</h1>
+        <hr class="content-divider"> {# Use class for styling #}
+
+        <h2>Your Groups</h2>
+        <div class="flex-container">
+            <div class="glassy dashboard-pane description"> {# Add specific class for intro #}
+                <h3>Plannit: Events Made Effortless</h3>
+                <p>Want to collaborate with others effortless? Plannit is your ultimate hub for effortless
+                    group event planning and collaboration. Whether you're organizing casual meetups, weekend getaways,
+                    or professional gatherings, Plannit simplifies the entire process from initial idea to memorable
+                    experience.</p><br>
+
+                <h3>Connect, Collaborate, Celebrate</h3>
+                <ul>
+                    <li>Effortless Voting: Quickly gauge group preferences and reach consensus on events.</li>
+                    <li>Unified Planning: Seamlessly handle invites, shared payments, and discussions — all in one
+                        intuitive platform.</li>
+                    <li>Capture Memories: Easily share photos and experiences within event nodes, turning moments into
+                        lasting memories.</li>
+                    <li>Insightful Analytics: Get smart breakdowns and visual insights into your group's activities,
+                        favorite locations, and more.</li>
+                </ul>
+                <br>
+                <h3>Why Choose Plannit?</h3>
+                <ul>
+                    <li>Simplified Group Dynamics: Reduce planning stress and keep everyone aligned.</li>
+                    <li>Flexible and Extensible: Grow your events with built-in tools for recurring meetups and
+                        intelligent
+                        recommendations.</li>
+                    <li>Memorable Experiences: Spend more time enjoying moments, knowing everything behind-the-scenes is
+                        taken care of.</li>
+                </ul>
+            </div>
+            <div class="glassy dashboard-pane second-description"> {# Add specific class for intro #}
+                <h3>Screenshot</h3>
+                <img src="{{ url_for('static', filename='images/person.jpg') }}" alt="Screenshot of Plannit"
+                    class="screenshot-image">
+            </div>
+        </div>
+        <br>
+        <p><a href="{{ url_for('create_group') }}">Create a new group</a></p>
+
+        <p>
+            {% include '_group.html' %}
+        </p> 
+        </ul>
+
+        <br>
+        <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+
+                <!-- Slide 1 -->
+                <div class="carousel-item active">
+                    <div class="row justify-content-center">
+
+                        <div class="col-md-4">
+                            <div class="card">
+                                <img src="{{ url_for('static', filename='images/286.png') }}"
+                                    class="card-img-top img-fluid" alt="...">
+                                <div class="card-body">
+                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
+                                    <h5 class="card-title">Card title 1</h5>
+                                    <p class="card-text">Hella good reviews...</p>
+                                    <div class="star-rating">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card">
+                                <img src="{{ url_for('static', filename='images/286.png') }}"
+                                    class="card-img-top img-fluid" alt="...">
+                                <div class="card-body">
+                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
+
+                                    <h5 class="card-title">Card title 2</h5>
+                                    <p class="card-text">Hella good reviews...</p>
+                                    <div class="star-rating">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card">
+                                <img src="{{ url_for('static', filename='images/286.png') }}"
+                                    class="card-img-top img-fluid" alt="...">
+                                <div class="card-body">
+                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
+
+                                    <h5 class="card-title">Card title 3</h5>
+                                    <p class="card-text">Hella good reviews...</p>
+                                    <div class="star-rating">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div> <!-- End row -->
+                </div>
+
+                <!-- Slide 2 -->
+                <div class="carousel-item">
+                    <div class="row justify-content-center">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <img src="{{ url_for('static', filename='images/286.png') }}"
+                                    class="card-img-top img-fluid" alt="...">
+                                <div class="card-body">
+                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
+
+                                    <h5 class="card-title">Card title 4</h5>
+                                    <p class="card-text">Hella good reviews...</p>
+                                    <div class="star-rating">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card">
+                                <img src="{{ url_for('static', filename='images/286.png') }}"
+                                    class="card-img-top img-fluid" alt="...">
+                                <div class="card-body">
+                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
+
+                                    <h5 class="card-title">Card title 5</h5>
+                                    <p class="card-text">Hella good reviews...</p>
+                                    <div class="star-rating">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card">
+
+                                <img src="{{ url_for('static', filename='images/286.png') }}"
+                                    class="card-img-top img-fluid" alt="...">
+                                <div class="card-body">
+                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
+
+                                    <h5 class="card-title">Card title 6</h5>
+                                    <p class="card-text">Hella good reviews...</p>
+                                    <div class="star-rating">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Carousel Controls -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControls"
+                data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControls"
+                data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+
+    </div> {# End dashboard-pane #}
+</div> {# End dashboard-container #}
+
+<footer class="main-footer">
+    <div class="footer-content">
+        <p>Copyright &copy; 2025 Plannit. All rights reserved.</p>
+        <p class="footer-tagline">Plan better. Together.</p>
+    </div>
+</footer>
+
 {% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
