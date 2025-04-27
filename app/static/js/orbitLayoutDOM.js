@@ -282,37 +282,35 @@ _ensureExpandedContentDiv(panel) {
             status: panel.dataset.eventStatus || "unknown",
             logoUrl: panel.dataset.eventLogo || null, // Use null if no logo
             infoUrl: panel.dataset.eventInfoUrl || "#",
-            details: panel.dataset.eventDetails || "Some additional details about the event.", // Generic details moved
+            details: panel.dataset.eventDetails || "Some additional details about the event.",
         };
 
-        // --- NEW Grid Structure and HTML (2024-06, with event-header flex row) ---
+        // --- UPDATED Grid Structure and HTML per requested template ---
         expandedDiv.innerHTML = `
-  <div class="expanded-grid-container-v2">
-    <div class="grid-item event-header">
-      <div class="event-logo-wrapper">
-        ${eventData.logoUrl ? `<img src="${eventData.logoUrl}" alt="Event Logo" class="event-logo-img">` : ''}
-      </div>
-      <div class="event-title-wrapper">
-        <div class="title-scroll">${eventData.title}</div>
-      </div>
-    </div>
-    <div class="grid-item event-status status-${eventData.status}">
-        <span class="status-pill">${eventData.status.charAt(0).toUpperCase() + eventData.status.slice(1)}</span>
-    </div>
-    <div class="grid-item event-timeplace content-box">
-        <div class="timeplace-content">
+      <div class="expanded-grid-container-v2">
+        <div class="grid-item event-header" style="padding: 0 12px;">
+          <div class="event-logo-wrapper">
+            <img src="${eventData.logoUrl || '/static/img/default-event-logo.png'}" alt="Event Logo" class="event-logo-img">
+          </div>
+          <div class="event-title-wrapper content-box">
+            <div class="title-scroll">${eventData.title}</div>
+          </div>
+        </div>
+        <div class="grid-item event-status status-${eventData.status}">
+          <span class="status-pill">${eventData.status.charAt(0).toUpperCase() + eventData.status.slice(1)}</span>
+        </div>
+        <div class="grid-item event-timeplace content-box" style="margin: 0 auto;">
+          <div class="timeplace-content">
             <p><strong>Date:</strong> ${eventData.date}</p>
             <p><strong>Location:</strong> ${eventData.location}</p>
             ${eventData.details ? `<p class="extra-details">${eventData.details}</p>` : ''}
+          </div>
         </div>
-    </div>
-    <div class="grid-item more-info">
-        ${eventData.infoUrl !== '#' ? `<a href="${eventData.infoUrl}" target="_blank" class="button info-button">More&nbsp;Info</a>` : ''}
-    </div>
-</div>`;
-        // --- End NEW Grid Structure ---
-
-        // No obsolete .availability-actions .status-button listeners: removed per new design
+        <div class="grid-item more-info">
+          <a href="${eventData.infoUrl || '#'}" target="_blank" class="button info-button">Info</a>
+        </div>
+      </div>`;
+        // --- End UPDATED Grid Structure ---
 
         panel.appendChild(expandedDiv);
         console.log("[OrbitLayoutDOM v15] Created expanded content grid structure V2 for", panel);

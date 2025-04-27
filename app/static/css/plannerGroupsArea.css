@@ -1,3 +1,5 @@
+/* --- START OF FILE plannerGroupsArea.css --- */
+
 /* ==========================================================================
     Group List Area (Left Pane - Desktop)
     ========================================================================== */
@@ -122,50 +124,52 @@
     /* Needed for absolute positioned children & sticky header */
     z-index: 0;
     /* Below sticky header/blur */
-    padding: 12px;
-    /* Consistent padding */
+    /* Remove direct padding, viewport handles it */
+    padding: 0;
     border-radius: 0 18px 18px 0;
     /* Match parent rounding */
-    overflow-y: auto;
-    /* Enable vertical scroll */
-    overflow-x: hidden;
+    overflow: hidden;
+    /* Hide overflow, viewport scrolls */
 
     /* Visual */
-    perspective: 1200px;
-    /* Enable 3D transformations for event panels */
+    /* perspective: 1200px;  -- Might interfere with absolute positioning, remove for now */
     transition: flex 0.3s ease, opacity 0.3s ease;
     /* For mobile view switch */
 }
 
 /* Sticky Header for Active Group within the Event Area */
 /* Uses blur overlay technique */
-
 .blur-wrapper {
     /* Sits inside event-collage-area, wraps header */
     position: sticky;
+    /* Stays relative to event-collage-area */
     top: 0;
     height: 64px;
     /* Estimated height of the header + some buffer */
     z-index: 10;
     /* Above event panels */
     pointer-events: none;
-    /* Allows clicks/scrolls to pass through */
-    margin: -12px -12px 0 -12px;
-    /* Counteract parent padding */
+    /* Allows clicks/scrolls to pass through to viewport */
+    margin: 0;
+    /* Remove margin if padding removed from parent */
+    padding: 12px;
+    /* Add padding here instead */
 }
 
 .blur-overlay {
     /* The visual blur effect */
     position: absolute;
     inset: 0;
-    top: -12px;
-    /* Match the pane background but slightly stronger/different */
+    /* Adjust if padding is moved to blur-wrapper */
+    top: 0;
+    left: 0;
+    right: 0;
+    /* --- */
     background: rgba(140, 140, 145, 1);
     backdrop-filter: blur(10px) saturate(120%);
     /* Fade out the blur effect downwards */
     mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
-    /* Safari */
     z-index: 0;
     /* Behind the actual header content */
 }
@@ -178,8 +182,9 @@
     z-index: 1;
     /* Above blur-overlay */
     padding: 12px 18px;
-    margin: 12px 12px 18px 12px;
-    /* Align with content padding, add bottom margin */
+    /* Remove margin if padding moved to blur-wrapper */
+    margin: 0 0 12px 0;
+    /* Only bottom margin */
     border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: 14px;
     pointer-events: auto;
@@ -272,469 +277,6 @@
     color: #fff;
 }
 
-/* Container for absolutely positioned event panels */
-.event-panels-container {
-    position: relative;
-    width: max-content;
-    height: max-content;
-    min-width: 2000px;
-    min-height: 1600px;
-    /* Leave space for floating layout */
-}
-.back-button {
-    /* Box Model */
-    display: none;
-    /* Hidden by default and on desktop */
-    flex-shrink: 0;
-    padding: 6px 10px;
-    margin-right: 10px;
-    border: none;
-    border-radius: 50%;
-
-    /* Typography */
-    font-size: 1.5rem;
-    /* Adjust as needed */
-    line-height: 1;
-    /* Ensure tight fit */
-    color: #e0e0e5;
-
-    /* Visual */
-    background: rgba(255, 255, 255, 0.1);
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.back-button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: #fff;
-}
-
-.back-button:active {
-    transform: scale(0.95);
-}
-
-/* --- Mobile Specific Adjustments --- */
-@media (max-width: 768px) {
-    .group-list-area {
-        padding: 8px;
-        border-radius: 12px;
-    }
-
-    .event-collage-area {
-        padding: 8px;
-        border-radius: 12px;
-        perspective: none;
-    }
-
-    /* Show back button only when mobile event view is active */
-    .planner-pane.mobile-event-view-active .active-group-header .back-button {
-        display: inline-block;
-    }
-
-
-    /* Group Item Adjustments */
-    .group-item {
-        padding: 15px 10px;
-        /* More touch-friendly padding */
-    }
-
-    /* Adjust active group header for mobile */
-    .active-group-header {
-        position: sticky;
-        /* Make header sticky within scrolling area */
-        top: -8px;
-        /* Stick relative to the event area's padding */
-        z-index: 1;
-        /* Ensure it's above scrolling content */
-        padding: 10px 15px;
-        /* Slightly less padding */
-        border-radius: 14px;
-        /* Keep radius */
-        margin: 8px 8px 12px 8px;
-    }
-
-    .group-avatar-small {
-        width: 32px;
-        height: 32px;
-        margin-right: 10px;
-    }
-
-    .active-group-name {
-        font-size: 1rem;
-    }
-
-    .blur-wrapper {
-        margin: -8px -8px 0 -8px;
-    }
-
-    .settings-button {
-        font-size: 1.1rem;
-    }
-
-    /* Override Event Panel for Mobile Stacked View */
-    .event-panels-container {
-        min-height: auto;
-        /* Let content define height */
-        padding-top: 0;
-        /* No specific top padding needed here */
-    }
-
-    .event-panel:hover {
-        transform: none !important;
-        /* Disable hover transform */
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
-        /* Slightly deeper hover shadow */
-    }
-
-    .event-image {
-        height: 120px;
-        /* Adjust if needed */
-        margin-bottom: 12px;
-    }
-
-    .event-panel h3 {
-        font-size: 1.1rem;
-    }
-
-    .event-details,
-    .event-rsvp {
-        font-size: 0.85rem;
-    }
-
-    .planner-pane:not(.calendar-view-active):not(.events-view-active) .group-list-area {
-        flex: 1 1 auto;
-        display: block;
-        border-right: none;
-        border-radius: 12px;
-        padding: 8px;
-        opacity: 1;
-        pointer-events: auto;
-        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
-    }
-
-    .planner-pane:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
-        flex: 0 0 0;
-        display: none;
-        overflow: hidden;
-        padding: 0;
-        opacity: 0;
-        pointer-events: none;
-        border-radius: 12px;
-        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease, display 0s linear 0.3s;
-    }
-
-    .planner-pane.mobile-event-view-active .group-list-area {
-        flex: 0 0 0 !important;
-        display: none !important;
-        overflow: hidden;
-        padding: 0;
-        opacity: 0;
-        pointer-events: none;
-        height: 100%;
-    }
-
-    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
-        flex: 1 1 auto !important;
-        display: block !important;
-        overflow-y: auto;
-        padding: 8px;
-        opacity: 1;
-        pointer-events: auto;
-        perspective: none;
-        height: 100%;
-        min-height: 0;
-    }
-
-    .planner-pane.calendar-view-active .group-list-area,
-    .planner-pane.calendar-view-active .event-collage-area,
-    .planner-pane.events-view-active .group-list-area,
-    .planner-pane.events-view-active .event-collage-area {
-        flex: 0 0 0 !important;
-        display: none !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-    }
-}
-
-.collage-viewport {
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    position: relative;
-    cursor: grab;
-}
-
-.collage-viewport.dragging {
-    cursor: grabbing;
-}
-
-/* plannerGroupsArea.css */
-
-/* ... (Keep existing .group-list-area styles) ... */
-
-
-/* ==========================================================================
-    Event Collage Area (Right Pane - Desktop)
-    ========================================================================== */
-
-.event-collage-area {
-    /* Positioning & Box Model */
-    flex-grow: 1;
-    /* Take remaining space */
-    height: 100%;
-    /* Fill parent pane height */
-    min-height: 0;
-    /* Flex behavior */
-    position: relative;
-    /* Needed for absolute positioned children & sticky header */
-    z-index: 0;
-    /* Below sticky header/blur */
-    /* Remove direct padding, viewport handles it */
-    padding: 0;
-    border-radius: 0 18px 18px 0;
-    /* Match parent rounding */
-    overflow: hidden;
-    /* Hide overflow, viewport scrolls */
-
-    /* Visual */
-    /* perspective: 1200px;  -- Might interfere with absolute positioning, remove for now */
-    transition: flex 0.3s ease, opacity 0.3s ease;
-    /* For mobile view switch */
-}
-
-/* Sticky Header for Active Group within the Event Area */
-/* Uses blur overlay technique */
-.blur-wrapper {
-    /* Sits inside event-collage-area, wraps header */
-    position: sticky;
-    /* Stays relative to event-collage-area */
-    top: 0;
-    height: 64px;
-    /* Estimated height of the header + some buffer */
-    z-index: 10;
-    /* Above event panels */
-    pointer-events: none;
-    /* Allows clicks/scrolls to pass through to viewport */
-    margin: 0;
-    /* Remove margin if padding removed from parent */
-    padding: 12px;
-    /* Add padding here instead */
-}
-
-.blur-overlay {
-    /* The visual blur effect */
-    position: absolute;
-    inset: 0;
-    /* Adjust if padding is moved to blur-wrapper */
-    top: 0;
-    left: 0;
-    right: 0;
-    /* --- */
-    background: rgba(140, 140, 145, 1);
-    backdrop-filter: blur(10px) saturate(120%);
-    /* Fade out the blur effect downwards */
-    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
-    z-index: 0;
-    /* Behind the actual header content */
-}
-
-.active-group-header {
-    /* Positioning & Box Model */
-    display: flex;
-    position: relative;
-    /* Sits inside blur-wrapper */
-    z-index: 1;
-    /* Above blur-overlay */
-    padding: 12px 18px;
-    /* Remove margin if padding moved to blur-wrapper */
-    margin: 0 0 12px 0;
-    /* Only bottom margin */
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 14px;
-    pointer-events: auto;
-    /* Re-enable interaction for header elements */
-
-    /* Layout */
-    align-items: center;
-
-    /* Visual */
-    background: rgba(160, 160, 165, 0.8);
-    /* Slightly different glass */
-    backdrop-filter: blur(30px) saturate(150%);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-}
-
-/* ... (Keep .back-button, .group-avatar-small, .active-group-name, .settings-button styles) ... */
-
-/* NEW: Viewport for panning */
-.collage-viewport {
-    width: 100%;
-    height: 100%;
-    /* Fill the event-collage-area */
-    overflow: auto;
-    /* Enable scroll/pan */
-    position: relative;
-    /* For absolute positioning of container inside */
-    cursor: grab;
-    /* Indicate pannable */
-    padding: 12px;
-    /* Add padding inside viewport */
-    /* Adjust padding-top if needed to avoid header overlap visually */
-    padding-top: 76px;
-    /* Match approx header height + padding */
-    box-sizing: border-box;
-}
-
-.collage-viewport.dragging {
-    cursor: grabbing;
-    /* Cursor while panning */
-}
-
-/* Container for absolutely positioned event panels & nodes */
-.event-panels-container {
-    position: relative;
-    /* Children are positioned relative to this */
-    width: max-content;
-    /* Allow it to grow */
-    height: max-content;
-    min-width: 2000px;
-    /* Large area for panning */
-    min-height: 1600px;
-    /* Background for visual debugging */
-    /* background: rgba(0, 255, 0, 0.05); */
-}
-
-.event-panel:hover {
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
-}
-
-.expanded-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 10px;
-}
-
-.accept-btn, .decline-btn, .info-btn {
-    padding: 8px 16px;
-    font-size: 1rem;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-.accept-btn { background-color: #4CAF50; color: white; }
-.decline-btn { background-color: #f44336; color: white; }
-.info-btn { background-color: #2196F3; color: white; }
-
-
-/* --- Mobile Specific Adjustments --- */
-@media (max-width: 768px) {
-    /* ... (Keep existing mobile overrides for group-list-area, etc.) ... */
-
-    .event-collage-area {
-        padding: 8px;
-        /* Restore padding for mobile */
-        border-radius: 12px;
-        perspective: none;
-        overflow-y: auto;
-        /* Enable normal scroll */
-        overflow-x: hidden;
-    }
-
-    /* Hide viewport and node controls on mobile */
-    .collage-viewport {
-        display: none;
-    }
-
-    .node-controls {
-        display: none !important;
-    }
-
-
-    /* Adjust active group header for mobile */
-    .blur-wrapper {
-        padding: 8px;
-        /* Adjust padding */
-        height: auto;
-        /* Let content define height */
-        position: sticky;
-        /* Make header sticky within scrolling area */
-        top: -8px;
-        /* Stick relative to the event area's padding */
-        z-index: 10;
-    }
-
-    .active-group-header {
-        /* No longer needs position relative */
-        padding: 10px 15px;
-        border-radius: 14px;
-        margin: 0 0 12px 0;
-        /* Reset margin */
-        /* Sticky behavior handled by blur-wrapper */
-    }
-
-    /* Show back button only when mobile event view is active */
-    .planner-pane.mobile-event-view-active .active-group-header .back-button {
-        display: inline-block;
-    }
-
-    /* Override Event Panel for Mobile Stacked View */
-    .event-panels-container {
-        /* Reset desktop styles */
-        position: static !important;
-        width: auto !important;
-        height: auto !important;
-        min-width: 0 !important;
-        min-height: 0 !important;
-        padding-top: 0;
-        /* Remove desktop padding */
-        /* background: none; */
-        /* Remove debug background */
-    }
-
-    /* ... (Keep existing mobile flex layout rules for .planner-pane switching) ... */
-
-    /* Ensure collage area content scrolls correctly on mobile when active */
-    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
-        /* Existing rules are fine, just double check overflow */
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding-top: 0;
-        /* Reset padding */
-    }
-
-    /* Adjust blur wrapper/header positioning for mobile */
-    .planner-pane.mobile-event-view-active .blur-wrapper {
-        top: -8px;
-        /* Stick relative to the event-collage-area padding */
-    }
-
-    /* Re-add padding to event-collage-area for mobile */
-    .planner-pane.mobile-event-view-active .event-collage-area {
-        padding: 8px;
-    }
-}
-
-/* plannerGroupsArea.css */
-
-/* ... (Keep existing .group-list-area styles) ... */
-
-
-/* ==========================================================================
-    Event Collage Area (Right Pane - Desktop)
-    ========================================================================== */
-
-.event-collage-area {
-    /* ... keep existing styles ... */
-    overflow: hidden;
-    /* Hide overflow, viewport scrolls */
-}
-
-/* ... Keep .blur-wrapper, .blur-overlay, .active-group-header styles ... */
 
 /* NEW: Viewport for panning & Zooming */
 .collage-viewport {
@@ -793,11 +335,17 @@
 
 /* Circular Panel */
 .event-panel {
-    width: 140px;
-    height: 140px;
-    border-radius: 50%;
-    overflow: hidden;
+    /* Styles from OrbitLayout DOM */
     position: absolute;
+    /* Ensure correct positioning by JS */
+    /* width, height, left, top, border-radius: 50% are set by JS */
+
+    /* Default/Base styles (can be overridden by JS) */
+    /* Use --current-diameter for internal relative sizing if needed */
+    /* width: var(--current-diameter, 140px); */
+    /* height: var(--current-diameter, 140px); */
+
+    overflow: hidden;
     padding: 0;
     border: 2px solid rgba(255, 255, 255, 0.5);
     background: rgba(200, 200, 210, 0.15);
@@ -805,9 +353,37 @@
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     cursor: pointer;
     display: flex;
+    /* Needed for content wrappers */
+    flex-direction: column;
+    /* Arrange wrappers vertically */
     align-items: center;
     justify-content: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: box-shadow 0.3s ease;
+    /* Let JS handle transform/size transitions */
+    font-size: 10px;
+    /* Fallback base font size - JS will override */
+}
+
+/* Original content wrapper (added by JS) */
+.orbit-element-original-content {
+    display: flex;
+    /* Or block, depending on desired layout */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    /* For overlay */
+    overflow: hidden;
+    /* Clip image */
+    transition: opacity 0.3s ease;
+}
+
+.orbit-element-original-content.hidden {
+    display: none;
+    /* Hide when expanded */
+    opacity: 0;
 }
 
 /* Background Image */
@@ -818,6 +394,7 @@
     object-fit: cover;
     transition: transform 0.4s ease, filter 0.4s ease;
     z-index: 0;
+    /* Behind overlay */
 }
 
 /* Full overlay */
@@ -831,12 +408,15 @@
     align-items: center;
     color: #fff;
     text-align: center;
-    padding: 10px;
+    padding: 1em;
+    /* Use em for scaling */
     opacity: 0;
     z-index: 1;
     transition: opacity 0.3s ease, background 0.3s ease;
-    font-size: 0.85rem;
+    font-size: 0.85em;
+    /* Relative to panel's font size */
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
 }
 
 .event-panel:hover .event-image {
@@ -849,7 +429,6 @@
     background: rgba(0, 0, 0, 0.35);
 }
 
-/* ... (Keep .event-image, h3, .event-details, .event-rsvp, .event-actions styles) ... */
 
 /* Event Node Styling */
 .event-node {
@@ -889,202 +468,482 @@
 
 /* --- Mobile Specific Adjustments --- */
 @media (max-width: 768px) {
-    /* ... (Keep existing mobile overrides for layout switching etc.) ... */
-    /* Hide nodes on mobile */
-    .event-node {
-        display: none !important;
-    }
 
-    /* Ensure collage area scrolls normally */
-    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
-        overflow-y: auto;
-        overflow-x: hidden;
+    .group-list-area {
         padding: 8px;
-        /* Restore padding */
-        padding-top: 8px;
-        /* Reset specific top padding */
+        border-radius: 12px;
     }
 
-    /* Ensure viewport doesn't interfere */
+    .event-collage-area {
+        padding: 8px;
+        /* Restore padding for mobile */
+        border-radius: 12px;
+        perspective: none;
+        overflow-y: auto;
+        /* Enable normal scroll */
+        overflow-x: hidden;
+    }
+
+    /* Hide viewport and node controls on mobile */
     .collage-viewport {
         display: none;
     }
 
-    /* Reset container styles */
+    .node-controls {
+        display: none !important;
+    }
+
+    /* Show back button only when mobile event view is active */
+    .planner-pane.mobile-event-view-active .active-group-header .back-button {
+        display: inline-block;
+    }
+
+
+    /* Group Item Adjustments */
+    .group-item {
+        padding: 15px 10px;
+        /* More touch-friendly padding */
+    }
+
+    /* Adjust active group header for mobile */
+    .blur-wrapper {
+        padding: 8px;
+        /* Adjust padding */
+        height: auto;
+        /* Let content define height */
+        position: sticky;
+        /* Make header sticky within scrolling area */
+        top: -8px;
+        /* Stick relative to the event area's padding */
+        z-index: 10;
+    }
+
+    .active-group-header {
+        /* No longer needs position relative */
+        padding: 10px 15px;
+        /* Slightly less padding */
+        border-radius: 14px;
+        /* Keep radius */
+        margin: 0 0 12px 0;
+        /* Reset margin */
+        /* Sticky behavior handled by blur-wrapper */
+    }
+
+    .group-avatar-small {
+        width: 32px;
+        height: 32px;
+        margin-right: 10px;
+    }
+
+    .active-group-name {
+        font-size: 1rem;
+    }
+
+    .settings-button {
+        font-size: 1.1rem;
+    }
+
+    /* Override Event Panel for Mobile Stacked View */
     .event-panels-container {
+        /* Reset desktop styles */
         position: static !important;
         width: auto !important;
         height: auto !important;
         min-width: 0 !important;
         min-height: 0 !important;
-        transform: none !important;
-        /* Reset zoom */
+        padding-top: 0;
+        transform: none !important; /* Reset zoom/pan */
+        /* background: none; */
+        /* Remove debug background */
     }
 
-    /* Adjust blur wrapper/header positioning for mobile */
-    .planner-pane.mobile-event-view-active .blur-wrapper {
-        padding: 8px;
-        /* Adjust padding */
+    .event-panel {
+        position: relative !important; /* Override absolute */
+        width: auto !important; /* Let content dictate */
+        height: auto !important;
+        min-height: 150px; /* Ensure minimum tap height */
+        left: auto !important;
+        top: auto !important;
+        border-radius: 12px !important; /* More rectangular */
+        margin-bottom: 12px; /* Space out vertically */
+        backdrop-filter: blur(12px) saturate(140%);
+        font-size: 14px !important; /* Reset base font size */
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(60, 60, 65, 0.5); /* Slightly different mobile bg */
+        transform: none !important; /* Disable JS transform */
+        will-change: auto !important; /* Reset */
+    }
+
+     /* Mobile doesn't use orbit layout's expanded content mechanism */
+    .event-panel .orbit-element-original-content,
+    .event-panel .orbit-element-expanded-content {
+        position: static;
+        display: flex;
+        flex-direction: column;
         height: auto;
-        position: sticky;
+        padding: 12px; /* Add padding */
+        background: none;
+        backdrop-filter: none;
+        opacity: 1; /* Always visible */
+        font-size: 1em; /* Inherit from panel */
+    }
+
+    .event-panel .orbit-element-expanded-content {
+        display: none; /* Hide the JS expanded content structure on mobile */
+    }
+
+     /* Style the original content for mobile card view */
+    .event-panel .orbit-element-original-content {
+        align-items: flex-start; /* Align items left */
+        gap: 8px; /* Space between elements */
+    }
+
+    .event-panel .event-image {
+         position: relative; /* Static positioning */
+         width: 100%;
+         height: 120px; /* Fixed height */
+         object-fit: cover;
+         border-radius: 8px; /* Rounded corners */
+         margin-bottom: 8px; /* Space below image */
+     }
+
+    .event-panel .event-info-overlay {
+         position: static; /* Normal flow */
+         opacity: 1; /* Always visible */
+         background: none; /* No overlay background */
+         padding: 0; /* Reset padding */
+         text-align: left; /* Align text left */
+         font-size: 1em; /* Inherit panel font size */
+         text-shadow: none; /* Remove shadow */
+         color: #f0f0f5; /* Adjust text color */
+     }
+
+    /* Add some basic mobile card content structure if needed */
+    /* Example: */
+    .event-panel h3 {
+        font-size: 1.1rem;
+        margin-bottom: 4px;
+        color: #fff;
+    }
+    .event-panel .event-details {
+        font-size: 0.9rem;
+        color: #ccc;
+    }
+
+
+    .event-panel:hover {
+        transform: none !important; /* Disable hover transform */
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25); /* Slightly deeper hover shadow */
+    }
+
+    .planner-pane:not(.calendar-view-active):not(.events-view-active) .group-list-area {
+        flex: 1 1 auto;
+        display: block;
+        border-right: none;
+        border-radius: 12px;
+        padding: 8px;
+        opacity: 1;
+        pointer-events: auto;
+        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+    }
+
+    .planner-pane:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
+        flex: 0 0 0;
+        display: none;
+        overflow: hidden;
+        padding: 0;
+        opacity: 0;
+        pointer-events: none;
+        border-radius: 12px;
+        transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease, display 0s linear 0.3s;
+    }
+
+    .planner-pane.mobile-event-view-active .group-list-area {
+        flex: 0 0 0 !important;
+        display: none !important;
+        overflow: hidden;
+        padding: 0;
+        opacity: 0;
+        pointer-events: none;
+        height: 100%;
+    }
+
+    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
+        flex: 1 1 auto !important;
+        display: block !important;
+        overflow-y: auto;
+        padding: 8px;
+        opacity: 1;
+        pointer-events: auto;
+        perspective: none;
+        height: 100%;
+        min-height: 0;
+        padding-top: 0; /* Reset padding */
+    }
+
+    .planner-pane.calendar-view-active .group-list-area,
+    .planner-pane.calendar-view-active .event-collage-area,
+    .planner-pane.events-view-active .group-list-area,
+    .planner-pane.events-view-active .event-collage-area {
+        flex: 0 0 0 !important;
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+     /* Adjust blur wrapper/header positioning for mobile */
+    .planner-pane.mobile-event-view-active .blur-wrapper {
         top: -8px;
         /* Stick relative to the event-collage-area padding */
-        z-index: 10;
+    }
+
+    /* Hide nodes on mobile */
+    .event-node {
+        display: none !important;
     }
 }
 
-/* Expanded event panel adjustments */
-.expanded-grid-container-v2 {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 1em;
-    width: 90%;
-    height: 90%;
-    flex-wrap: wrap;
-    text-align: center;
-    padding: 0.5em;
-    box-sizing: border-box;
-}
-.grid-item.event-logo {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.grid-item.event-logo img {
-    width: 5em;
-    height: 5em;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    object-fit: cover;
-}
-
-.grid-item.event-title {
-    grid-area: title;
-    overflow: hidden;
-}
-.title-scroll {
-    white-space: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    max-width: 100%;
-    scrollbar-width: none;
-}
-.title-scroll::-webkit-scrollbar {
-    display: none;
-}
-
-.grid-item.event-status {
-    grid-area: status;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.status-pill {
-    padding: 0.25em 0.9em;
-    border-radius: 9999px;
-    font-size: 0.75em;
-    white-space: nowrap;
-    background: var(--status-bg, grey);
-    color: #fff;
-}
-.event-status.status-attending .status-pill { --status-bg: #28a745; }
-.event-status.status-maybe     .status-pill { --status-bg: #ffc107; color: #000; }
-.event-status.status-declined  .status-pill { --status-bg: #dc3545; }
-
-.grid-item.event-timeplace {
-    grid-area: timeplace;
-    min-height: 3em;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 0.2em;
-}
-.timeplace-content {
-    font-size: 0.9em;
-}
-
-.grid-item.more-info {
-    margin-top: 0.5em;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.grid-item.more-info a.button.info-button {
-    display: inline-block;
-    padding: 0.4em 1em;
-    font-size: 0.8em;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #ffffff;
-    text-decoration: none;
-    transition: background 0.2s;
-}
-.grid-item.more-info a.button.info-button:hover {
-    background: rgba(255, 255, 255, 0.25);
-}
+/* ---------------------------------------------- */
+/* Expanded Content Styles (Inside Event Panel)   */
+/* These styles apply when the panel is 'clicked' */
+/* ---------------------------------------------- */
 
 .orbit-element-expanded-content {
     position: absolute;
     inset: 0;
     border-radius: 50%;
+    /* Match panel */
     overflow: hidden;
+    /* Clip content */
+    display: flex;
+    /* Use flex for centering container */
+    align-items: center;
+    justify-content: center;
+    /* Base font size is inherited from .event-panel (set by JS) */
+    /* padding: 0.8em; */
+    /* Let container handle padding */
+    box-sizing: border-box;
+    background: rgba(30, 30, 35, 0.6); /* Darker, slightly less transparent */
+    backdrop-filter: blur(10px) saturate(110%);
+    -webkit-backdrop-filter: blur(10px) saturate(110%);
+    opacity: 0; /* Hidden by default */
+    pointer-events: none; /* Non-interactive by default */
+    transition: opacity 0.25s ease-in-out;
+}
+
+/* Make visible when needed (controlled by JS adding/removing class) */
+.orbit-element-expanded-content.visible {
+    opacity: 1;
+    pointer-events: auto; /* Enable interaction */
+}
+
+
+/* Container for the grid items */
+.expanded-grid-container-v2 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    font-size: 0.85em;
-    padding: 0.8em;
+    justify-content: space-between; /* CHANGED from space-evenly */
+    height: 95%; /* Use most of the space */
+    width: 95%;
+    padding: 0.5em; /* Inner padding */
+    gap: 0.4em; /* Reduced gap */
     box-sizing: border-box;
-    background: rgba(30, 30, 30, 0.45); /* darker and more transparent */
-    backdrop-filter: blur(8px); /* strong blur */
-    -webkit-backdrop-filter: blur(8px); /* Safari fallback */
-}
-/* Hide any old status-dot from previous versions */
-.status-dot {
-    display: none !important;
+    color: #f0f0f5; /* Light text color */
 }
 
-.content-box {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 0.4em 0.6em;
-    border-radius: 12px;
-    width: 85%;
-    text-align: center;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2em;
-}
-
+/* Header Area (Logo + Title) */
 .grid-item.event-header {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.8em;
     width: 100%;
+    flex-shrink: 0; /* Prevent shrinking */
+    padding: 0 0.5em; /* Padding horizontal */
+    box-sizing: border-box;
 }
 
 .event-logo-wrapper {
-    flex: 0 0 auto;
+    flex: 0 0 auto; /* Don't grow or shrink */
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .event-logo-img {
-    width: 3em;
-    height: 3em;
+    width: 3.2em; /* Slightly larger relative size */
+    height: 3.2em;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.1);
+    /* fallback background */
 }
 
 .event-title-wrapper {
-    flex: 1 1 auto;
+    flex: 1 1 auto; /* Allow shrinking/growing */
+    min-width: 5em; /* Minimum width */
+    /* max-width: 12em; */ /* Let flexbox handle max width based on space */
     overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center; /* Center content vertically */
 }
+
+/* Content Box (used for title and timeplace) */
+.content-box {
+    background: rgba(255, 255, 255, 0.05); /* Subtle background */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Lighter border */
+    padding: 0.3em 0.6em; /* Adjusted padding */
+    border-radius: 5px; /* Slightly larger radius */
+    width: 100%; /* Fill the wrapper */
+    /* max-width: 240px; */ /* REMOVED - Let wrapper/flex control width */
+    text-align: center;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.2em; /* Ensure minimum height */
+    box-sizing: border-box;
+}
+
+.title-scroll {
+    white-space: nowrap;
+    overflow-x: auto;
+    /* Enable scroll for long titles */
+    overflow-y: hidden;
+    padding: 0.1em 0; /* Minimal vertical padding */
+    font-size: 1.1em; /* Slightly larger title */
+    font-weight: 500;
+    max-width: 100%;
+    box-sizing: border-box;
+    scrollbar-width: none;
+    /* Hide scrollbar for Firefox */
+}
+
+.title-scroll::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome/Safari/Edge */
+}
+
+/* Status Pill Area */
+.grid-item.event-status {
+    flex-shrink: 0; /* Prevent shrinking */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: -0.2em; /* Pull slightly closer to header */
+}
+
+.status-pill {
+    padding: 0.3em 1em; /* Slightly more padding */
+    border-radius: 9999px;
+    font-size: 0.75em;
+    font-weight: 500;
+    white-space: nowrap;
+    background: var(--status-bg, rgba(128, 128, 128, 0.7)); /* Default grey */
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.event-status.status-attending .status-pill { --status-bg: rgba(40, 167, 69, 0.8); }
+.event-status.status-maybe     .status-pill { --status-bg: rgba(255, 193, 7, 0.8); color: #111; } /* Darker text for yellow */
+.event-status.status-declined  .status-pill { --status-bg: rgba(220, 53, 69, 0.8); }
+.event-status.status-unknown   .status-pill { --status-bg: rgba(108, 117, 125, 0.8); } /* Added unknown style */
+
+
+/* Time/Place/Details Area */
+.grid-item.event-timeplace {
+    flex-grow: 1; /* ADDED: Allow this section to take up available vertical space */
+    flex-shrink: 1; /* Allow shrinking if needed */
+    overflow: hidden; /* Hide overflow */
+    width: 90%; /* Use slightly less width */
+    max-width: 260px; /* Add a max pixel width just in case */
+    min-height: 2.5em; /* Ensure minimum height */
+    display: flex; /* Needed for nested content box */
+    align-items: center; /* Center content box vertically */
+    justify-content: center; /* Center content box horizontally */
+}
+
+.event-timeplace .content-box {
+    height: 100%; /* Fill the parent grid item */
+    align-items: flex-start; /* Align text top */
+    padding: 0.4em 0.6em; /* Adjust padding */
+    overflow-y: auto; /* Enable scroll if content overflows */
+    scrollbar-width: thin; /* Slim scrollbar */
+    scrollbar-color: rgba(255,255,255,0.3) transparent; /* Scrollbar color */
+}
+
+.event-timeplace .content-box::-webkit-scrollbar {
+    width: 5px;
+}
+.event-timeplace .content-box::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.3);
+    border-radius: 3px;
+}
+.event-timeplace .content-box::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.timeplace-content {
+    font-size: 0.85em; /* Slightly larger details text */
+    line-height: 1.3; /* Adjust line height */
+    width: 100%; /* Take full width of content-box */
+    text-align: center; /* Center text */
+}
+
+.timeplace-content p {
+    margin-bottom: 0.3em; /* Space between paragraphs */
+}
+.timeplace-content p:last-child {
+    margin-bottom: 0;
+}
+
+.timeplace-content .extra-details {
+    margin-top: 0.5em; /* More space before extra details */
+    font-style: italic;
+    opacity: 0.9;
+}
+
+/* More Info Button Area */
+.grid-item.more-info {
+    margin-top: 0; /* Remove top margin, rely on space-between */
+    margin-bottom: -0.2em; /* Pull slightly down */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.grid-item.more-info a.button.info-button {
+    display: inline-block;
+    padding: 0.4em 1.5em; /* CHANGED: Increased vertical padding for taller button */
+    font-size: 0.8em; /* Slightly larger button text */
+    font-weight: 500;
+    border-radius: 9999px; /* pill */
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    text-decoration: none;
+    min-width: 4em; /* Ensure minimum width */
+    text-align: center;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    /* height: 1.6em; */ /* REMOVED: Let padding define height */
+    /* line-height: 1.6em; */ /* REMOVED: Let padding define height */
+}
+
+.grid-item.more-info a.button.info-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+.grid-item.more-info a.button.info-button:active {
+    transform: scale(0.96); /* Add click feedback */
+}
+
+/* Hide any old status-dot from previous versions */
+.status-dot {
+    display: none !important;
+}
+
+/* --- END OF FILE plannerGroupsArea.css --- */
