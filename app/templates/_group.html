@@ -16,9 +16,18 @@
             <p class="group-members-list">
                 <span class="label">Members:</span>
                 {% if group_member.group.members and group_member.group.members|length > 0 %}
-                    {{ group_member.group.members | map(attribute='user.username') | join(', ') }}
+                {% for member in group_member.group.members %}
+                    {% if member.user.username == current_user.username %}
+                        <span>{{ member.user.username }} - you</span>
+                    {% else %}
+                        <a href="{{ url_for('user', username=member.user.username) }}">
+                            {{ member.user.username }}
+                        </a>
+                    {% endif %}
+                    {% if not loop.last %}, {% endif %}
+                {% endfor %}
                 {% else %}
-                    <span class="no-members">None</span> {# Specific class for styling 'None' #}
+                    <span class="no-members">None</span>
                 {% endif %}
             </p>
         </li>
