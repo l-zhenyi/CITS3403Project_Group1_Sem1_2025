@@ -58,15 +58,6 @@ function createEventPanel(event) {
     panel.appendChild(image);
     panel.appendChild(infoOverlay);
 
-    const actions = document.createElement('div');
-    actions.className = 'event-actions';
-    actions.style.display = 'none';
-    actions.innerHTML = `
-        <button class="button accept">Accept</button>
-        <button class="button decline">Decline</button>
-    `;
-    panel.appendChild(actions);
-
     panel.style.position = 'absolute';
     // Use event.x/y only if NOT snapped, otherwise layout manager handles it
     if (!panel.dataset.snappedToNode) {
