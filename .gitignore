@@ -190,3 +190,6 @@ app.db
 
 # Ignore macOS system files
 **/.DS_Store
+
+#Script I used to automatically add users and create groups
+users.py

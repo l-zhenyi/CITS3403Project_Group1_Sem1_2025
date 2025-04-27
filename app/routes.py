@@ -6,6 +6,7 @@ from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, M
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
+from sqlalchemy.orm import aliased
 
 @app.route('/', methods=['GET', 'POST']) 
 @app.route('/index', methods=['GET', 'POST'])
@@ -102,7 +103,9 @@ def planner():
 @login_required 
 def user(username): 
     user = User.query.filter_by(username=username).first_or_404()
-    page = request.args.get('page', 1, type=int) 
+    page = request.args.get('page', 1, type=int)
+    
+    # Fetch posts
     posts = current_user.followed_posts().paginate(
         page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False
     )
@@ -110,14 +113,24 @@ def user(username):
         if posts.has_next else None 
     prev_url = url_for('user', username=user.username, page=posts.prev_num) \
         if posts.has_prev else None
+    
+    # Initialize the form
     form = EmptyForm()
-    groups = (
-        Group.query.join(GroupMember)
-        .filter(GroupMember.user_id == user.id)
+
+    group_member_alias = aliased(GroupMember)
+
+    shared_groups = (
+        Group.query
+        .join(GroupMember, Group.id == GroupMember.group_id)  # Join with first group_member
+        .filter(GroupMember.user_id == current_user.id)
+        .join(group_member_alias, Group.id == group_member_alias.group_id)  # Join with second group_member using alias
+        .filter(group_member_alias.user_id == user.id)
         .all()
     )
+    
+    # Render the template with the filtered groups
     return render_template('user.html', user=user, posts=posts.items, 
-                           next_url=next_url, prev_url=prev_url, form=form, group=groups)
+                           next_url=next_url, prev_url=prev_url, form=form, groups=shared_groups)
  
 @app.route('/edit_profile', methods=['GET', 'POST']) 
 @login_required 
@@ -388,3 +401,37 @@ def search_users():
         users = []
 
     return render_template('search_users.html', users=users)
+
+@app.route('/group/<int:group_id>/add_members', methods=['GET', 'POST'])
+@login_required
+def add_members(group_id):
+    group = Group.query.get_or_404(group_id)
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        user_to_add = User.query.filter_by(username=username).first()
+
+        if not user_to_add:
+            flash('User not found.')
+            return redirect(url_for('add_members', group_id=group_id))
+
+        # Check mutual following
+        if not (current_user.is_following(user_to_add) and user_to_add.is_following(current_user)):
+            flash('You can only add users who mutually follow you.')
+            return redirect(url_for('add_members', group_id=group_id))
+
+        # Check if already a member
+        existing_member = GroupMember.query.filter_by(user_id=user_to_add.id, group_id=group_id).first()
+        if existing_member:
+            flash('User is already a group member.')
+            return redirect(url_for('add_members', group_id=group_id))
+
+        # Add to group
+        new_membership = GroupMember(user_id=user_to_add.id, group_id=group_id)
+        db.session.add(new_membership)
+        db.session.commit()
+
+        flash(f'{user_to_add.username} has been added to the group!')
+        return redirect(url_for('view_group', group_id=group_id))
+
+    return render_template('add_members.html', group=group)

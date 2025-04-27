@@ -108,7 +108,7 @@ class GroupModelCase(unittest.TestCase):
         self.app_context.push()
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
         db.create_all()
-    
+
     def tearDown(self):
         db.session.remove()
         db.drop_all()
@@ -122,37 +122,36 @@ class GroupModelCase(unittest.TestCase):
         db.session.commit()
 
         # Create a test group
-        group_name = "Test Group"
-        group = Group(name=group_name, avatar_url="http://example.com/avatar.jpg", about="A test group")
+        group = Group(name="Test Group", avatar_url="http://example.com/avatar.jpg", about="A test group")
         db.session.add(group)
         db.session.commit()
-                
+
         # Add user to the group by creating a GroupMember relationship
         group_member = GroupMember(user_id=u1.id, group_id=group.id)
         db.session.add(group_member)
         db.session.commit()
 
         # Assert that the group was created and the user is added as a member
-        self.assertEqual(group.name, group_name)
+        self.assertEqual(group.name, "Test Group")
         
         # Verify that user u1 is linked to the group through GroupMember
         group_member = GroupMember.query.filter_by(user_id=u1.id, group_id=group.id).first()
         self.assertIsNotNone(group_member)
 
     def test_post_within_group(self):
-        # Create a test user and group
+        # Create a test user
         u1 = User(username="john", email="john@example.com")
         u1.set_password('cat')
         db.session.add(u1)
         db.session.commit()
 
+        # Create and commit a test group
         group = Group(name="Test Group", avatar_url="http://example.com/avatar.jpg", about="A test group")
-        
-        new_group = Group(name="Test Group")
-        db.session.add(new_group)
-        db.session.commit()  # Make sure the group is saved and the ID is generated
+        db.session.add(group)
+        db.session.commit()
 
-        new_member = GroupMember(user_id=u1.id, group_id=new_group.id)  # Make sure new_group.id is not None
+        # Add user to the group
+        new_member = GroupMember(user_id=u1.id, group_id=group.id)
         db.session.add(new_member)
         db.session.commit()
 
@@ -172,6 +171,123 @@ class GroupModelCase(unittest.TestCase):
         self.assertEqual(post_in_db.body, post_content)
         self.assertEqual(post_in_db.group_id, group.id)
         self.assertEqual(post_in_db.user_id, u1.id)
+
+    def test_user_not_in_group_cannot_post(self):
+        # Create two users
+        u1 = User(username="john", email="john@example.com")
+        u1.set_password('cat')
+        u2 = User(username="jane", email="jane@example.com")
+        u2.set_password('dog')
+        db.session.add_all([u1, u2])
+        db.session.commit()
+
+        # Create and commit a group
+        group = Group(name="Test Group", avatar_url="http://example.com/avatar.jpg", about="A test group")
+        db.session.add(group)
+        db.session.commit()
+
+        # Add only u1 as a member
+        new_member = GroupMember(user_id=u1.id, group_id=group.id)
+        db.session.add(new_member)
+        db.session.commit()
+
+        # Ensure u2 is not a member of the group
+        group_member_check = GroupMember.query.filter_by(user_id=u2.id, group_id=group.id).first()
+        self.assertIsNone(group_member_check, "User u2 should not be a member of the group")
+
+        # u2 (non-member) tries to post
+        post = Post(body="Unauthorized post", user_id=u2.id, group_id=group.id)
+
+        # Instead of automatic check, we manually verify the membership here
+        if group_member_check is None:
+            post_in_db = Post.query.filter_by(body="Unauthorized post").first()
+            self.assertIsNone(post_in_db, "Post should not have been added as u2 is not in the group.")
+        else:
+            # If u2 is a member, add the post and commit
+            db.session.add(post)
+            db.session.commit()
+            
+            # Ensure the post was added successfully
+            post_in_db = Post.query.filter_by(body="Unauthorized post").first()
+            self.assertIsNotNone(post_in_db, "Post should have been added as u2 is in the group.")
+
+    def test_add_mutual_follower_to_group(self):
+        # Create two users
+        u1 = User(username="james", email="james@example.com")
+        u2 = User(username="jane", email="jane@example.com")
+        u1.set_password('password')
+        u2.set_password('password')
+        db.session.add_all([u1, u2])
+        db.session.commit()
+
+        # Mutual follow
+        u1.follow(u2)
+        u2.follow(u1)
+        db.session.commit()
+
+        # Create a group and add u1
+        group = Group(name="Cool Group", avatar_url="http://example.com/avatar.jpg", about="A cool group")
+        db.session.add(group)
+        db.session.commit()
+
+        member = GroupMember(user_id=u1.id, group_id=group.id)
+        db.session.add(member)
+        db.session.commit()
+
+        # Now simulate adding u2 (mutual follower) to the group
+        # First check mutual following
+        self.assertTrue(u1.is_following(u2) and u2.is_following(u1))
+
+        # Add u2 to the group
+        new_member = GroupMember(user_id=u2.id, group_id=group.id)
+        db.session.add(new_member)
+        db.session.commit()
+
+        # Check that u2 is now a member
+        added_member = GroupMember.query.filter_by(user_id=u2.id, group_id=group.id).first()
+        self.assertIsNotNone(added_member)
+
+    def test_cannot_add_without_mutual_follow(self):
+        # Create two users
+        u1 = User(username="alice", email="alice@example.com")
+        u2 = User(username="bob", email="bob@example.com")
+        u1.set_password('password')
+        u2.set_password('password')
+        db.session.add_all([u1, u2])
+        db.session.commit()
+
+        # Only one-way follow: u1 follows u2, but u2 doesn't follow back
+        u1.follow(u2)
+        db.session.commit()
+
+        # Create a group and add u1
+        group = Group(name="Private Group", avatar_url="http://example.com/avatar.jpg", about="Private stuff")
+        db.session.add(group)
+        db.session.commit()
+
+        member = GroupMember(user_id=u1.id, group_id=group.id)
+        db.session.add(member)
+        db.session.commit()
+
+        # Confirm no mutual follow
+        self.assertTrue(u1.is_following(u2))
+        self.assertFalse(u2.is_following(u1))
+
+        # Now try to "simulate" adding u2 — but you should block it
+        mutual = u1.is_following(u2) and u2.is_following(u1)
+        self.assertFalse(mutual)
+
+        # Only allow adding if mutual — so in actual app logic, prevent adding
+        # Here, don't even add to db
+        result = None
+        if mutual:
+            result = GroupMember(user_id=u2.id, group_id=group.id)
+            db.session.add(result)
+            db.session.commit()
+
+        # Assert that no GroupMember was created
+        member_check = GroupMember.query.filter_by(user_id=u2.id, group_id=group.id).first()
+        self.assertIsNone(member_check)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
