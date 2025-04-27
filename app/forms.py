@@ -54,3 +54,8 @@ class PostForm(FlaskForm):
 class CreateGroupForm(FlaskForm):
     name = StringField("Group Name", validators=[DataRequired(), Length(max=100)])
     about = TextAreaField("About", validators=[Length(max=255)])
+
+class MessageForm(FlaskForm): 
+    message = TextAreaField(('Message'), validators=[ 
+        DataRequired(), Length(min=0, max=140)]) 
+    submit = SubmitField('Submit')

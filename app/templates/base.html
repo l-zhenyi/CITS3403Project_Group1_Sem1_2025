@@ -21,6 +21,7 @@
                   {% else %} 
                         <a href="{{ url_for('user', username=current_user.username) }}">Profile</a>
                         <a href="{{ url_for('logout') }}">Logout</a> 
+                        <a href="{{ url_for('messages') }}"> {{ ('Messages') }} </a>
                   {% endif %} 
                   <a href="{{ url_for('planner') }}">Planner</a>
                   <a href="{{ url_for('explore') }}">Explore</a>
@@ -28,7 +29,7 @@
             </nav>
             
             <div class="top-nav-right">
-                  <button class="icon-button">🔍</button>
+                  <button class="icon-button"><a href="{{ url_for('search_users') }}">🔍</a></button>
                   <a href="{{ url_for('login') }}" class="icon-button">🔑</a>
                   <a href="{{ url_for('profile') }}" class="icon-button">👤</a>
                   {% if current_user.is_authenticated %} 

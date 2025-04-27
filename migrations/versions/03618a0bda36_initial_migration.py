@@ -1,8 +1,8 @@
-"""empty message
+"""Initial migration
 
-Revision ID: 2e2f49f56a26
-Revises: 
-Create Date: 2025-04-26 14:41:00.786252
+Revision ID: 03618a0bda36
+Revises: f33c2d7a0835
+Create Date: 2025-04-26 18:36:04.542795
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '2e2f49f56a26'
+revision = '03618a0bda36'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -32,6 +32,7 @@ def upgrade():
     sa.Column('password_hash', sa.String(length=128), nullable=False),
     sa.Column('about_me', sa.String(length=140), nullable=True),
     sa.Column('last_active', sa.DateTime(), nullable=True),
+    sa.Column('last_message_read_time', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('user', schema=None) as batch_op:
@@ -58,6 +59,19 @@ def upgrade():
     sa.ForeignKeyConstraint(['group_id'], ['groups.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], )
     )
+    op.create_table('message',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('sender_id', sa.Integer(), nullable=False),
+    sa.Column('recipient_id', sa.Integer(), nullable=False),
+    sa.Column('body', sa.String(length=140), nullable=False),
+    sa.Column('timestamp', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['recipient_id'], ['user.id'], ),
+    sa.ForeignKeyConstraint(['sender_id'], ['user.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('message', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_message_timestamp'), ['timestamp'], unique=False)
+
     op.create_table('nodes',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('label', sa.String(length=100), nullable=False),
@@ -89,8 +103,6 @@ def upgrade():
     sa.Column('image_url', sa.String(length=255), nullable=True),
     sa.Column('cost_display', sa.String(length=50), nullable=True),
     sa.Column('rsvp_status', sa.String(length=50), nullable=True),
-    sa.Column('x', sa.Float(), nullable=True),
-    sa.Column('y', sa.Float(), nullable=True),
     sa.Column('node_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['node_id'], ['nodes.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -125,6 +137,10 @@ def downgrade():
 
     op.drop_table('post')
     op.drop_table('nodes')
+    with op.batch_alter_table('message', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_message_timestamp'))
+
+    op.drop_table('message')
     op.drop_table('group_members')
     op.drop_table('group_member')
     op.drop_table('followers')
