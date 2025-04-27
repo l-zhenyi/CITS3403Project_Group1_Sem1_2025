@@ -1,4 +1,5 @@
 from flask import Flask
+from flask import redirect, url_for
 from config import Config
 from dotenv import load_dotenv
 from flask_login import LoginManager
@@ -13,6 +14,10 @@ app.config.from_object(Config)
 db = SQLAlchemy(app) 
 migrate = Migrate(app, db) 
 login = LoginManager(app) 
-login.login_view = 'login'
+
+
+@login.unauthorized_handler
+def unauthorized():
+   return redirect(url_for('login'))  # Redirect without flashing a message
 
 from app import routes, models

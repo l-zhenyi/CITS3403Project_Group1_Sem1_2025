@@ -275,109 +275,12 @@
 /* Container for absolutely positioned event panels */
 .event-panels-container {
     position: relative;
-    /* Crucial for absolute positioning */
-    width: 100%;
-    min-height: 100%;
-    /* Ensure it fills at least the initial view */
-    height: auto;
-    /* Allow it to grow */
-    /* Padding-top is now handled by the parent .event-collage-area */
-    /* The sticky .blur-wrapper / .active-group-header pushes content down */
+    width: max-content;
+    height: max-content;
+    min-width: 2000px;
+    min-height: 1600px;
+    /* Leave space for floating layout */
 }
-
-/* Individual Event Panel Styling (Desktop Collage View) */
-.event-panel {
-    /* Positioning & Box Model */
-    position: absolute;
-    /* Key for collage layout */
-    width: 320px;
-    /* Fixed width for collage */
-    min-height: 210px;
-    /* Minimum height */
-    padding: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 18px;
-    display: flex;
-    /* Use flex for internal layout */
-    flex-direction: column;
-    /* Stack content vertically */
-
-    /* Visual */
-    background: rgba(170, 170, 175, 0.85);
-    /* Slightly different glass */
-    backdrop-filter: blur(30px) saturate(130%);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.28);
-    transform-style: preserve-3d;
-    /* For potential 3D effects */
-    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
-}
-
-.event-panel:hover {
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
-    transform: translateY(-3px) scale(1.01);
-    /* Subtle lift effect */
-}
-
-.event-image {
-    /* Box Model */
-    width: 100%;
-    /* Fill panel width */
-    height: 100px;
-    /* Fixed height */
-    margin-bottom: 14px;
-    border-radius: 12px;
-    flex-shrink: 0;
-    /* Prevent image shrinking */
-
-    /* Visual */
-    object-fit: cover;
-    opacity: 0.95;
-    /* Slightly subdued */
-}
-
-.event-panel h3 {
-    /* Box Model */
-    margin-bottom: 5px;
-
-    /* Typography */
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: #fff;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
-}
-
-.event-details {
-    /* Box Model */
-    margin-bottom: 8px;
-
-    /* Typography */
-    font-size: 0.9rem;
-    color: #e5e5ea;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
-}
-
-.event-rsvp {
-    /* Box Model */
-    margin-bottom: 14px;
-
-    /* Typography */
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #BBE1FA;
-    /* Lighter blue, distinct */
-    text-shadow: none;
-}
-
-.event-actions {
-    /* Box Model */
-    display: flex;
-    margin-top: auto;
-    /* Push actions to the bottom */
-    flex-shrink: 0;
-    /* Prevent shrinking */
-    gap: 10px;
-}
-
 .back-button {
     /* Box Model */
     display: none;
@@ -476,33 +379,6 @@
         /* No specific top padding needed here */
     }
 
-    .event-panel {
-        position: relative !important;
-        /* Override absolute */
-        width: 100% !important;
-        /* Full width */
-        max-width: 450px;
-        /* Optional max width for better readability */
-        margin: 0 auto 15px auto !important;
-        /* Center and add bottom margin */
-        left: auto !important;
-        top: auto !important;
-        transform: none !important;
-        /* Remove rotation/translate */
-        opacity: 1 !important;
-        /* Ensure visible */
-        min-height: auto;
-        /* Let content define height */
-        padding: 15px;
-        /* Adjust padding */
-        border-radius: 14px;
-        /* Adjust rounding */
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        /* Simpler shadow */
-        backdrop-filter: blur(20px) saturate(120%);
-        /* Slightly less blur potentially */
-    }
-
     .event-panel:hover {
         transform: none !important;
         /* Disable hover transform */
@@ -579,3 +455,485 @@
         pointer-events: none !important;
     }
 }
+
+.collage-viewport {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    position: relative;
+    cursor: grab;
+}
+
+.collage-viewport.dragging {
+    cursor: grabbing;
+}
+
+/* plannerGroupsArea.css */
+
+/* ... (Keep existing .group-list-area styles) ... */
+
+
+/* ==========================================================================
+    Event Collage Area (Right Pane - Desktop)
+    ========================================================================== */
+
+.event-collage-area {
+    /* Positioning & Box Model */
+    flex-grow: 1;
+    /* Take remaining space */
+    height: 100%;
+    /* Fill parent pane height */
+    min-height: 0;
+    /* Flex behavior */
+    position: relative;
+    /* Needed for absolute positioned children & sticky header */
+    z-index: 0;
+    /* Below sticky header/blur */
+    /* Remove direct padding, viewport handles it */
+    padding: 0;
+    border-radius: 0 18px 18px 0;
+    /* Match parent rounding */
+    overflow: hidden;
+    /* Hide overflow, viewport scrolls */
+
+    /* Visual */
+    /* perspective: 1200px;  -- Might interfere with absolute positioning, remove for now */
+    transition: flex 0.3s ease, opacity 0.3s ease;
+    /* For mobile view switch */
+}
+
+/* Sticky Header for Active Group within the Event Area */
+/* Uses blur overlay technique */
+.blur-wrapper {
+    /* Sits inside event-collage-area, wraps header */
+    position: sticky;
+    /* Stays relative to event-collage-area */
+    top: 0;
+    height: 64px;
+    /* Estimated height of the header + some buffer */
+    z-index: 10;
+    /* Above event panels */
+    pointer-events: none;
+    /* Allows clicks/scrolls to pass through to viewport */
+    margin: 0;
+    /* Remove margin if padding removed from parent */
+    padding: 12px;
+    /* Add padding here instead */
+}
+
+.blur-overlay {
+    /* The visual blur effect */
+    position: absolute;
+    inset: 0;
+    /* Adjust if padding is moved to blur-wrapper */
+    top: 0;
+    left: 0;
+    right: 0;
+    /* --- */
+    background: rgba(140, 140, 145, 1);
+    backdrop-filter: blur(10px) saturate(120%);
+    /* Fade out the blur effect downwards */
+    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+    z-index: 0;
+    /* Behind the actual header content */
+}
+
+.active-group-header {
+    /* Positioning & Box Model */
+    display: flex;
+    position: relative;
+    /* Sits inside blur-wrapper */
+    z-index: 1;
+    /* Above blur-overlay */
+    padding: 12px 18px;
+    /* Remove margin if padding moved to blur-wrapper */
+    margin: 0 0 12px 0;
+    /* Only bottom margin */
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 14px;
+    pointer-events: auto;
+    /* Re-enable interaction for header elements */
+
+    /* Layout */
+    align-items: center;
+
+    /* Visual */
+    background: rgba(160, 160, 165, 0.8);
+    /* Slightly different glass */
+    backdrop-filter: blur(30px) saturate(150%);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* ... (Keep .back-button, .group-avatar-small, .active-group-name, .settings-button styles) ... */
+
+/* NEW: Viewport for panning */
+.collage-viewport {
+    width: 100%;
+    height: 100%;
+    /* Fill the event-collage-area */
+    overflow: auto;
+    /* Enable scroll/pan */
+    position: relative;
+    /* For absolute positioning of container inside */
+    cursor: grab;
+    /* Indicate pannable */
+    padding: 12px;
+    /* Add padding inside viewport */
+    /* Adjust padding-top if needed to avoid header overlap visually */
+    padding-top: 76px;
+    /* Match approx header height + padding */
+    box-sizing: border-box;
+}
+
+.collage-viewport.dragging {
+    cursor: grabbing;
+    /* Cursor while panning */
+}
+
+/* Container for absolutely positioned event panels & nodes */
+.event-panels-container {
+    position: relative;
+    /* Children are positioned relative to this */
+    width: max-content;
+    /* Allow it to grow */
+    height: max-content;
+    min-width: 2000px;
+    /* Large area for panning */
+    min-height: 1600px;
+    /* Background for visual debugging */
+    /* background: rgba(0, 255, 0, 0.05); */
+}
+
+.event-panel:hover {
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+}
+
+
+/* --- Mobile Specific Adjustments --- */
+@media (max-width: 768px) {
+    /* ... (Keep existing mobile overrides for group-list-area, etc.) ... */
+
+    .event-collage-area {
+        padding: 8px;
+        /* Restore padding for mobile */
+        border-radius: 12px;
+        perspective: none;
+        overflow-y: auto;
+        /* Enable normal scroll */
+        overflow-x: hidden;
+    }
+
+    /* Hide viewport and node controls on mobile */
+    .collage-viewport {
+        display: none;
+    }
+
+    .node-controls {
+        display: none !important;
+    }
+
+
+    /* Adjust active group header for mobile */
+    .blur-wrapper {
+        padding: 8px;
+        /* Adjust padding */
+        height: auto;
+        /* Let content define height */
+        position: sticky;
+        /* Make header sticky within scrolling area */
+        top: -8px;
+        /* Stick relative to the event area's padding */
+        z-index: 10;
+    }
+
+    .active-group-header {
+        /* No longer needs position relative */
+        padding: 10px 15px;
+        border-radius: 14px;
+        margin: 0 0 12px 0;
+        /* Reset margin */
+        /* Sticky behavior handled by blur-wrapper */
+    }
+
+    /* Show back button only when mobile event view is active */
+    .planner-pane.mobile-event-view-active .active-group-header .back-button {
+        display: inline-block;
+    }
+
+    /* Override Event Panel for Mobile Stacked View */
+    .event-panels-container {
+        /* Reset desktop styles */
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        padding-top: 0;
+        /* Remove desktop padding */
+        /* background: none; */
+        /* Remove debug background */
+    }
+
+    /* ... (Keep existing mobile flex layout rules for .planner-pane switching) ... */
+
+    /* Ensure collage area content scrolls correctly on mobile when active */
+    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
+        /* Existing rules are fine, just double check overflow */
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-top: 0;
+        /* Reset padding */
+    }
+
+    /* Adjust blur wrapper/header positioning for mobile */
+    .planner-pane.mobile-event-view-active .blur-wrapper {
+        top: -8px;
+        /* Stick relative to the event-collage-area padding */
+    }
+
+    /* Re-add padding to event-collage-area for mobile */
+    .planner-pane.mobile-event-view-active .event-collage-area {
+        padding: 8px;
+    }
+}
+
+/* plannerGroupsArea.css */
+
+/* ... (Keep existing .group-list-area styles) ... */
+
+
+/* ==========================================================================
+    Event Collage Area (Right Pane - Desktop)
+    ========================================================================== */
+
+.event-collage-area {
+    /* ... keep existing styles ... */
+    overflow: hidden;
+    /* Hide overflow, viewport scrolls */
+}
+
+/* ... Keep .blur-wrapper, .blur-overlay, .active-group-header styles ... */
+
+/* NEW: Viewport for panning & Zooming */
+.collage-viewport {
+    width: 100%;
+    height: 100%;
+    /* Fill the event-collage-area */
+    overflow: auto;
+    /* Enable scroll/pan */
+    position: relative;
+    /* For absolute positioning of container inside */
+    cursor: grab;
+    /* Indicate pannable */
+    padding: 12px;
+    /* Add padding inside viewport */
+    padding-top: 76px;
+    /* Match approx header height + padding */
+    box-sizing: border-box;
+}
+
+.collage-viewport.dragging {
+    cursor: grabbing;
+    /* Cursor while panning canvas */
+}
+
+/* Container for absolutely positioned event panels & nodes */
+.event-panels-container {
+    position: relative;
+    /* Children are positioned relative to this */
+    width: max-content;
+    /* Allow it to grow */
+    height: max-content;
+    min-width: 2000px;
+    /* Large area for panning */
+    min-height: 1600px;
+    /* Set transform origin for zooming */
+    transform-origin: top left;
+    /* Or center center */
+    transition: transform 0.2s ease-out;
+    /* Smooth zoom */
+    /* background: rgba(0, 255, 0, 0.05); */
+    /* Debug */
+}
+
+/* Keyframes for wiggle animation */
+@keyframes wiggle {
+
+    0%,
+    100% {
+        transform: rotate(-1deg);
+    }
+
+    50% {
+        transform: rotate(1deg);
+    }
+}
+
+/* Circular Panel */
+.event-panel {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    overflow: hidden;
+    position: absolute;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: rgba(200, 200, 210, 0.15);
+    backdrop-filter: blur(8px) saturate(120%);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Background Image */
+.event-panel .event-image {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease, filter 0.4s ease;
+    z-index: 0;
+}
+
+/* Full overlay */
+.event-panel .event-info-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    text-align: center;
+    padding: 10px;
+    opacity: 0;
+    z-index: 1;
+    transition: opacity 0.3s ease, background 0.3s ease;
+    font-size: 0.85rem;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+.event-panel:hover .event-image {
+    transform: scale(1.15);
+    filter: blur(2px);
+}
+
+.event-panel:hover .event-info-overlay {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+/* ... (Keep .event-image, h3, .event-details, .event-rsvp, .event-actions styles) ... */
+
+/* Event Node Styling */
+.event-node {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(90, 150, 210, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
+    line-height: 120px;
+    /* Vertically center text */
+    font-size: 1.1rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(15px) saturate(120%);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    /* Use transform to center precisely on coordinates */
+    /* Make nodes interactive and draggable */
+    pointer-events: auto;
+    cursor: grab;
+    user-select: none;
+    z-index: 5;
+    /* Below event panels by default */
+    transition: box-shadow 0.3s ease, opacity 0.3s ease;
+    /* Smooth transitions */
+}
+
+.event-node.dragging {
+    cursor: grabbing;
+    opacity: 0.9;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    /* On top while dragging */
+}
+
+/* --- Mobile Specific Adjustments --- */
+@media (max-width: 768px) {
+    /* ... (Keep existing mobile overrides for layout switching etc.) ... */
+    /* Hide nodes on mobile */
+    .event-node {
+        display: none !important;
+    }
+
+    /* Ensure collage area scrolls normally */
+    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 8px;
+        /* Restore padding */
+        padding-top: 8px;
+        /* Reset specific top padding */
+    }
+
+    /* Ensure viewport doesn't interfere */
+    .collage-viewport {
+        display: none;
+    }
+
+    /* Reset container styles */
+    .event-panels-container {
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        transform: none !important;
+        /* Reset zoom */
+    }
+
+    /* Adjust blur wrapper/header positioning for mobile */
+    .planner-pane.mobile-event-view-active .blur-wrapper {
+        padding: 8px;
+        /* Adjust padding */
+        height: auto;
+        position: sticky;
+        top: -8px;
+        /* Stick relative to the event-collage-area padding */
+        z-index: 10;
+    }
+}
+
+
+#collage-viewport {
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+}
+
+#event-panels-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+.dragging .blur-overlay {
+    backdrop-filter: blur(0);
+}
+
+.dragging, .dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }

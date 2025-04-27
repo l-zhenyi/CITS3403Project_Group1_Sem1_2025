@@ -1,6 +1,6 @@
 // eventActions.js
 import { groupsData, processAllEvents } from './dataHandle.js';
-import { renderGroupEvents, renderAllEventsList, renderCalendar } from './eventRenderer.js';
+import { renderGroupEvents, renderAllEventsList, renderCalendar, createNodeElement } from './eventRenderer.js';
 
 let calendarDate = new Date();
 let currentEventFilter = 'upcoming';
@@ -20,25 +20,30 @@ function generateUniqueId(prefix = 'item') {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 }
 
-export function addGroup(name, avatarUrl, makeActive = false) {
+export async function addGroup(name, avatarUrl, makeActive = false) {
     if (!name) return null;
 
-    const groupListUL = document.querySelector('.group-list-area ul');
-    if (!groupListUL) return null;
+    const defaultAvatar = avatarUrl || `https://via.placeholder.com/40/cccccc/FFFFFF?text=${name[0].toUpperCase()}`;
+    
+    // 🔁 Call your Flask API
+    const res = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, avatar_url: defaultAvatar })
+    });
 
-    const newGroupId = generateUniqueId('group');
-    const defaultAvatar = `https://via.placeholder.com/40/cccccc/FFFFFF?text=${name[0].toUpperCase()}`;
+    if (!res.ok) {
+        alert("Failed to create group.");
+        return null;
+    }
 
-    const newGroup = {
-        id: newGroupId,
-        name,
-        avatar_url: avatarUrl || defaultAvatar,
-        events: [],
-        upcoming_event_count: 0
-    };
+    const newGroup = await res.json();
+    newGroup.events = [];
 
     groupsData.push(newGroup);
 
+    // --- DOM update ---
+    const groupListUL = document.querySelector('.group-list-area ul');
     const li = document.createElement('li');
     li.classList.add('group-item');
     li.dataset.groupId = newGroup.id;
@@ -64,37 +69,33 @@ export function addGroup(name, avatarUrl, makeActive = false) {
     });
 
     groupListUL.appendChild(li);
-
     if (makeActive) li.click();
 
     return newGroup;
 }
 
-export function addEventToGroup(groupId, eventDetails) {
-    if (!groupId || !eventDetails?.title || !eventDetails?.date_iso) return null;
-
+export async function addEventToGroup(groupId, eventDetails) {
     const group = groupsData.find(g => g.id === groupId);
     if (!group) return null;
 
-    const newEventId = generateUniqueId('event');
-    const eventDate = new Date(eventDetails.date_iso);
-    if (isNaN(eventDate)) return null;
+    const res = await fetch(`/api/groups/${groupId}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventDetails)
+    });
 
-    const newEvent = {
-        id: newEventId,
-        title: eventDetails.title,
-        date_iso: eventDetails.date_iso,
-        date: eventDate,
-        formatted_date: formatEventDateForDisplay(eventDate),
-        image_url: eventDetails.image_url || 'https://via.placeholder.com/150/eeeeee/333333?text=Event',
-        cost_display: eventDetails.cost_display || 'Free',
-        location: eventDetails.location || 'TBD',
-        rsvp_status: eventDetails.rsvp_status || 'Invited',
-        ...eventDetails
-    };
+    if (!res.ok) {
+        alert("Failed to create event.");
+        return null;
+    }
+
+    const newEvent = await res.json();
+    newEvent.date = new Date(newEvent.date_iso);
+    newEvent.formatted_date = formatEventDateForDisplay(newEvent.date);
 
     group.events.push(newEvent);
 
+    // Refresh views
     const now = new Date();
     const upcomingCount = group.events.filter(ev => ev.date >= now).length;
     group.upcoming_event_count = upcomingCount;
@@ -121,7 +122,7 @@ export function addEventToGroup(groupId, eventDetails) {
     return newEvent;
 }
 
-export function hookDemoButtons() {
+export async function hookDemoButtons() {
     const groupBtn = document.getElementById('add-group-btn');
     const eventBtn = document.getElementById('add-event-btn');
 
@@ -140,8 +141,9 @@ export function hookDemoButtons() {
             alert("Please select a group before adding an event.");
             return;
         }
-
-        const group = groupsData.find(g => g.id === activeGroupId);
+        console.log("Active group ID:", activeGroupId);
+        console.log(groupsData.map(group => group.id));
+        const group = groupsData.find(g => String(g.id) === activeGroupId);
         if (!group) {
             alert("Could not find the selected group.");
             return;
@@ -157,10 +159,13 @@ export function hookDemoButtons() {
         const dateIso = new Date(dateStr).toISOString();
         addEventToGroup(group.id, {
             title,
-            date_iso: dateIso,
+            date: dateIso,
             location: 'TBD',
-            rsvp_status: 'Invited'
+            description: 'Sample event description',
+            x: Math.random() * 100,
+            y: Math.random() * 100,
         });
+        renderGroupEvents(group.id);
     });
 }
 

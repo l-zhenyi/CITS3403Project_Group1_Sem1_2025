@@ -29,7 +29,7 @@
                  <ul>
                     {% if groups %}
                         {% for group in groups %}
-                        <li class="group-item {% if loop.first %}active{% endif %}"
+                        <li class="group-item {% if loop.first and not is_mobile_on_load %}active{% endif %}" {# Only activate first on desktop load #}
                             data-group-id="{{ group.id | e }}"
                             data-group-name="{{ group.name | e }}"
                             data-group-avatar="{{ group.avatar_url | e }}">
@@ -53,15 +53,22 @@
                     <div class="blur-overlay"></div>
                     <div class="active-group-header glassy">
                         <button class="icon-button back-button" aria-label="Back to groups">←</button>
-                        {# Initial state set by JS based on the first group #}
-                        <img src="{{ groups[0].avatar_url | default('https://via.placeholder.com/36') if groups else 'https://via.placeholder.com/36' }}" alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
-                        <span class="active-group-name" id="active-group-name">{{ groups[0].name | default('Group') if groups else 'Group' }} Events</span>
+                        {# Initial state set by JS #}
+                        <img src="" alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
+                        <span class="active-group-name" id="active-group-name">Select a Group</span>
                         <button class="icon-button settings-button">⚙️</button>
                     </div>
                 </div>
-                {# Event panels container - Populated by JS #}
-                <div class="event-panels-container" id="event-panels-container">
-                    <!-- Event panels for the initially active group will be loaded here by JS -->
+                {# NEW: Viewport for panning the collage content #}
+                <div class="collage-viewport" id="collage-viewport">
+                     {# Container for absolutely positioned items (nodes & events) #}
+                    <div class="event-panels-container" id="event-panels-container">
+                        <!-- Nodes and Event panels will be loaded here by JS -->
+                    </div>
+                    {# Optional: Controls for adding nodes - Positioned absolutely #}
+                    <div class="node-controls" style="position: absolute; top: 10px; left: 10px; z-index: 100;">
+                        <button id="add-node-btn" class="button accept" style="padding: 8px 12px; font-size: 0.9em; display: none;">Add Node</button> {# Hide initially #}
+                    </div>
                 </div>
             </section>
 
@@ -93,20 +100,14 @@
             </section>
 
         </div> <!-- End of planner-pane -->
+
          <!-- Add somewhere convenient, maybe below the planner pane -->
- <div style="padding: 15px; text-align: center; background: rgba(0,0,0,0.3); margin-top: 10px; border-radius: 8px;">
-    <button id="add-group-btn" class="button accept">Add Demo Group</button>
-    <button id="add-event-btn" class="button accept" style="margin-left: 10px;">Add Demo Event to Active Group</button>
-</div>
+        <div style="padding: 15px; text-align: center; background: rgba(0,0,0,0.3); margin-top: 10px; border-radius: 8px;">
+            <button id="add-group-btn" class="button accept">Add Demo Group</button>
+            <button id="add-event-btn" class="button accept" style="margin-left: 10px;">Add Demo Event to Active Group</button>
+        </div>
     </main>
 
-    {# Embed data for JavaScript #}
-    <script id="group-data" type="application/json">
-        {{ groups | tojson | safe if groups else '[]' }}
-    </script>
-    <script id="all-events-data" type="application/json">
-        {{ all_events_json | default('[]') | safe }} {# Assumes you pass pre-processed all_events_json #}
-    </script>
-
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <div id="custom-context-menu" class="context-menu" style="display: none;"></div>
 {% endblock %}

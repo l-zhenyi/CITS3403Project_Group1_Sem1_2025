@@ -12,6 +12,23 @@ it comes to splitting costs fairly.
 | 23970936 | Jacob Read | Consumer-of-Souls |
 | 23737821 | Aidan Kirby-Smith | Aidan-KS |
 
-# Launch application instructions
+# Installation and running 
+```
+python3 -m venv venv
 
-# Running application tests instructions
+# If using MacOS or Linux
+source venv/bin/activate
+# If using Winddows
+venv/Scripts/activate
+
+pip install -r requirements.txt
+flask db upgrade
+flask run
+```
+
+#### **You should also have these in a .flaskenv file**
+```
+FLASK_APP=run.py
+FLASK_ENV=development
+SECRET_KEY=<SOME SECRET KEY OF YOUR CHOOSING>
+```

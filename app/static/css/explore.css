@@ -1,0 +1,122 @@
+/* ==========================================================================
+   Explore Page Styles
+   ========================================================================== */
+
+/* General container for the explore page */
+.explore-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+/* Glassy style for the main content area */
+.explore-content {
+    width: 100%;
+    padding: 25px;
+    border-radius: 18px;
+    box-sizing: border-box;
+}
+
+/* Header for the explore page */
+.explore-content h1 {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 15px;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Subheader for sections */
+.explore-content h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #e5e5ea;
+    margin-bottom: 10px;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding-bottom: 8px;
+}
+
+/* List of resources */
+.explore-content ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Individual resource links */
+.explore-content ul li a {
+    color: #BBE1FA;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.explore-content ul li a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+/* Card grid layout */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+/* Individual card styles */
+.explore-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    height: auto; /* Allow the card height to adjust based on content */
+}
+
+.explore-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Card image section */
+.card-image {
+    width: 100%;
+    aspect-ratio: 4 / 3; /* Maintain a consistent aspect ratio for the image */
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+}
+
+/* Card content section */
+.card-content {
+    padding: 15px;
+    color: #fff;
+    text-align: center;
+}
+
+.card-content h3 {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.card-content p {
+    font-size: 0.9rem;
+    color: #e5e5ea;
+}
