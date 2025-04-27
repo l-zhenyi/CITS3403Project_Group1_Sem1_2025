@@ -933,151 +933,158 @@
     }
 }
 
+/* Expanded event panel adjustments */
+.expanded-grid-container-v2 {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 1em;
+    width: 90%;
+    height: 90%;
+    flex-wrap: wrap;
+    text-align: center;
+    padding: 0.5em;
+    box-sizing: border-box;
+}
+.grid-item.event-logo {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.grid-item.event-logo img {
+    width: 5em;
+    height: 5em;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    object-fit: cover;
+}
 
-#collage-viewport {
+.grid-item.event-title {
+    grid-area: title;
     overflow: hidden;
-    position: relative;
-    width: 100%;
-    height: 100%;
-    cursor: grab;
+}
+.title-scroll {
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    scrollbar-width: none;
+}
+.title-scroll::-webkit-scrollbar {
+    display: none;
 }
 
-#event-panels-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    transform-origin: 0 0;
-    will-change: transform;
+.grid-item.event-status {
+    grid-area: status;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.status-pill {
+    padding: 0.25em 0.9em;
+    border-radius: 9999px;
+    font-size: 0.75em;
+    white-space: nowrap;
+    background: var(--status-bg, grey);
+    color: #fff;
+}
+.event-status.status-attending .status-pill { --status-bg: #28a745; }
+.event-status.status-maybe     .status-pill { --status-bg: #ffc107; color: #000; }
+.event-status.status-declined  .status-pill { --status-bg: #dc3545; }
+
+.grid-item.event-timeplace {
+    grid-area: timeplace;
+    min-height: 3em;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 0.2em;
+}
+.timeplace-content {
+    font-size: 0.9em;
 }
 
-.dragging .blur-overlay {
-    backdrop-filter: blur(0);
+.grid-item.more-info {
+    margin-top: 0.5em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.grid-item.more-info a.button.info-button {
+    display: inline-block;
+    padding: 0.4em 1em;
+    font-size: 0.8em;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+.grid-item.more-info a.button.info-button:hover {
+    background: rgba(255, 255, 255, 0.25);
 }
 
-.dragging, .dragging * {
-    user-select: none !important;
-    -webkit-user-select: none !important;
-  }
-
-  /* --- Example External CSS for Proportional Scaling --- */
-
-.event-node {
-  /* Base styles set by JS: position, width, height, left, top, border-radius, overflow, --current-diameter, font-size */
-  /* Add your visual styles here */
-  background-color: rgba(0, 150, 255, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-  display: flex; /* Needed for alignment */
-  align-items: center;
-  justify-content: center;
-  color: white;
-  cursor: pointer;
-  transition: box-shadow 0.2s ease-out; /* Can still transition non-layout things */
-  box-sizing: border-box; /* Important */
-}
-
-.event-node:hover {
-   box-shadow: 0 0 10px rgba(0, 150, 255, 0.8);
-}
-
-
-/* --- Original Content Styling (using em) --- */
-.orbit-element-original-content {
-  display: flex; /* Controlled by JS */
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 0.5em; /* Padding scales with font-size */
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  /* Opacity transition for fade-in/out */
-  opacity: 1;
-  transition: opacity 0.15s ease-in-out;
-}
-.orbit-element-original-content.hidden {
-    opacity: 0;
-}
-
-/* Example: If you have an icon inside */
-.orbit-element-original-content .icon {
-   font-size: 2.5em; /* Icon size relative to base font-size */
-   margin-bottom: 0.2em;
-}
-
-/* Example: If you have text inside */
-.orbit-element-original-content .label {
-   font-size: 1em; /* Text size relative to base font-size */
-   line-height: 1.2;
-   /* Add text-overflow, etc. if needed */
-   max-width: 90%; /* Prevent overflow */
-   overflow: hidden;
-   text-overflow: ellipsis;
-   white-space: nowrap; /* Or wrap if preferred */
-}
-
-
-/* --- Expanded Content Styling (using em) --- */
 .orbit-element-expanded-content {
-  /* display: none / flex; Controlled by JS */
-  position: absolute; /* Take up full space */
-  top: 0; left: 0; right: 0; bottom: 0;
-  box-sizing: border-box;
-  background-color: rgba(0, 50, 100, 0.85); /* Darker background */
-  backdrop-filter: blur(3px); /* Optional blur */
-  padding: 1.5em; /* Generous padding, scales with font-size */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: inherit; /* Inherit circle's radius */
-
-  /* Opacity transition for smooth appearance */
-  opacity: 0;
-  transition: opacity 0.25s 0.05s ease-in-out; /* Delay slightly after display change */
-  pointer-events: none; /* Initially ignore pointer */
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85em;
+    padding: 0.8em;
+    box-sizing: border-box;
+    background: rgba(30, 30, 30, 0.45); /* darker and more transparent */
+    backdrop-filter: blur(8px); /* strong blur */
+    -webkit-backdrop-filter: blur(8px); /* Safari fallback */
+}
+/* Hide any old status-dot from previous versions */
+.status-dot {
+    display: none !important;
 }
 
-.orbit-element-expanded-content.visible {
-    opacity: 1;
-    pointer-events: auto; /* Allow interaction when visible */
+.content-box {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.4em 0.6em;
+    border-radius: 12px;
+    width: 85%;
+    text-align: center;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2em;
 }
 
-
-.orbit-element-expanded-content .info-text {
-   font-size: 1.2em; /* Larger text, relative */
-   margin-bottom: 1em; /* Spacing relative */
-   text-align: center;
-   color: #eee;
-   max-height: 40%; /* Example constraint */
-   overflow-y: auto; /* Allow scrolling if needed */
+.grid-item.event-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8em;
+    width: 100%;
 }
 
-.orbit-element-expanded-content .button-container {
-  display: flex;
-  gap: 0.8em; /* Gap scales */
-  justify-content: center;
-  width: 100%;
+.event-logo-wrapper {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.orbit-element-expanded-content .button {
-  /* Base button styles */
-  border: none;
-  border-radius: 0.4em; /* Radius scales */
-  padding: 0.6em 1.2em; /* Padding scales */
-  font-size: 0.9em; /* Button text relative to container font-size */
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  color: white;
+.event-logo-img {
+    width: 3em;
+    height: 3em;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.4);
 }
-.orbit-element-expanded-content .button:hover {
-   transform: scale(1.05);
+
+.event-title-wrapper {
+    flex: 1 1 auto;
+    overflow: hidden;
 }
-.orbit-element-expanded-content .button.accept { background-color: #28a745; }
-.orbit-element-expanded-content .button.decline { background-color: #dc3545; }
-.orbit-element-expanded-content .button.info { background-color: #17a2b8; }
-.orbit-element-expanded-content .button.accept:hover { background-color: #218838; }
-.orbit-element-expanded-content .button.decline:hover { background-color: #c82333; }
-.orbit-element-expanded-content .button.info:hover { background-color: #138496; }

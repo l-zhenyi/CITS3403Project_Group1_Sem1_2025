@@ -7,6 +7,8 @@
 // - NEW: Dynamically scales content font-size based on element diameter for proportional rendering.
 // - REQUIREMENT: External CSS MUST use 'em' units for content styling.
 
+window.draggingAllowed ??= true;
+
 console.log("[OrbitLayoutDOM Strict Class v14 LayoutAnim SHARP NATIVE Proportional Content] Module Loaded.");
 
 // --- Configuration (Keep layout anim defaults) ---
@@ -37,7 +39,7 @@ export class OrbitLayoutManager {
     // Defines the baseline: e.g., a 100px diameter circle should have a 10px base font size.
     // Content CSS should use 'em' units relative to this.
     static referenceDiameter = 100; // px
-    static referenceFontSize = 10;  // px
+    static referenceFontSize = 6;  // px
 
     // ... (State variables - same as v13) ...
     nodeEl = null; eventEls = []; config = {}; elementDataStore = new WeakMap(); activeElements = new Set(); animationFrameId = null; nodeCenterX = 0; nodeCenterY = 0; centralNodeCollisionRadius = 0; nodeInfo = {}; isRunning = false;
@@ -61,7 +63,7 @@ export class OrbitLayoutManager {
 
             for (let i = 0; i < numCirclesActualThisRing; i++) {
                 if (eventIndex >= totalEvents) break; const el = this.eventEls[eventIndex]; if (!el) { eventIndex++; continue; }
-                if (!el.classList.contains('event-node')) { console.warn("Element missing 'event-node' class.", el); }
+                if (!el.classList.contains('event-panel')) { console.warn("Element missing 'event-panel' class.", el); }
                 this.activeElements.add(el); const angle = startAngle + i * angleStep; const diameter = circleRadius * 2; const initialTargetCenterX = this.nodeCenterX + finalOrbitRadius * Math.cos(angle); const initialTargetCenterY = this.nodeCenterY + finalOrbitRadius * Math.sin(angle); const initialTargetLeft = initialTargetCenterX - diameter / 2; const initialTargetTop = initialTargetCenterY - diameter / 2;
 
                 // Ensure content wrappers exist
@@ -262,35 +264,65 @@ export class OrbitLayoutManager {
     }
 
 
-    // --- Helper for Content Visibility (Uses display:none/flex) ---
-    _ensureExpandedContentDiv(panel) { // Using HTML container
-        const containerClass = 'orbit-element-expanded-content';
-        let expandedDiv = panel.querySelector(`.${containerClass}`);
-        if (!expandedDiv) {
-            expandedDiv = document.createElement('div');
-            expandedDiv.className = containerClass; // Base class for structure + initial display:none via CSS
+    // --- Helper for Content Visibility (REVISED v2: Grid Layout based on Rotated Sketch) ---
+_ensureExpandedContentDiv(panel) {
+    const containerClass = 'orbit-element-expanded-content';
+    let expandedDiv = panel.querySelector(`.${containerClass}`);
 
-            // Add placeholder content - ADJUST THIS TO YOUR NEEDS
-            // IMPORTANT: Use 'em' units in your actual CSS for these elements!
-            expandedDiv.innerHTML = `
-                <div class="info-text" style="font-size: 1.2em; margin-bottom: 1em;">Event Details</div>
-                <div class="button-container" style="display: flex; gap: 0.5em;">
-                    <button class="button accept" data-action="accept" style="padding: 0.5em 1em; font-size: 0.9em;">Accept</button>
-                    <button class="button decline" data-action="decline" style="padding: 0.5em 1em; font-size: 0.9em;">Decline</button>
-                    <button class="button info" data-action="info" style="padding: 0.5em 1em; font-size: 0.9em;">Info</button>
-                </div>
-            `;
-            // Add listeners (same as v13)
-            expandedDiv.querySelectorAll('.button-container button').forEach(button => { button.addEventListener('click', (e) => { e.stopPropagation(); const action = e.target.dataset.action; console.log(`[OrbitLayoutDOM v14 SharpNative PropContent] Button Action: ${action} on element:`, panel); panel.dispatchEvent(new CustomEvent('orbitaction', { detail: { action: action, element: panel }, bubbles: true, composed: true })); }); });
-            panel.appendChild(expandedDiv);
-            console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Created expanded content structure for", panel);
-        }
-        // Ensure it starts hidden (CSS should handle this ideally, but belt-and-braces)
-        if (expandedDiv.style.display !== 'none') {
-            expandedDiv.style.display = 'none';
-        }
-        return expandedDiv;
+    if (!expandedDiv) {
+        expandedDiv = document.createElement('div');
+        expandedDiv.className = containerClass;
+        // Add glassy class for visual style
+        expandedDiv.classList.add('glassy');
+
+        const eventData = {
+            title: panel.dataset.eventTitle || "Event Title Placeholder",
+            date: panel.dataset.eventDate || "Date Placeholder",
+            location: panel.dataset.eventLocation || "Location Placeholder",
+            status: panel.dataset.eventStatus || "unknown",
+            logoUrl: panel.dataset.eventLogo || null, // Use null if no logo
+            infoUrl: panel.dataset.eventInfoUrl || "#",
+            details: panel.dataset.eventDetails || "Some additional details about the event.", // Generic details moved
+        };
+
+        // --- NEW Grid Structure and HTML (2024-06, with event-header flex row) ---
+        expandedDiv.innerHTML = `
+  <div class="expanded-grid-container-v2">
+    <div class="grid-item event-header">
+      <div class="event-logo-wrapper">
+        ${eventData.logoUrl ? `<img src="${eventData.logoUrl}" alt="Event Logo" class="event-logo-img">` : ''}
+      </div>
+      <div class="event-title-wrapper">
+        <div class="title-scroll">${eventData.title}</div>
+      </div>
+    </div>
+    <div class="grid-item event-status status-${eventData.status}">
+        <span class="status-pill">${eventData.status.charAt(0).toUpperCase() + eventData.status.slice(1)}</span>
+    </div>
+    <div class="grid-item event-timeplace content-box">
+        <div class="timeplace-content">
+            <p><strong>Date:</strong> ${eventData.date}</p>
+            <p><strong>Location:</strong> ${eventData.location}</p>
+            ${eventData.details ? `<p class="extra-details">${eventData.details}</p>` : ''}
+        </div>
+    </div>
+    <div class="grid-item more-info">
+        ${eventData.infoUrl !== '#' ? `<a href="${eventData.infoUrl}" target="_blank" class="button info-button">More&nbsp;Info</a>` : ''}
+    </div>
+</div>`;
+        // --- End NEW Grid Structure ---
+
+        // No obsolete .availability-actions .status-button listeners: removed per new design
+
+        panel.appendChild(expandedDiv);
+        console.log("[OrbitLayoutDOM v15] Created expanded content grid structure V2 for", panel);
     }
+
+    if (expandedDiv.style.display !== 'none') {
+         expandedDiv.style.display = 'none';
+    }
+    return expandedDiv;
+}
 
     _updateContentVisibility(panel, showExpanded) {
         const expandedDiv = panel.querySelector('.orbit-element-expanded-content');
@@ -367,6 +399,7 @@ export class OrbitLayoutManager {
                 console.log(`%c[OrbitLayoutDOM v15] Pointer leaving clicked element (${panel.id || 'no-id'}). Unclicking.`, "color: orange;");
                 this._unclickPanel(panel, data); // Resets isClicked and sets targetScale to 1
                 needsAnim = true; // Ensure animation runs to shrink back
+                window.draggingAllowed = true; // Allow dragging again
             }
 
             if (needsAnim) {
@@ -399,6 +432,7 @@ export class OrbitLayoutManager {
                 this.activeElements.forEach(el => { if (el !== panel) { const otherData = this.elementDataStore.get(el); if (otherData && otherData.isClicked) { this._unclickPanel(el, otherData); } if (otherData) { otherData.isHovered = false; if (otherData.targetScale !== 1) otherData.targetScale = 1; } } }); // Unclick AND unhover others
 
                 // Set state for this panel
+                window.draggingAllowed = false; // Prevent dragging while clicking
                 data.isClicked = true;
                 data.isHovered = false; // Explicitly turn off hover state
                 data.targetScale = data.config.clickScale;
@@ -416,6 +450,7 @@ export class OrbitLayoutManager {
     // --- Helper to Unclick a Panel (Resets state) ---
     _unclickPanel(panel, data) {
         // ... (Same as v13 - No changes needed here) ...
+        window.draggingAllowed = true; // Allow dragging again
         if (!data || !data.isClicked) return;
         console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Unclicking panel:", panel);
         data.isClicked = false;
@@ -424,17 +459,21 @@ export class OrbitLayoutManager {
     }
 
     // --- Internal Cleanup Helper ---
+    // --- Internal Cleanup Helper (REVISED) ---
     _cleanupInstance(keepNodeEl = false) {
-        // ... (Mostly same as v13, ensure font-size is reset if needed) ...
-        console.log(`%c[OrbitLayoutDOM v14 SharpNative PropContent] Cleaning up instance associated with node:`, "color: red;", this.nodeEl);
+        console.log(`%c[OrbitLayoutDOM v15 LeaveUnclicks] Cleaning up instance associated with node:`, "color: red;", this.nodeEl);
         this.isRunning = false;
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
-            console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Cancelled animation frame.");
+            console.log("[OrbitLayoutDOM v15 LeaveUnclicks] Cancelled animation frame.");
         }
         const elementsToClean = new Set(this.activeElements);
+
         elementsToClean.forEach(el => {
+            // *** FIX: Get the data associated with this element ***
+            const data = this.elementDataStore.get(el);
+
             // Remove dynamic content/styles
             const expandedDiv = el.querySelector('.orbit-element-expanded-content');
             if (expandedDiv && expandedDiv.parentElement === el) {
@@ -445,8 +484,8 @@ export class OrbitLayoutManager {
                 // Restore original content display if it was hidden
                 originalContent.style.display = 'flex'; // Or initial display type
                 originalContent.classList.remove('hidden');
-                // Optionally move content back out of wrapper if desired, but usually not necessary
             }
+
             // Reset styles modified by the script
             el.style.position = '';
             el.style.width = '';
@@ -456,28 +495,34 @@ export class OrbitLayoutManager {
             el.style.borderRadius = '';
             el.style.transform = '';
             el.style.willChange = '';
+            // *** FIX: Use the fetched 'data' object ***
+            // Restore original zIndex *if* data was found
             el.style.zIndex = data ? data.originalZIndex : '';
             el.style.overflow = '';
             el.style.fontSize = ''; // Reset dynamic font size
             el.style.removeProperty('--current-diameter');
 
-            // Remove listeners and data
+            // Remove listeners using the cleanup map
             if (el._orbitCleanups && el._orbitCleanups.has(this)) {
                 const cleanupFunc = el._orbitCleanups.get(this);
                 if (typeof cleanupFunc === 'function') {
                     cleanupFunc(); // Removes listeners and its own map entry
                 } else {
-                    // Fallback if cleanup function is wrong
+                    // Fallback if cleanup function is wrong type
                     el._orbitCleanups.delete(this);
                     if (el._orbitCleanups.size === 0) delete el._orbitCleanups;
                 }
             }
+
+            // *** FIX: Delete data AFTER it has been used ***
             this.elementDataStore.delete(el);
         });
+
         this.activeElements.clear();
-        console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Cleared active elements and associated data/listeners/styles.");
+        console.log("[OrbitLayoutDOM v15 LeaveUnclicks] Cleared active elements and associated data/listeners/styles.");
+
         if (!keepNodeEl) {
-            console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Clearing node and event element references.");
+            console.log("[OrbitLayoutDOM v15 LeaveUnclicks] Clearing node and event element references.");
             this.nodeEl = null;
             this.eventEls = [];
             this.nodeInfo = {};

@@ -4,6 +4,7 @@ import { renderGroupEvents, showContextMenu } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
 import { hookDemoButtons, hookEventFilterBar } from './eventActions.js';
 
+window.draggingAllowed = true;
 let panX = 0, panY = 0, scale = 1;
 const groupViewStates = new Map(); // key = groupId, value = { panX, panY, scale }
 const container = document.getElementById('event-panels-container');
@@ -43,7 +44,7 @@ function setupZoomAndPan() {
     container.style.transformOrigin = '0 0';
 
     viewport.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || !window.draggingAllowed) return;
         isDragging = true;
         startX = e.clientX;
         startY = e.clientY;
@@ -53,7 +54,8 @@ function setupZoomAndPan() {
 
     let lastMove = 0;
     window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
+        console.log(window.draggingAllowed);
+        if (!isDragging || !window.draggingAllowed) return;
         const now = performance.now();
         if (now - lastMove < 16) return; // ~60fps
         lastMove = now;
@@ -74,6 +76,7 @@ function setupZoomAndPan() {
     });
 
     viewport.addEventListener('wheel', (e) => {
+        if (!window.draggingAllowed) return;
         e.preventDefault();
 
         const rect = viewport.getBoundingClientRect();
