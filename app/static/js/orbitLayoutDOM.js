@@ -1,157 +1,545 @@
-// --- START OF FILE orbitLayoutDOM_v5_StrictClass_UnifiedScale_v6.js ---
-// Refinements:
-// - Restore setting --current-scale in JS animation loop.
-// - Refined CSS (v6) using division by --current-scale for internal element base sizes.
-// - Added backface-visibility CSS mitigation.
-// - Pre-set target --current-scale on click/unclick to prevent initial render glitch.
+// --- START OF FILE orbitLayoutDOM_v5_StrictClass_LayoutAnim_v14_SharpNative_ProportionalContent.js ---
+// FINAL FINAL FINAL FINAL: Layout Animation + Robust Visibility + State Fixes + PROPORTIONAL CONTENT SCALING
+// - NO parent scale transform. Animates width/height/left/top.
+// - Uses display:none for robust hiding.
+// - Relies on EXTERNAL CSS + uses --current-diameter for internal size.
+// - Ensures click state cleanly cancels hover state.
+// - NEW: Dynamically scales content font-size based on element diameter for proportional rendering.
+// - REQUIREMENT: External CSS MUST use 'em' units for content styling.
 
-console.log("[OrbitLayoutDOM Strict Class v5 UnifiedScale v6] Module Loaded.");
+console.log("[OrbitLayoutDOM Strict Class v14 LayoutAnim SHARP NATIVE Proportional Content] Module Loaded.");
 
-// --- Configuration (Keep faster defaults) ---
-const defaultConfig = { /* ... same as v5 ... */
-    N: 12, centralRadius: 60, ringPadding: 10, ringGap: 8, circleSpacing: 4,
-    minCircleRadius: 2, hoverScale: 1.5, clickScale: 3.0, animationSpeed: 0.18,
-    repulsionPadding: 4, repulsionIterations: 5, nudgeFactor: 0.06,
+// --- Configuration (Keep layout anim defaults) ---
+const defaultConfig = {
+    N: 12,                      // Max items per ring
+    centralRadius: 60,          // Base radius from center (can be auto-adjusted)
+    ringPadding: 10,            // Padding between central node and first ring
+    ringGap: 8,                 // Gap between subsequent rings
+    circleSpacing: 4,           // Minimum gap between circles on the same ring circumference
+    minCircleRadius: 5,         // Smallest allowed circle radius
+    hoverScale: 2,            // Scale factor on hover
+    clickScale: 3.0,            // Scale factor on click
+    animationSpeed: 0.16,       // Lerp factor (0 to 1)
+    repulsionPadding: 4,        // Extra padding during collision resolution
+    repulsionIterations: 5,     // How many times to push elements apart
+    nudgeFactor: 0.05,          // How strongly non-interacted elements return to origin (0 to 1)
 };
 
 // --- Helper Functions ---
-function lerp(a, b, t) { /* ... */ return a * (1 - t) + b * t; }
-function distance(x1, y1, x2, y2) { /* ... */ const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt(dx * dx + dy * dy); }
+function lerp(a, b, t) { return a * (1 - t) + b * t; }
+function distance(x1, y1, x2, y2) { const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt(dx * dx + dy * dy); }
 
-// --- CSS Injection (Uses v6 CSS) ---
-const internalStylesId = 'orbit-layout-internal-styles-v5'; // Reuse ID
-if (!document.getElementById(internalStylesId)) {
-    const styleSheet = document.createElement("style");
-    styleSheet.id = internalStylesId;
-    // PASTE THE UPDATED v6 CSS HERE
-    styleSheet.textContent = `
-        /* --- CSS for Expanded Content (Inject or include in your CSS file) - v6 --- */
-        .orbit-element-original-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s ease-in-out; opacity: 1; visibility: visible; overflow: hidden; }
-        .orbit-element-original-content > img { display: block; max-width: 90%; max-height: 90%; width: auto; height: auto; object-fit: contain; }
-        .orbit-element-expanded-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background-color: rgba(240, 240, 240, 0.95); border-radius: inherit; padding: max(1px, calc( (var(--orbit-diameter, 60px) * 0.05) / var(--current-scale, 1) )); box-sizing: border-box; pointer-events: auto; opacity: 0; transition: opacity 0.2s ease-in-out; visibility: hidden; overflow: hidden; z-index: 1; backface-visibility: hidden; }
-        .orbit-element-expanded-content.visible { opacity: 1; visibility: visible; }
-        .orbit-element-expanded-content .info-text { font-size: calc( var(--orbit-diameter, 60px) * 0.1 / var(--current-scale, 1) ); line-height: 1.3; text-align: center; margin-bottom: max(1px, calc( (var(--orbit-diameter, 60px) * 0.03) / var(--current-scale, 1) )); color: #333; flex-grow: 1; overflow-y: auto; max-height: 60%; width: 100%; }
-        .orbit-element-expanded-content .button-container { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; width: 100%; flex-shrink: 0; }
-        .orbit-element-expanded-content button { margin: max(0.5px, calc( (var(--orbit-diameter, 60px) * 0.015) / var(--current-scale, 1) )); padding: max(1px, calc( (var(--orbit-diameter, 60px) * 0.025) / var(--current-scale, 1) )) max(2px, calc( (var(--orbit-diameter, 60px) * 0.05) / var(--current-scale, 1) )); font-size: calc( var(--orbit-diameter, 60px) * 0.09 / var(--current-scale, 1) ); border: max(0.5px, calc(1px / var(--current-scale, 1))) solid #ccc; border-radius: max(1px, calc(4px / var(--current-scale, 1))); background-color: #eee; cursor: pointer; flex-shrink: 0; line-height: 1.2; min-width: unset; }
-        .orbit-element-original-content.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    `;
-    document.head.appendChild(styleSheet);
-}
+// --- NO CSS INJECTION ---
 
 
 export class OrbitLayoutManager {
-    // ... (State variables remain the same) ...
+    // --- Internal Constants for Proportional Scaling ---
+    // Defines the baseline: e.g., a 100px diameter circle should have a 10px base font size.
+    // Content CSS should use 'em' units relative to this.
+    static referenceDiameter = 100; // px
+    static referenceFontSize = 10;  // px
+
+    // ... (State variables - same as v13) ...
     nodeEl = null; eventEls = []; config = {}; elementDataStore = new WeakMap(); activeElements = new Set(); animationFrameId = null; nodeCenterX = 0; nodeCenterY = 0; centralNodeCollisionRadius = 0; nodeInfo = {}; isRunning = false;
 
-    // --- Constructor (Uses new defaults) ---
-    constructor(nodeEl, eventEls, options = {}) { /* ... Same as v5 ... */ console.log(`%c[OrbitLayoutDOM v5 UnifiedScale v6] Creating for node:`, "color: darkcyan; font-weight: bold;", nodeEl); if (!nodeEl) { throw new Error("[OrbitLayoutDOM v5 UnifiedScale v6] ERROR: Central node element not provided."); } this.nodeEl = nodeEl; this.eventEls = Array.isArray(eventEls) ? [...eventEls] : (eventEls instanceof NodeList ? Array.from(eventEls) : (eventEls ? [eventEls] : [])); this.config = { ...defaultConfig, ...options }; console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Using Configuration:", this.config); this.performLayout(); this.isRunning = true; }
+    constructor(nodeEl, eventEls, options = {}) {
+        console.log(`%c[OrbitLayoutDOM v14 SharpNative PropContent] Creating for node:`, "color: darkcyan; font-weight: bold;", nodeEl);
+        if (!nodeEl) { throw new Error("[OrbitLayoutDOM v14 SharpNative PropContent] ERROR: Central node element not provided."); }
+        this.nodeEl = nodeEl; this.eventEls = Array.isArray(eventEls) ? [...eventEls] : (eventEls instanceof NodeList ? Array.from(eventEls) : (eventEls ? [eventEls] : [])); this.config = { ...defaultConfig, ...options }; console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Using Configuration:", this.config); this.performLayout(); this.isRunning = true;
+    }
 
-    // --- Core Layout Method (No changes needed from v5) ---
-    performLayout() { /* ... Same as v5 - still sets --orbit-diameter ... */ console.log(`%c[OrbitLayoutDOM v5 UnifiedScale v6] Performing layout for:`, "color: darkcyan;", this.nodeEl); if (!this.nodeEl) { console.error("[OrbitLayoutDOM v5 UnifiedScale v6] Layout aborted: Central node missing."); return; } this._cleanupInstance(true); const container = this.nodeEl.offsetParent; if (!container) { console.error(`%c[OrbitLayoutDOM v5 UnifiedScale v6] FATAL ERROR: nodeEl.offsetParent is null for node:`, "color: red; font-weight: bold;", this.nodeEl); this.isRunning = false; return; } const nodeLayoutX = this.nodeEl.offsetLeft; const nodeLayoutY = this.nodeEl.offsetTop; this.nodeCenterX = nodeLayoutX + this.nodeEl.offsetWidth / 2; this.nodeCenterY = nodeLayoutY + this.nodeEl.offsetHeight / 2; const autoRadius = Math.max(this.nodeEl.offsetWidth, this.nodeEl.offsetHeight) / 2; this.centralNodeCollisionRadius = Math.max(autoRadius, this.config.centralRadius || 0); this.config.centralRadius = this.centralNodeCollisionRadius; this.nodeInfo = { centerX: this.nodeCenterX, centerY: this.nodeCenterY, radius: this.centralNodeCollisionRadius }; const N = this.config.N; const totalEvents = this.eventEls.length; if (totalEvents === 0 || N <= 0) { this.isRunning = false; return; } const numRings = Math.ceil(totalEvents / N); let eventIndex = 0; let lastOrbitRadius_Layout = this.config.centralRadius; let lastCircleRadius = 0; const angleOffset = -Math.PI / 2; for (let ringIdx = 0; ringIdx < numRings; ringIdx++) { const ringIndex = ringIdx + 1; const isLastRing = (ringIndex === numRings); const numCirclesActualThisRing = isLastRing ? (totalEvents - eventIndex) : N; if (numCirclesActualThisRing <= 0) break; let estimatedOrbitRadius, finalOrbitRadius, circleRadius; if (ringIndex === 1) { estimatedOrbitRadius = lastOrbitRadius_Layout + this.config.ringPadding + this.config.minCircleRadius; } else { estimatedOrbitRadius = lastOrbitRadius_Layout + lastCircleRadius + this.config.ringGap + this.config.minCircleRadius; } const circumference = 2 * Math.PI * estimatedOrbitRadius; const idealRadiusBasedOnN = (circumference / N - this.config.circleSpacing) / 2; circleRadius = Math.max(this.config.minCircleRadius, idealRadiusBasedOnN); if (ringIndex === 1) { finalOrbitRadius = lastOrbitRadius_Layout + this.config.ringPadding + circleRadius; } else { finalOrbitRadius = lastOrbitRadius_Layout + lastCircleRadius + this.config.ringGap + circleRadius; } const angleStep = (2 * Math.PI) / N; const startAngle = (ringIndex % 2 === 0) ? angleOffset + angleStep / 2 : angleOffset; for (let i = 0; i < numCirclesActualThisRing; i++) { if (eventIndex >= totalEvents) break; const el = this.eventEls[eventIndex]; if (!el) { eventIndex++; continue; } this.activeElements.add(el); const angle = startAngle + i * angleStep; const diameter = circleRadius * 2; const initialTargetCenterX = this.nodeCenterX + finalOrbitRadius * Math.cos(angle); const initialTargetCenterY = this.nodeCenterY + finalOrbitRadius * Math.sin(angle); const initialTargetLeft = initialTargetCenterX - circleRadius; const initialTargetTop = initialTargetCenterY - circleRadius; if (!el.querySelector('.orbit-element-original-content')) { const wrapper = document.createElement('div'); wrapper.className = 'orbit-element-original-content'; while (el.firstChild) { wrapper.appendChild(el.firstChild); } el.appendChild(wrapper); } el.style.position = 'absolute'; el.style.width = `${diameter}px`; el.style.height = `${diameter}px`; el.style.borderRadius = '50%'; el.style.left = `${initialTargetLeft.toFixed(3)}px`; el.style.top = `${initialTargetTop.toFixed(3)}px`; el.style.transformOrigin = 'center center'; el.style.transform = 'translate(0px, 0px) scale(1)'; el.style.willChange = 'transform'; el.style.transition = 'none'; el.style.setProperty('--orbit-diameter', `${diameter.toFixed(3)}px`); el.style.setProperty('--current-scale', '1'); /* Set initial scale variable */ const data = { initialX: initialTargetCenterX, initialY: initialTargetCenterY, initialRadius: circleRadius, currentX: initialTargetCenterX, currentY: initialTargetCenterY, currentScale: 1, targetX: initialTargetCenterX, targetY: initialTargetCenterY, targetScale: 1, isHovered: false, isClicked: false, originalZIndex: el.style.zIndex || '1', config: this.config, nodeInfo: this.nodeInfo }; this.elementDataStore.set(el, data); this._ensureExpandedContentDiv(el); this._setupHoverInteraction(el); this._setupClickInteraction(el); eventIndex++; } lastOrbitRadius_Layout = finalOrbitRadius; lastCircleRadius = circleRadius; if (eventIndex >= totalEvents) break; } console.log(`%c[OrbitLayoutDOM v5 UnifiedScale v6] Static layout finished for ${this.activeElements.size} elements.`, "color: darkcyan;"); this.isRunning = true; this._startAnimationLoop(); }
+    // --- Core Layout Method ---
+    performLayout() {
+        console.log(`%c[OrbitLayoutDOM v14 SharpNative PropContent] Performing layout for:`, "color: darkcyan;", this.nodeEl);
+        // ... (Setup, center calc - same as v13) ...
+        if (!this.nodeEl) { console.error("[OrbitLayoutDOM v14 SharpNative PropContent] Layout aborted: Central node missing."); return; } this._cleanupInstance(true); const container = this.nodeEl.offsetParent; if (!container) { console.error(`%c[OrbitLayoutDOM v14 SharpNative PropContent] FATAL ERROR: offsetParent null`, "color: red; font-weight: bold;", this.nodeEl); this.isRunning = false; return; } const nodeLayoutX = this.nodeEl.offsetLeft; const nodeLayoutY = this.nodeEl.offsetTop; this.nodeCenterX = nodeLayoutX + this.nodeEl.offsetWidth / 2; this.nodeCenterY = nodeLayoutY + this.nodeEl.offsetHeight / 2; const autoRadius = Math.max(this.nodeEl.offsetWidth, this.nodeEl.offsetHeight) / 2; this.centralNodeCollisionRadius = Math.max(autoRadius, this.config.centralRadius || 0); this.config.centralRadius = this.centralNodeCollisionRadius; this.nodeInfo = { centerX: this.nodeCenterX, centerY: this.nodeCenterY, radius: this.centralNodeCollisionRadius };
+        const N = this.config.N; const totalEvents = this.eventEls.length; if (totalEvents === 0 || N <= 0) { this.isRunning = false; return; } const numRings = Math.ceil(totalEvents / N); let eventIndex = 0; let lastOrbitRadius_Layout = this.config.centralRadius; let lastCircleRadius = 0; const angleOffset = -Math.PI / 2;
+
+        for (let ringIdx = 0; ringIdx < numRings; ringIdx++) {
+            // ... (Ring geom calc - same) ...
+            const ringIndex = ringIdx + 1; const isLastRing = (ringIndex === numRings); const numCirclesActualThisRing = isLastRing ? (totalEvents - eventIndex) : N; if (numCirclesActualThisRing <= 0) break; let estimatedOrbitRadius, finalOrbitRadius, circleRadius; if (ringIndex === 1) { estimatedOrbitRadius = lastOrbitRadius_Layout + this.config.ringPadding + this.config.minCircleRadius; } else { estimatedOrbitRadius = lastOrbitRadius_Layout + lastCircleRadius + this.config.ringGap + this.config.minCircleRadius; } const circumference = 2 * Math.PI * estimatedOrbitRadius; const idealRadiusBasedOnN = Math.max(0, (circumference / N - this.config.circleSpacing) / 2); circleRadius = Math.max(this.config.minCircleRadius, idealRadiusBasedOnN); if (ringIndex === 1) { finalOrbitRadius = lastOrbitRadius_Layout + this.config.ringPadding + circleRadius; } else { finalOrbitRadius = lastOrbitRadius_Layout + lastCircleRadius + this.config.ringGap + circleRadius; } const angleStep = (2 * Math.PI) / N; const startAngle = (ringIndex % 2 === 0) ? angleOffset + angleStep / 2 : angleOffset;
+
+            for (let i = 0; i < numCirclesActualThisRing; i++) {
+                if (eventIndex >= totalEvents) break; const el = this.eventEls[eventIndex]; if (!el) { eventIndex++; continue; }
+                if (!el.classList.contains('event-node')) { console.warn("Element missing 'event-node' class.", el); }
+                this.activeElements.add(el); const angle = startAngle + i * angleStep; const diameter = circleRadius * 2; const initialTargetCenterX = this.nodeCenterX + finalOrbitRadius * Math.cos(angle); const initialTargetCenterY = this.nodeCenterY + finalOrbitRadius * Math.sin(angle); const initialTargetLeft = initialTargetCenterX - diameter / 2; const initialTargetTop = initialTargetCenterY - diameter / 2;
+
+                // Ensure content wrappers exist
+                this._ensureContentWrappers(el);
+
+                // Apply minimal required dynamic styles
+                el.style.position = 'absolute'; el.style.width = `${diameter}px`; el.style.height = `${diameter}px`; el.style.borderRadius = '50%'; el.style.left = `${initialTargetLeft.toFixed(3)}px`; el.style.top = `${initialTargetTop.toFixed(3)}px`;
+                el.style.transform = 'none'; el.style.willChange = 'width, height, left, top, font-size'; // Add font-size
+                el.style.transition = 'none'; el.style.overflow = 'hidden';
+                el.style.setProperty('--current-diameter', `${diameter.toFixed(3)}px`);
+                // Set initial font size (can be recalculated in anim loop anyway)
+                const initialFontSize = (diameter / OrbitLayoutManager.referenceDiameter) * OrbitLayoutManager.referenceFontSize;
+                el.style.fontSize = `${initialFontSize.toFixed(3)}px`;
+
+                // Store state (same as v13)
+                const data = { /* ... same as v13 state ... */
+                    initialX: initialTargetCenterX, initialY: initialTargetCenterY, initialRadius: circleRadius,
+                    initialWidth: diameter, initialHeight: diameter,
+                    currentX: initialTargetCenterX, currentY: initialTargetCenterY,
+                    currentWidth: diameter, currentHeight: diameter, currentScale: 1,
+                    targetX: initialTargetCenterX, targetY: initialTargetCenterY, targetScale: 1,
+                    isHovered: false, isClicked: false, originalZIndex: el.style.zIndex || '1',
+                    config: this.config, nodeInfo: this.nodeInfo
+                };
+                this.elementDataStore.set(el, data);
+                this._ensureExpandedContentDiv(el); // Creates the hidden HTML overlay structure
+                this._setupHoverInteraction(el); this._setupClickInteraction(el); eventIndex++;
+            }
+            lastOrbitRadius_Layout = finalOrbitRadius; lastCircleRadius = circleRadius; if (eventIndex >= totalEvents) break;
+        }
+        console.log(`%c[OrbitLayoutDOM v14 SharpNative PropContent] Static layout finished for ${this.activeElements.size} elements.`, "color: darkcyan;"); this.isRunning = true; this._startAnimationLoop();
+    }
 
     // --- Collision Resolution (No changes needed) ---
-    _resolveDomCollisions(elementsData) { /* ... Same as v5 ... */ const iterations = this.config.repulsionIterations; const padding = this.config.repulsionPadding; if (iterations === 0 || elementsData.length === 0) return; const centralX = this.nodeInfo.centerX; const centralY = this.nodeInfo.centerY; const centralRadius = this.nodeInfo.radius; for (let iter = 0; iter < iterations; iter++) { for (let i = 0; i < elementsData.length; i++) { for (let j = i + 1; j < elementsData.length; j++) { const aData = elementsData[i]; const bData = elementsData[j]; const aRadius = aData.initialRadius * aData.targetScale; const bRadius = bData.initialRadius * bData.targetScale; const ax = aData.targetX; const ay = aData.targetY; const bx = bData.targetX; const by = bData.targetY; const targetDist = distance(ax, ay, bx, by); const requiredDist = aRadius + bRadius + padding; if (targetDist < requiredDist && targetDist > 0.01) { const overlap = requiredDist - targetDist; const angle = Math.atan2(by - ay, bx - ax); const aIsFixed = aData.isHovered || aData.isClicked; const bIsFixed = bData.isHovered || bData.isClicked; let pushFactorA = 0.5; let pushFactorB = 0.5; if (aIsFixed && bIsFixed) { pushFactorA = 0; pushFactorB = 0; } else if (aIsFixed) { pushFactorA = 0; pushFactorB = 1; } else if (bIsFixed) { pushFactorA = 1; pushFactorB = 0; } if (pushFactorA + pushFactorB > 0) { const totalPushFactorInv = 1.0 / (pushFactorA + pushFactorB); const pushX = Math.cos(angle) * overlap * totalPushFactorInv; const pushY = Math.sin(angle) * overlap * totalPushFactorInv; aData.targetX -= pushX * pushFactorA; aData.targetY -= pushY * pushFactorA; bData.targetX += pushX * pushFactorB; bData.targetY += pushY * pushFactorB; } } } } for (let i = 0; i < elementsData.length; i++) { const elData = elementsData[i]; const elRadius = elData.initialRadius * elData.targetScale; const elX = elData.targetX; const elY = elData.targetY; const distFromCenter = distance(centralX, centralY, elX, elY); const requiredDistFromCenter = centralRadius + elRadius + padding; if (distFromCenter < requiredDistFromCenter && distFromCenter > 0.01) { const overlap = requiredDistFromCenter - distFromCenter; const angle = Math.atan2(elY - centralY, elX - centralX); elData.targetX += Math.cos(angle) * overlap; elData.targetY += Math.sin(angle) * overlap; } } } const nudgeFactor = this.config.nudgeFactor; elementsData.forEach(data => { if (!data.isHovered && !data.isClicked) { data.targetX = lerp(data.targetX, data.initialX, nudgeFactor); data.targetY = lerp(data.targetY, data.initialY, nudgeFactor); } }); elementsData.forEach(data => { const elRadius = data.initialRadius * data.targetScale; const dist = distance(centralX, centralY, data.targetX, data.targetY); const requiredDist = centralRadius + elRadius + padding; if (dist < requiredDist) { const angle = Math.atan2(data.targetY - centralY, data.targetX - centralX) || 0; data.targetX = centralX + Math.cos(angle) * requiredDist; data.targetY = centralY + Math.sin(angle) * requiredDist; } }); }
+    _resolveDomCollisions(elementsData) { /* ... Same as v13 ... */ const iterations = this.config.repulsionIterations; const padding = this.config.repulsionPadding; if (iterations === 0 || elementsData.length === 0) return; const centralX = this.nodeInfo.centerX; const centralY = this.nodeInfo.centerY; const centralRadius = this.nodeInfo.radius; for (let iter = 0; iter < iterations; iter++) { for (let i = 0; i < elementsData.length; i++) { for (let j = i + 1; j < elementsData.length; j++) { const aData = elementsData[i]; const bData = elementsData[j]; const aRadius = aData.initialRadius * aData.targetScale; const bRadius = bData.initialRadius * bData.targetScale; const ax = aData.targetX; const ay = aData.targetY; const bx = bData.targetX; const by = bData.targetY; const targetDist = distance(ax, ay, bx, by); const requiredDist = aRadius + bRadius + padding; if (targetDist < requiredDist && targetDist > 0.01) { const overlap = requiredDist - targetDist; const angle = Math.atan2(by - ay, bx - ax); const aIsFixed = aData.isHovered || aData.isClicked; const bIsFixed = bData.isHovered || bData.isClicked; let pushFactorA = 0.5; let pushFactorB = 0.5; if (aIsFixed && bIsFixed) { pushFactorA = 0; pushFactorB = 0; } else if (aIsFixed) { pushFactorA = 0; pushFactorB = 1; } else if (bIsFixed) { pushFactorA = 1; pushFactorB = 0; } if (pushFactorA + pushFactorB > 0) { const totalPushFactorInv = 1.0 / (pushFactorA + pushFactorB); const pushX = Math.cos(angle) * overlap * totalPushFactorInv; const pushY = Math.sin(angle) * overlap * totalPushFactorInv; aData.targetX -= pushX * pushFactorA; aData.targetY -= pushY * pushFactorA; bData.targetX += pushX * pushFactorB; bData.targetY += pushY * pushFactorB; } } } } for (let i = 0; i < elementsData.length; i++) { const elData = elementsData[i]; const elRadius = elData.initialRadius * elData.targetScale; const elX = elData.targetX; const elY = elData.targetY; const distFromCenter = distance(centralX, centralY, elX, elY); const requiredDistFromCenter = centralRadius + elRadius + padding; if (distFromCenter < requiredDistFromCenter && distFromCenter > 0.01) { const overlap = requiredDistFromCenter - distFromCenter; const angle = Math.atan2(elY - centralY, elX - centralX); elData.targetX += Math.cos(angle) * overlap; elData.targetY += Math.sin(angle) * overlap; } } } const nudgeFactor = this.config.nudgeFactor; elementsData.forEach(data => { if (!data.isHovered && !data.isClicked) { data.targetX = lerp(data.targetX, data.initialX, nudgeFactor); data.targetY = lerp(data.targetY, data.initialY, nudgeFactor); } }); elementsData.forEach(data => { const elRadius = data.initialRadius * data.targetScale; const dist = distance(centralX, centralY, data.targetX, data.targetY); const requiredDist = centralRadius + elRadius + padding; if (dist < requiredDist) { const angle = Math.atan2(data.targetY - centralY, data.targetX - centralX) || 0; data.targetX = centralX + Math.cos(angle) * requiredDist; data.targetY = centralY + Math.sin(angle) * requiredDist; } }); }
 
-    // --- Animation Loop (Set --current-scale) ---
+    // --- Animation Loop (MODIFIED: Sets font-size) ---
     _animationStep = () => {
         if (!this.isRunning) { this.animationFrameId = null; return; }
-        let needsAnotherFrame = false; const elementsData = [];
-        // ... (Collect data/cleanup - same as v5) ...
-        const currentActiveElements = new Set(this.activeElements); currentActiveElements.forEach(el => { if (document.body.contains(el) && this.elementDataStore.has(el)) { elementsData.push(this.elementDataStore.get(el)); } else { if (this.elementDataStore.has(el)) { if (el._orbitCleanups && el._orbitCleanups.has(this)) { el._orbitCleanups.get(this)(); } this.elementDataStore.delete(el); } this.activeElements.delete(el); } }); if (elementsData.length === 0 && this.activeElements.size === 0) { this.isRunning = false; this.animationFrameId = null; return; }
+        let needsAnotherFrame = false;
+        const elementsData = [];
+        const currentActiveElements = new Set(this.activeElements);
+
+        currentActiveElements.forEach(el => {
+            if (document.body.contains(el) && this.elementDataStore.has(el)) {
+                elementsData.push(this.elementDataStore.get(el));
+            } else {
+                // Cleanup elements removed from DOM or instance
+                if (this.elementDataStore.has(el)) {
+                    if (el._orbitCleanups && el._orbitCleanups.has(this)) {
+                        el._orbitCleanups.get(this)(); // Run specific cleanup for this instance
+                    }
+                    this.elementDataStore.delete(el);
+                }
+                this.activeElements.delete(el);
+            }
+        });
+
+        if (elementsData.length === 0 && this.activeElements.size === 0) {
+            this.isRunning = false;
+            this.animationFrameId = null;
+            return;
+        }
 
         this._resolveDomCollisions(elementsData);
 
         for (const data of elementsData) {
             const el = Array.from(this.activeElements).find(element => this.elementDataStore.get(element) === data);
-            if (!el) continue;
+            if (!el) continue; // Should not happen with the check above, but safety first
+
             const speed = data.config.animationSpeed;
-            data.currentX = lerp(data.currentX, data.targetX, speed); data.currentY = lerp(data.currentY, data.targetY, speed); data.currentScale = lerp(data.currentScale, data.targetScale, speed);
-            const dx = data.targetX - data.currentX; const dy = data.targetY - data.currentY; const ds = data.targetScale - data.currentScale;
-            if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01 || Math.abs(ds) > 0.001) { needsAnotherFrame = true; }
-            else { data.currentX = data.targetX; data.currentY = data.targetY; data.currentScale = data.targetScale; }
-            const deltaTranslateX = data.currentX - data.initialX; const deltaTranslateY = data.currentY - data.initialY;
 
-            el.style.transform = `translate(${deltaTranslateX.toFixed(3)}px, ${deltaTranslateY.toFixed(3)}px) scale(${data.currentScale.toFixed(3)})`;
-            // Set --current-scale for internal CSS CALCs
-            el.style.setProperty('--current-scale', Math.max(0.01, data.currentScale).toFixed(3));
+            // Lerp position and scale
+            data.currentX = lerp(data.currentX, data.targetX, speed);
+            data.currentY = lerp(data.currentY, data.targetY, speed);
+            data.currentScale = lerp(data.currentScale, data.targetScale, speed);
 
+            // Calculate current dimensions based on lerped scale
+            data.currentWidth = data.initialWidth * data.currentScale;
+            data.currentHeight = data.initialHeight * data.currentScale;
+
+            const currentLeft = data.currentX - data.currentWidth / 2;
+            const currentTop = data.currentY - data.currentHeight / 2;
+            const currentDiameter = data.currentWidth; // Width and Height are the same for circles
+
+            // *** NEW: Calculate proportional font size ***
+            const currentFontSize = (currentDiameter / OrbitLayoutManager.referenceDiameter) * OrbitLayoutManager.referenceFontSize;
+            // Prevent excessively small font sizes which can cause rendering issues
+            const clampedFontSize = Math.max(0.1, currentFontSize);
+
+            // Check if animation is still needed
+            const dx = data.targetX - data.currentX;
+            const dy = data.targetY - data.currentY;
+            const dScale = data.targetScale - data.currentScale;
+
+            if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1 || Math.abs(dScale) > 0.005) {
+                needsAnotherFrame = true;
+            } else {
+                // Snap to final state if close enough
+                data.currentX = data.targetX;
+                data.currentY = data.targetY;
+                data.currentScale = data.targetScale;
+                data.currentWidth = data.initialWidth * data.targetScale;
+                data.currentHeight = data.initialHeight * data.targetScale;
+                const finalLeft = data.targetX - data.currentWidth / 2;
+                const finalTop = data.targetY - data.currentHeight / 2;
+                const finalDiameter = data.currentWidth;
+                const finalFontSize = (finalDiameter / OrbitLayoutManager.referenceDiameter) * OrbitLayoutManager.referenceFontSize;
+
+                el.style.left = `${finalLeft.toFixed(3)}px`;
+                el.style.top = `${finalTop.toFixed(3)}px`;
+                el.style.width = `${data.currentWidth.toFixed(3)}px`;
+                el.style.height = `${data.currentHeight.toFixed(3)}px`;
+                el.style.setProperty('--current-diameter', `${finalDiameter.toFixed(3)}px`);
+                el.style.fontSize = `${Math.max(0.1, finalFontSize).toFixed(3)}px`; // Apply final font size
+            }
+
+            // Apply interpolated styles for the current frame
+            el.style.left = `${currentLeft.toFixed(3)}px`;
+            el.style.top = `${currentTop.toFixed(3)}px`;
+            el.style.width = `${data.currentWidth.toFixed(3)}px`;
+            el.style.height = `${data.currentHeight.toFixed(3)}px`;
+            el.style.transform = 'none'; // Still using layout animation
+            el.style.setProperty('--current-diameter', `${currentDiameter.toFixed(3)}px`);
+            el.style.fontSize = `${clampedFontSize.toFixed(3)}px`; // Apply calculated font size
+
+            // Update z-index and content visibility
             el.style.zIndex = (data.isHovered || data.isClicked) ? '10' : data.originalZIndex;
             this._updateContentVisibility(el, data.isClicked);
         }
 
-        // Request next frame or stop
+        // Request next frame if needed
         if (needsAnotherFrame && this.isRunning) {
-             this.animationFrameId = requestAnimationFrame(this._animationStep);
+            this.animationFrameId = requestAnimationFrame(this._animationStep);
         } else {
-             this.animationFrameId = null;
-             if (!needsAnotherFrame) { /* Final Snap Logic - Set --current-scale */
-                elementsData.forEach(data => { const el = Array.from(this.activeElements).find(element => this.elementDataStore.get(element) === data); if (el) { data.currentX = data.targetX; data.currentY = data.targetY; data.currentScale = data.targetScale; const finalTranslateX = data.targetX - data.initialX; const finalTranslateY = data.targetY - data.initialY; el.style.transform = `translate(${finalTranslateX.toFixed(3)}px, ${finalTranslateY.toFixed(3)}px) scale(${data.targetScale.toFixed(3)})`; el.style.setProperty('--current-scale', Math.max(0.01, data.targetScale).toFixed(3)); this._updateContentVisibility(el, data.isClicked); } });
-             }
+            this.animationFrameId = null; // Stop the loop if no elements need animation
+            console.log("%c[OrbitLayoutDOM v14 SharpNative PropContent] Animation loop settled.", "color: grey");
         }
     }
 
-    // --- Start Animation Loop (No changes needed) ---
-    _startAnimationLoop() { /* ... Same as v5 ... */ if (!this.animationFrameId && this.isRunning && this.activeElements.size > 0) { this.animationFrameId = requestAnimationFrame(this._animationStep); } }
 
-    // --- Helper for Content Visibility (No changes needed from v5) ---
-    _ensureExpandedContentDiv(panel) { /* ... Same as v5 ... */ let expandedDiv = panel.querySelector('.orbit-element-expanded-content'); if (!expandedDiv) { expandedDiv = document.createElement('div'); expandedDiv.className = 'orbit-element-expanded-content'; expandedDiv.innerHTML = `<div class="info-text">Event Details Here...</div><div class="button-container"><button class="accept-btn" data-action="accept">Accept</button><button class="decline-btn" data-action="decline">Decline</button><button class="info-btn" data-action="info">Info</button></div>`; expandedDiv.querySelectorAll('.button-container button').forEach(button => { button.addEventListener('click', (e) => { e.stopPropagation(); const action = e.target.dataset.action; console.log(`[OrbitLayoutDOM v5 UnifiedScale v6] Button Action: ${action} on element:`, panel); panel.dispatchEvent(new CustomEvent('orbitaction', { detail: { action: action, element: panel }, bubbles: true, composed: true })); }); }); panel.appendChild(expandedDiv); } return expandedDiv; }
-    _updateContentVisibility(panel, showExpanded) { /* ... Same as v5 ... */ const expandedDiv = panel.querySelector('.orbit-element-expanded-content'); const originalContentDiv = panel.querySelector('.orbit-element-original-content'); if (expandedDiv) { expandedDiv.classList.toggle('visible', showExpanded); } if (originalContentDiv) { originalContentDiv.classList.toggle('hidden', showExpanded); } }
+    // --- Start Animation Loop ---
+    _startAnimationLoop() {
+        // Only start if not already running, instance is active, and there are elements
+        if (!this.animationFrameId && this.isRunning && this.activeElements.size > 0) {
+            console.log("%c[OrbitLayoutDOM v14 SharpNative PropContent] Starting animation loop...", "color: green");
+            this.animationFrameId = requestAnimationFrame(this._animationStep);
+        } else if (this.animationFrameId && this.isRunning) {
+            // console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Animation loop already running.");
+        } else {
+            // console.log(`[OrbitLayoutDOM v14 SharpNative PropContent] Animation loop not started (isRunning: ${this.isRunning}, activeElements: ${this.activeElements.size})`);
+        }
+    }
 
-    // --- Setup Hover Interaction (No changes needed) ---
-    _setupHoverInteraction(panel) { /* ... Same as v5 ... */ const listenerFlag = '_orbitHoverListenersAttached_v5u6'; if (panel[listenerFlag]) return; const handlePointerEnter = (event) => { if (!this.isRunning) return; const data = this.elementDataStore.get(panel); if (!data || data.isHovered || data.isClicked) { return; } data.isHovered = true; data.targetScale = data.config.hoverScale; this.activeElements.forEach(el => { if (el !== panel) { const otherData = this.elementDataStore.get(el); if (otherData && !otherData.isClicked) { otherData.isHovered = false; if(otherData.targetScale !== 1) { otherData.targetScale = 1; } } else if (otherData && otherData.isClicked) { otherData.isHovered = false; } } }); this._startAnimationLoop(); }; const handlePointerLeave = (event) => { if (!this.isRunning) return; const data = this.elementDataStore.get(panel); if (!data) return; let needsAnim = false; if (data.isHovered) { data.isHovered = false; needsAnim = true; } if (data.isClicked) { console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Pointer leaving clicked element. Unclicking.", panel); this._unclickPanel(panel, data); needsAnim = true; } if (!data.isClicked && data.targetScale !== 1) { data.targetScale = 1; needsAnim = true; } if(needsAnim) { this._startAnimationLoop(); } }; panel.addEventListener('pointerenter', handlePointerEnter); panel.addEventListener('pointerleave', handlePointerLeave); panel[listenerFlag] = { enter: handlePointerEnter, leave: handlePointerLeave }; if (!panel._orbitCleanups) { panel._orbitCleanups = new Map(); } const cleanupFunc = () => { panel.removeEventListener('pointerenter', handlePointerEnter); panel.removeEventListener('pointerleave', handlePointerLeave); delete panel[listenerFlag]; panel._orbitCleanups.delete(this); if (panel._orbitCleanups.size === 0) { delete panel._orbitCleanups; } }; panel._orbitCleanups.set(this, cleanupFunc); }
+    // --- Helper for Ensuring Content Wrappers ---
+    // --- Helper for Ensuring Content Wrappers (REVISED) ---
+    _ensureContentWrappers(panel) {
+        const originalContentClass = 'orbit-element-original-content';
+        const expandedContentClass = 'orbit-element-expanded-content';
 
-    // --- Setup Click Interaction (Pre-set target scale var) ---
-    _setupClickInteraction(panel) {
-        const clickListenerFlag = '_orbitClickListenersAttached_v5u6';
-        if (panel[clickListenerFlag]) return;
+        // Ensure original content wrapper exists
+        let originalContentWrapper = panel.querySelector(`.${originalContentClass}`);
+        if (!originalContentWrapper) {
+            // console.log(`[OrbitLayoutDOM v14] Creating .${originalContentClass} for`, panel.id || panel);
+            originalContentWrapper = document.createElement('div');
+            originalContentWrapper.className = originalContentClass;
 
-        const handleClick = (event) => {
-             if (event.target.closest('.orbit-element-expanded-content button')) { return; }
-             if (!this.isRunning) return;
-             const data = this.elementDataStore.get(panel);
-             if (!data) return;
+            // --- REVISED Child Moving Logic ---
+            const nodesToMove = [];
+            // Iterate backwards to avoid issues with live NodeList modification
+            for (let i = panel.childNodes.length - 1; i >= 0; i--) {
+                const node = panel.childNodes[i];
+                // Don't move the expanded content div if it already exists
+                if (!(node.nodeType === Node.ELEMENT_NODE && node.classList.contains(expandedContentClass))) {
+                    nodesToMove.push(node);
+                }
+            }
+            // Prepend nodes in reverse order to maintain original order
+            nodesToMove.reverse().forEach(node => originalContentWrapper.appendChild(node));
+            // --- End Revised Logic ---
 
-             if (data.isClicked) {
-                 console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Clicked an expanded panel. Shrinking.", panel);
-                 this._unclickPanel(panel, data); // This now pre-sets --current-scale to 1
-             } else {
-                 console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Clicked a panel. Expanding.", panel);
-                 // Unclick others first
-                 this.activeElements.forEach(el => { /* ... same as v5 ... */ if (el !== panel) { const otherData = this.elementDataStore.get(el); if (otherData && otherData.isClicked) { this._unclickPanel(el, otherData); } if(otherData) otherData.isHovered = false; } });
 
-                 // Handle the clicked panel
-                 data.isClicked = true; data.isHovered = false;
-                 data.targetScale = data.config.clickScale;
-                 // *** PRE-SET CSS VARIABLE for target scale ***
-                 panel.style.setProperty('--current-scale', data.targetScale.toFixed(3));
+            // Insert the wrapper before the expanded content if it exists, otherwise append
+            const expandedContent = panel.querySelector(`.${expandedContentClass}`);
+            if (expandedContent) {
+                panel.insertBefore(originalContentWrapper, expandedContent);
+            } else {
+                panel.appendChild(originalContentWrapper);
+            }
+        }
 
-                 this._ensureExpandedContentDiv(panel);
-             }
-             this._startAnimationLoop();
+        // Ensure it's visible initially (display controlled later by _updateContentVisibility)
+        // Don't set display here directly, let CSS and _updateContentVisibility handle it
+        // originalContentWrapper.style.display = 'flex'; // Removed this line
+
+        // Ensure expanded content wrapper exists (structure only)
+        this._ensureExpandedContentDiv(panel); // This now primarily ensures the structure exists
+    }
+
+
+    // --- Helper for Content Visibility (Uses display:none/flex) ---
+    _ensureExpandedContentDiv(panel) { // Using HTML container
+        const containerClass = 'orbit-element-expanded-content';
+        let expandedDiv = panel.querySelector(`.${containerClass}`);
+        if (!expandedDiv) {
+            expandedDiv = document.createElement('div');
+            expandedDiv.className = containerClass; // Base class for structure + initial display:none via CSS
+
+            // Add placeholder content - ADJUST THIS TO YOUR NEEDS
+            // IMPORTANT: Use 'em' units in your actual CSS for these elements!
+            expandedDiv.innerHTML = `
+                <div class="info-text" style="font-size: 1.2em; margin-bottom: 1em;">Event Details</div>
+                <div class="button-container" style="display: flex; gap: 0.5em;">
+                    <button class="button accept" data-action="accept" style="padding: 0.5em 1em; font-size: 0.9em;">Accept</button>
+                    <button class="button decline" data-action="decline" style="padding: 0.5em 1em; font-size: 0.9em;">Decline</button>
+                    <button class="button info" data-action="info" style="padding: 0.5em 1em; font-size: 0.9em;">Info</button>
+                </div>
+            `;
+            // Add listeners (same as v13)
+            expandedDiv.querySelectorAll('.button-container button').forEach(button => { button.addEventListener('click', (e) => { e.stopPropagation(); const action = e.target.dataset.action; console.log(`[OrbitLayoutDOM v14 SharpNative PropContent] Button Action: ${action} on element:`, panel); panel.dispatchEvent(new CustomEvent('orbitaction', { detail: { action: action, element: panel }, bubbles: true, composed: true })); }); });
+            panel.appendChild(expandedDiv);
+            console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Created expanded content structure for", panel);
+        }
+        // Ensure it starts hidden (CSS should handle this ideally, but belt-and-braces)
+        if (expandedDiv.style.display !== 'none') {
+            expandedDiv.style.display = 'none';
+        }
+        return expandedDiv;
+    }
+
+    _updateContentVisibility(panel, showExpanded) {
+        const expandedDiv = panel.querySelector('.orbit-element-expanded-content');
+        const originalContentDiv = panel.querySelector('.orbit-element-original-content');
+
+        // Determine desired display style (flex is common, adjust if needed)
+        const originalDisplay = 'flex'; // Or 'block'
+        const expandedDisplay = 'flex'; // Often a flex column
+
+        let changed = false;
+
+        if (originalContentDiv) {
+            const targetDisplay = showExpanded ? 'none' : originalDisplay;
+            if (originalContentDiv.style.display !== targetDisplay) {
+                originalContentDiv.style.display = targetDisplay;
+                changed = true;
+            }
+            // Keep class for potential CSS hooks (e.g., opacity transitions)
+            if (originalContentDiv.classList.contains('hidden') !== showExpanded) {
+                originalContentDiv.classList.toggle('hidden', showExpanded);
+            }
+        }
+        if (expandedDiv) {
+            const targetDisplay = showExpanded ? expandedDisplay : 'none';
+            if (expandedDiv.style.display !== targetDisplay) {
+                expandedDiv.style.display = targetDisplay;
+                changed = true;
+                // Trigger opacity transition shortly after display change
+                // Use requestAnimationFrame to ensure 'display' change is flushed
+                if (showExpanded) {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => { // Double RAF sometimes needed for transitions after display change
+                            expandedDiv.classList.add('visible');
+                        });
+                    });
+                } else {
+                    expandedDiv.classList.remove('visible');
+                }
+            }
+        }
+        // if (changed) console.log(`Visibility updated for ${panel.id}: showExpanded=${showExpanded}`);
+    }
+
+
+    // --- Setup Hover Interaction (Ensure click overrides) ---
+    _setupHoverInteraction(panel) {
+        // ... (Same as v13 - No changes needed here) ...
+        const listenerFlag = '_orbitHoverListenersAttached_v14'; // Update flag version
+        if (panel[listenerFlag]) return;
+        const handlePointerEnter = (event) => {
+            if (!this.isRunning) return;
+            const data = this.elementDataStore.get(panel);
+            if (!data || data.isHovered || data.isClicked) {
+                return; // Do nothing if already hovered or clicked
+            }
+            data.isHovered = true;
+            data.targetScale = data.config.hoverScale;
+            // Reset others
+            this.activeElements.forEach(el => { if (el !== panel) { const otherData = this.elementDataStore.get(el); if (otherData && !otherData.isClicked) { otherData.isHovered = false; if (otherData.targetScale !== 1) otherData.targetScale = 1; } else if (otherData && otherData.isClicked) { otherData.isHovered = false; } } });
+            this._startAnimationLoop();
         };
+        const handlePointerLeave = (event) => {
+            if (!this.isRunning) return; const data = this.elementDataStore.get(panel); if (!data) return;
+            let needsAnim = false;
+            if (data.isHovered) {
+                data.isHovered = false;
+                if (!data.isClicked) { // Only reset scale if not clicked
+                    data.targetScale = 1;
+                    needsAnim = true;
+                }
+            }
 
-        panel.addEventListener('click', handleClick);
-        panel[clickListenerFlag] = handleClick;
-        // ... (cleanup setup - same as v5) ...
+            if (data.isClicked) {
+                console.log(`%c[OrbitLayoutDOM v15] Pointer leaving clicked element (${panel.id || 'no-id'}). Unclicking.`, "color: orange;");
+                this._unclickPanel(panel, data); // Resets isClicked and sets targetScale to 1
+                needsAnim = true; // Ensure animation runs to shrink back
+            }
+
+            if (needsAnim) {
+                this._startAnimationLoop();
+            }
+        };
+        panel.addEventListener('pointerenter', handlePointerEnter); panel.addEventListener('pointerleave', handlePointerLeave); panel[listenerFlag] = { enter: handlePointerEnter, leave: handlePointerLeave };
+        // Cleanup setup
+        if (!panel._orbitCleanups) { panel._orbitCleanups = new Map(); } const cleanupFunc = () => { panel.removeEventListener('pointerenter', handlePointerEnter); panel.removeEventListener('pointerleave', handlePointerLeave); delete panel[listenerFlag]; panel._orbitCleanups.delete(this); if (panel._orbitCleanups.size === 0) { delete panel._orbitCleanups; } }; panel._orbitCleanups.set(this, cleanupFunc);
+    }
+
+    // --- Setup Click Interaction (Ensure hover state is killed) ---
+    _setupClickInteraction(panel) {
+        // ... (Same as v13 - No changes needed here, relies on animation loop for visibility) ...
+        const clickListenerFlag = '_orbitClickListenersAttached_v14'; // Update flag version
+        if (panel[clickListenerFlag]) return;
+        const handleClick = (event) => {
+            // Ignore clicks on buttons inside the expanded content
+            if (event.target.closest('.orbit-element-expanded-content button')) {
+                console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Clicked on button, ignoring panel click.");
+                return;
+            }
+            if (!this.isRunning) return; const data = this.elementDataStore.get(panel); if (!data) return;
+
+            if (data.isClicked) {
+                // Clicked on an already clicked panel: Unclick it
+                this._unclickPanel(panel, data);
+            } else {
+                // Clicked on a non-clicked panel: Unclick others, then click this one
+                this.activeElements.forEach(el => { if (el !== panel) { const otherData = this.elementDataStore.get(el); if (otherData && otherData.isClicked) { this._unclickPanel(el, otherData); } if (otherData) { otherData.isHovered = false; if (otherData.targetScale !== 1) otherData.targetScale = 1; } } }); // Unclick AND unhover others
+
+                // Set state for this panel
+                data.isClicked = true;
+                data.isHovered = false; // Explicitly turn off hover state
+                data.targetScale = data.config.clickScale;
+                this._ensureExpandedContentDiv(panel); // Ensure structure exists
+
+                // Visibility is handled by the animation loop checking data.isClicked
+            }
+            this._startAnimationLoop(); // Trigger animation update
+        };
+        panel.addEventListener('click', handleClick); panel[clickListenerFlag] = handleClick;
+        // Cleanup setup
         if (!panel._orbitCleanups) { panel._orbitCleanups = new Map(); } const cleanupFunc = () => { panel.removeEventListener('click', handleClick); delete panel[clickListenerFlag]; panel._orbitCleanups.delete(this); if (panel._orbitCleanups.size === 0) { delete panel._orbitCleanups; } }; panel._orbitCleanups.set(this, cleanupFunc);
     }
 
-    // --- Helper to Unclick a Panel (Pre-set target scale var) ---
+    // --- Helper to Unclick a Panel (Resets state) ---
     _unclickPanel(panel, data) {
+        // ... (Same as v13 - No changes needed here) ...
         if (!data || !data.isClicked) return;
+        console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Unclicking panel:", panel);
         data.isClicked = false;
-        data.targetScale = 1;
-        // *** PRE-SET CSS VARIABLE for target scale ***
-        panel.style.setProperty('--current-scale', '1');
+        data.targetScale = 1; // Reset logical target scale
+        // Visibility is handled by animation loop calling _updateContentVisibility
     }
 
-    // --- Internal Cleanup Helper (No changes needed) ---
-     _cleanupInstance(keepNodeEl = false) { /* ... Same as v5 ... */ console.log(`%c[OrbitLayoutDOM v5 UnifiedScale v6] Cleaning up instance associated with node:`, "color: red;", this.nodeEl); this.isRunning = false; if (this.animationFrameId) { cancelAnimationFrame(this.animationFrameId); this.animationFrameId = null; console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Cancelled animation frame."); } const elementsToClean = new Set(this.activeElements); elementsToClean.forEach(el => { if (el._orbitCleanups && el._orbitCleanups.has(this)) { const cleanupFunc = el._orbitCleanups.get(this); if (typeof cleanupFunc === 'function') { cleanupFunc(); } else { el._orbitCleanups.delete(this); if (el._orbitCleanups.size === 0) delete el._orbitCleanups; } } this.elementDataStore.delete(el); }); this.activeElements.clear(); console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Cleared active elements and associated data/listeners."); if (!keepNodeEl) { console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Clearing node and event element references."); this.nodeEl = null; this.eventEls = []; this.nodeInfo = {}; } }
+    // --- Internal Cleanup Helper ---
+    _cleanupInstance(keepNodeEl = false) {
+        // ... (Mostly same as v13, ensure font-size is reset if needed) ...
+        console.log(`%c[OrbitLayoutDOM v14 SharpNative PropContent] Cleaning up instance associated with node:`, "color: red;", this.nodeEl);
+        this.isRunning = false;
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+            console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Cancelled animation frame.");
+        }
+        const elementsToClean = new Set(this.activeElements);
+        elementsToClean.forEach(el => {
+            // Remove dynamic content/styles
+            const expandedDiv = el.querySelector('.orbit-element-expanded-content');
+            if (expandedDiv && expandedDiv.parentElement === el) {
+                el.removeChild(expandedDiv);
+            }
+            const originalContent = el.querySelector('.orbit-element-original-content');
+            if (originalContent) {
+                // Restore original content display if it was hidden
+                originalContent.style.display = 'flex'; // Or initial display type
+                originalContent.classList.remove('hidden');
+                // Optionally move content back out of wrapper if desired, but usually not necessary
+            }
+            // Reset styles modified by the script
+            el.style.position = '';
+            el.style.width = '';
+            el.style.height = '';
+            el.style.left = '';
+            el.style.top = '';
+            el.style.borderRadius = '';
+            el.style.transform = '';
+            el.style.willChange = '';
+            el.style.zIndex = data ? data.originalZIndex : '';
+            el.style.overflow = '';
+            el.style.fontSize = ''; // Reset dynamic font size
+            el.style.removeProperty('--current-diameter');
+
+            // Remove listeners and data
+            if (el._orbitCleanups && el._orbitCleanups.has(this)) {
+                const cleanupFunc = el._orbitCleanups.get(this);
+                if (typeof cleanupFunc === 'function') {
+                    cleanupFunc(); // Removes listeners and its own map entry
+                } else {
+                    // Fallback if cleanup function is wrong
+                    el._orbitCleanups.delete(this);
+                    if (el._orbitCleanups.size === 0) delete el._orbitCleanups;
+                }
+            }
+            this.elementDataStore.delete(el);
+        });
+        this.activeElements.clear();
+        console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Cleared active elements and associated data/listeners/styles.");
+        if (!keepNodeEl) {
+            console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Clearing node and event element references.");
+            this.nodeEl = null;
+            this.eventEls = [];
+            this.nodeInfo = {};
+        }
+    }
 
     // --- Public Methods (No changes needed) ---
-    updateLayout(newEventEls = null) { /* ... Same as v5 ... */ console.log(`%c[OrbitLayoutDOM v5 UnifiedScale v6] updateLayout called for node:`, "color: blueviolet;", this.nodeEl); if (!this.nodeEl) { console.warn("[OrbitLayoutDOM v5 UnifiedScale v6] updateLayout called on an instance without a node. Aborting."); return; } const wasRunning = this.isRunning; this.isRunning = false; if (this.animationFrameId) { cancelAnimationFrame(this.animationFrameId); this.animationFrameId = null; } if (newEventEls !== null) { console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Updating event elements list."); const newElementsArray = Array.isArray(newEventEls) ? [...newEventEls] : (newEventEls instanceof NodeList ? Array.from(newEventEls) : (newEventEls ? [newEventEls] : [])); const newElementsSet = new Set(newElementsArray); const oldElements = new Set(this.activeElements); oldElements.forEach(oldEl => { if (!newElementsSet.has(oldEl)) { console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Removing listener/data for element no longer in list:", oldEl); if (oldEl._orbitCleanups && oldEl._orbitCleanups.has(this)) { oldEl._orbitCleanups.get(this)(); } this.elementDataStore.delete(oldEl); } }); this.eventEls = newElementsArray; } else { console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Re-running layout with existing elements."); this.eventEls = Array.from(this.activeElements).filter(el => document.body.contains(el)); } this.performLayout(); if (this.activeElements.size > 0) { this.isRunning = true; this._startAnimationLoop(); } else { this.isRunning = false; } }
-    updateConfiguration(newOptions) { /* ... Same as v5 ... */ console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Updating configuration:", newOptions); if (!this.isRunning && this.activeElements.size === 0 && !this.nodeEl) { console.warn("[OrbitLayoutDOM v5 UnifiedScale v6] Attempted to update configuration on a destroyed or uninitialized instance."); return; } const oldCentralRadius = this.config.centralRadius; const oldHoverScale = this.config.hoverScale; const oldClickScale = this.config.clickScale; this.config = { ...this.config, ...newOptions }; if ('centralRadius' in newOptions && this.nodeInfo && oldCentralRadius !== this.config.centralRadius) { const autoRadius = Math.max(this.nodeEl.offsetWidth, this.nodeEl.offsetHeight) / 2; this.centralNodeCollisionRadius = Math.max(autoRadius, this.config.centralRadius || 0); this.config.centralRadius = this.centralNodeCollisionRadius; this.nodeInfo.radius = this.centralNodeCollisionRadius; console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Updated central node collision radius:", this.nodeInfo.radius); } let scaleChanged = ('hoverScale' in newOptions && oldHoverScale !== this.config.hoverScale) || ('clickScale' in newOptions && oldClickScale !== this.config.clickScale); this.activeElements.forEach(el => { const data = this.elementDataStore.get(el); if (data) { data.config = this.config; data.nodeInfo = this.nodeInfo; if (scaleChanged) { if (data.isClicked && 'clickScale' in newOptions) { data.targetScale = this.config.clickScale; el.style.setProperty('--current-scale', data.targetScale.toFixed(3)); /* Update pre-set if needed */ } else if (data.isHovered && 'hoverScale' in newOptions) { if (!data.isClicked) data.targetScale = data.config.hoverScale; } } } }); if ('animationSpeed' in newOptions || 'repulsionPadding' in newOptions || 'repulsionIterations' in newOptions || 'nudgeFactor' in newOptions || 'centralRadius' in newOptions || scaleChanged) { console.log("[OrbitLayoutDOM v5 UnifiedScale v6] Animation/Collision parameters changed, restarting animation loop."); this._startAnimationLoop(); } }
-    destroy() { /* ... Same as v5 ... */ const nodeDesc = this.nodeEl ? this.nodeEl.id || this.nodeEl.tagName : 'Unknown Node'; this._cleanupInstance(false); console.log(`%c[OrbitLayoutDOM v5 UnifiedScale v6] Destroyed instance for node: ${nodeDesc}`, "color: red; font-weight: bold;"); }
+    updateLayout(newEventEls = null) {
+        console.log(`%c[OrbitLayoutDOM v14 SharpNative PropContent] updateLayout called for node:`, "color: blueviolet;", this.nodeEl);
+        if (!this.nodeEl) { console.warn("[OrbitLayoutDOM v14 SharpNative PropContent] updateLayout called on an instance without a node. Aborting."); return; }
+        const wasRunning = this.isRunning;
+        this.isRunning = false;
+        if (this.animationFrameId) { cancelAnimationFrame(this.animationFrameId); this.animationFrameId = null; }
+
+        // Determine which elements are new and which are removed
+        const newElementsArray = newEventEls === null ? this.eventEls : (Array.isArray(newEventEls) ? [...newEventEls] : (newEventEls instanceof NodeList ? Array.from(newEventEls) : (newEventEls ? [newEventEls] : [])));
+        const newElementsSet = new Set(newElementsArray);
+        const oldElementsSet = new Set(this.activeElements);
+        const elementsToRemove = new Set();
+        const elementsToAdd = new Set(newElementsArray); // Start with all new ones
+
+        oldElementsSet.forEach(oldEl => {
+            if (!newElementsSet.has(oldEl)) {
+                elementsToRemove.add(oldEl); // Mark for removal
+            } else {
+                elementsToAdd.delete(oldEl); // Already exists, don't re-add basics
+            }
+        });
+
+        console.log(`[OrbitLayoutDOM v14] Elements to remove: ${elementsToRemove.size}, Elements to add: ${elementsToAdd.size}, Elements to keep: ${oldElementsSet.size - elementsToRemove.size}`);
+
+
+        // Clean up removed elements FULLY
+        elementsToRemove.forEach(oldEl => {
+            console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Removing listener/data/content for element no longer in list:", oldEl);
+            const expandedDiv = oldEl.querySelector('.orbit-element-expanded-content');
+            if (expandedDiv && expandedDiv.parentElement === oldEl) oldEl.removeChild(expandedDiv);
+            // Reset styles thoroughly? Or assume they get removed from DOM? Let's reset for safety.
+            oldEl.style.position = ''; oldEl.style.width = ''; oldEl.style.height = ''; oldEl.style.left = ''; oldEl.style.top = ''; oldEl.style.borderRadius = ''; oldEl.style.transform = ''; oldEl.style.willChange = ''; oldEl.style.zIndex = ''; oldEl.style.overflow = ''; oldEl.style.fontSize = ''; oldEl.style.removeProperty('--current-diameter');
+
+            if (oldEl._orbitCleanups && oldEl._orbitCleanups.has(this)) { oldEl._orbitCleanups.get(this)(); } // Removes listeners
+            this.elementDataStore.delete(oldEl);
+            this.activeElements.delete(oldEl); // Remove from active set
+        });
+
+        // Update the internal list for the new layout calculation
+        this.eventEls = newElementsArray;
+
+        // Perform the layout (will re-process existing elements and add new ones)
+        this.performLayout();
+
+        // Restart animation if needed
+        if (this.activeElements.size > 0) {
+            this.isRunning = true; // Set running state *before* starting loop
+            this._startAnimationLoop();
+        } else {
+            this.isRunning = false;
+        }
+    }
+    updateConfiguration(newOptions) { /* ... Same as v13 ... */ console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Updating configuration:", newOptions); if (!this.isRunning && this.activeElements.size === 0 && !this.nodeEl) { console.warn("[OrbitLayoutDOM v14 SharpNative PropContent] Attempted to update configuration on destroyed instance."); return; } const oldCentralRadius = this.config.centralRadius; const oldHoverScale = this.config.hoverScale; const oldClickScale = this.config.clickScale; this.config = { ...this.config, ...newOptions }; if ('centralRadius' in newOptions && this.nodeInfo && oldCentralRadius !== this.config.centralRadius) { const autoRadius = Math.max(this.nodeEl.offsetWidth, this.nodeEl.offsetHeight) / 2; this.centralNodeCollisionRadius = Math.max(autoRadius, this.config.centralRadius || 0); this.config.centralRadius = this.centralNodeCollisionRadius; this.nodeInfo.radius = this.centralNodeCollisionRadius; console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Updated central node collision radius:", this.nodeInfo.radius); } let scaleChanged = ('hoverScale' in newOptions && oldHoverScale !== this.config.hoverScale) || ('clickScale' in newOptions && oldClickScale !== this.config.clickScale); this.activeElements.forEach(el => { const data = this.elementDataStore.get(el); if (data) { data.config = this.config; data.nodeInfo = this.nodeInfo; if (scaleChanged) { if (data.isClicked && 'clickScale' in newOptions) { data.targetScale = this.config.clickScale; } else if (data.isHovered && 'hoverScale' in newOptions) { if (!data.isClicked) data.targetScale = this.config.hoverScale; } } } }); if ('animationSpeed' in newOptions || 'repulsionPadding' in newOptions || 'repulsionIterations' in newOptions || 'nudgeFactor' in newOptions || 'centralRadius' in newOptions || scaleChanged) { console.log("[OrbitLayoutDOM v14 SharpNative PropContent] Animation/Collision parameters changed, restarting animation loop."); this._startAnimationLoop(); } }
+    destroy() { /* ... Use updated cleanup ... */ const nodeDesc = this.nodeEl ? this.nodeEl.id || this.nodeEl.tagName : 'Unknown Node'; this._cleanupInstance(false); console.log(`%c[OrbitLayoutDOM v14 SharpNative PropContent] Destroyed instance for node: ${nodeDesc}`, "color: red; font-weight: bold;"); }
+
 }
 
-// --- END OF FILE orbitLayoutDOM_v5_StrictClass_UnifiedScale_v6.js ---
+// --- END OF FILE orbitLayoutDOM_v5_StrictClass_LayoutAnim_v14_SharpNative_ProportionalContent.js ---
