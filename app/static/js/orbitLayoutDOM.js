@@ -288,7 +288,7 @@ _ensureExpandedContentDiv(panel) {
         // --- UPDATED Grid Structure and HTML per requested template ---
         expandedDiv.innerHTML = `
       <div class="expanded-grid-container-v2">
-        <div class="grid-item event-header" style="padding: 0 12px;">
+        <div class="grid-item event-header">
           <div class="event-logo-wrapper">
             <img src="${eventData.logoUrl || '/static/img/default-event-logo.png'}" alt="Event Logo" class="event-logo-img">
           </div>
@@ -299,7 +299,7 @@ _ensureExpandedContentDiv(panel) {
         <div class="grid-item event-status status-${eventData.status}">
           <span class="status-pill">${eventData.status.charAt(0).toUpperCase() + eventData.status.slice(1)}</span>
         </div>
-        <div class="grid-item event-timeplace content-box" style="margin: 0 auto;">
+        <div class="grid-item event-timeplace content-box">
           <div class="timeplace-content">
             <p><strong>Date:</strong> ${eventData.date}</p>
             <p><strong>Location:</strong> ${eventData.location}</p>
