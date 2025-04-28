@@ -265,28 +265,30 @@ export class OrbitLayoutManager {
 
 
     // --- Helper for Content Visibility (REVISED v2: Grid Layout based on Rotated Sketch) ---
-_ensureExpandedContentDiv(panel) {
-    const containerClass = 'orbit-element-expanded-content';
-    let expandedDiv = panel.querySelector(`.${containerClass}`);
+    _ensureExpandedContentDiv(panel) {
+        const containerClass = 'orbit-element-expanded-content';
+        let expandedDiv = panel.querySelector(`.${containerClass}`);
 
-    if (!expandedDiv) {
-        expandedDiv = document.createElement('div');
-        expandedDiv.className = containerClass;
-        // Add glassy class for visual style
-        expandedDiv.classList.add('glassy');
+        if (!expandedDiv) {
+            expandedDiv = document.createElement('div');
+            expandedDiv.className = containerClass;
+            // Add glassy class for visual style
+            expandedDiv.classList.add('glassy');
 
-        const eventData = {
-            title: panel.dataset.eventTitle || "Event Title Placeholder",
-            date: panel.dataset.eventDate || "Date Placeholder",
-            location: panel.dataset.eventLocation || "Location Placeholder",
-            status: panel.dataset.eventStatus || "unknown",
-            logoUrl: panel.dataset.eventLogo || null, // Use null if no logo
-            infoUrl: panel.dataset.eventInfoUrl || "#",
-            details: panel.dataset.eventDetails || "Some additional details about the event.",
-        };
+            const event = panel._eventData || {};
 
-        // --- UPDATED Grid Structure and HTML per requested template ---
-        expandedDiv.innerHTML = `
+            const eventData = {
+                title: event.title || "Event Title Placeholder",
+                date: event.date ? new Date(event.date).toLocaleDateString() : "Date Placeholder",
+                location: event.location || "Location Placeholder",
+                status: event.rsvp_status || "unknown",
+                logoUrl: event.image_url || null,
+                infoUrl: event.info_url || "#",
+                details: event.description || "Some additional details about the event.",
+            };
+
+            // --- UPDATED Grid Structure and HTML per requested template ---
+            expandedDiv.innerHTML = `
       <div class="expanded-grid-container-v2">
         <div class="grid-item event-header">
           <div class="event-logo-wrapper">
@@ -310,17 +312,17 @@ _ensureExpandedContentDiv(panel) {
           <a href="${eventData.infoUrl || '#'}" target="_blank" class="button info-button">Info</a>
         </div>
       </div>`;
-        // --- End UPDATED Grid Structure ---
+            // --- End UPDATED Grid Structure ---
 
-        panel.appendChild(expandedDiv);
-        console.log("[OrbitLayoutDOM v15] Created expanded content grid structure V2 for", panel);
-    }
+            panel.appendChild(expandedDiv);
+            console.log("[OrbitLayoutDOM v15] Created expanded content grid structure V2 for", panel);
+        }
 
-    if (expandedDiv.style.display !== 'none') {
-         expandedDiv.style.display = 'none';
+        if (expandedDiv.style.display !== 'none') {
+            expandedDiv.style.display = 'none';
+        }
+        return expandedDiv;
     }
-    return expandedDiv;
-}
 
     _updateContentVisibility(panel, showExpanded) {
         const expandedDiv = panel.querySelector('.orbit-element-expanded-content');
@@ -383,6 +385,7 @@ _ensureExpandedContentDiv(panel) {
             this._startAnimationLoop();
         };
         const handlePointerLeave = (event) => {
+            return;
             if (!this.isRunning) return; const data = this.elementDataStore.get(panel); if (!data) return;
             let needsAnim = false;
             if (data.isHovered) {
