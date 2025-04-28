@@ -385,7 +385,6 @@ export class OrbitLayoutManager {
             this._startAnimationLoop();
         };
         const handlePointerLeave = (event) => {
-            return;
             if (!this.isRunning) return; const data = this.elementDataStore.get(panel); if (!data) return;
             let needsAnim = false;
             if (data.isHovered) {
