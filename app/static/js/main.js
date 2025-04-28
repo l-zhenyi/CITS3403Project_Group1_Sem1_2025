@@ -2,7 +2,7 @@
 import { loadGroups, groupsData, parseHash } from './dataHandle.js';
 import { renderGroupEvents, showContextMenu } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
-import { hookDemoButtons, hookEventFilterBar } from './eventActions.js';
+import { hookEventFilterBar } from './eventActions.js';
 
 let panX = 0, panY = 0, scale = 1;
 const groupViewStates = new Map(); // key = groupId, value = { panX, panY, scale }
@@ -99,7 +99,6 @@ function setupZoomAndPan() {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadGroups(); // Must complete before group selection works
     setupViewSwitching();
-    hookDemoButtons();
     hookEventFilterBar();
     hookCalendarNavigation();
     setupZoomAndPan();

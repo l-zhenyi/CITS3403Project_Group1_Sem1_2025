@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
 from functools import wraps
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, joinedload
 
 # --- Helper Functions ---
 def is_group_member(user_id, group_id):
@@ -325,16 +325,45 @@ def create_group_api():
     db.session.commit()
     return jsonify(group.to_dict()), 201
 
+@app.route("/api/groups/<int:group_id>/nodes", methods=["GET"]) # Changed route
+@login_required
+@require_group_member
+def get_group_nodes(group_id): # Renamed function
+    """
+    Gets nodes for a specific group.
+    Optionally includes nested events via ?include=events query parameter.
+    """
+    group = Group.query.get_or_404(group_id) # Use get_or_404 for better error handling
+
+    include_events_flag = request.args.get('include') == 'events'
+
+    # Optimization consideration: If including events, load them eagerly
+    query = Node.query.filter_by(group_id=group_id)
+    if include_events_flag:
+        # This helps avoid N+1 queries when accessing node.events in to_dict
+        query = query.options(joinedload(Node.events))
+
+    nodes = query.all()
+
+    nodes_data = [node.to_dict(include_events=include_events_flag) for node in nodes]
+    return jsonify(nodes_data) # Return the list directly
+
+# NEW: Endpoint to get a flat list of events for the group
 @app.route("/api/groups/<int:group_id>/events", methods=["GET"])
 @login_required
 @require_group_member
-def get_group_events(group_id):
-    group = Group.query.get(group_id)
-    if not group:
-        return jsonify({"error": "Group not found"}), 404
+def get_group_events_flat(group_id): # New function name
+    """Gets a flat list of all events associated with a group (via its nodes)."""
+    # Check if group exists first (optional but good practice)
+    group_exists = db.session.query(Group.id).filter_by(id=group_id).first() is not None
+    if not group_exists:
+        abort(404, description="Group not found") # Return 404 if group doesn't exist
 
-    nodes = [node.to_dict(include_events=True) for node in group.nodes] if hasattr(group, "nodes") else []
-    return jsonify({"nodes": nodes})
+    # Query events by joining through nodes that belong to the target group
+    events = Event.query.join(Node).filter(Node.group_id == group_id).all()
+
+    events_data = [event.to_dict() for event in events]
+    return jsonify(events_data)
 
 @app.route("/api/groups/<int:group_id>/events", methods=["POST"])
 @login_required

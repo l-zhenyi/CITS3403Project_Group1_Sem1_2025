@@ -215,23 +215,16 @@ export async function renderGroupEvents(groupId) {
     if (!eventPanelsContainer) return;
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/events`);
-        if (!res.ok) throw new Error(`Failed to fetch group events: ${res.statusText}`);
-        const groupData = await res.json();
-        const { nodes } = groupData;
-        const events = nodes.flatMap(node => node.events || []);
+        const res = await fetch(`/api/groups/${groupId}/nodes?include=events`); // <-- USE THIS NEW ROUTE
+        // --- END CHANGE ---
 
-        // --- 3a. Cleanup old instances BEFORE clearing DOM ---
-        console.log(`[renderGroupEvents] Cleaning up ${layoutInstances.size} old layout instances.`);
-        layoutInstances.forEach((instance, nodeEl) => {
-            // Check if the nodeEl is still within the container we are about to clear
-            if (eventPanelsContainer.contains(nodeEl)) {
-                console.log(` -> Destroying instance for node:`, nodeEl);
-                instance.destroy(); // Call the class's cleanup method
-            } else {
-                console.warn(" -> Stale instance found for node not in container?", nodeEl);
-            }
-        });
+        if (!res.ok) throw new Error(`Failed to fetch group nodes/events: ${res.statusText}`);
+
+        // The response is now directly the list of nodes with nested events
+        const nodes = await res.json();
+        // No longer need groupData.nodes, the response *is* the nodes list
+
+        const events = nodes.flatMap(node => node.events || []); // This part remains similar
         layoutInstances.clear(); // Clear the map
         // --- End Cleanup ---
 
