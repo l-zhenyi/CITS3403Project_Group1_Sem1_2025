@@ -277,41 +277,51 @@ export class OrbitLayoutManager {
 
             const event = panel._eventData || {};
 
-            const eventData = {
-                title: event.title || "Event Title Placeholder",
-                date: event.date ? new Date(event.date).toLocaleDateString() : "Date Placeholder",
-                location: event.location || "Location Placeholder",
-                status: event.rsvp_status || "unknown",
-                logoUrl: event.image_url || null,
-                infoUrl: event.info_url || "#",
-                details: event.description || "Some additional details about the event.",
-            };
+const eventData = {
+    title: event.title || "Event Title Placeholder",
+    date: event.date ? new Date(event.date).toLocaleDateString() : "Date Placeholder",
+    location: event.location || "Location Placeholder",
+    status: event.rsvp_status || "unknown",
+    logoUrl: event.image_url || null,
+    infoUrl: event.info_url || "#",
+    details: event.description || "No extra details available.",
+    cost: event.cost_display || null,
+};
 
             // --- UPDATED Grid Structure and HTML per requested template ---
             expandedDiv.innerHTML = `
-      <div class="expanded-grid-container-v2">
-        <div class="grid-item event-header">
-          <div class="event-logo-wrapper">
-            <img src="${eventData.logoUrl || '/static/img/default-event-logo.png'}" alt="Event Logo" class="event-logo-img">
-          </div>
-          <div class="event-title-wrapper content-box">
-            <div class="title-scroll">${eventData.title}</div>
-          </div>
-        </div>
-        <div class="grid-item event-status status-${eventData.status}">
-          <span class="status-pill">${eventData.status.charAt(0).toUpperCase() + eventData.status.slice(1)}</span>
-        </div>
-        <div class="grid-item event-timeplace content-box">
-          <div class="timeplace-content">
-            <p><strong>Date:</strong> ${eventData.date}</p>
-            <p><strong>Location:</strong> ${eventData.location}</p>
-            ${eventData.details ? `<p class="extra-details">${eventData.details}</p>` : ''}
-          </div>
-        </div>
-        <div class="grid-item more-info">
-          <a href="${eventData.infoUrl || '#'}" target="_blank" class="button info-button">Info</a>
-        </div>
-      </div>`;
+  <div class="expanded-grid-container-v2">
+    <!-- HEADER -->
+    <div class="grid-item event-header">
+      <div class="event-logo-wrapper">
+        <img src="${eventData.logoUrl || '/static/img/default-event-logo.png'}" alt="Event Logo" class="event-logo-img">
+      </div>
+      <div class="event-title-wrapper content-box">
+        <div class="title-scroll">${eventData.title}</div>
+      </div>
+    </div>
+
+    <!-- STATUS -->
+    <div class="grid-item event-status status-${eventData.status}">
+      <span class="status-pill">${eventData.status.charAt(0).toUpperCase() + eventData.status.slice(1)}</span>
+    </div>
+
+    <!-- TIME/PLACE/DETAILS -->
+    <div class="grid-item event-timeplace content-box">
+      <div class="timeplace-content">
+        <p>📅 <strong>Date:</strong> ${eventData.date}</p>
+        <p>📍 <strong>Location:</strong> ${eventData.location}</p>
+        ${eventData.cost ? `<p>💲 <strong>Cost:</strong> ${eventData.cost}</p>` : ''}
+        ${eventData.details ? `<p class="extra-details">📝 ${eventData.details}</p>` : ''}
+      </div>
+    </div>
+
+    <!-- MORE INFO BUTTON -->
+    <div class="grid-item more-info">
+      <a class="button info-button">More Info</a>
+    </div>
+  </div>
+`;
             // --- End UPDATED Grid Structure ---
 
             panel.appendChild(expandedDiv);

@@ -1,277 +1,161 @@
-// main.js
+// --- START OF FILE main.js --- (REVISED Imports & Calls)
+
 import { loadGroups, groupsData, parseHash } from './dataHandle.js';
 import { renderGroupEvents, showContextMenu } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
 import { hookDemoButtons, hookEventFilterBar } from './eventActions.js';
+import { setupModal, openEventModal } from './modalManager.js'; // <--- IMPORT
 
 window.draggingAllowed = true;
 let panX = 0, panY = 0, scale = 1;
-const groupViewStates = new Map(); // key = groupId, value = { panX, panY, scale }
-const container = document.getElementById('event-panels-container');
+const groupViewStates = new Map();
+const container = document.getElementById('event-panels-container'); // Keep if needed for zoom/pan
+
+// --- Core UI Elements (Declare outside) ---
+// Keep these if they are needed by logic remaining in main.js
+let activeGroupNameEl, activeGroupAvatarEl, plannerPane, backButton, groupListUL;
 
 // --- Debounce Function ---
-function debounce(func, wait, immediate) {
-    var timeout;
-    return function () {
-        var context = this, args = arguments;
-        var later = function () {
-            timeout = null;
-            if (!immediate) func.apply(context, args);
-        };
-        var callNow = immediate && !timeout;
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-        if (callNow) func.apply(context, args);
-    };
-};
-// --- End Debounce ---
+function debounce(func, wait, immediate) { /* ... keep debounce ... */ }
+
+// --- applyTransform ---
+function applyTransform() { /* ... keep applyTransform ... */ }
+
+// --- setupZoomAndPan ---
+function setupZoomAndPan() { /* ... keep setupZoomAndPan ... */ }
 
 
-function applyTransform() {
-    container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-}
-
-function setupZoomAndPan() {
-    const viewport = document.getElementById('collage-viewport');
-    if (!viewport || !container) return;
-
-    const minScale = 0.3;
-    const maxScale = 2.5;
-    const zoomFactor = 0.1;
-    let isDragging = false;
-    let startX, startY;
-
-    container.style.transformOrigin = '0 0';
-
-    viewport.addEventListener('mousedown', (e) => {
-        if (e.button !== 0 || !window.draggingAllowed) return;
-        isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        viewport.style.cursor = 'grabbing';
-        document.body.classList.add('dragging');
-    });
-
-    let lastMove = 0;
-    window.addEventListener('mousemove', (e) => {
-        console.log(window.draggingAllowed);
-        if (!isDragging || !window.draggingAllowed) return;
-        const now = performance.now();
-        if (now - lastMove < 16) return; // ~60fps
-        lastMove = now;
-
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        panX += dx;
-        panY += dy;
-        startX = e.clientX;
-        startY = e.clientY;
-        applyTransform();
-    });
-
-    window.addEventListener('mouseup', () => {
-        isDragging = false;
-        viewport.style.cursor = 'default';
-        document.body.classList.remove('dragging');
-    });
-
-    viewport.addEventListener('wheel', (e) => {
-        if (!window.draggingAllowed) return;
-        e.preventDefault();
-
-        const rect = viewport.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        const worldX = (mouseX - panX) / scale;
-        const worldY = (mouseY - panY) / scale;
-
-        const delta = e.deltaY < 0 ? 1 : -1;
-        const zoom = 1 + delta * zoomFactor;
-        const newScale = Math.min(maxScale, Math.max(minScale, scale * zoom));
-
-        if (newScale !== scale) {
-            panX = mouseX - worldX * newScale;
-            panY = mouseY - worldY * newScale;
-            scale = newScale;
-            applyTransform();
-        }
-    }, { passive: false });
-}
-
+// --- MAIN EXECUTION ---
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadGroups(); // Must complete before group selection works
+    console.log("DOM Content Loaded. Initializing application...");
+
+    // --- Assign Core UI Elements needed by main.js ---
+    activeGroupNameEl = document.getElementById('active-group-name');
+    activeGroupAvatarEl = document.getElementById('active-group-avatar');
+    plannerPane = document.getElementById('planner-pane');
+    backButton = document.querySelector('.back-button');
+    groupListUL = document.querySelector('.group-list-area ul');
+
+    // --- Check for essential elements ---
+    if (!plannerPane || !groupListUL) {
+        console.error("Essential planner elements (pane, group list) not found. Aborting setup.");
+        return;
+    }
+
+    // --- Setup Modal System ---
+    setupModal(); // Initialize modal elements and internal listeners
+
+    // --- Load Data & Setup UI ---
+    await loadGroups();
     setupViewSwitching();
     hookDemoButtons();
     hookEventFilterBar();
     hookCalendarNavigation();
-    setupZoomAndPan();
+    setupZoomAndPan(); // Setup after container is known
 
+    // --- Initial View Logic ---
     const { view, groupId } = parseHash();
-    console.log("Parsed hash:", view, groupId);
+    console.log("Parsed hash on load:", { view, groupId });
+    const firstLi = groupListUL?.querySelector(".group-item");
 
-    if (view === "calendar") {
-        switchView("calendar");
-    } else if (view === "events") {
-        switchView("events");
-    } else {
-        // groups view
+    // --- Group Activation Function (Remains in main.js) ---
+    async function activateGroup(groupListItem, groupId) {
+        // ... (keep the logic inside activateGroup AS IS - it uses activeGroupNameEl etc.) ...
+        if (!groupListItem || !groupId) { /*...*/ return; }
+        const group = groupsData.find(g => String(g.id) === String(groupId));
+        if (!group) { /*...*/ return; }
+        console.log(`Activating group: ${group.name} (ID: ${groupId})`);
+        const isMobile = window.innerWidth <= 768;
+        // Save State
+        const currentActiveGroupLi = groupListUL?.querySelector('.group-item.active');
+        if (currentActiveGroupLi && currentActiveGroupLi !== groupListItem) { /*...*/ }
+        // Restore State
+        const savedView = groupViewStates.get(groupId);
+        if (savedView) { /*...*/ } else { /*...*/ }
+        applyTransform();
+        // Update UI
+        groupListItem.classList.add('active');
+        if (activeGroupNameEl) activeGroupNameEl.textContent = group.name || 'Group Events';
+        else console.warn("activeGroupNameEl not found when trying to set text content.");
+        if (activeGroupAvatarEl) activeGroupAvatarEl.src = group.avatar_url || '/static/img/default-group-avatar.png';
+        else console.warn("activeGroupAvatarEl not found when trying to set src.");
+        // Render Content
+        await renderGroupEvents(groupId);
+        // Handle Mobile
+        if (isMobile) { /*...*/ } else { /*...*/ }
+        window.location.hash = `groups/${groupId}`;
+    } // --- End activateGroup ---
+
+
+    // --- Apply Initial View Logic ---
+    if (view === "calendar") { /*...*/ }
+    else if (view === "events") { /*...*/ }
+    else { // Default to groups
+        let activated = false;
         if (groupId) {
-            const li = document.querySelector(`.group-item[data-group-id="${groupId}"]`);
-            if (li) li.click();
-        } else {
-            const firstLi = document.querySelector(".group-item");
-            if (firstLi) firstLi.click(); // fallback
+             const li = groupListUL?.querySelector(`.group-item[data-group-id="${groupId}"]`);
+             if (li) { await activateGroup(li, groupId); activated = true; }
+             else { console.warn(`Group ${groupId} from hash not found.`); }
         }
-        switchView("groups");
+        if (!activated && firstLi) { await activateGroup(firstLi, firstLi.dataset.groupId); activated = true; }
+        if (!activated) { console.warn("No groups found to activate initially."); switchView("groups"); }
+         if (!view || view === "groups") { switchView("groups"); }
     }
 
-    const groupListUL = document.querySelector('.group-list-area ul');
-    const activeGroupNameEl = document.getElementById('active-group-name');
-    const activeGroupAvatarEl = document.getElementById('active-group-avatar');
-    const plannerPane = document.getElementById('planner-pane');
-    const backButton = document.querySelector('.back-button');
-
-    // --- Mobile/Desktop State Tracking ---
-    let isCurrentlyMobile = window.innerWidth <= 768;
-
-    // Delegate click handling on group items
+    // --- Group List Click Handling ---
     if (groupListUL && plannerPane) {
         groupListUL.addEventListener('click', (e) => {
             const li = e.target.closest('.group-item');
-            if (!li) return;
-            console.log("lol");
-
-            const groupId = li.dataset.groupId;
-            const group = groupsData.find(g => g.id === groupId);
-            if (!group) return;
-
-            const isMobile = isCurrentlyMobile;
-
-            // Clear zoom/pan state when switching groups
-            const container = document.getElementById('event-panels-container');
-            const viewport = document.getElementById('collage-viewport');
-            const currentActiveGroup = groupListUL.querySelector('.group-item.active');
-            if (currentActiveGroup) {
-                const currentGroupId = currentActiveGroup.dataset.groupId;
-                groupViewStates.set(currentGroupId, { panX, panY, scale });
-            }
-            const savedView = groupViewStates.get(groupId);
-            if (savedView) {
-                panX = savedView.panX;
-                panY = savedView.panY;
-                scale = savedView.scale;
-            } else {
-                panX = 0;
-                panY = 0;
-                scale = 1.0;
-            }
-            applyTransform();
-
-
-            if (isMobile) {
-                // Mobile Logic ... (keep existing)
-                groupListUL.querySelectorAll('.group-item').forEach(item => item.classList.remove('active'));
-                li.classList.add('active');
-                if (activeGroupNameEl) activeGroupNameEl.textContent = `${group.name} Events`;
-                if (activeGroupAvatarEl) activeGroupAvatarEl.src = group.avatar_url;
-                renderGroupEvents(groupId); // Render stacked
-                plannerPane.classList.add('mobile-event-view-active');
-                const collageArea = document.getElementById('event-collage');
-                if (collageArea) collageArea.scrollTop = 0; // Scroll mobile view top
-            } else {
-                // Desktop Logic ... (keep existing)
-                groupListUL.querySelectorAll('.group-item').forEach(item => item.classList.remove('active'));
-                li.classList.add('active');
-                if (activeGroupNameEl) activeGroupNameEl.textContent = `${group.name} Events`;
-                if (activeGroupAvatarEl) activeGroupAvatarEl.src = group.avatar_url;
-                // switchView handles rendering the collage on desktop
-                switchView('groups'); // Will call renderGroupEvents internally
-            }
+            if (!li || li.classList.contains('active')) return;
+            activateGroup(li, li.dataset.groupId); // Call async function
         });
-    }
+    } else { /*...*/ }
 
-    // Back button listener (existing)
-    if (backButton) {
-        backButton.addEventListener('click', () => {
-            goBackToGroupList();
-        });
-    }
+    // --- Back button listener ---
+    if (backButton) { /*...*/ }
 
     // --- Resize Handler ---
-    // ... (keep existing resize handler logic) ...
-    const handleResize = debounce(() => {
-        const wasMobile = isCurrentlyMobile;
-        isCurrentlyMobile = window.innerWidth <= 768;
+    let isCurrentlyMobile = window.innerWidth <= 768;
+    const handleResize = debounce(() => { /* ... keep resize logic ... */ }, 250);
+    window.addEventListener('resize', handleResize);
 
-        if (wasMobile !== isCurrentlyMobile) {
-            console.log(`Resized from ${wasMobile ? 'Mobile' : 'Desktop'} to ${isCurrentlyMobile ? 'Mobile' : 'Desktop'}`);
 
-            // Reset zoom on resize transition
-            const container = document.getElementById('event-panels-container');
-            if (container) {
-                container.style.transform = 'scale(1.0)';
-                scale = 1.0; // Reset scale variable
-            }
-
-            let currentView = 'groups';
-            if (plannerPane?.classList.contains('calendar-view-active')) currentView = 'calendar';
-            else if (plannerPane?.classList.contains('events-view-active')) currentView = 'events';
-
-            switchView(currentView); // Re-apply view logic
-
-            // Additional logic from previous steps for view transitions...
-            if (wasMobile && plannerPane?.classList.contains('mobile-event-view-active') && !isCurrentlyMobile) {
-                const activeMobileGroupLi = groupListUL?.querySelector('.group-item.active');
-                if (!activeMobileGroupLi) {
-                    const firstLi = groupListUL?.querySelector('.group-item');
-                    firstLi?.classList.add('active');
-                }
-                switchView('groups'); // Ensure desktop collage renders
-            } else if (!wasMobile && currentView === 'groups' && isCurrentlyMobile) {
-                groupListUL?.querySelectorAll('.group-item.active').forEach(item => item.classList.remove('active'));
-                if (activeGroupNameEl) activeGroupNameEl.textContent = `Select a Group`;
-                if (activeGroupAvatarEl) activeGroupAvatarEl.src = '';
-                const container = document.getElementById('event-panels-container');
-                if (container) container.innerHTML = ''; // Clear collage area for mobile list view
+    // --- MODAL OPENER LISTENER (Stays in main.js) ---
+    document.body.addEventListener('click', (event) => {
+        const moreInfoButton = event.target.closest('a.info-button');
+        if (moreInfoButton && moreInfoButton.closest('.orbit-element-expanded-content')) {
+            event.preventDefault();
+            const eventPanel = moreInfoButton.closest('.event-panel');
+            if (eventPanel && eventPanel._eventData) {
+                // Call the imported function to open the modal
+                openEventModal(eventPanel._eventData);
+            } else {
+                console.error("Could not find event panel or _eventData for clicked 'More Info'.", moreInfoButton);
+                alert("Sorry, could not load event details at this time.");
             }
         }
-    }, 250);
+    });
 
-    window.addEventListener('click', () => {
+    // --- Context Menu & Global Click Listener ---
+    window.addEventListener('click', (e) => {
         const menu = document.getElementById('custom-context-menu');
-        if (menu) menu.style.display = 'none';
-    });
-
-    document.getElementById('event-panels-container')?.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-
-        const types = ['event-node', 'event-panel', 'group-card']; // Add more types here as needed
-
-        const target = types
-            .map(type => ({ type, element: e.target.closest(`.${type}`) }))
-            .find(({ element }) => element);
-
-        if (target && target.element) {
-            const { type, element } = target;
-            const idAttr = type === 'event-panel' ? 'eventId' : 'nodeId'; // Customize per type if needed
-            const id = element.dataset[idAttr];
-
-            showContextMenu({
-                x: e.pageX,
-                y: e.pageY,
-                type,
-                id,
-            });
-        } else {
-            // If click is on empty space inside the collage viewport
-            showContextMenu({
-                x: e.pageX,
-                y: e.pageY,
-                type: 'canvas',
-                id: null
-            });
+        // Close context menu
+        if (menu && menu.style.display !== 'none') {
+            if (!e.target.closest('#custom-context-menu')) {
+                menu.style.display = 'none';
+            }
         }
+        // NOTE: The logic to close the modal on backdrop click is now INSIDE modalManager.js
     });
 
-}); // End DOMContentLoaded
+    // Show context menu
+    const collageViewport = document.getElementById('collage-viewport');
+    if (collageViewport) {
+        collageViewport.addEventListener('contextmenu', (e) => { /* ... keep context menu logic ... */ });
+    } else { /*...*/ }
+
+    console.log("Application Initialization Complete.");
+
+}); // --- END DOMContentLoaded ---
+
+// --- END OF FILE main.js ---

@@ -40,8 +40,11 @@ function createEventPanel(event) {
     infoOverlay.className = 'event-info-overlay';
     infoOverlay.innerHTML = `
         <div class="event-name">${event.title || 'Untitled Event'}</div>
-        ${event.location ? `<div class="event-location">📍 ${event.location}</div>` : ''}
-        <div class="event-details">${dateText}${event.cost_display ? ` | ${event.cost_display}` : ''}</div>
+        <div class="event-overlay-details">
+          <p>📅 <strong>${dateText}</strong></p>
+          ${event.location ? `<p>📍 <strong>${event.location}</strong></p>` : ''}
+          ${event.cost_display ? `<p>💲 <strong>${event.cost_display}</strong></p>` : ''}
+        </div>
     `;
 
     if (event.rsvp_status) {
