@@ -203,6 +203,9 @@ def create_group():
 @login_required
 def view_group(group_id):
     group = Group.query.get_or_404(group_id)
+    if not is_group_member(current_user.id, group_id):
+        flash("You are not authorized to view this group.", "danger")
+        return redirect(url_for('index')) # Or show a 403 page
     form = PostForm()
 
     if form.validate_on_submit():
@@ -230,6 +233,9 @@ def view_group(group_id):
 @login_required
 def add_members(group_id):
     group = Group.query.get_or_404(group_id)
+    if not is_group_member(current_user.id, group_id):
+         flash("You are not authorized to manage members for this group.", "danger")
+         return redirect(url_for('view_group', group_id=group_id)) # Or 403
 
     if request.method == 'POST':
         username = request.form.get('username')
