@@ -195,7 +195,7 @@
 @media screen and (max-width: 768px) {
     .carousel-inner {
         display: flex;
-    };
+    }
     .carousel-item {
         display:block;
         margin-right: 0;
@@ -251,6 +251,30 @@
     padding: 2px; 
 }
 
+.review-footer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
 
+.review-footer img {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+}
 
+.reviewer-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
 
+.card-title {
+   font-weight:800;
+}
+
+.card-text {
+    padding: 0 1.25rem; 
+    font-size: 1rem;
+    line-height: 1.5;
+}
