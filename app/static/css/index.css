@@ -274,7 +274,20 @@
 }
 
 .card-text {
-    padding: 0 1.25rem; 
+    padding: 0 1.25rem 1rem; 
     font-size: 1rem;
     line-height: 1.5;
 }
+
+.card {
+    margin: 0 .5em;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 12px;
+}
+
+.card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+}
+
