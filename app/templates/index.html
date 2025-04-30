@@ -50,7 +50,7 @@
             </div>
             <div class="glassy dashboard-pane second-description"> {# Add specific class for intro #}
                 <h3>Screenshot</h3>
-                <img src="{{ url_for('static', filename='images/person.jpg') }}" alt="Screenshot of Plannit"
+                <img src="{{ url_for('static', filename='images/index-page/person.jpg') }}" alt="Screenshot of Plannit"
                     class="screenshot-image">
             </div>
         </div>
@@ -59,7 +59,7 @@
 
         <p>
             {% include '_group.html' %}
-        </p> 
+        </p>
 
         <br>
         <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
@@ -71,18 +71,51 @@
 
                         <div class="col-md-4">
                             <div class="card">
-                                <img src="{{ url_for('static', filename='images/286.png') }}"
-                                    class="card-img-top img-fluid" alt="...">
-                                <div class="card-body">
-                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
-                                    <h5 class="card-title">Card title 1</h5>
-                                    <p class="card-text">Hella good reviews...</p>
-                                    <div class="star-rating">
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
+                                <div class="display-2 text-body-tertiary">
+                                    <i class="bi bi-quote"></i>
+                                </div>
+                                <p class="card-text">"Finally an app that gets group planning right.
+                                    No more 'who's bringing what' confusion or last-minute cancellations.
+                                    Plannit kept us on track for our hiking tripe!</p>
+                                <div class="card-body review-footer">
+                                    <img src="{{ url_for('static', filename='images/index-page/person1.jpg') }}"
+                                        class="card-img-top img-fluid" alt="Reviewer's image">
+                                    <div class="reviewer-info">
+                                        <h5 class="card-title">Blake Harrison</h5>
+                                        <div class="star-rating">
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="display-2 text-body-tertiary">
+                                    <i class="bi bi-quote"></i>
+                                </div>
+                                <p class="card-text">"Planning our university club trips used to be chaotic. With
+                                    Plannit, everything is smooth
+                                    from picking dates to sharing expenses. Love the clean, glassy design too!"
+                                </p>
+                                <div class="card-body review-footer">
+                                    <img src="{{ url_for('static', filename='images/index-page/person2.jpg') }}"
+                                        class="card-img-top img-fluid" alt="Reviewer's image">
+                                    <div class="reviewer-info">
+                                        <h5 class="card-title">Soojin Kim</h5>
+                                        <div class="star-rating">
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -90,39 +123,24 @@
 
                         <div class="col-md-4">
                             <div class="card">
-                                <img src="{{ url_for('static', filename='images/286.png') }}"
-                                    class="card-img-top img-fluid" alt="...">
-                                <div class="card-body">
-                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
-
-                                    <h5 class="card-title">Card title 2</h5>
-                                    <p class="card-text">Hella good reviews...</p>
-                                    <div class="star-rating">
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                    </div>
+                                <div class="display-2 text-body-tertiary">
+                                    <i class="bi bi-quote"></i>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="card">
-                                <img src="{{ url_for('static', filename='images/286.png') }}"
-                                    class="card-img-top img-fluid" alt="...">
-                                <div class="card-body">
-                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
-
-                                    <h5 class="card-title">Card title 3</h5>
-                                    <p class="card-text">Hella good reviews...</p>
-                                    <div class="star-rating">
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
+                                <p class="card-text">"Plannit turned our basketball team outings into something
+                                    effortless.
+                                    No more 50 missed texts trying to set a time, one vote and done."</p>
+                                <div class="card-body review-footer">
+                                    <img src="{{ url_for('static', filename='images/index-page/person3.jpg') }}"
+                                        class="card-img-top img-fluid" alt="Reviewer's image">
+                                    <div class="reviewer-info">
+                                        <h5 class="card-title">Marcus Brown</h5>
+                                        <div class="star-rating">
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -136,19 +154,26 @@
                     <div class="row justify-content-center">
                         <div class="col-md-4">
                             <div class="card">
-                                <img src="{{ url_for('static', filename='images/286.png') }}"
-                                    class="card-img-top img-fluid" alt="...">
-                                <div class="card-body">
-                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
+                                <div class="display-2 text-body-tertiary">
+                                    <i class="bi bi-quote"></i>
+                                </div>
+                                <p class="card-text">"Before we started using Plannit, organizing with my friends was a
+                                    nightmare. With Plannit,
+                                    I could actually enjoy the day without stressing."
 
-                                    <h5 class="card-title">Card title 4</h5>
-                                    <p class="card-text">Hella good reviews...</p>
-                                    <div class="star-rating">
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
+                                </p>
+                                <div class="card-body review-footer">
+                                    <img src="{{ url_for('static', filename='images/index-page/person4.jpg') }}"
+                                        class="card-img-top img-fluid" alt="Reviewer's image">
+                                    <div class="reviewer-info">
+                                        <h5 class="card-title">Kylie Jenner</h5>
+                                        <div class="star-rating">
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -156,19 +181,24 @@
 
                         <div class="col-md-4">
                             <div class="card">
-                                <img src="{{ url_for('static', filename='images/286.png') }}"
-                                    class="card-img-top img-fluid" alt="...">
-                                <div class="card-body">
-                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
-
-                                    <h5 class="card-title">Card title 5</h5>
-                                    <p class="card-text">Hella good reviews...</p>
-                                    <div class="star-rating">
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
+                                <div class="display-2 text-body-tertiary">
+                                    <i class="bi bi-quote"></i>
+                                </div>
+                                <p class="card-text">"Planning out a cross-country roadtrip with my mates were a
+                                    complete mess. But that's only before I used Plannit,
+                                    this app helped us to organise the trip perfectly."</p>
+                                <div class="card-body review-footer">
+                                    <img src="{{ url_for('static', filename='images/index-page/person5.jpeg') }}"
+                                        class="card-img-top img-fluid" alt="Reviewer's image">
+                                    <div class="reviewer-info">
+                                        <h5 class="card-title">Mohammad Hassan</h5>
+                                        <div class="star-rating">
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -176,27 +206,30 @@
 
                         <div class="col-md-4">
                             <div class="card">
-
-                                <img src="{{ url_for('static', filename='images/286.png') }}"
-                                    class="card-img-top img-fluid" alt="...">
-                                <div class="card-body">
-                                    <i class="bi bi-chat-left-quote" style="font-size: 2rem;"></i>
-
-                                    <h5 class="card-title">Card title 6</h5>
-                                    <p class="card-text">Hella good reviews...</p>
-                                    <div class="star-rating">
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                        <i class="bi bi-star-fill text-warning"></i>
+                                <div class="display-2 text-body-tertiary">
+                                    <i class="bi bi-quote"></i>
+                                </div>
+                                <p class="card-text">"For our group project, we used Plannit to schedule meetings,
+                                    assign parts of the assignment.
+                                    I can't imagine the pain of doing a group project without it now. "</p>
+                                <div class="card-body review-footer">
+                                    <img src="{{ url_for('static', filename='images/index-page/person6.jpg') }}"
+                                        class="card-img-top img-fluid" alt="Reviewer's image">
+                                    <div class="reviewer-info">
+                                        <h5 class="card-title">Ayana Scott</h5>
+                                        <div class="star-rating">
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
 
             <!-- Carousel Controls -->
