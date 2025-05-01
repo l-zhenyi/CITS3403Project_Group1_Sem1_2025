@@ -484,7 +484,7 @@
     margin-top: -0.2em;
 }
 
-.status-pill {
+.expanded-grid-container-v2 .status-pill {
     /* Use em for padding, border, shadow */
     padding: 0.3em 1em;
     border: 0.07em solid rgba(255, 255, 255, 0.2);
@@ -500,20 +500,20 @@
 }
 
 /* Status colors */
-.event-status.status-attending .status-pill {
+.expanded-grid-container-v2 .event-status.status-attending .status-pill {
     --status-bg: rgba(40, 167, 69, 0.8);
 }
 
-.event-status.status-maybe .status-pill {
+.expanded-grid-container-v2 .event-status.status-maybe .status-pill {
     --status-bg: rgba(255, 193, 7, 0.8);
     color: #111;
 }
 
-.event-status.status-declined .status-pill {
+.expanded-grid-container-v2 .event-status.status-declined .status-pill {
     --status-bg: rgba(220, 53, 69, 0.8);
 }
 
-.event-status.status-unknown .status-pill {
+.expanded-grid-container-v2 .event-status.status-unknown .status-pill {
     --status-bg: rgba(108, 117, 125, 0.8);
 }
 

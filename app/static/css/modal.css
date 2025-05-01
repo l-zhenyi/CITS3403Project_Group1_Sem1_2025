@@ -322,7 +322,7 @@
 }
 
 /* Status pills (reuse from expanded view if possible, or redefine) */
-.status-pill {
+#event-details-modal .status-pill {
     padding: 3px 10px;
     border-radius: 9999px;
     font-size: 0.75rem;
@@ -332,10 +332,10 @@
     flex-shrink: 0; /* Prevent pill shrinking */
 }
 
-.status-pill.status-attending { background-color: rgba(40, 167, 69, 0.8); }
-.status-pill.status-maybe { background-color: rgba(255, 193, 7, 0.8); color: #333; }
-.status-pill.status-declined { background-color: rgba(220, 53, 69, 0.8); }
-.status-pill.status-unknown { background-color: rgba(108, 117, 125, 0.8); } /* For invited but not responded */
+#event-details-modal .status-pill.status-attending { background-color: rgba(40, 167, 69, 0.8); }
+#event-details-modal .status-pill.status-maybe { background-color: rgba(255, 193, 7, 0.8); color: #333; }
+#event-details-modal .status-pill.status-declined { background-color: rgba(220, 53, 69, 0.8); }
+#event-details-modal .status-pill.status-unknown { background-color: rgba(108, 117, 125, 0.8); } /* For invited but not responded */
 
 
 #attendee-list-message {
