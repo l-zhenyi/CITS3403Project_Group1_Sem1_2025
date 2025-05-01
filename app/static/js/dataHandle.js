@@ -70,8 +70,7 @@ export async function loadGroups() {
 
         li.innerHTML = `
             <img src="${group.avatar_url}" class="group-avatar">
-            <span class="group-name">${group.name}</span>
-        `;
+            <span class="group-name">${group.name}</span>`;
         groupList.appendChild(li);
     });
 
