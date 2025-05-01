@@ -5,6 +5,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerCalendarArea.css') }}" type="text/css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerEventsArea.css') }}" type="text/css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerGroupsArea.css') }}" type="text/css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}" type="text/css">
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}
 
 {% block title %}Planner{% endblock %}
@@ -101,13 +103,96 @@
 
         </div> <!-- End of planner-pane -->
 
-         <!-- Add somewhere convenient, maybe below the planner pane -->
-        <div style="padding: 15px; text-align: center; background: rgba(0,0,0,0.3); margin-top: 10px; border-radius: 8px;">
-            <button id="add-group-btn" class="button accept">Add Demo Group</button>
-            <button id="add-event-btn" class="button accept" style="margin-left: 10px;">Add Demo Event to Active Group</button>
-        </div>
-    </main>
+        <!-- Event Details Modal -->
+<div id="event-details-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content glassy">
+        <button class="modal-close-btn" aria-label="Close event details">×</button>
 
-    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <div class="modal-header">
+            <img id="modal-event-image-header" src="/static/img/default-event-logo.png" alt="Event Image" class="modal-event-image-small">
+            <div class="modal-title-group">
+                <h2 id="modal-event-title">Event Title Placeholder</h2>
+                <p id="modal-event-group">Part of <span id="modal-group-name">Group Name</span></p>
+            </div>
+        </div>
+
+        <div class="modal-body">
+            <!-- Left Column: Core Details & Description -->
+            <div class="modal-col modal-col-details">
+                <div class="modal-detail-section">
+                    <h3>Event Information</h3>
+                    <div class="modal-detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">📅 Date & Time</span>
+                            <span id="modal-event-date">Not specified</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">📍 Location</span>
+                            <span id="modal-event-location">Not specified</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">💲 Cost</span>
+                            <span id="modal-event-cost">Not specified</span>
+                        </div>
+                        </div>
+                 </div>
+
+                <div class="modal-detail-section modal-description-section">
+                     <h3>📝 Description</h3>
+                     <p id="modal-event-description">No description provided.</p>
+                 </div>
+            </div>
+
+            <!-- Right Column: RSVP & Attendees -->
+            <div class="modal-col modal-col-rsvps">
+                <div class="modal-detail-section modal-rsvp-section">
+                    <h3>Your RSVP Status</h3>
+                    <div id="modal-rsvp-controls" class="rsvp-button-group" data-event-id="">
+                        <button class="rsvp-btn rsvp-attending" data-status="attending" aria-pressed="false">
+                            <span class="icon">✔️</span> Going
+                        </button>
+                        <button class="rsvp-btn rsvp-maybe" data-status="maybe" aria-pressed="false">
+                            <span class="icon">❓</span> Maybe
+                        </button>
+                        <button class="rsvp-btn rsvp-declined" data-status="declined" aria-pressed="false">
+                            <span class="icon">❌</span> Can't Go
+                        </button>
+                         <!-- Add a button to explicitly remove RSVP if needed -->
+                         <button class="rsvp-btn rsvp-remove" data-status="none" style="display: none;">
+                             <span class="icon">🗑️</span> Clear RSVP
+                         </button>
+                    </div>
+                    <p id="rsvp-confirmation-message" class="rsvp-message" style="display: none;"></p>
+                </div>
+
+                <div class="modal-detail-section modal-attendees-section">
+                    <h3>Attendees (<span id="modal-attendee-count">0</span>)</h3>
+                    <div class="attendee-list-container">
+                         <ul id="modal-attendee-list">
+                            <!-- Attendee List Items will be dynamically added here -->
+                            <!-- Example:
+                            <li>
+                                <img src="avatar_url" alt="User Avatar" class="attendee-avatar">
+                                <span class="attendee-name">User Name</span>
+                                <span class="status-pill status-attending">Going</span>
+                            </li>
+                             -->
+                         </ul>
+                    </div>
+                    <p id="attendee-list-message" style="display: none;">No one has RSVP'd yet.</p>
+                     <!-- Add Loading indicator? -->
+                     <div id="attendee-loading-indicator" style="display: none;">Loading attendees...</div>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Optional Footer for Admin Actions -->
+        <!-- <div class="modal-footer">
+            <button class="admin-action-btn">Edit Event</button>
+            <button class="admin-action-btn delete-btn">Delete Event</button>
+        </div> -->
+    </div>
+</div>
+    </main>
     <div id="custom-context-menu" class="context-menu" style="display: none;"></div>
 {% endblock %}
