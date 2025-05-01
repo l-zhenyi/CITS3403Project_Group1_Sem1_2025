@@ -197,13 +197,15 @@
 .collage-viewport {
     width: 100%;
     height: 100%;
-    overflow: auto;
+    /* Changed from auto to hidden to prevent scrollbars from viewport itself */
+    overflow: hidden;
     position: relative;
     cursor: grab;
-    padding: 12px;
-    padding-top: 76px;
+    /* Padding handled by event-panels-container or inner elements if needed */
+    padding: 0;
     box-sizing: border-box;
 }
+
 
 .collage-viewport.dragging {
     cursor: grabbing;
@@ -214,97 +216,120 @@
     position: relative;
     width: max-content;
     height: max-content;
-    min-width: 2000px;
-    min-height: 1600px;
+    min-width: 2000px; /* Adjust as needed for your content spread */
+    min-height: 1600px; /* Adjust as needed */
     transform-origin: top left;
-    transition: transform 0.2s ease-out;
+    /* transition: transform 0.2s ease-out; */ /* Let JS handle transform updates */
+    padding: 50px; /* Add padding to prevent cutoff at edges */
+    box-sizing: border-box;
 }
+
 
 /* Circular Panel - Base Styles */
 .event-panel {
     position: absolute;
-    overflow: hidden;
+    /* Let JS set width/height initially */
+    /* No explicit width/height here */
+    overflow: hidden; /* Keep this */
     padding: 0;
-    /* Add box-sizing so border is included in JS width/height */
     box-sizing: border-box;
-    /* Make border scale with font-size (which scales with diameter) */
-    /* e.g. 0.33em * 6px = ~2px. Adjust 0.2em if needed */
-    border: 0.2em solid rgba(255, 255, 255, 0.5);
+    border: 0.2em solid rgba(255, 255, 255, 0.5); /* Relative to font-size */
     background: rgba(200, 200, 210, 0.15);
     backdrop-filter: blur(8px) saturate(120%);
-    /* Use em for shadow - relative to base font size */
-    box-shadow: 0 0.5em 1.5em rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0.5em 1.5em rgba(0, 0, 0, 0.3); /* Relative to font-size */
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: box-shadow 0.3s ease;
-    /* Base font-size set by JS: e.g., calc((var(--current-diameter) / 100) * 6px) */
-    /* This font-size becomes the basis for 'em' units inside */
-    font-size: 6px;
-    /* Default/fallback - JS will override */
+    display: flex; /* Keep flex */
+    /* align-items: center; */ /* Remove - content wrappers handle alignment */
+    /* justify-content: center; */ /* Remove */
+    transition: box-shadow 0.3s ease; /* Keep or adjust */
+    /* Base font-size set by JS */
+    font-size: 6px; /* Default/fallback - JS will override */
+    border-radius: 50%; /* JS sets this, but good default */
 }
 
-/* --- Styles for the UNCLICKED state --- */
+/* --- Styles for the UNCLICKED state (Original Content Wrapper) --- */
 .orbit-element-original-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    position: relative; /* Needed for absolute positioning of children */
     width: 100%;
     height: 100%;
-    position: relative;
-    overflow: hidden;
+    overflow: hidden; /* Clip children to the circle */
+    display: flex; /* Use flex if needed, or just block */
+    align-items: center;
+    justify-content: center;
     transition: opacity 0.3s ease;
 }
 
 .orbit-element-original-content.hidden {
     display: none;
     opacity: 0;
+    pointer-events: none; /* Ensure it doesn't intercept events when hidden */
 }
 
+/* --- The Background Image within the Original Content --- */
 .event-panel .event-image {
     position: absolute;
+    inset: 0; /* Fill the wrapper */
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.4s ease, filter 0.4s ease;
-    z-index: 0;
-    transform: scale(0.98);
+    /* Transition for hover effects */
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), filter 0.4s ease;
+    z-index: 0; /* Behind the overlay */
+    transform: scale(1); /* Start at normal scale */
+    filter: blur(0px); /* Start with no blur */
 }
 
+/* --- The Overlay with Info (Initially Hidden) --- */
 .event-panel .event-info-overlay {
     position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.2);
+    inset: 0; /* Fill the wrapper */
+    background: rgba(0, 0, 0, 0.2); /* Base background (slightly dark) */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     color: #fff;
     text-align: center;
-    padding: 1em;
-    opacity: 0;
-    z-index: 1;
-    transition: opacity 0.3s ease, background 0.3s ease;
-    font-size: 0.85em;
-    /* Relative to parent .event-panel font size */
-    text-shadow: 0 0 1em rgba(0, 0, 0, 0.5);
-    /* Use em for shadow */
+    padding: 1em; /* Relative to parent font-size */
     box-sizing: border-box;
+    opacity: 0; /* Hidden by default */
+    z-index: 1; /* Above the image */
+    /* Transition for hover effects */
+    transition: opacity 0.3s ease, background 0.3s ease;
+    font-size: 0.85em; /* Relative to parent .event-panel font size */
+    text-shadow: 0 0 0.8em rgba(0, 0, 0, 0.6); /* Relative shadow */
 }
 
+/* Styling for text inside the overlay */
+.event-panel .event-info-overlay .event-panel-title {
+    font-weight: 500;
+    /* Use em for font-size relative to overlay's font-size */
+    font-size: 1.2em;
+    margin-bottom: 0.3em;
+    white-space: nowrap; /* Prevent wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%; /* Ensure it doesn't overflow padding */
+}
+.event-panel .event-info-overlay .event-panel-date {
+    font-size: 0.9em; /* Relative to overlay's font-size */
+    opacity: 0.9;
+}
+
+
+/* --- HOVER EFFECT on the Event Panel (when NOT expanded/clicked) --- */
+/* We target the main panel hover, but apply effects to children */
+/* The JS hides .orbit-element-original-content when clicked, preventing this */
 .event-panel:hover .event-image {
-    transform: scale(1.13);
-    filter: blur(0.2em);
+    transform: scale(1.13); /* Zoom in */
+    filter: blur(0.3em); /* Apply blur (relative to font size) */
 }
 
-/* Optional: em blur */
 .event-panel:hover .event-info-overlay {
-    opacity: 1;
-    background: rgba(0, 0, 0, 0.35);
+    opacity: 1; /* Fade in overlay */
+    background: rgba(0, 0, 0, 0.45); /* Make overlay darker on hover */
 }
+
 
 /* Event Node Styling */
 .event-node {
@@ -344,26 +369,28 @@
 .orbit-element-expanded-content {
     position: absolute;
     inset: 0;
-    border-radius: 50%;
-    overflow: hidden;
-    display: flex;
+    border-radius: 50%; /* Match parent shape */
+    overflow: hidden; /* Clip content */
+    display: none; /* Initially hidden by JS */
+    /* display: flex; */ /* JS toggles this */
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
     background: rgba(30, 30, 35, 0.6);
     backdrop-filter: blur(10px) saturate(110%);
-    /* Keep fixed blur or use em, e.g., blur(1.5em) */
     -webkit-backdrop-filter: blur(10px) saturate(110%);
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0; /* Hidden by default, controlled by .visible */
+    pointer-events: none; /* Initially non-interactive */
     transition: opacity 0.25s ease-in-out;
     /* Inherit the font-size calculated by JS for the parent .event-panel */
     font-size: inherit;
+    z-index: 2; /* Ensure it's above original content */
 }
 
 .orbit-element-expanded-content.visible {
     opacity: 1;
-    pointer-events: auto;
+    pointer-events: auto; /* Make interactive when visible */
+    /* display: flex; */ /* Ensure display is set by JS _updateContentVisibility */
 }
 
 /* Container for the grid items - Use em relative to parent font-size */
@@ -513,7 +540,8 @@
     --status-bg: rgba(220, 53, 69, 0.8);
 }
 
-.expanded-grid-container-v2 .event-status.status-unknown .status-pill {
+.expanded-grid-container-v2 .event-status.status-unknown .status-pill,
+.expanded-grid-container-v2 .event-status.status-cleared .status-pill { /* Added cleared */
     --status-bg: rgba(108, 117, 125, 0.8);
 }
 
@@ -544,16 +572,25 @@
     /* Align content to top */
     overflow-y: auto;
     /* Enable vertical scroll */
-    scrollbar-width: none;
-    /* Hide scrollbar */
-    -ms-overflow-style: none;
+    scrollbar-width: thin; /* Use thin scrollbar */
+    scrollbar-color: rgba(255,255,255,0.2) transparent; /* Simple scrollbar */
+    -ms-overflow-style: none; /* IE */
     box-sizing: border-box;
     /* Ensure padding/border included */
 }
 
 .event-timeplace .content-box::-webkit-scrollbar {
-    display: none;
+    width: 5px; /* Adjust width */
 }
+.event-timeplace .content-box::-webkit-scrollbar-track {
+    background: transparent;
+}
+.event-timeplace .content-box::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    border: none;
+}
+
 
 .timeplace-content {
     font-size: 0.85em;
@@ -608,6 +645,7 @@
     text-align: center;
     box-sizing: border-box;
     transition: background-color 0.2s ease, transform 0.1s ease;
+    cursor: pointer; /* Ensure cursor indicates clickable */
 }
 
 .grid-item.more-info button.button.info-button:hover {
@@ -635,30 +673,36 @@
     }
 
     .collage-viewport {
-        display: none;
+        display: none; /* Hide panning viewport container */
     }
 
-    /* Hide panning viewport */
+    .event-panels-container { /* Container for panels */
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        padding: 0; /* Reset padding */
+        transform: none !important;
+    }
+
     .event-node {
-        display: none !important;
+        display: none !important; /* Hide draggable nodes */
     }
 
-    /* Hide draggable node */
     .planner-pane.mobile-event-view-active .active-group-header .back-button {
         display: inline-block;
     }
 
     .group-item {
-        padding: 15px 10px;
+        padding: 15px 10px; /* Use px is fine for mobile base layout */
     }
 
-    /* Use px is fine for mobile base layout */
     .blur-wrapper {
         padding: 8px;
         height: auto;
         position: sticky;
-        top: -8px;
-        /* Adjust for padding */
+        top: -8px; /* Adjust for padding */
         z-index: 10;
     }
 
@@ -682,141 +726,119 @@
         font-size: 1.1rem;
     }
 
-    /* Override Orbit Layout for Mobile List View */
-    .event-panels-container {
-        position: static !important;
-        width: auto !important;
-        height: auto !important;
-        min-width: 0 !important;
-        min-height: 0 !important;
-        padding-top: 0;
-        transform: none !important;
-    }
-
+    /* Override Orbit Panel Styles for Mobile List/Card View */
     .event-panel {
-        position: relative !important;
-        /* Change from absolute */
+        position: relative !important; /* Change from absolute */
         width: 100% !important;
         height: auto !important;
-        min-height: 150px;
+        min-height: 100px; /* Adjust as needed */
         left: auto !important;
         top: auto !important;
-        border-radius: 12px !important;
-        /* Override 50% */
+        border-radius: 12px !important; /* Override 50% */
         margin-bottom: 12px;
         backdrop-filter: blur(12px) saturate(140%);
+        /* Set explicit base font size for mobile cards - overrides JS scaling */
         font-size: 14px !important;
-        /* Set explicit base font size for mobile cards */
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        /* Override em border */
+        border: 1px solid rgba(255, 255, 255, 0.3) !important; /* Override em border */
         background: rgba(60, 60, 65, 0.5);
         transform: none !important;
         will-change: auto !important;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        /* Override em shadow */
-        padding: 0 !important;
-        /* Override any base padding */
-        overflow: visible !important;
-        /* Allow content to determine size */
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important; /* Override em shadow */
+        padding: 0 !important; /* Override any base padding */
+        overflow: visible !important; /* Allow content to determine size */
+        cursor: default !important; /* Remove pointer cursor */
     }
 
-    /* Show original content structure, hide expanded */
+    /* Show original content structure, hide expanded on mobile */
     .event-panel .orbit-element-original-content {
-        display: flex !important;
-        /* Ensure it's visible */
-        flex-direction: row !important;
-        /* Change layout for card view */
-        position: static;
+        display: flex !important; /* Ensure it's visible */
+        position: static !important; /* Override relative */
+        flex-direction: row !important; /* Layout as row */
         height: auto;
-        padding: 12px;
-        /* Add padding */
+        padding: 12px; /* Add padding */
         background: none;
         backdrop-filter: none;
         opacity: 1 !important;
-        font-size: 1em;
-        /* Relative to the 14px base */
+        font-size: 1em !important; /* Relative to the 14px base */
         align-items: flex-start;
-        gap: 12px;
-        /* Add gap */
-        width: 100%;
-        /* Fill card */
+        gap: 12px; /* Add gap */
+        width: 100%; /* Fill card */
+        overflow: visible !important; /* Allow content flow */
+        transition: none !important; /* Disable transitions */
     }
+     .event-panel .orbit-element-original-content.hidden {
+         display: flex !important; /* Override hidden class from desktop */
+     }
+
 
     .event-panel .orbit-element-expanded-content {
-        display: none !important;
+        display: none !important; /* Ensure expanded is hidden */
     }
 
-    /* Ensure expanded hidden */
-
-    /* Rearrange original content for mobile card view */
+    /* Rearrange original content children for mobile card view */
     .event-panel .event-image {
-        position: relative !important;
-        /* Override absolute */
-        width: 80px !important;
-        /* Fixed width for consistency */
-        height: 80px !important;
-        /* Fixed height */
+        position: relative !important; /* Override absolute */
+        inset: auto !important; /* Reset inset */
+        width: 80px !important; /* Fixed width */
+        height: 80px !important; /* Fixed height */
         object-fit: cover;
         border-radius: 8px;
-        margin-bottom: 0 !important;
-        /* Reset margin */
-        transform: none !important;
-        border: none !important;
         flex-shrink: 0;
-        /* Prevent image from shrinking */
+        z-index: auto !important; /* Reset z-index */
+        /* Disable hover effects */
+        transform: none !important;
+        filter: none !important;
+        transition: none !important;
     }
 
     .event-panel .event-info-overlay {
-        position: static !important;
-        /* Override absolute */
-        opacity: 1;
-        background: none;
-        padding: 0;
-        text-align: left;
-        /* Align text left */
-        font-size: 1em;
-        /* Relative to 14px base */
-        text-shadow: none;
-        color: #f0f0f5;
-        display: flex;
-        flex-direction: column;
-        /* Stack info vertically */
-        width: 100%;
-        /* Take remaining width */
-        align-items: flex-start;
-        /* Align items left */
-        justify-content: center;
+        position: static !important; /* Override absolute */
+        inset: auto !important; /* Reset inset */
+        opacity: 1 !important; /* Ensure visible */
+        background: none !important; /* Remove background */
+        padding: 0 !important; /* Reset padding */
+        text-align: left !important; /* Align text left */
+        font-size: 1em !important; /* Relative to 14px base */
+        text-shadow: none !important; /* Remove shadow */
+        color: #f0f0f5 !important; /* Set text color */
+        display: flex !important;
+        flex-direction: column !important; /* Stack info vertically */
+        width: 100% !important; /* Take remaining width */
+        align-items: flex-start !important; /* Align items left */
+        justify-content: center !important;
+        z-index: auto !important; /* Reset z-index */
+        transition: none !important; /* Disable transitions */
     }
 
-    .event-panel .event-info-overlay h3 {
-        /* Example: Assuming title is h3 */
-        font-size: 1.1rem;
-        margin-bottom: 4px;
-        color: #fff;
-        white-space: normal;
-        /* Allow wrapping */
-    }
+     /* Style text within mobile overlay */
+     .event-panel .event-info-overlay .event-panel-title {
+        font-size: 1rem !important; /* Explicit size */
+        font-weight: 600 !important;
+        margin-bottom: 4px !important;
+        color: #fff !important;
+        white-space: normal !important; /* Allow wrapping */
+        max-width: 100% !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+     }
+     .event-panel .event-info-overlay .event-panel-date {
+        font-size: 0.9rem !important;
+        color: #ccc !important;
+        line-height: 1.4 !important;
+        white-space: normal !important;
+        opacity: 1 !important;
+     }
 
-    .event-panel .event-info-overlay .event-details {
-        /* Example class */
-        font-size: 0.9rem;
-        color: #ccc;
-        line-height: 1.4;
-        white-space: normal;
-        /* Allow wrapping */
-    }
-
-    /* Remove hover effects specific to orbit */
+    /* Remove hover effects specific to orbit panels on mobile */
     .event-panel:hover {
         transform: none !important;
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25) !important; /* Slightly darker static shadow */
     }
-
+    /* These are redundant due to overrides above, but explicit */
     .event-panel:hover .event-image {
         transform: none !important;
         filter: none !important;
     }
-
     .event-panel:hover .event-info-overlay {
         opacity: 1 !important;
         background: none !important;
@@ -886,5 +908,6 @@
         /* Ensure sticky header is positioned correctly */
     }
 }
+
 
 /* --- END OF FILE plannerGroupsArea.css --- */
