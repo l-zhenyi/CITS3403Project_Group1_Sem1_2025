@@ -2,22 +2,28 @@
 
 {% block content %}
     <h1>{{ ('Messages') }}</h1>
-    {% for message in messages %}
-        {% include '_message.html' %}
-    {% endfor %}
+    {% if messages %}
+        {% for message in messages %}
+            {% include '_message.html' %}
+        {% endfor %}
+    {% else %}
+        <p>{{ ('You currently have no messages.') }}</p>
+    {% endif %}
     
     <nav aria-label="...">
         <ul class="pager">
-            <li class="previous{% if not prev_url %} disabled{% endif %}">
+            {% if prev_url %}
                 <a href="{{ prev_url or '#' }}">
                     <span aria-hidden="true">&larr;</span> {{ ('Newer messages') }}
                 </a>
             </li>
-            <li class="next{% if not next_url %} disabled{% endif %}">
+            {% endif %}
+            {% if next_url %}
                 <a href="{{ next_url or '#' }}">
                     {{ ('Older messages') }} <span aria-hidden="true">&rarr;</span>
                 </a>
             </li>
+            {% endif %}
         </ul>
     </nav>
 {% endblock %}
