@@ -67,7 +67,7 @@ function _initializeModalElements() {
 
 function _resetModal() {
     if (!isInitialized) return;
-    console.log("Resetting modal content.");
+    // console.log("Resetting modal content."); // Less noisy logs
 
     if (modalEventImage) modalEventImage.setAttribute('src', '/static/img/default-event-logo.png');
     if (modalEventTitle) modalEventTitle.textContent = 'Loading...';
@@ -104,7 +104,8 @@ function _populateAttendeeList(attendees = []) {
         attendeeListContainer.style.display = 'block';
         attendees.forEach(attendee => {
             const li = document.createElement('li');
-            const status = attendee.status?.toLowerCase() || 'unknown';
+            // Ensure status mapping matches your backend and desired display classes
+            const status = attendee.status?.toLowerCase() || 'unknown'; // going, maybe, not_going, etc.
             const displayName = attendee.username || 'Guest User';
 
             li.innerHTML = `
@@ -120,21 +121,24 @@ function _populateAttendeeList(attendees = []) {
 function _updateRSVPButtonState(status) {
     if (!isInitialized || !rsvpButtons || rsvpButtons.length === 0) return;
 
+    // Normalize status to match data-status attributes (e.g., 'going', 'maybe', 'not_going')
     const normalizedStatus = status?.toLowerCase();
     rsvpButtons.forEach(btn => btn.setAttribute('aria-pressed', 'false'));
 
-    if (normalizedStatus && normalizedStatus !== 'none') {
+    // Check if status is one of the valid RSVP states (not null or 'none')
+    if (normalizedStatus && ['going', 'maybe', 'not_going'].includes(normalizedStatus)) {
         const activeButton = modalRsvpControls?.querySelector(`.rsvp-btn[data-status="${normalizedStatus}"]`);
         if (activeButton) activeButton.setAttribute('aria-pressed', 'true');
         if (clearRsvpButton) clearRsvpButton.style.display = 'inline-flex';
     } else {
+        // If status is null, undefined, or 'none', no button is active
         if (clearRsvpButton) clearRsvpButton.style.display = 'none';
     }
 }
 
 async function _fetchEventDetails(eventId) {
     if (!isInitialized || !attendeeLoadingIndicator || !attendeeListMessage || !attendeeListContainer || !modalRsvpControls) return;
-    console.log(`Fetching details for event ID: ${eventId}`);
+    // console.log(`Fetching details for event ID: ${eventId}`); // Less noisy
 
     attendeeLoadingIndicator.style.display = 'block';
     attendeeListMessage.style.display = 'none';
@@ -148,14 +152,16 @@ async function _fetchEventDetails(eventId) {
             fetch(`/api/events/${eventId}/my-rsvp`)
         ]);
 
-        if (!attendeesRes.ok) throw new Error(`Attendees fetch failed: ${attendeesRes.status} ${attendeesRes.statusText}`);
-        if (!myRsvpRes.ok) throw new Error(`RSVP fetch failed: ${myRsvpRes.status} ${myRsvpRes.statusText}`);
+        // Simplified error check
+        if (!attendeesRes.ok || !myRsvpRes.ok) {
+             throw new Error(`Failed to fetch details (${attendeesRes.status}/${myRsvpRes.status})`);
+        }
 
         const attendees = await attendeesRes.json();
         const myRsvp = await myRsvpRes.json();
 
         _populateAttendeeList(attendees);
-        _updateRSVPButtonState(myRsvp.status);
+        _updateRSVPButtonState(myRsvp.status); // Pass the status fetched from the API
 
     } catch (error) {
         console.error("Error fetching event details:", error);
@@ -163,6 +169,7 @@ async function _fetchEventDetails(eventId) {
             attendeeListMessage.textContent = `Error loading details: ${error.message}`;
             attendeeListMessage.style.display = 'block';
         }
+        _updateRSVPButtonState(null); // Reset button state on error
     } finally {
         if (attendeeLoadingIndicator) attendeeLoadingIndicator.style.display = 'none';
         if (modalRsvpControls) {
@@ -174,26 +181,31 @@ async function _fetchEventDetails(eventId) {
 
 function _closeEventModal() {
     if (!isInitialized || !modalElement || !modalElement.classList.contains('visible')) return;
-    console.log("Closing modal (internal).");
+    // console.log("Closing modal (internal)."); // Less noisy
 
     modalElement.classList.remove('visible');
-    const transitionDuration = 300;
+    const transitionDuration = 300; // Match CSS transition duration
 
+    // Use transitionend for smoother closing
     const handleTransitionEnd = (event) => {
+        // Make sure it's the modal itself and the opacity transition
         if (event.target === modalElement && event.propertyName === 'opacity') {
-            modalElement.style.display = 'none';
+            modalElement.style.display = 'none'; // Hide after fade out
             modalElement.removeEventListener('transitionend', handleTransitionEnd);
-            _resetModal();
+            _resetModal(); // Reset content AFTER hiding
         }
     };
     modalElement.addEventListener('transitionend', handleTransitionEnd);
-    setTimeout(() => { // Fallback
-        if (modalElement.style.display !== 'none') {
+
+    // Fallback timer in case transitionend doesn't fire (e.g., interrupted transition)
+    setTimeout(() => {
+        if (modalElement.style.display !== 'none') { // Check if still visible
+             console.warn("Modal transitionend fallback triggered.");
             modalElement.style.display = 'none';
             modalElement.removeEventListener('transitionend', handleTransitionEnd);
             _resetModal();
         }
-    }, transitionDuration + 50);
+    }, transitionDuration + 50); // Slightly longer than transition
 }
 
 function _setupInternalModalEventListeners() {
@@ -208,70 +220,113 @@ function _setupInternalModalEventListeners() {
 
     // Listener to close modal on backdrop click
     modalElement.addEventListener('click', (event) => {
+        // Only close if the click is directly on the modal backdrop (modalElement)
+        // and not on its content (modalContent) or children
         if (event.target === modalElement) {
             _closeEventModal();
         }
     });
 
-    // Listener for RSVP button clicks
+    // --- Listener for RSVP button clicks (with event dispatch) ---
     if (modalRsvpControls) {
         modalRsvpControls.addEventListener('click', async (event) => {
             const button = event.target.closest('.rsvp-btn');
-            if (!button) return;
+            if (!button) return; // Ignore clicks not on a button
 
             const eventId = modalRsvpControls.dataset.eventId;
-            const newStatus = button.dataset.status;
-            const apiStatus = newStatus === 'none' ? null : newStatus;
-            if (!eventId) return;
+            // Get status from button ('going', 'maybe', 'not_going', 'none')
+            const buttonStatus = button.dataset.status;
+            // Translate 'none' to null for the API, keep others as is
+            const apiStatus = buttonStatus === 'none' ? null : buttonStatus;
 
-            console.log(`RSVP button clicked: Event ID ${eventId}, Status: ${newStatus}`);
+            if (!eventId) {
+                console.error("Cannot update RSVP: eventId missing from controls.");
+                return;
+            }
 
+            console.log(`RSVP button clicked: Event ID ${eventId}, Button Status: ${buttonStatus}, API Status: ${apiStatus}`);
+
+            // --- UI Feedback ---
             if (rsvpConfirmationMessage) {
                 rsvpConfirmationMessage.textContent = "Updating RSVP...";
-                rsvpConfirmationMessage.style.color = '';
+                rsvpConfirmationMessage.style.color = ''; // Reset color
                 rsvpConfirmationMessage.style.display = 'block';
             }
             modalRsvpControls.style.pointerEvents = 'none';
             modalRsvpControls.style.opacity = '0.6';
-            _updateRSVPButtonState(apiStatus); // Optimistic UI update
+            _updateRSVPButtonState(apiStatus); // Optimistic UI update for button state
 
             try {
+                // --- API Call ---
                 const response = await fetch(`/api/events/${eventId}/rsvp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: apiStatus })
+                    body: JSON.stringify({ status: apiStatus }) // Send 'going', 'maybe', 'not_going', or null
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: 'Update failed.' }));
+                    // Try to get error detail from backend response
+                    const errorData = await response.json().catch(() => ({ detail: `Update failed (${response.status})` }));
                     throw new Error(errorData.detail || `Update failed (${response.status})`);
                 }
-                const result = await response.json();
+
+                // --- Success ---
+                const result = await response.json(); // result should contain { message: "...", status: "..." }
                 console.log("RSVP update successful:", result);
 
+                // Update confirmation message based on the *actual* status returned by the API
                 if (rsvpConfirmationMessage) {
-                     rsvpConfirmationMessage.textContent = apiStatus ? `Your RSVP is set to ${newStatus}!` : "Your RSVP has been cleared.";
+                     const friendlyStatus = result.status ? result.status.charAt(0).toUpperCase() + result.status.slice(1) : 'cleared';
+                     rsvpConfirmationMessage.textContent = result.status ? `Your RSVP is set to ${friendlyStatus}!` : "Your RSVP has been cleared.";
                      setTimeout(() => { if(rsvpConfirmationMessage) rsvpConfirmationMessage.style.display = 'none'; }, 3000);
                 }
 
-                await _fetchEventDetails(eventId); // Refresh list
+                // --- !!! DISPATCH EVENT FOR ORBIT LAYOUT !!! ---
+                const rsvpEvent = new CustomEvent('rsvpUpdated', {
+                    detail: {
+                        eventId: parseInt(eventId, 10), // Ensure it's a number
+                        newStatus: result.status // Use the status from the API response!
+                    },
+                    bubbles: true,
+                    composed: true
+                });
+                document.dispatchEvent(rsvpEvent);
+                console.log(`[modalManager] Dispatched 'rsvpUpdated' event. Detail:`, rsvpEvent.detail);
+                // --- !!! END DISPATCH EVENT !!! ---
+
+                // Refresh attendee list in the modal AFTER dispatching
+                // No need to call _fetchEventDetails unless you want to refresh attendees immediately
+                // _updateRSVPButtonState was already called optimistically and the backend confirmed via result.status
+                // If you need the attendee list refreshed:
+                await _populateAttendeeList(await fetch(`/api/events/${eventId}/attendees`).then(res => res.json()));
+
 
             } catch (error) {
+                // --- Error Handling ---
                 console.error("Error updating RSVP:", error);
                 if (rsvpConfirmationMessage) {
                     rsvpConfirmationMessage.textContent = `Error: ${error.message || 'Could not update.'}`;
                     rsvpConfirmationMessage.style.color = 'red';
+                    // Optionally hide the error message after a delay
+                    // setTimeout(() => { if(rsvpConfirmationMessage) rsvpConfirmationMessage.style.display = 'none'; }, 5000);
                 }
-                // Re-enable buttons even on error (handled by finally in _fetchEventDetails)
-                // but ensure state reflects reality by re-fetching
-                await _fetchEventDetails(eventId); // Fetch again to potentially revert optimistic UI
+                // Fetch the *actual* current state on error to revert optimistic UI
+                console.log("Re-fetching details after RSVP error...");
+                await _fetchEventDetails(eventId);
+
+            } finally {
+                // --- Re-enable Controls ---
+                // This happens regardless of success/error after fetching details or catching error
+                if (modalRsvpControls) {
+                    modalRsvpControls.style.pointerEvents = 'auto';
+                    modalRsvpControls.style.opacity = '1';
+                }
             }
-             // _fetchEventDetails re-enables controls in its finally block
         });
     } else {
         console.warn("RSVP controls container not found during internal setup.");
     }
-     console.log("Internal modal event listeners set up.");
+     // console.log("Internal modal event listeners set up."); // Less noisy
 }
 
 
@@ -300,7 +355,8 @@ export function setupModal() {
 export async function openEventModal(eventData) {
     if (!isInitialized) {
         console.error("Modal is not initialized. Cannot open.");
-        alert("Cannot display event details right now.");
+        // Provide user feedback directly if possible
+        alert("Error: Cannot display event details right now. Please try again later.");
         return;
     }
     if (!eventData || !eventData.id) {
@@ -308,32 +364,36 @@ export async function openEventModal(eventData) {
         alert("Sorry, could not load details for this event.");
         return;
     }
-    console.log("Opening modal externally for event:", eventData.title);
+    console.log(`Opening modal for event: ${eventData.title} (ID: ${eventData.id})`);
 
-    _resetModal(); // Clear previous content
+    _resetModal(); // Clear previous content immediately
 
-    // Populate initial known data
+    // Populate initial known data from the object passed in
+    // These details don't require an extra fetch if already available
     if (modalEventImage) modalEventImage.src = eventData.image_url || '/static/img/default-event-logo.png';
     if (modalEventTitle) modalEventTitle.textContent = eventData.title || 'Untitled Event';
-    if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group'; // Assuming group_name is available
+    if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group'; // Make sure 'group_name' is in eventData if needed
     if (modalEventDate) modalEventDate.textContent = formatEventDateForDisplay(eventData.date ? new Date(eventData.date) : null);
     if (modalEventLocation) modalEventLocation.textContent = eventData.location || 'Location not specified';
     if (modalEventCost) modalEventCost.textContent = eventData.cost_display || 'No cost information provided';
-    if (modalEventDescription) modalEventDescription.textContent = eventData.description || 'No description provided.';
+    if (modalEventDescription) modalEventDescription.innerHTML = eventData.description || 'No description provided.'; // Use innerHTML if description might contain HTML
     if (modalRsvpControls) {
         modalRsvpControls.dataset.eventId = eventData.id;
-        modalRsvpControls.style.display = 'flex';
-        modalRsvpControls.style.pointerEvents = 'none'; // Disable until async data loads
+        modalRsvpControls.style.display = 'flex'; // Show controls
+        // Controls initially disabled until async data loads
+        modalRsvpControls.style.pointerEvents = 'none';
         modalRsvpControls.style.opacity = '0.6';
     }
 
-    // Show the modal
-    modalElement.style.display = 'flex';
+    // Show the modal using CSS transition
+    modalElement.style.display = 'flex'; // Make it visible for transition
+    // Use requestAnimationFrame to ensure 'display: flex' is applied before adding 'visible' class
     requestAnimationFrame(() => {
         modalElement.classList.add('visible');
     });
 
-    // Fetch async details
+    // Fetch async details (attendees and MY rsvp status)
+    // This will update the attendee list and the RSVP button state
     await _fetchEventDetails(eventData.id);
 }
 

@@ -325,13 +325,14 @@ def create_group_api():
     db.session.commit()
     return jsonify(group.to_dict()), 201
 
-@app.route("/api/groups/<int:group_id>/nodes", methods=["GET"]) # Changed route
+@app.route("/api/groups/<int:group_id>/nodes", methods=["GET"]) # This is the route your eventRenderer.js calls
 @login_required
 @require_group_member
-def get_group_nodes(group_id): # Renamed function
+def get_group_nodes(group_id): # Renamed function (this is the correct function name based on the route)
     """
     Gets nodes for a specific group.
     Optionally includes nested events via ?include=events query parameter.
+    <-- THIS IS WHERE THE LOGIC NEEDS TO BE ADDED/CHECKED -->
     """
     group = Group.query.get_or_404(group_id) # Use get_or_404 for better error handling
 
@@ -345,7 +346,36 @@ def get_group_nodes(group_id): # Renamed function
 
     nodes = query.all()
 
-    nodes_data = [node.to_dict(include_events=include_events_flag) for node in nodes]
+    # --- PREVIOUS VERSION (doesn't pass current_user.id to to_dict) ---
+    # nodes_data = [node.to_dict(include_events=include_events_flag) for node in nodes]
+    # --- END PREVIOUS VERSION ---
+
+    # --- NEW VERSION (passes current_user.id to to_dict) ---
+    # Serialize nodes and their events, passing current_user ID to event serialization
+    nodes_data = []
+    for node in nodes:
+        node_dict = {
+            "id": node.id,
+            "label": node.label,
+            "x": node.x,
+            "y": node.y,
+            "group_id": node.group_id,
+            "events": [] # Initialize events list
+        }
+
+        if include_events_flag and node.events:
+            # Iterate through the eager-loaded events for this node
+            # Call event.to_dict(), passing the current user's ID
+            # --- THIS IS THE CRITICAL LINE TO CHECK/DEBUG ---
+            node_dict["events"] = [
+                event.to_dict(current_user_id=current_user.id) # Pass the ID here
+                for event in node.events
+            ]
+            # --- END CRITICAL LINE ---
+
+        nodes_data.append(node_dict)
+    # --- END NEW VERSION ---
+
     return jsonify(nodes_data) # Return the list directly
 
 # NEW: Endpoint to get a flat list of events for the group

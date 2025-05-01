@@ -1,6 +1,6 @@
 from app import db, login
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import UserMixin
+from flask_login import UserMixin, current_user
 from hashlib import md5
 from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -183,30 +183,56 @@ class Event(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(120))
-    date: Mapped[datetime]
+    # --- Explicitly add mapped_column for date ---
+    date: Mapped[datetime] = mapped_column(DateTime, nullable=False) # Assuming date is required
+    # --- End Change ---
     location: Mapped[str] = mapped_column(String(120))
-    description: Mapped[str] = mapped_column(String(240))
+    description: Mapped[str] = mapped_column(String(240), nullable=True) # Allow null description
     image_url: Mapped[str] = mapped_column(String(255), nullable=True)
     cost_display: Mapped[str] = mapped_column(String(50), nullable=True)
     node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
 
     # Relationships
-    node: Mapped["Node"] = relationship("Node", back_populates="events")
+    node: Mapped[Optional["Node"]] = relationship("Node", back_populates="events") # Optional if node_id can be null
 
     attendees: Mapped[List["EventRSVP"]] = relationship("EventRSVP", back_populates="event", cascade="all, delete-orphan")
     guests: Mapped[List["InvitedGuest"]] = relationship("InvitedGuest", back_populates="event")
 
-    def to_dict(self):
-        return {
+    # --- MODIFIED to_dict ---
+    def to_dict(self, current_user_id=None): # Accept optional user ID
+        """Serializes the Event object to a dictionary, optionally including the
+           RSVP status for the specified user."""
+        data = {
             "id": self.id,
             "title": self.title,
-            "date": self.date.isoformat().replace('+00:00', '') + "Z" if self.date else None,
+            # Ensure date handling is robust
+            "date": self.date.isoformat().replace('+00:00', 'Z') if self.date and isinstance(self.date, datetime) else None,
             "location": self.location,
             "description": self.description,
             "image_url": self.image_url,
             "cost_display": self.cost_display,
-            "node_id": self.node_id
+            "node_id": self.node_id,
+            # Initialize status, will be overwritten if user ID provided
+            "current_user_rsvp_status": None
         }
+
+        # If a user ID is provided, fetch their specific RSVP status for this event
+        if current_user_id is not None:
+            # We need access to the EventRSVP model here
+            # This import is okay inside the method for models usually
+            from app.models import EventRSVP
+            my_rsvp = db.session.execute(
+                db.select(EventRSVP).filter_by(event_id=self.id, user_id=current_user_id)
+            ).scalar_one_or_none() # Efficient way to get 0 or 1 result
+
+            # Use .scalar_one_or_none() to avoid errors if multiple exist (shouldn't happen with unique constraint)
+            # my_rsvp = EventRSVP.query.filter_by(event_id=self.id, user_id=current_user_id).first() # Alternative
+
+            if my_rsvp:
+                data['current_user_rsvp_status'] = my_rsvp.status
+            # else: status remains None (already set)
+
+        return data
     
 class GroupMember(db.Model):
     __tablename__ = "group_member"
@@ -229,6 +255,8 @@ class EventRSVP(db.Model):
 
     user: Mapped["User"] = relationship("User", back_populates="rsvps")
     event: Mapped["Event"] = relationship("Event", back_populates="attendees")
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'event_id', name='_user_event_uc'),)
 
 class InvitedGuest(db.Model):
     __tablename__ = "invited_guest"

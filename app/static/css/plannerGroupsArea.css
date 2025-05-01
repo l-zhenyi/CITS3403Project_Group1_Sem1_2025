@@ -592,7 +592,7 @@
     flex-shrink: 0;
 }
 
-.grid-item.more-info a.button.info-button {
+.grid-item.more-info button.button.info-button {
     /* Use em for padding, border */
     padding: 0.4em 1.5em;
     border: 0.07em solid rgba(255, 255, 255, 0.3);
@@ -610,11 +610,11 @@
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.grid-item.more-info a.button.info-button:hover {
+.grid-item.more-info button.button.info-button:hover {
     background: rgba(255, 255, 255, 0.25);
 }
 
-.grid-item.more-info a.button.info-button:active {
+.grid-item.more-info button.button.info-button:active {
     transform: scale(0.96);
 }
 
