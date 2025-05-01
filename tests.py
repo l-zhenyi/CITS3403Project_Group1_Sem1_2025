@@ -146,7 +146,7 @@ class GroupModelCase(unittest.TestCase):
         db.session.commit()
 
         # Create and commit a test group
-        group = Group(name="Test Group", avatar_url="http://example.com/avatar.jpg", about="A test group")
+        group = Group(name="Test Group", about="A test group")
         db.session.add(group)
         db.session.commit()
 
@@ -182,7 +182,7 @@ class GroupModelCase(unittest.TestCase):
         db.session.commit()
 
         # Create and commit a group
-        group = Group(name="Test Group", avatar_url="http://example.com/avatar.jpg", about="A test group")
+        group = Group(name="Test Group", about="A test group")
         db.session.add(group)
         db.session.commit()
 
@@ -226,7 +226,7 @@ class GroupModelCase(unittest.TestCase):
         db.session.commit()
 
         # Create a group and add u1
-        group = Group(name="Cool Group", avatar_url="http://example.com/avatar.jpg", about="A cool group")
+        group = Group(name="Cool Group", about="A cool group")
         db.session.add(group)
         db.session.commit()
 
@@ -261,7 +261,7 @@ class GroupModelCase(unittest.TestCase):
         db.session.commit()
 
         # Create a group and add u1
-        group = Group(name="Private Group", avatar_url="http://example.com/avatar.jpg", about="Private stuff")
+        group = Group(name="Private Group", about="Private stuff")
         db.session.add(group)
         db.session.commit()
 
