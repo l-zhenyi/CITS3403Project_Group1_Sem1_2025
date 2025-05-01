@@ -188,15 +188,13 @@ class Event(db.Model):
     description: Mapped[str] = mapped_column(String(240))
     image_url: Mapped[str] = mapped_column(String(255), nullable=True)
     cost_display: Mapped[str] = mapped_column(String(50), nullable=True)
-    rsvp_status: Mapped[str] = mapped_column(String(50), nullable=True)
-
     node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
 
     # Relationships
-    node = relationship("Node", back_populates="events")
+    node: Mapped["Node"] = relationship("Node", back_populates="events")
 
-    attendees = relationship("EventRSVP", back_populates="event", cascade="all, delete-orphan")
-    guests = relationship("InvitedGuest", back_populates="event")
+    attendees: Mapped[List["EventRSVP"]] = relationship("EventRSVP", back_populates="event", cascade="all, delete-orphan")
+    guests: Mapped[List["InvitedGuest"]] = relationship("InvitedGuest", back_populates="event")
 
     def to_dict(self):
         return {
@@ -207,7 +205,6 @@ class Event(db.Model):
             "description": self.description,
             "image_url": self.image_url,
             "cost_display": self.cost_display,
-            "rsvp_status": self.rsvp_status,
             "node_id": self.node_id
         }
     
@@ -227,10 +224,11 @@ class EventRSVP(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id"))
-    status: Mapped[str] = mapped_column(String(50))  # going / maybe / declined
+    status: Mapped[str] = mapped_column(String(50))  # attending, maybe, declined
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
-    user = relationship("User", back_populates="rsvps")
-    event = relationship("Event", back_populates="attendees")
+    user: Mapped["User"] = relationship("User", back_populates="rsvps")
+    event: Mapped["Event"] = relationship("Event", back_populates="attendees")
 
 class InvitedGuest(db.Model):
     __tablename__ = "invited_guest"

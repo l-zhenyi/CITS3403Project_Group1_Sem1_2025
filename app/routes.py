@@ -3,7 +3,7 @@ from flask import render_template, redirect, url_for, flash, request, session, j
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message
+from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
@@ -458,3 +458,144 @@ def modify_or_delete_node(node_id):
         db.session.delete(node)
         db.session.commit()
         return jsonify({"success": True})
+    
+def _check_event_authorization(event_id, user_id):
+    """
+    Checks if a user is authorized to interact with an event.
+    Authorization is granted if:
+    1. The user is a member of the group the event belongs to (via its Node).
+    2. OR the user's email is listed in the InvitedGuest table for this event.
+    """
+    event = Event.query.get(event_id)
+    if not event:
+        return False, "Event not found", 404 # Event doesn't exist
+
+    # We need the user object to check their email for invites
+    user = User.query.get(user_id)
+    if not user:
+        # This shouldn't typically happen if @login_required is used, but it's a safeguard
+        return False, "User performing check not found", 404 # Or maybe 401/403
+
+    # --- Check 1: Group Membership (if applicable) ---
+    is_group_member = False
+    if event.node_id:
+        node = Node.query.get(event.node_id)
+        # Check if node exists and has a group_id link
+        if node and node.group_id:
+            member_check = GroupMember.query.filter_by(user_id=user_id, group_id=node.group_id).first()
+            if member_check:
+                # User is a group member, grant access immediately
+                return True, "Authorized as group member", 200
+        # else:
+            # If node or group link is missing, we can't check membership.
+            # Proceed to check invites. Or you could return an error here if
+            # event.node_id should always point to a valid node/group.
+            # print(f"Warning: Event {event_id} has node_id {event.node_id} but node/group link is invalid.")
+            pass # Continue to check for invites
+
+    # --- Check 2: Invited Guest (if not already authorized as group member) ---
+    # Query InvitedGuest table using the user's email and the event ID
+    is_invited = InvitedGuest.query.filter_by(event_id=event.id, email=user.email).first()
+    if is_invited:
+        # User was explicitly invited via email, grant access
+        return True, "Authorized as invited guest", 200
+
+    # --- If neither check passed ---
+    return False, "You are not authorized for this event (not a group member or invited guest).", 403 # Forbidden
+
+# --- New API Routes for Event Modal ---
+
+@app.route('/api/events/<int:event_id>/attendees', methods=['GET'])
+@login_required
+def get_event_attendees(event_id):
+    """API endpoint to get the list of attendees for a specific event."""
+    authorized, message, status_code = _check_event_authorization(event_id, current_user.id)
+    if not authorized:
+        return jsonify({"error": message}), status_code
+
+    # Query RSVPs for the event, joining with User to get details
+    # Eagerly load user details to avoid N+1 queries
+    # Filter out potential null/empty statuses if you only want confirmed attendees
+    rsvps = EventRSVP.query.options(joinedload(EventRSVP.user))\
+                           .filter(EventRSVP.event_id == event_id)\
+                           .filter(EventRSVP.status.isnot(None))\
+                           .order_by(EventRSVP.timestamp.desc())\
+                           .all()
+
+    attendees = []
+    for rsvp in rsvps:
+        if rsvp.user: # Ensure user exists
+            attendees.append({
+                'user_id': rsvp.user.id,
+                'username': rsvp.user.username,
+                'avatar_url': rsvp.user.avatar(128), # Use the avatar method
+                'status': rsvp.status
+            })
+
+    return jsonify(attendees)
+
+@app.route('/api/events/<int:event_id>/my-rsvp', methods=['GET'])
+@login_required
+def get_my_rsvp(event_id):
+    """API endpoint to get the current user's RSVP status for an event."""
+    authorized, message, status_code = _check_event_authorization(event_id, current_user.id)
+    if not authorized:
+        return jsonify({"error": message}), status_code
+
+    rsvp = EventRSVP.query.filter_by(event_id=event_id, user_id=current_user.id).first()
+
+    status = rsvp.status if rsvp else None # Return None if no RSVP found
+
+    return jsonify({"status": status})
+
+
+@app.route('/api/events/<int:event_id>/rsvp', methods=['POST'])
+@login_required
+def update_my_rsvp(event_id):
+    """API endpoint for the current user to set/update their RSVP."""
+    authorized, message, status_code = _check_event_authorization(event_id, current_user.id)
+    if not authorized:
+        return jsonify({"error": message}), status_code
+
+    data = request.get_json()
+    if not data or 'status' not in data:
+        return jsonify({"error": "Missing 'status' in request body"}), 400
+
+    new_status = data['status'] # Can be 'going', 'maybe', 'not_going', or None/null
+
+    # Validate status (allow None/null for clearing RSVP)
+    allowed_statuses = ['attending', 'maybe', 'declined', None]
+    if new_status not in allowed_statuses:
+        return jsonify({"error": f"Invalid status provided. Allowed: {allowed_statuses}"}), 400
+
+    # Find existing RSVP
+    rsvp = EventRSVP.query.filter_by(event_id=event_id, user_id=current_user.id).first()
+
+    if new_status is None:
+        # User wants to clear their RSVP
+        if rsvp:
+            db.session.delete(rsvp)
+            db.session.commit()
+            return jsonify({"message": "RSVP cleared successfully.", "status": None})
+        else:
+            # No RSVP existed, nothing to clear
+            return jsonify({"message": "No existing RSVP to clear.", "status": None})
+    else:
+        # User wants to set or update their RSVP
+        if rsvp:
+            # Update existing RSVP
+            rsvp.status = new_status
+            rsvp.timestamp = datetime.now(timezone.utc) # Update timestamp
+            db.session.commit()
+            return jsonify({"message": f"RSVP updated to '{new_status}'.", "status": new_status})
+        else:
+            # Create new RSVP
+            new_rsvp = EventRSVP(
+                event_id=event_id,
+                user_id=current_user.id,
+                status=new_status,
+                timestamp=datetime.now(timezone.utc)
+            )
+            db.session.add(new_rsvp)
+            db.session.commit()
+            return jsonify({"message": f"RSVP successfully set to '{new_status}'.", "status": new_status}), 201 # 201 Created
