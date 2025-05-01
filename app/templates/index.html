@@ -8,6 +8,7 @@
 
 
 {% block content %}
+<br>
 <h1>Hi, {{ current_user.username }}!</h1>
 {# Use planner-interface for consistency, allows potential centering/padding #}
 <div class="dashboard-container"> {# Add specific container class #}
@@ -55,8 +56,11 @@
             </div>
         </div>
         <br>
-        <p><a href="{{ url_for('create_group') }}">Create a new group</a></p>
-
+        
+        <button onclick="location.href='{{ url_for('create_group')}}'" class="custom_button">
+            Create a new group
+        </button>
+          
         <p>
             {% include '_group.html' %}
         </p>
