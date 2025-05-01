@@ -135,11 +135,19 @@ class Group(db.Model):
         back_populates="group", cascade="all, delete-orphan"
     )
 
+    @property
+    def avatar(self, size=128):
+        if self.avatar_url:
+            return self.avatar_url
+        # fallback: generate based on group name hash
+        digest = md5(str(self.id).lower().encode('utf-8')).hexdigest()
+        return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
+
     def to_dict(self, include_nodes=True):
         data = {
             "id": self.id,
             "name": self.name,
-            "avatar_url": self.avatar_url,
+            "avatar_url": self.avatar,
             "about": self.about
         }
 
