@@ -302,11 +302,11 @@
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.custom-button:hover {
+.custom_button:hover {
     background-color: #01471257;
     transform: scale(1.05);
 }
 
-.custom-button:active {
+.custom_button:active {
     transform: scale(0.98);
 }
