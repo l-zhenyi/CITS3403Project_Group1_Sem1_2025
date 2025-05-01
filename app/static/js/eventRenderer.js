@@ -16,23 +16,19 @@ const layoutInstances = new Map();
 // createEventPanel function remains mostly the same
 // (Ensure data-snapped-to-node is correctly set as before)
 function createEventPanel(event) {
-    // console.log("Creating panel for event:", event); // Keep for debugging if needed
     const panel = document.createElement('div');
     panel.className = 'event-panel';
-    if (event.id) {
-        panel.dataset.eventId = event.id;
-    } else {
-        console.warn("Event object missing 'id':", event);
-    }
 
-    // Ensure data-snapped-to-node is set correctly
+    // Basic ID and node ID
+    if (event.id) panel.dataset.eventId = event.id;
     if (event.node_id !== null && event.node_id !== undefined && String(event.node_id).trim() !== '') {
-        // console.log(` -> Setting data-snapped-to-node="${String(event.node_id)}" for event ${event.id}`);
         panel.dataset.snappedToNode = String(event.node_id);
-    } else {
-        // console.log(` -> NOT setting data-snapped-to-node for event ${event.id}. Reason: event.node_id is`, event.node_id);
     }
 
+    // Save the actual event object directly (attach it neatly)
+    panel._eventData = event;
+
+    // Basic overlay for quick info
     const dateText = event.formatted_date || (event.date ? formatEventDateForDisplay(new Date(event.date)) : 'No Date');
     const image = document.createElement('img');
     image.className = 'event-image';
@@ -44,8 +40,11 @@ function createEventPanel(event) {
     infoOverlay.className = 'event-info-overlay';
     infoOverlay.innerHTML = `
         <div class="event-name">${event.title || 'Untitled Event'}</div>
-        ${event.location ? `<div class="event-location">📍 ${event.location}</div>` : ''}
-        <div class="event-details">${dateText}${event.cost_display ? ` | ${event.cost_display}` : ''}</div>
+        <div class="event-overlay-details">
+          <p>📅 <strong>${dateText}</strong></p>
+          ${event.location ? `<p>📍 <strong>${event.location}</strong></p>` : ''}
+          ${event.cost_display ? `<p>💲 <strong>${event.cost_display}</strong></p>` : ''}
+        </div>
     `;
 
     if (event.rsvp_status) {
@@ -58,23 +57,10 @@ function createEventPanel(event) {
     panel.appendChild(image);
     panel.appendChild(infoOverlay);
 
-    const actions = document.createElement('div');
-    actions.className = 'event-actions';
-    actions.style.display = 'none';
-    actions.innerHTML = `
-        <button class="button accept">Accept</button>
-        <button class="button decline">Decline</button>
-    `;
-    panel.appendChild(actions);
-
     panel.style.position = 'absolute';
-    // Use event.x/y only if NOT snapped, otherwise layout manager handles it
     if (!panel.dataset.snappedToNode) {
         panel.style.left = `${Number(event.x || 0)}px`;
         panel.style.top = `${Number(event.y || 0)}px`;
-    } else {
-        // Let layout manager position initially based on its calculation
-        // Might need a brief 'visibility: hidden' then 'visible' if initial flash is an issue
     }
 
     return panel;
@@ -126,14 +112,14 @@ function makeDraggableNode(element) {
                 },
                 body: JSON.stringify({ x, y })
             })
-            .then(res => {
-                if (!res.ok) console.error(`Failed to update node ${nodeId} position.`);
-                return res.json();
-            })
-            .then(data => {
-                console.log(`Node ${nodeId} position updated`, data);
-            })
-            .catch(err => console.error(`Error updating node ${nodeId}:`, err));
+                .then(res => {
+                    if (!res.ok) console.error(`Failed to update node ${nodeId} position.`);
+                    return res.json();
+                })
+                .then(data => {
+                    console.log(`Node ${nodeId} position updated`, data);
+                })
+                .catch(err => console.error(`Error updating node ${nodeId}:`, err));
         }
     }
 

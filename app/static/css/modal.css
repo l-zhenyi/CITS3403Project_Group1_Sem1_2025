@@ -1,0 +1,412 @@
+/* ==========================================================================
+    Event Details Modal Styles
+   ========================================================================== */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(10, 10, 15, 0.6); /* Darker semi-transparent backdrop */
+    backdrop-filter: blur(8px) saturate(110%);
+    -webkit-backdrop-filter: blur(8px) saturate(110%);
+    z-index: 1000; /* Ensure it's on top */
+    display: flex; /* Use flex to center modal content */
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.modal-backdrop.visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0s linear 0s;
+}
+
+.modal-content {
+    position: relative;
+    background: rgba(45, 45, 55, 0.7); /* Slightly lighter glassy background */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 25px 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 850px; /* Limit max width */
+    max-height: 90vh; /* Limit max height */
+    overflow: hidden; /* Prevent content spilling before inner scroll */
+    display: flex;
+    flex-direction: column;
+    color: #e0e0e5; /* Light text color */
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal-backdrop.visible .modal-content {
+     transform: scale(1);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+    color: #fff;
+}
+
+/* Modal Header */
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    margin-bottom: 20px;
+    flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+.modal-event-image-small {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-title-group {
+    flex-grow: 1;
+}
+
+.modal-header h2 {
+    margin: 0 0 2px 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.modal-header p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#modal-group-name {
+    font-weight: 500;
+}
+
+/* Modal Body */
+.modal-body {
+    display: flex;
+    flex-grow: 1; /* Allow body to take remaining space */
+    gap: 30px;
+    overflow-y: auto; /* Enable scrolling for the body */
+    padding-right: 10px; /* Space for scrollbar */
+    margin-right: -10px; /* Offset scrollbar padding */
+    min-height: 0; /* Important for flex-grow + overflow */
+}
+
+/* Scrollbar Styling (Optional but nice) */
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-body::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+.modal-body::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+.modal-body { /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05);
+}
+
+
+.modal-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.modal-col-details {
+    flex: 1 1 60%; /* Takes more space */
+}
+
+.modal-col-rsvps {
+    flex: 1 1 40%; /* Takes less space */
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    padding-left: 30px;
+}
+
+.modal-detail-section h3 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 12px;
+    margin-top: 0;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
+    gap: 15px;
+}
+
+.detail-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.detail-label {
+    display: block;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.detail-item span:not(.detail-label) {
+    font-size: 0.95rem;
+    color: #e0e0e5;
+}
+
+.modal-description-section p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #c5c5cc; /* Slightly dimmer for description */
+    margin: 0;
+    white-space: pre-wrap; /* Respect line breaks in description */
+}
+
+/* RSVP Controls */
+.rsvp-button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap; /* Allow wrapping on smaller modals */
+}
+
+.rsvp-btn {
+    flex-grow: 1; /* Make buttons share space */
+    padding: 9px 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e5;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex; /* Use flex for icon + text */
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    min-width: 90px; /* Ensure minimum width */
+}
+
+.rsvp-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.rsvp-btn:active {
+     transform: scale(0.97);
+}
+
+/* Specific RSVP Button Styles when ACTIVE (aria-pressed="true") */
+.rsvp-btn[aria-pressed="true"] {
+    color: #fff;
+    font-weight: 600;
+}
+
+.rsvp-btn.rsvp-attending[aria-pressed="true"] {
+    background-color: rgba(40, 167, 69, 0.7); /* Green */
+    border-color: rgba(40, 167, 69, 0.9);
+}
+.rsvp-btn.rsvp-maybe[aria-pressed="true"] {
+    background-color: rgba(255, 193, 7, 0.7); /* Yellow */
+    border-color: rgba(255, 193, 7, 0.9);
+    color: #333; /* Darker text for yellow */
+}
+.rsvp-btn.rsvp-declined[aria-pressed="true"] {
+    background-color: rgba(220, 53, 69, 0.7); /* Red */
+    border-color: rgba(220, 53, 69, 0.9);
+}
+.rsvp-btn.rsvp-remove { /* Style for the optional clear button */
+    background-color: rgba(108, 117, 125, 0.5); /* Grey */
+    border-color: rgba(108, 117, 125, 0.7);
+}
+
+
+.rsvp-message {
+    font-size: 0.85rem;
+    margin-top: 10px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+
+/* Attendees List */
+.attendee-list-container {
+    max-height: 250px; /* Limit height and make scrollable */
+    overflow-y: auto;
+    padding-right: 5px; /* Scrollbar space */
+    margin-right: -5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Attendee scrollbar */
+.attendee-list-container::-webkit-scrollbar { width: 5px; }
+.attendee-list-container::-webkit-scrollbar-track { background: transparent; }
+.attendee-list-container::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+.attendee-list-container { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent; }
+
+
+#modal-attendee-list {
+    list-style: none;
+    padding: 8px;
+    margin: 0;
+}
+
+#modal-attendee-list li {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+#modal-attendee-list li:not(:last-child) {
+     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#modal-attendee-list li:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+
+.attendee-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    margin-right: 10px;
+    object-fit: cover;
+    flex-shrink: 0; /* Prevent avatar shrinking */
+}
+
+.attendee-name {
+    flex-grow: 1; /* Take available space */
+    font-size: 0.9rem;
+    color: #d0d0d5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 10px; /* Space before pill */
+}
+
+/* Status pills (reuse from expanded view if possible, or redefine) */
+.status-pill {
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: #fff;
+    flex-shrink: 0; /* Prevent pill shrinking */
+}
+
+.status-pill.status-attending { background-color: rgba(40, 167, 69, 0.8); }
+.status-pill.status-maybe { background-color: rgba(255, 193, 7, 0.8); color: #333; }
+.status-pill.status-declined { background-color: rgba(220, 53, 69, 0.8); }
+.status-pill.status-unknown { background-color: rgba(108, 117, 125, 0.8); } /* For invited but not responded */
+
+
+#attendee-list-message {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+    padding: 15px;
+}
+
+
+/* Optional Footer */
+.modal-footer {
+    padding-top: 15px;
+    margin-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 10px;
+    flex-shrink: 0; /* Prevent footer from shrinking */
+}
+
+.admin-action-btn {
+     /* Style similarly to RSVP buttons or uniquely */
+     padding: 8px 18px;
+     border-radius: 8px;
+     cursor: pointer;
+     font-weight: 500;
+     background-color: rgba(255, 255, 255, 0.15);
+     border: 1px solid rgba(255, 255, 255, 0.3);
+     color: #e0e0e5;
+     transition: background-color 0.2s ease;
+}
+.admin-action-btn:hover {
+     background-color: rgba(255, 255, 255, 0.25);
+}
+.admin-action-btn.delete-btn {
+    background-color: rgba(220, 53, 69, 0.6);
+    border-color: rgba(220, 53, 69, 0.8);
+    color: #fff;
+}
+.admin-action-btn.delete-btn:hover {
+    background-color: rgba(220, 53, 69, 0.8);
+}
+
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+    .modal-content {
+        padding: 20px 20px;
+        max-width: 95%;
+        width: 95%;
+    }
+    .modal-body {
+        flex-direction: column; /* Stack columns */
+        gap: 25px;
+        padding-right: 5px;
+        margin-right: -5px;
+    }
+    .modal-col-rsvps {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding-top: 25px;
+    }
+     .modal-header h2 {
+         font-size: 1.4rem;
+     }
+     .modal-header p {
+          font-size: 0.85rem;
+      }
+      .attendee-list-container {
+          max-height: 200px; /* Adjust height for smaller screens */
+      }
+}
