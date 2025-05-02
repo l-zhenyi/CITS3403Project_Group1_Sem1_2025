@@ -1,0 +1,104 @@
+.chat-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+}
+
+.chat-title {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.chat-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.chat-message {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    background-color: #ffffff;
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.chat-message.sent {
+    align-self: flex-end;
+    background-color: #e6f3ff;
+}
+
+.chat-message.received {
+    align-self: flex-start;
+    background-color: #f1f1f1;
+}
+
+.chat-message img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.message-content {
+    flex: 1;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.3rem;
+}
+
+.sender-name {
+    font-weight: bold;
+    color: #1a1a1a;
+}
+
+.timestamp {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.message-body {
+    color: #333;
+    font-size: 1rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.no-messages {
+    text-align: center;
+    color: #777;
+    padding: 2rem;
+}
+
+.pagination-nav {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.pager {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.pager-link {
+    text-decoration: none;
+    color: #007bff;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.pager-link:hover {
+    color: #0056b3;
+}
