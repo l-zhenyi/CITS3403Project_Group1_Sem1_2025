@@ -1,29 +1,41 @@
 {% extends "base.html" %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/messages.css') }}" type="text/css">
+{% endblock %}
+
 {% block content %}
-    <h1>{{ ('Messages') }}</h1>
+<div class="chat-container">
+    <h1 class="chat-title">Messages</h1>
+
     {% if messages %}
+    <div class="chat-thread">
         {% for message in messages %}
-            {% include '_message.html' %}
+        <div class="chat-message {% if message.sender == current_user %}sent{% else %}received{% endif %}">
+            <img src="{{ message.sender.avatar(36) }}" alt="Avatar">
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="sender-name">{{ message.sender.username }}</span>
+                    <span class="timestamp">{{ message.timestamp.strftime('%b %d, %Y %I:%M %p') }}</span>
+                </div>
+                <div class="message-body">{{ message.body }}</div>
+            </div>
+        </div>
         {% endfor %}
+    </div>
     {% else %}
-        <p>{{ ('You currently have no messages.') }}</p>
+    <div class="no-messages">You currently have no messages.</div>
     {% endif %}
-    
-    <nav aria-label="...">
+
+    <div class="pagination-nav">
         <ul class="pager">
             {% if prev_url %}
-                <a href="{{ prev_url or '#' }}">
-                    <span aria-hidden="true">&larr;</span> {{ ('Newer messages') }}
-                </a>
-            </li>
+            <li><a class="pager-link" href="{{ prev_url }}">← Newer messages</a></li>
             {% endif %}
             {% if next_url %}
-                <a href="{{ next_url or '#' }}">
-                    {{ ('Older messages') }} <span aria-hidden="true">&rarr;</span>
-                </a>
-            </li>
+            <li><a class="pager-link" href="{{ next_url }}">Older messages →</a></li>
             {% endif %}
         </ul>
-    </nav>
+    </div>
+</div>
 {% endblock %}
