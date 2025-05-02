@@ -33,7 +33,7 @@
                   <div class="search-widget" id="search-widget">
                       <input type="search" id="user-search-input" class="search-input" placeholder="Search users..." autocomplete="off">
                       <button class="icon-button search-toggle-btn" id="search-toggle-btn" aria-label="Toggle search" aria-expanded="false">🔍</button>
-                      <div id="search-results" class="search-results-dropdown">
+                      <div id="search-results" class="search-results-dropdown glassy">
                           <!-- Search results will appear here -->
                           <div class="search-results-placeholder">Start typing to search...</div>
                       </div>
@@ -61,11 +61,6 @@
       {% endwith %}
 
       {% block content %}{% endblock %}
-      {% block scripts %}
-          {# Add main.js if you haven't already #}
-          <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
-      {% endblock %}
-
       </body>
 </html>
 {# --- END: base.html Modification --- #}
