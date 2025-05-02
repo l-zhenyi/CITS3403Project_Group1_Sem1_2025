@@ -8,6 +8,7 @@ import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupLi
 import { hookEventFilterBar } from './eventActions.js';
 import { setupModal, openEventModal } from './modalManager.js';
 import { setupViewportInteractions, getTransformState, setTransformState, debounce } from './viewportManager.js';
+import { setupSearchWidget } from './search.js';
 
 // --- Global/Module Scope Variables ---
 window.draggingAllowed = true; // Global flag for OrbitLayout compatibility
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupViewSwitching(); // Sets up tab clicks -> switchView
     hookEventFilterBar();
     hookCalendarNavigation();
+    setupSearchWidget(); // Setup search widget functionality
 
     // --- Load Initial Group Data ---
     console.log("Loading initial group data...");

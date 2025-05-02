@@ -629,3 +629,32 @@ def update_my_rsvp(event_id):
             db.session.add(new_rsvp)
             db.session.commit()
             return jsonify({"message": f"RSVP successfully set to '{new_status}'.", "status": new_status}), 201 # 201 Created
+        
+@app.route('/api/search/users', methods=['GET'])
+@login_required
+def api_search_users():
+    """API endpoint for searching users by username (case-insensitive)."""
+    query = request.args.get('q', '').strip()
+    limit = request.args.get('limit', 10, type=int) # Limit results
+
+    if not query:
+        return jsonify([]) # Return empty list if query is empty
+
+    # Basic case-insensitive search using ilike
+    # For true fuzzy search, you might need extensions like pg_trgm or libraries
+    users_query = User.query.filter(
+        User.username.ilike(f'%{query}%')
+    ).limit(limit)
+
+    users = users_query.all()
+
+    # Prepare data for JSON response (include necessary fields)
+    results = []
+    for user in users:
+        results.append({
+            'id': user.id,
+            'username': user.username,
+            'avatar_url': user.avatar(40) # Request a suitable avatar size
+        })
+
+    return jsonify(results)

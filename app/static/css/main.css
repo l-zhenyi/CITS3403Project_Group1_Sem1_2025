@@ -155,11 +155,18 @@
   .top-nav-left a:not(.active):hover {
     background-color: rgba(255, 255, 255, 0.15);
   }
+
+  .top-nav-right {
+  /* ADD/MODIFY these properties */
+  display: flex;         /* Ensure it's a flex container */
+  align-items: center;   /* Vertically align items */
+  flex-wrap: nowrap;     /* PREVENT items from wrapping to the next line */
+  gap: 8px; /* Optional: Use gap for consistent spacing instead of margins */
+}
   
   .top-nav-right .icon-button {
     /* Box Model */
     padding: 8px;
-    margin-left: 12px;
     border: none;
     border-radius: 50%; /* Circular */
   
@@ -182,3 +189,143 @@
       max-height: 100%;  /* Adjust height to suit your design */
       overflow-y: auto;   /* Enable vertical scrolling */
   }
+
+  /* --- START: Search Widget CSS --- */
+
+.search-widget {
+    position: relative; /* For positioning the dropdown */
+    display: flex;
+    align-items: center;
+    margin-left: 10px; /* Adjust spacing as needed */
+}
+
+.search-input {
+    width: 0;
+    padding: 5px 0; /* Adjust vertical padding */
+    margin: 0;
+    border: none;
+    border-radius: 15px; /* Match button or desired style */
+    font-size: 0.9em;
+    opacity: 0;
+    transition: width 0.4s ease-in-out, opacity 0.3s ease-in-out 0.1s, padding 0.4s ease-in-out;
+    pointer-events: none; /* Prevent interaction when hidden */
+    background-color: rgba(255, 255, 255, 0.8); /* Slightly transparent */
+    color: #333;
+    outline: none; /* Remove default focus outline */
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Styles when the search widget is active/expanded */
+.search-widget.active .search-input {
+    width: 180px; /* Adjust desired expanded width */
+    padding: 5px 10px; /* Horizontal padding when expanded */
+    opacity: 1;
+    pointer-events: auto; /* Allow interaction */
+    border: 1px solid #ccc; /* Add a subtle border when active */
+}
+
+.search-toggle-btn {
+    /* Keep icon button styles */
+    /* Optional: Adjust position slightly if needed */
+    margin-left: -28px; /* Overlap slightly initially or adjust as needed */
+    transition: margin-left 0.4s ease-in-out;
+    z-index: 2; /* Ensure button is clickable over the input edge */
+}
+
+.search-widget.active .search-toggle-btn {
+    /* Position button inside the input field when active */
+    margin-left: -35px; /* Pull it left over the input's right edge */
+    /* background: transparent; Optionally make background transparent */
+    /* color: #555; Optionally change color */
+}
+
+
+/* Search Results Dropdown */
+.search-results-dropdown {
+    display: none; /* Hide initially */
+    position: absolute;
+    top: calc(100% + 5px); /* Position below the input/button */
+    right: 0; /* Align to the right of the widget */
+    width: 250px; /* Or max-width */
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 100; /* Ensure it's above other content */
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.search-widget.active .search-results-dropdown.visible {
+    display: block; /* Show when results are available AND widget is active */
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.search-results-placeholder,
+.search-results-loading,
+.search-results-error,
+.search-results-empty {
+    padding: 10px 15px;
+    color: #777;
+    font-style: italic;
+    text-align: center;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    text-decoration: none;
+    color: #333;
+    transition: background-color 0.15s ease;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background-color: #f5f5f5;
+}
+
+.search-result-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 10px;
+    object-fit: cover; /* Ensure image covers the area nicely */
+    flex-shrink: 0;
+}
+
+.search-result-username {
+    font-weight: 500;
+    font-size: 0.95em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --- END: Search Widget CSS --- */
+
+/* Optional: Style for flash messages */
+.flash-messages {
+    list-style: none;
+    padding: 10px;
+    margin: 10px auto;
+    max-width: 600px; /* Adjust as needed */
+    background-color: #e7f3fe;
+    border: 1px solid #d0e3f0;
+    border-radius: 4px;
+    color: #31708f;
+}
+.flash-messages li {
+    margin-bottom: 5px;
+}
+.flash-messages li:last-child {
+    margin-bottom: 0;
+}
