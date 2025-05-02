@@ -126,7 +126,7 @@ function _updateRSVPButtonState(status) {
     rsvpButtons.forEach(btn => btn.setAttribute('aria-pressed', 'false'));
 
     // Check if status is one of the valid RSVP states (not null or 'none')
-    if (normalizedStatus && ['going', 'maybe', 'not_going'].includes(normalizedStatus)) {
+    if (normalizedStatus && ['attending', 'maybe', 'declined'].includes(normalizedStatus)) {
         const activeButton = modalRsvpControls?.querySelector(`.rsvp-btn[data-status="${normalizedStatus}"]`);
         if (activeButton) activeButton.setAttribute('aria-pressed', 'true');
         if (clearRsvpButton) clearRsvpButton.style.display = 'inline-flex';
