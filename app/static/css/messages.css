@@ -1,6 +1,6 @@
 .chat-container {
-    max-width: 900px;
-    margin: 0 auto;
+    width: 1200px;
+    margin: 5rem auto 2rem auto;
     padding: 2rem;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f9f9f9;
@@ -52,8 +52,8 @@
 
 .message-header {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.3rem;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .sender-name {
