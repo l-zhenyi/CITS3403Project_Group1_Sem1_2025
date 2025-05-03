@@ -1,145 +1,323 @@
 /* --- START OF FILE plannerInsightsArea.css --- */
 
 /* ==========================================================================
-   Insights View Styles
+   Insights View Styles (Corrected Structure)
    ========================================================================== */
 
 .insights-view {
-    /* Positioning & Box Model */
-    display: none; /* Hidden by default, shown via JS */
-    flex-direction: column;
+    display: none; /* Hidden by default */
+    flex-direction: column; /* Stack title, grid, palette vertically */
     flex-grow: 1;
     width: 100%;
-    height: 100%;
-    min-height: 0; /* Allow shrinking */
-    padding: 20px;
-    border-radius: inherit; /* Match parent rounding */
-    overflow-y: auto; /* Scroll the entire view if content overflows */
-    overflow-x: hidden;
+    height: 100%; /* Take full height of planner-pane */
+    min-height: 0;
+    /* Remove padding here, apply to children */
+    padding: 0;
+    border-radius: inherit;
+    overflow: hidden; /* Prevent this container from scrolling */
     color: #e0e0e5;
+    background-color: transparent; /* Let planner-pane handle background */
 }
 
 .insights-title {
     font-size: 1.4rem;
     font-weight: 600;
     color: #fff;
-    margin-bottom: 20px;
+    margin: 20px 20px 0 20px; /* Add margin */
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
-    flex-shrink: 0;
+    flex-shrink: 0; /* Don't shrink title */
 }
 
+/* NEW: Wrapper for the grid that will scroll */
+.insights-grid-container {
+    flex-grow: 1; /* Take available vertical space */
+    overflow-y: auto; /* Enable vertical scrolling ONLY for this container */
+    overflow-x: hidden;
+    min-height: 0; /* Crucial for scrolling in flex child */
+    padding: 20px; /* Add padding INSIDE the scrollable area */
+}
+
+/* Grid for Added Panels (No layout changes needed here) */
 .insights-grid {
     display: grid;
-    /* 2 columns, taking equal space */
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px; /* Gap between panels */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
     width: 100%;
-    flex-grow: 1; /* Allow grid to expand if view scrolls */
+    /* No flex-grow needed here, parent container handles it */
 }
 
+.insights-empty-message {
+     color: #bbb;
+     text-align:center;
+     grid-column: 1 / -1;
+     padding: 30px 0; /* Adjusted padding */
+     font-style: italic;
+     align-self: start;
+}
+
+/* Individual Panel in the Grid (Styles remain mostly the same) */
 .insight-panel {
-    /* Inherit glassy from HTML */
     display: flex;
     flex-direction: column;
-    padding: 18px 22px;
+    padding: 0;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.25);
-    min-height: 200px; /* Minimum height for panels */
-    /* Add transition for potential drag effects later */
+    min-height: 220px;
+    overflow: hidden;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.insight-panel.draggable {
-    /* Style applied if JS drag-and-drop is added */
-    /* Example: slightly lift on drag */
-    /* &.dragging { transform: scale(1.02); box-shadow: 0 12px 35px rgba(0,0,0,0.3); } */
+    /* Inherit glassy from HTML */
 }
 
 .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
+    padding: 12px 18px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    flex-shrink: 0; /* Prevent header shrinking */
+    background-color: rgba(0,0,0, 0.1);
+    flex-shrink: 0;
 }
 
 .panel-title {
     font-size: 1.05rem;
     font-weight: 600;
     color: #fff;
+    margin-right: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.drag-handle {
-    font-size: 1.4rem;
-    color: rgba(255, 255, 255, 0.5);
-    cursor: grab;
-    padding: 0 5px;
-    transition: color 0.2s ease;
+.panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.drag-handle:hover {
-    color: rgba(255, 255, 255, 0.8);
+.panel-action-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
 }
-
-/* Add grabbing cursor if JS adds a class */
-/* .insight-panel.dragging .drag-handle { cursor: grabbing; } */
+.panel-action-btn:hover { background-color: rgba(255, 255, 255, 0.2); color: #fff; }
+.panel-action-btn:active { transform: scale(0.9); }
+.panel-action-btn.remove-panel-btn:hover { background-color: rgba(220, 53, 69, 0.7); }
 
 .panel-content {
-    flex-grow: 1; /* Take remaining space in the panel */
+    flex-grow: 1;
     font-size: 0.9rem;
     color: #e0e0e5;
     line-height: 1.5;
+    padding: 15px 18px;
+    overflow-y: auto;
+}
+.panel-content p { margin-bottom: 8px; }
+.panel-content p:last-of-type { margin-bottom: 0; }
+.placeholder-chart { /* Keep placeholder styles */ }
+
+
+/* ==========================================================================
+   Analysis Palette (Positioned at the end of the flex container)
+   ========================================================================== */
+
+.analysis-palette {
+    flex-shrink: 0; /* Prevent palette from shrinking */
+    z-index: 100; /* Keep above scrolled content if overlap occurs */
+
+    /* Styling */
+    margin: 15px; /* Margin around the palette */
+    padding: 10px 15px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    max-width: calc(100% - 30px); /* Ensure margin is respected */
+    background: rgba(100, 100, 110, 0.75);
+    backdrop-filter: blur(25px) saturate(160%);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+
+    /* Remove absolute/sticky positioning */
+    /* position: sticky; REMOVED */
+    /* bottom: 15px; REMOVED */
+    /* left: 15px; REMOVED */
+    /* right: 15px; REMOVED */
 }
 
-.panel-content p {
-    margin-bottom: 8px;
-}
-.panel-content p:last-of-type {
-     margin-bottom: 0;
+.palette-scroll-container {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 10px;
+    margin-bottom: -10px;
+    /* Scrollbar styles remain the same */
+    &::-webkit-scrollbar { height: 6px; }
+    &::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px; }
+    &::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.3); border-radius: 3px; }
 }
 
-.placeholder-chart {
-    /* Styles are inline in HTML for simplicity, but could be classes */
-    /* Example: */
-    /* border: 1px dashed rgba(255,255,255,0.2); */
+/* Palette Item styles remain the same */
+.palette-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: 200px;
+    padding: 12px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    cursor: default;
+    transition: background-color 0.2s ease;
 }
+.palette-item:hover { background-color: rgba(255, 255, 255, 0.12); }
+
+.palette-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.palette-item-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #fff;
+    margin-right: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.add-analysis-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.add-analysis-btn:hover { background-color: rgba(255, 255, 255, 0.25); }
+.add-analysis-btn:active { transform: scale(0.9); }
+
+.palette-item-desc {
+    font-size: 0.8rem;
+    color: #c5c5cc;
+    line-height: 1.4;
+    flex-grow: 1;
+}
+
+/* Preview Popup styles remain the same */
+.palette-item-preview {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(10px) scale(0.95);
+    transform-origin: bottom center;
+    z-index: 110;
+    min-width: 220px;
+    max-width: 280px;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25);
+    background: rgba(90, 90, 100, 0.85);
+    backdrop-filter: blur(20px) saturate(140%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s;
+}
+.palette-item:hover .palette-item-preview {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0) scale(1);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0s;
+}
+.preview-title {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+.preview-content { text-align: center; }
+
 
 /* --- Mobile Adjustments --- */
 @media (max-width: 768px) {
-    .insights-view {
-        padding: 15px;
-    }
+    /* insights-view already flex-column */
 
     .insights-title {
         font-size: 1.25rem;
-        margin-bottom: 15px;
+        margin: 15px 15px 0 15px; /* Adjust margin */
+    }
+
+    .insights-grid-container {
+        padding: 15px; /* Adjust padding */
     }
 
     .insights-grid {
-        /* Stack panels in a single column */
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* Force single column */
         gap: 15px;
     }
 
-    .insight-panel {
-        padding: 15px 18px;
-        min-height: 180px; /* Adjust min height if needed */
+    .insight-panel { min-height: 180px; }
+    .panel-header { padding: 10px 15px; }
+    .panel-content { padding: 12px 15px; }
+    .panel-title { font-size: 1rem; }
+    .panel-action-btn { width: 26px; height: 26px; font-size: 0.8rem; }
+
+    .analysis-palette {
+        margin: 10px; /* Adjust margin */
+        padding: 8px 10px;
+        border-radius: 12px;
+        max-width: calc(100% - 20px); /* Adjust max-width */
     }
 
-    .panel-title {
-        font-size: 1rem;
+    .palette-scroll-container { gap: 10px; }
+
+    .palette-item { width: 160px; padding: 10px; }
+    .palette-item-title { font-size: 0.85rem; }
+    .add-analysis-btn { width: 22px; height: 22px; font-size: 1rem; }
+    .palette-item-desc { font-size: 0.75rem; }
+
+    /* Preview adjustments remain the same */
+    .palette-item-preview {
+        min-width: calc(100vw - 40px);
+        left: 10px; right: 10px;
+        transform: translateX(0) translateY(10px) scale(0.95);
+        transform-origin: bottom left;
     }
+    .palette-item:hover .palette-item-preview { transform: translateX(0) translateY(0) scale(1); }
+    @media (hover: none) { .palette-item-preview { display: none !important; } }
 
     /* Important: Ensure mobile event view class doesn't interfere */
     /* when Insights view is active */
-     .planner-pane.insights-view-active.mobile-event-view-active .group-list-area,
-     .planner-pane.insights-view-active.mobile-event-view-active .event-collage-area,
-     .planner-pane.insights-view-active.mobile-event-view-active .calendar-view,
-     .planner-pane.insights-view-active.mobile-event-view-active .events-view {
+    .planner-pane.insights-view-active.mobile-event-view-active .group-list-area,
+    .planner-pane.insights-view-active.mobile-event-view-active .event-collage-area,
+    .planner-pane.insights-view-active.mobile-event-view-active .calendar-view,
+    .planner-pane.insights-view-active.mobile-event-view-active .events-view {
         display: none !important;
         flex: 0 0 0 !important;
         opacity: 0 !important;
@@ -147,7 +325,8 @@
     }
 
     .planner-pane.insights-view-active.mobile-event-view-active .insights-view {
-        display: flex !important; /* Ensure insights view stays visible */
+        display: flex !important;
+        /* Ensure insights view stays visible */
         flex: 1 1 auto !important;
         opacity: 1 !important;
         pointer-events: auto !important;
