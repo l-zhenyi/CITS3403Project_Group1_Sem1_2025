@@ -99,107 +99,41 @@
             </section>
 
             <!-- ================== CORRECTED Insights View Area ================== -->
+            <!-- ================== UPDATED Insights View Area ================== -->
             <section class="insights-view" id="insights-view">
-                {# Title Remains #}
                 <h2 class="insights-title">Insights Dashboard</h2>
 
-                {# Grid for ADDED panels - This section will scroll #}
-                <div class="insights-grid-container"> {# <-- ADDED Wrapper for scrolling grid #}
+                <div class="insights-grid-container"> {# Scrollable container #}
+                    {# Removed absolute #drop-preview #}
                     <div class="insights-grid" id="insights-grid">
-                        <!-- Insight panels added here by JS -->
-                         <p class="insights-empty-message" style="color: #bbb; text-align:center; grid-column: 1 / -1; padding-top: 30px; font-style: italic;">Add analyses from the palette below to get started.</p>
-
-                        {# EXAMPLE of an added panel structure (JS would generate this) #}
-                        {#
-                        <div class="insight-panel glassy" data-panel-id="unique-id-trends-123">
-                            <div class="panel-header">
-                                <span class="panel-title">Event Attendance Trends</span>
-                                <div class="panel-actions"> ... buttons ... </div>
-                            </div>
-                            <div class="panel-content"> ... content ... </div>
-                        </div>
-                         #}
-                         {# End Example Panel #}
+                        <p class="insights-empty-message" id="insights-empty-message">Add analyses from the palette below to get started.</p>
+                        {# Panels go here, layout by CSS Grid #}
                     </div>
-                </div> {# <-- END insights-grid-container #}
+                </div>
 
-                {# Analysis Palette at the bottom - Fixed within insights-view #}
+                {# Analysis Palette (No structural changes needed here) #}
                 <div class="analysis-palette glassy" id="analysis-palette">
-                    <div class="palette-scroll-container">
-
-                        {# Palette Item 1 #}
-                        <div class="palette-item" data-analysis-type="attendance-trends">
-                            <div class="palette-item-preview glassy">
-                                <span class="preview-title">Attendance Trends Example</span>
-                                <div class="preview-content">
-                                    <img src="/static/img/placeholder-line-chart.png" alt="Line chart preview" style="width: 100%; height: 80px; object-fit: contain; opacity: 0.8;">
-                                    <p style="font-size: 0.8em; margin-top: 5px; color: #ccc;">Shows event attendance over time.</p>
-                                </div>
-                            </div>
-                            <div class="palette-item-header">
-                                <span class="palette-item-title">📈 Attendance Trends</span>
-                                <button class="add-analysis-btn" aria-label="Add Attendance Trends Analysis" title="Add Analysis">+</button>
-                            </div>
-                            <p class="palette-item-desc">Track attendance rate across your events.</p>
-                        </div>
-
-                         {# Palette Item 2 #}
-                        <div class="palette-item" data-analysis-type="active-groups">
-                             <div class="palette-item-preview glassy">
-                                 <span class="preview-title">Active Groups Example</span>
-                                 <div class="preview-content" style="font-size: 0.9em; color: #ddd;">
-                                     <ol style="margin: 5px 0 0 15px; padding: 0;">
-                                         <li>Top Group Name (25)</li>
-                                         <li>Second Group (18)</li>
-                                         <li>Another One (15)</li>
-                                     </ol>
-                                     <p style="font-size: 0.8em; margin-top: 8px; color: #ccc;">Ranks groups by recent activity.</p>
-                                 </div>
-                             </div>
-                             <div class="palette-item-header">
-                                <span class="palette-item-title">🏆 Active Groups</span>
-                                <button class="add-analysis-btn" aria-label="Add Active Groups Analysis" title="Add Analysis">+</button>
-                            </div>
-                             <p class="palette-item-desc">See which groups are creating the most events.</p>
-                        </div>
-
-                         {# Palette Item 3 #}
-                         <div class="palette-item" data-analysis-type="rsvp-distribution">
-                             <div class="palette-item-preview glassy">
-                                  <span class="preview-title">RSVP Distribution Example</span>
-                                  <div class="preview-content">
-                                    <img src="/static/img/placeholder-pie-chart.png" alt="Pie chart preview" style="width: 80%; height: 80px; object-fit: contain; opacity: 0.8; margin: 0 auto;">
-                                      <p style="font-size: 0.8em; margin-top: 5px; color: #ccc;">Typical Going/Maybe/No breakdown.</p>
-                                  </div>
-                             </div>
-                             <div class="palette-item-header">
-                                <span class="palette-item-title">📊 RSVP Distribution</span>
-                                <button class="add-analysis-btn" aria-label="Add RSVP Distribution Analysis" title="Add Analysis">+</button>
-                             </div>
-                             <p class="palette-item-desc">Analyze typical RSVP patterns for events.</p>
-                         </div>
-
-                          {# Palette Item 4 #}
-                         <div class="palette-item" data-analysis-type="busy-periods">
-                             <div class="palette-item-preview glassy">
-                                  <span class="preview-title">Busy Periods Example</span>
-                                  <div class="preview-content">
-                                      <img src="/static/img/placeholder-heatmap.png" alt="Heatmap preview" style="width: 100%; height: 80px; object-fit: contain; opacity: 0.8;">
-                                      <p style="font-size: 0.8em; margin-top: 5px; color: #ccc;">Highlights days with high event density.</p>
-                                  </div>
-                             </div>
-                             <div class="palette-item-header">
-                                <span class="palette-item-title">🗓️ Busy Periods</span>
-                                <button class="add-analysis-btn" aria-label="Add Busy Periods Analysis" title="Add Analysis">+</button>
-                            </div>
-                             <p class="palette-item-desc">Identify upcoming high-activity dates.</p>
-                         </div>
-                        <!-- Add more palette items as needed -->
-
-                    </div> {# End palette-scroll-container #}
-                </div> {# End analysis-palette #}
-
-            </section> {# <-- END insights-view section #}
+                   <div class="palette-header">...</div>
+                   <div class="palette-scroll-container" id="palette-scroll-container">
+                       {# Palette Items with data attributes needed for cloning #}
+                       <div class="palette-item" data-analysis-type="attendance-trends" data-title="📈 Attendance Trends" data-description="Track attendance rate across your events." data-placeholder-html="<img src='/static/img/placeholder-line-chart.png' alt='...' style='...'>">
+                           {# ... header/desc ... #}
+                       </div>
+                       <div class="palette-item" data-analysis-type="active-groups" data-title="🏆 Active Groups" data-description="See which groups are creating the most events." data-placeholder-html="<ol style='...'><li>...</li></ol>">
+                           {# ... header/desc ... #}
+                       </div>
+                        <div class="palette-item" data-analysis-type="rsvp-distribution" data-title="📊 RSVP Distribution" data-description="Analyze typical RSVP patterns for events." data-placeholder-html="<img src='/static/img/placeholder-pie-chart.png' alt='...' style='...'>">
+                           {# ... header/desc ... #}
+                       </div>
+                       <div class="palette-item" data-analysis-type="busy-periods" data-title="🗓️ Busy Periods" data-description="Identify upcoming high-activity dates." data-placeholder-html="<img src='/static/img/placeholder-heatmap.png' alt='...' style='...'>">
+                           {# ... header/desc ... #}
+                       </div>
+                       {# ... etc ... #}
+                   </div>
+                </div>
+                 {# Single Preview Container for Palette Hover #}
+                 <div id="palette-preview-container" class="palette-item-preview-container glassy"></div>
+            </section>
             <!-- ================== END Insights View Area ================== -->
 
         </div> <!-- End of planner-pane -->

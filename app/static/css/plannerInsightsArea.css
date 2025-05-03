@@ -1,336 +1,307 @@
 /* --- START OF FILE plannerInsightsArea.css --- */
 
 /* ==========================================================================
-   Insights View Styles (Corrected Structure)
+   Insights View Styles (Custom Drag, Repel, Preview)
    ========================================================================== */
 
 .insights-view {
-    display: none; /* Hidden by default */
-    flex-direction: column; /* Stack title, grid, palette vertically */
+    display: none;
+    flex-direction: column;
     flex-grow: 1;
     width: 100%;
-    height: 100%; /* Take full height of planner-pane */
+    height: 100%;
     min-height: 0;
-    /* Remove padding here, apply to children */
     padding: 0;
     border-radius: inherit;
-    overflow: hidden; /* Prevent this container from scrolling */
+    overflow: hidden;
     color: #e0e0e5;
-    background-color: transparent; /* Let planner-pane handle background */
+    background-color: transparent;
 }
 
 .insights-title {
     font-size: 1.4rem;
     font-weight: 600;
     color: #fff;
-    margin: 20px 20px 0 20px; /* Add margin */
+    margin: 20px 20px 0 20px;
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
-    flex-shrink: 0; /* Don't shrink title */
+    flex-shrink: 0;
 }
 
-/* NEW: Wrapper for the grid that will scroll */
+/* Scrollable Grid Container */
 .insights-grid-container {
-    flex-grow: 1; /* Take available vertical space */
-    overflow-y: auto; /* Enable vertical scrolling ONLY for this container */
+    flex-grow: 1;
+    overflow-y: auto;
     overflow-x: hidden;
-    min-height: 0; /* Crucial for scrolling in flex child */
-    padding: 20px; /* Add padding INSIDE the scrollable area */
+    min-height: 0;
+    padding: 20px;
+    transition: padding-bottom 0.3s ease;
+    position: relative; /* For positioning drop preview */
+}
+.insights-view.palette-collapsed .insights-grid-container {
+    padding-bottom: 0;
 }
 
-/* Grid for Added Panels (No layout changes needed here) */
+
+/* Grid for Added Panels */
 .insights-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns */
+    gap: 25px; /* Increased gap */
     width: 100%;
-    /* No flex-grow needed here, parent container handles it */
+    position: relative; /* Needed for absolute positioning of dragging item */
+    min-height: 100%; /* Ensure it takes space for preview/drop */
 }
 
 .insights-empty-message {
-     color: #bbb;
-     text-align:center;
-     grid-column: 1 / -1;
-     padding: 30px 0; /* Adjusted padding */
-     font-style: italic;
-     align-self: start;
+     color: #bbb; text-align:center; grid-column: 1 / -1; padding: 30px 0;
+     font-style: italic; align-self: start; display: block;
 }
+.insights-grid:not(:empty) ~ .insights-empty-message,
+.insights-grid .insight-panel + .insights-empty-message { display: none; }
 
-/* Individual Panel in the Grid (Styles remain mostly the same) */
+
+/* Individual Panel in the Grid */
 .insight-panel {
     display: flex;
     flex-direction: column;
     padding: 0;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.25);
-    min-height: 220px;
-    overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden; /* Still clip internal content */
+    /* Use aspect-ratio for squarish shape */
+    aspect-ratio: 1 / 0.85; /* Width / Height ratio - adjust 0.85 as needed */
+    /* position: relative; */ /* Let grid handle static position */
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.25s ease; /* Smooth transitions */
     /* Inherit glassy from HTML */
+    will-change: transform, box-shadow; /* Optimize animation */
 }
+
+/* Style for the element being actively dragged (clone or original) */
+.insight-panel.dragging {
+    position: fixed; /* Position relative to viewport for smooth drag */
+    z-index: 1000;
+    opacity: 0.95; /* Slightly transparent */
+    box-shadow: 0 12px 35px rgba(0,0,0,0.35);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(0.95); /* Scale down slightly */
+    transition: none; /* No transition while moving */
+    pointer-events: none; /* Prevent self-interaction */
+    cursor: grabbing; /* Use grabbing cursor directly */
+}
+
+.insight-panel.dragging .panel-header {
+     cursor: grabbing;
+}
+
+/* Style for panels being pushed away */
+.insight-panel.repelled {
+     /* transform set by JS */
+     /* transition: transform 0.15s cubic-bezier(0.25, 0.8, 0.25, 1); */ /* Optional: Smooth repel */
+     /* Keep transition short or off for responsiveness */
+     transition: transform 0.1s ease-out;
+}
+
 
 .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 18px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    background-color: rgba(0,0,0, 0.1);
-    flex-shrink: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(0,0,0, 0.1); flex-shrink: 0;
+    cursor: grab; /* Draggable indicator */
+    user-select: none; /* Prevent text selection when dragging */
+    -webkit-user-select: none;
+    touch-action: none; /* Prevent scrolling on touch devices when dragging header */
 }
+.panel-header:active { cursor: grabbing; }
 
 .panel-title {
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #fff;
-    margin-right: 10px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 1.05rem; font-weight: 600; color: #fff; margin-right: 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+     pointer-events: none; /* Prevent title interfering */
 }
 
-.panel-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
+.panel-actions { display: flex; align-items: center; gap: 6px; }
 
 .panel-action-btn {
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
-    cursor: pointer;
+    display: inline-flex; justify-content: center; align-items: center;
+    width: 28px; height: 28px; border: none; border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem; cursor: pointer;
     transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
 }
+.panel-action-btn i { pointer-events: none; }
 .panel-action-btn:hover { background-color: rgba(255, 255, 255, 0.2); color: #fff; }
 .panel-action-btn:active { transform: scale(0.9); }
 .panel-action-btn.remove-panel-btn:hover { background-color: rgba(220, 53, 69, 0.7); }
 
 .panel-content {
-    flex-grow: 1;
-    font-size: 0.9rem;
-    color: #e0e0e5;
-    line-height: 1.5;
-    padding: 15px 18px;
-    overflow-y: auto;
+    flex-grow: 1; font-size: 0.9rem; color: #e0e0e5; line-height: 1.5;
+    padding: 15px 18px; overflow-y: auto; min-height: 0;
 }
 .panel-content p { margin-bottom: 8px; }
 .panel-content p:last-of-type { margin-bottom: 0; }
-.placeholder-chart { /* Keep placeholder styles */ }
+.placeholder-chart {
+    height: auto; min-height: 100px; background: rgba(0,0,0,0.1); border-radius: 8px;
+    display:flex; align-items:center; justify-content:center; color: #aaa;
+    font-size: 0.9em; margin-top: 10px; flex-grow: 1;
+    /* Ensure placeholder content doesn't block pointer events */
+     pointer-events: none;
+}
+
+
+/* --- Drop Zone Preview --- */
+#drop-preview {
+    position: absolute;
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 16px; /* Match panel */
+    z-index: 50; /* Below dragging panel */
+    pointer-events: none; /* Don't interfere with mouse events */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0s linear 0.2s,
+                left 0.1s ease-out, top 0.1s ease-out,
+                width 0.1s ease-out, height 0.1s ease-out; /* Smooth position/size change */
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+
+.drop-preview-slot {
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 16px; /* Match panel */
+    box-sizing: border-box;
+    /* Dimensions will be set dynamically or use aspect-ratio */
+    aspect-ratio: 1 / 0.85; /* Match panel aspect ratio */
+    min-height: 100px; /* Ensure it has some height */
+    /* Grid placement handled by DOM insertion */
+    transition: opacity 0.15s ease;
+}
+
+#drop-preview.visible {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0s, 0s, 0s, 0s, 0s, 0s; /* Remove delay when showing */
+}
 
 
 /* ==========================================================================
-   Analysis Palette (Positioned at the end of the flex container)
+   Analysis Palette (Collapsible - Styles mostly remain the same)
    ========================================================================== */
 
 .analysis-palette {
-    flex-shrink: 0; /* Prevent palette from shrinking */
-    z-index: 100; /* Keep above scrolled content if overlap occurs */
-
-    /* Styling */
-    margin: 15px; /* Margin around the palette */
-    padding: 10px 15px;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    max-width: calc(100% - 30px); /* Ensure margin is respected */
-    background: rgba(100, 100, 110, 0.75);
-    backdrop-filter: blur(25px) saturate(160%);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-
-    /* Remove absolute/sticky positioning */
-    /* position: sticky; REMOVED */
-    /* bottom: 15px; REMOVED */
-    /* left: 15px; REMOVED */
-    /* right: 15px; REMOVED */
+    flex-shrink: 0; z-index: 100; margin: 15px; padding: 0; border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.25); max-width: calc(100% - 30px);
+    background: rgba(100, 100, 110, 0.75); backdrop-filter: blur(25px) saturate(160%);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15); overflow: hidden;
+    transition: all 0.35s ease-in-out; max-height: 300px; opacity: 1;
 }
+.analysis-palette.collapsed {
+    max-height: 50px; margin-top: 0; margin-bottom: 0; opacity: 0.9;
+    border-color: transparent; box-shadow: none;
+}
+.palette-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: border-color 0.3s ease;
+}
+.analysis-palette.collapsed .palette-header { border-bottom-color: transparent; }
+.palette-header-title { font-size: 0.95rem; font-weight: 500; color: #fff; }
+.palette-toggle-btn {
+    background: none; border: none; color: rgba(255, 255, 255, 0.7); font-size: 1.1rem;
+    cursor: pointer; padding: 5px; line-height: 1; border-radius: 50%;
+    transition: transform 0.3s ease, background-color 0.2s ease;
+}
+.palette-toggle-btn:hover { color: #fff; background-color: rgba(255, 255, 255, 0.1); }
+.analysis-palette.collapsed .palette-toggle-btn { transform: rotate(180deg); }
 
 .palette-scroll-container {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 10px;
-    margin-bottom: -10px;
-    /* Scrollbar styles remain the same */
+    display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden;
+    padding: 10px 15px; margin-bottom: -10px;
+    transition: opacity 0.2s ease; opacity: 1;
     &::-webkit-scrollbar { height: 6px; }
     &::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px; }
     &::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.3); border-radius: 3px; }
 }
+.analysis-palette.collapsed .palette-scroll-container { opacity: 0; pointer-events: none; }
 
 /* Palette Item styles remain the same */
-.palette-item {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    width: 200px;
-    padding: 12px;
-    border-radius: 10px;
-    background-color: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    cursor: default;
-    transition: background-color 0.2s ease;
-}
+/* ... (copy palette item styles from previous answer) ... */
+.palette-item { position: relative; display: flex; flex-direction: column; flex-shrink: 0; width: 200px; padding: 12px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); cursor: default; transition: background-color 0.2s ease; }
 .palette-item:hover { background-color: rgba(255, 255, 255, 0.12); }
-
-.palette-item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-}
-
-.palette-item-title {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #fff;
-    margin-right: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.add-analysis-btn {
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    width: 24px;
-    height: 24px;
-    border: none;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.15);
-    color: #fff;
-    font-size: 1.2rem;
-    font-weight: bold;
-    line-height: 1;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-}
+.palette-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.palette-item-title { font-size: 0.9rem; font-weight: 500; color: #fff; margin-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.add-analysis-btn { display: inline-flex; justify-content: center; align-items: center; width: 24px; height: 24px; border: none; border-radius: 50%; background-color: rgba(255, 255, 255, 0.15); color: #fff; font-size: 1.2rem; font-weight: bold; line-height: 1; cursor: pointer; flex-shrink: 0; transition: background-color 0.2s ease, transform 0.1s ease; }
 .add-analysis-btn:hover { background-color: rgba(255, 255, 255, 0.25); }
 .add-analysis-btn:active { transform: scale(0.9); }
+.palette-item-desc { font-size: 0.8rem; color: #c5c5cc; line-height: 1.4; flex-grow: 1; }
+.palette-item-preview { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(10px) scale(0.95); transform-origin: bottom center; z-index: 110; min-width: 220px; max-width: 280px; padding: 15px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25); background: rgba(90, 90, 100, 0.85); backdrop-filter: blur(20px) saturate(140%); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s; }
+.palette-item:hover .palette-item-preview { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1); transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0s; }
+.preview-title { display: block; font-size: 0.95rem; font-weight: 500; color: #fff; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.preview-content { text-align: center; }
+.preview-content img { max-width: 100%; height: auto; max-height: 100px; object-fit: contain; opacity: 0.8; display: block; margin: 0 auto 5px auto;}
+.preview-content p { font-size: 0.8em; margin-top: 5px; color: #ccc; }
+.preview-content ol { margin: 5px 0 0 15px; padding: 0; text-align: left; }
+.preview-content li { margin-bottom: 3px;}
 
-.palette-item-desc {
-    font-size: 0.8rem;
-    color: #c5c5cc;
-    line-height: 1.4;
-    flex-grow: 1;
+
+/* --- Mobile Adjustments --- */
+@media (max-width: 768px) {
+    .insights-grid {
+        grid-template-columns: 1fr; /* Single column */
+        gap: 15px;
+    }
+    .insight-panel {
+        aspect-ratio: 1 / 0.8; /* Adjust aspect ratio if needed for single column */
+        min-height: 200px;
+    }
+    /* Other mobile styles remain similar */
+    .analysis-palette { margin: 10px; max-width: calc(100% - 20px); }
+     @media (hover: none) { .palette-item-preview { display: none !important; } }
 }
 
-/* Preview Popup styles remain the same */
-.palette-item-preview {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%) translateY(10px) scale(0.95);
-    transform-origin: bottom center;
-    z-index: 110;
+#palette-preview-container {
+    position: fixed; /* Position relative to viewport */
+    z-index: 1100; /* High z-index */
+
+    /* Appearance (copied from .palette-item-preview) */
     min-width: 220px;
     max-width: 280px;
     padding: 15px;
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25);
-    background: rgba(90, 90, 100, 0.85);
+    background: rgba(90, 90, 100, 0.9); /* Slightly more opaque maybe */
     backdrop-filter: blur(20px) saturate(140%);
+    /* Inherit glassy from HTML */
+
+    /* Visibility & Animation */
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s;
+    transform: scale(0.95) translateY(10px); /* Start slightly down */
+    transform-origin: bottom center;
+     /* IMPORTANT: Define transition here */
+     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
 }
-.palette-item:hover .palette-item-preview {
+
+#palette-preview-container.visible {
     opacity: 1;
     visibility: visible;
-    transform: translateX(-50%) translateY(0) scale(1);
-    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0s;
+    transform: scale(1) translateY(0);
+     transition-delay: 0s, 0s, 0s; /* Remove delay */
 }
-.preview-title {
-    display: block;
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #fff;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
+
+/* Styles for content inside the preview container */
+#palette-preview-container .preview-title {
+    display: block; font-size: 0.95rem; font-weight: 500; color: #fff;
+    margin-bottom: 10px; padding-bottom: 6px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
-.preview-content { text-align: center; }
-
-
-/* --- Mobile Adjustments --- */
-@media (max-width: 768px) {
-    /* insights-view already flex-column */
-
-    .insights-title {
-        font-size: 1.25rem;
-        margin: 15px 15px 0 15px; /* Adjust margin */
-    }
-
-    .insights-grid-container {
-        padding: 15px; /* Adjust padding */
-    }
-
-    .insights-grid {
-        grid-template-columns: 1fr; /* Force single column */
-        gap: 15px;
-    }
-
-    .insight-panel { min-height: 180px; }
-    .panel-header { padding: 10px 15px; }
-    .panel-content { padding: 12px 15px; }
-    .panel-title { font-size: 1rem; }
-    .panel-action-btn { width: 26px; height: 26px; font-size: 0.8rem; }
-
-    .analysis-palette {
-        margin: 10px; /* Adjust margin */
-        padding: 8px 10px;
-        border-radius: 12px;
-        max-width: calc(100% - 20px); /* Adjust max-width */
-    }
-
-    .palette-scroll-container { gap: 10px; }
-
-    .palette-item { width: 160px; padding: 10px; }
-    .palette-item-title { font-size: 0.85rem; }
-    .add-analysis-btn { width: 22px; height: 22px; font-size: 1rem; }
-    .palette-item-desc { font-size: 0.75rem; }
-
-    /* Preview adjustments remain the same */
-    .palette-item-preview {
-        min-width: calc(100vw - 40px);
-        left: 10px; right: 10px;
-        transform: translateX(0) translateY(10px) scale(0.95);
-        transform-origin: bottom left;
-    }
-    .palette-item:hover .palette-item-preview { transform: translateX(0) translateY(0) scale(1); }
-    @media (hover: none) { .palette-item-preview { display: none !important; } }
-
-    /* Important: Ensure mobile event view class doesn't interfere */
-    /* when Insights view is active */
-    .planner-pane.insights-view-active.mobile-event-view-active .group-list-area,
-    .planner-pane.insights-view-active.mobile-event-view-active .event-collage-area,
-    .planner-pane.insights-view-active.mobile-event-view-active .calendar-view,
-    .planner-pane.insights-view-active.mobile-event-view-active .events-view {
-        display: none !important;
-        flex: 0 0 0 !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-    }
-
-    .planner-pane.insights-view-active.mobile-event-view-active .insights-view {
-        display: flex !important;
-        /* Ensure insights view stays visible */
-        flex: 1 1 auto !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-    }
-}
+#palette-preview-container .preview-content { text-align: center; }
+#palette-preview-container .preview-content img { max-width: 100%; height: auto; max-height: 100px; object-fit: contain; opacity: 0.8; display: block; margin: 0 auto 5px auto;}
+#palette-preview-container .preview-content p { font-size: 0.8em; margin-top: 5px; color: #ccc; }
+#palette-preview-container .preview-content ol { margin: 5px 0 0 15px; padding: 0; text-align: left; }
+#palette-preview-container .preview-content li { margin-bottom: 3px;}
 
 /* --- END OF FILE plannerInsightsArea.css --- */
