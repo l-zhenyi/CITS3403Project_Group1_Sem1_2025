@@ -39,13 +39,13 @@ export function setupSearchWidget() {
         try {
             const response = await fetch(`/api/search/users?q=${encodeURIComponent(query)}`);
             if (!response.ok) {
-                 // Try to parse error from backend
-                 let errorMsg = `Search failed (${response.status})`;
-                 try {
-                     const errData = await response.json();
-                     errorMsg = errData.error || errorMsg;
-                 } catch(e) { /* Ignore json parsing error */ }
-                 throw new Error(errorMsg);
+                // Try to parse error from backend
+                let errorMsg = `Search failed (${response.status})`;
+                try {
+                    const errData = await response.json();
+                    errorMsg = errData.error || errorMsg;
+                } catch (e) { /* Ignore json parsing error */ }
+                throw new Error(errorMsg);
             }
             const users = await response.json();
             renderSearchResults(users);
@@ -57,10 +57,10 @@ export function setupSearchWidget() {
 
     }, 300)); // 300ms debounce delay
 
-     // --- Prevent closing dropdown when clicking inside it ---
-     resultsDropdown.addEventListener('click', (e) => {
-         e.stopPropagation();
-     });
+    // --- Prevent closing dropdown when clicking inside it ---
+    resultsDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
 
     // --- Close dropdown if clicking outside the widget ---
     document.addEventListener('click', (e) => {
@@ -73,6 +73,9 @@ export function setupSearchWidget() {
         }
     });
 
+    window.addEventListener('resize', positionResultsDropdown);
+    window.addEventListener('scroll', positionResultsDropdown);
+
     // --- Helper Functions for Results Dropdown ---
     function clearSearchResults() {
         resultsDropdown.innerHTML = '';
@@ -80,12 +83,13 @@ export function setupSearchWidget() {
     }
 
     function setResultsMessage(message, type = 'placeholder') {
-         clearSearchResults();
-         const msgDiv = document.createElement('div');
-         msgDiv.className = `search-results-${type}`; // placeholder, loading, error, empty
-         msgDiv.textContent = message;
-         resultsDropdown.appendChild(msgDiv);
-         resultsDropdown.classList.add('visible');
+        clearSearchResults();
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `search-results-${type}`; // placeholder, loading, error, empty
+        msgDiv.textContent = message;
+        resultsDropdown.appendChild(msgDiv);
+        positionResultsDropdown();
+        resultsDropdown.classList.add('visible');
     }
 
     function showLoadingState() {
@@ -122,8 +126,16 @@ export function setupSearchWidget() {
             itemLink.appendChild(usernameSpan);
             resultsDropdown.appendChild(itemLink);
         });
-
+        positionResultsDropdown();
         resultsDropdown.classList.add('visible'); // Make dropdown visible
     }
 
+
+    function positionResultsDropdown() {
+        const rect = searchWidget.getBoundingClientRect();
+        resultsDropdown.style.position = 'fixed';
+        resultsDropdown.style.top = `${rect.bottom + 8}px`; // 8px below the search bar
+        resultsDropdown.style.left = `${rect.left}px`;
+        resultsDropdown.style.width = `${rect.width}px`;
+    }
 }

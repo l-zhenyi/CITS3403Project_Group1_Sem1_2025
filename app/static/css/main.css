@@ -169,36 +169,38 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
 /*   color: rgba(240, 240, 245, 0.8); */
 /* } */
 
-/* --- Search Results Dropdown (Glassy) --- */
+/* ==========================================================================
+   Search Results Dropdown (Darker & Matching Width)
+   ========================================================================== */
 .search-results-dropdown {
-  display: none; /* Hide initially */
-  position: absolute;
-  top: calc(100% + 8px); /* Position below the widget with a gap */
-  right: 0;
-  width: 250px;
+  position: fixed; /* KEEP this so it stays above page flow */
   max-height: 300px;
   overflow-y: auto;
-  border-radius: 8px; /* Consistent rounding */
-  z-index: 1001; /* Ensure it's above other content */
+  background-color: rgba(80, 80, 90, 0.4);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+          backdrop-filter: blur(12px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  z-index: 1100;
   opacity: 0;
-  transform: translateY(-5px) scale(0.98);
+  transform: scale(0.98);
   transition: opacity 0.2s ease-out, transform 0.2s ease-out;
 }
 
-/* Visibility class added by JS */
-.search-widget.active .search-results-dropdown.visible {
+.search-results-dropdown.visible {
   display: block;
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: scale(1);
 }
 
-/* Dropdown Content Styles */
+/* Dropdown Content Styles (Keep text light) */
 .search-results-placeholder,
 .search-results-loading,
 .search-results-error,
 .search-results-empty {
   padding: 12px 15px;
-  color: white;
+  color: rgba(240, 240, 245, 0.8); /* Slightly dimmed white */
   font-style: italic;
   font-size: 0.9em;
   text-align: center;
@@ -208,14 +210,18 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15); /* Lighter border inside */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Darker internal border */
   text-decoration: none;
-  color: #222; /* Dark text for readability */
+  /* --- UPDATED: Light text color --- */
+  color: #f0f0f5;
   transition: background-color 0.15s ease;
 }
 .search-result-item:last-child { border-bottom: none; }
-.search-result-item:hover { background-color: rgba(255, 255, 255, 0.2); }
-.search-result-avatar { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; object-fit: cover; flex-shrink: 0; }
+/* --- UPDATED: Subtle hover for dark background --- */
+.search-result-item:hover {
+  background-color: rgba(255, 255, 255, 0.1); /* Lighter shade on hover */
+}
+.search-result-avatar { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; object-fit: cover; flex-shrink: 0; background-color: rgba(255,255,255,0.1); /* Placeholder bg */ }
 .search-result-username { font-weight: 500; font-size: 0.95em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ==========================================================================

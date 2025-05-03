@@ -1,4 +1,3 @@
-{# --- START: base.html Modification --- #}
 <!doctype html>
 <html lang="en">
 <head>
@@ -33,10 +32,6 @@
                   <div class="search-widget" id="search-widget">
                       <input type="search" id="user-search-input" class="search-input" placeholder="Search users..." autocomplete="off">
                       <button class="icon-button search-toggle-btn" id="search-toggle-btn" aria-label="Toggle search" aria-expanded="false">🔍</button>
-                      <div id="search-results" class="search-results-dropdown glassy">
-                          <!-- Search results will appear here -->
-                          <div class="search-results-placeholder">Start typing to search...</div>
-                      </div>
                   </div>
                   {# --- END Search Widget --- #}
 
@@ -61,6 +56,10 @@
       {% endwith %}
 
       {% block content %}{% endblock %}
+
+      <div id="search-results" class="search-results-dropdown">
+          <!-- Search results will appear here -->
+          <div class="search-results-placeholder">Start typing to search...</div>
+      </div>
       </body>
 </html>
-{# --- END: base.html Modification --- #}
