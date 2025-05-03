@@ -12,7 +12,9 @@
     <div class="chat-thread">
         {% for message in messages %}
         <div class="chat-message {% if message.sender == current_user %}sent{% else %}received{% endif %}">
-            <img src="{{ message.sender.avatar(36) }}" alt="Avatar">
+            <a href="{{ url_for('user', username=message.sender.username) }}">
+                <img src="{{ message.sender.avatar(36) }}" alt="Avatar">
+            </a>            
             <div class="message-content">
                 <div class="message-header">
                     <span class="sender-name">{{ message.sender.username }}</span>
