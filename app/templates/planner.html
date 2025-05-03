@@ -98,40 +98,82 @@
                 </div>
             </section>
 
-            <!-- ================== CORRECTED Insights View Area ================== -->
             <!-- ================== UPDATED Insights View Area ================== -->
             <section class="insights-view" id="insights-view">
                 <h2 class="insights-title">Insights Dashboard</h2>
 
                 <div class="insights-grid-container"> {# Scrollable container #}
-                    {# Removed absolute #drop-preview #}
                     <div class="insights-grid" id="insights-grid">
                         <p class="insights-empty-message" id="insights-empty-message">Add analyses from the palette below to get started.</p>
                         {# Panels go here, layout by CSS Grid #}
                     </div>
                 </div>
 
-                {# Analysis Palette (No structural changes needed here) #}
+                {# Analysis Palette #}
                 <div class="analysis-palette glassy" id="analysis-palette">
-                   <div class="palette-header">...</div>
+                   <div class="palette-header" id="palette-header"> {# Added ID for JS toggle click target #}
+                        <span class="palette-header-title">Analysis Palette</span>
+                        <button class="palette-toggle-btn" id="palette-toggle-btn" aria-label="Collapse Palette" title="Collapse Palette">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
                    <div class="palette-scroll-container" id="palette-scroll-container">
-                       {# Palette Items with data attributes needed for cloning #}
-                       <div class="palette-item" data-analysis-type="attendance-trends" data-title="📈 Attendance Trends" data-description="Track attendance rate across your events." data-placeholder-html="<img src='/static/img/placeholder-line-chart.png' alt='...' style='...'>">
-                           {# ... header/desc ... #}
+                       {# --- Palette Items with FULL STRUCTURE --- #}
+                       <div class="palette-item"
+                            data-analysis-type="attendance-trends"
+                            data-title="📈 Attendance Trends"
+                            data-description="Track attendance rate across your events."
+                            data-placeholder-html="<img src='/static/img/placeholder-line-chart.png' alt='Line chart placeholder' style='max-width: 100%; height: auto; opacity: 0.7;'>">
+                            <div class="palette-item-header">
+                                <span class="palette-item-title">📈 Attendance Trends</span>
+                                <button class="add-analysis-btn" aria-label="Add Attendance Trends Analysis">+</button>
+                            </div>
+                            <p class="palette-item-desc">Track attendance rate across your events.</p>
+                            {# Removed inline preview div #}
                        </div>
-                       <div class="palette-item" data-analysis-type="active-groups" data-title="🏆 Active Groups" data-description="See which groups are creating the most events." data-placeholder-html="<ol style='...'><li>...</li></ol>">
-                           {# ... header/desc ... #}
+
+                       <div class="palette-item"
+                            data-analysis-type="active-groups"
+                            data-title="🏆 Active Groups"
+                            data-description="See which groups are creating the most events."
+                            data-placeholder-html="<ol style='text-align: left; padding-left: 20px; font-size: 0.9em; color: #ddd;'><li>Top Group (25)</li><li>Second Group (18)</li><li>Another One (15)</li></ol>">
+                           <div class="palette-item-header">
+                               <span class="palette-item-title">🏆 Active Groups</span>
+                               <button class="add-analysis-btn" aria-label="Add Active Groups Analysis">+</button>
+                           </div>
+                           <p class="palette-item-desc">See which groups are creating the most events.</p>
+                           {# Removed inline preview div #}
                        </div>
-                        <div class="palette-item" data-analysis-type="rsvp-distribution" data-title="📊 RSVP Distribution" data-description="Analyze typical RSVP patterns for events." data-placeholder-html="<img src='/static/img/placeholder-pie-chart.png' alt='...' style='...'>">
-                           {# ... header/desc ... #}
+
+                        <div class="palette-item"
+                             data-analysis-type="rsvp-distribution"
+                             data-title="📊 RSVP Distribution"
+                             data-description="Analyze typical RSVP patterns for events."
+                             data-placeholder-html="<img src='/static/img/placeholder-pie-chart.png' alt='Pie chart placeholder' style='max-width: 80%; height: auto; margin: 5px auto; display: block; opacity: 0.7;'>">
+                            <div class="palette-item-header">
+                                <span class="palette-item-title">📊 RSVP Distribution</span>
+                                <button class="add-analysis-btn" aria-label="Add RSVP Distribution Analysis">+</button>
+                            </div>
+                            <p class="palette-item-desc">Analyze typical RSVP patterns for events.</p>
+                            {# Removed inline preview div #}
                        </div>
-                       <div class="palette-item" data-analysis-type="busy-periods" data-title="🗓️ Busy Periods" data-description="Identify upcoming high-activity dates." data-placeholder-html="<img src='/static/img/placeholder-heatmap.png' alt='...' style='...'>">
-                           {# ... header/desc ... #}
+
+                       <div class="palette-item"
+                            data-analysis-type="busy-periods"
+                            data-title="🗓️ Busy Periods"
+                            data-description="Identify upcoming high-activity dates."
+                            data-placeholder-html="<img src='/static/img/placeholder-heatmap.png' alt='Heatmap placeholder' style='max-width: 100%; height: auto; opacity: 0.7;'>">
+                           <div class="palette-item-header">
+                               <span class="palette-item-title">🗓️ Busy Periods</span>
+                               <button class="add-analysis-btn" aria-label="Add Busy Periods Analysis">+</button>
+                           </div>
+                           <p class="palette-item-desc">Identify upcoming high-activity dates.</p>
+                           {# Removed inline preview div #}
                        </div>
-                       {# ... etc ... #}
+                       {# ... Add more palette items following this structure ... #}
                    </div>
                 </div>
-                 {# Single Preview Container for Palette Hover #}
+                 {# Single Preview Container for Palette Hover (remains the same) #}
                  <div id="palette-preview-container" class="palette-item-preview-container glassy"></div>
             </section>
             <!-- ================== END Insights View Area ================== -->

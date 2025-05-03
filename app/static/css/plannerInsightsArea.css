@@ -5,12 +5,12 @@
    ========================================================================== */
 
 .insights-view {
-    display: none;
+    display: none; /* Initially hidden, shown via JS */
     flex-direction: column;
     flex-grow: 1;
     width: 100%;
     height: 100%;
-    min-height: 0;
+    min-height: 0; /* Important for flex children */
     padding: 0;
     border-radius: inherit;
     overflow: hidden;
@@ -26,102 +26,143 @@
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
-    flex-shrink: 0;
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
 /* Scrollable Grid Container */
 .insights-grid-container {
-    flex-grow: 1;
+    flex-grow: 1; /* Take remaining vertical space */
     overflow-y: auto;
     overflow-x: hidden;
-    min-height: 0;
+    min-height: 0; /* Crucial for scrollability in flex column */
     padding: 20px;
     transition: padding-bottom 0.3s ease;
-    position: relative; /* For positioning drop preview */
+    position: relative; /* Needed for potential absolute positioned children if any */
 }
+/* Adjust padding when palette is collapsed (less space needed at bottom) */
 .insights-view.palette-collapsed .insights-grid-container {
-    padding-bottom: 0;
+    padding-bottom: 10px; /* Reduce bottom padding */
 }
 
 
 /* Grid for Added Panels */
 .insights-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* 2 columns */
-    gap: 25px; /* Increased gap */
+    grid-template-columns: repeat(2, 1fr); /* Default 2 columns */
+    gap: 25px; /* Increased gap between panels */
     width: 100%;
-    position: relative; /* Needed for absolute positioning of dragging item */
-    min-height: 100%; /* Ensure it takes space for preview/drop */
+    position: relative; /* Needed for absolute positioning of dragging item's reference */
+    min-height: 100px; /* Ensure it has some minimum height even when empty */
+    padding-bottom: 1px; /* Ensure gap calculations work correctly */
 }
 
+/* Empty state message */
 .insights-empty-message {
-     color: #bbb; text-align:center; grid-column: 1 / -1; padding: 30px 0;
-     font-style: italic; align-self: start; display: block;
+     color: #bbb;
+     text-align:center;
+     grid-column: 1 / -1; /* Span all columns */
+     padding: 40px 0;
+     font-style: italic;
+     align-self: start; /* Align to top */
+     display: block; /* Show by default */
+     font-size: 1rem;
 }
-.insights-grid:not(:empty) ~ .insights-empty-message,
-.insights-grid .insight-panel + .insights-empty-message { display: none; }
+/* Hide message if grid has children (panels or preview slot) */
+.insights-grid:has(.insight-panel),
+.insights-grid:has(.drop-preview-slot) {
+    & > .insights-empty-message {
+        display: none;
+    }
+}
 
 
 /* Individual Panel in the Grid */
 .insight-panel {
     display: flex;
     flex-direction: column;
-    padding: 0;
+    padding: 0; /* Padding applied to header/content */
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.25);
-    overflow: hidden; /* Still clip internal content */
-    /* Use aspect-ratio for squarish shape */
-    aspect-ratio: 1 / 0.85; /* Width / Height ratio - adjust 0.85 as needed */
-    /* position: relative; */ /* Let grid handle static position */
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.25s ease; /* Smooth transitions */
-    /* Inherit glassy from HTML */
-    will-change: transform, box-shadow; /* Optimize animation */
+    overflow: hidden; /* Clip internal content like charts */
+    aspect-ratio: 1 / 0.85; /* Maintain aspect ratio */
+    min-height: 180px; /* Prevent excessive shrinking */
+    box-sizing: border-box; /* Include border/padding in size */
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.25s ease;
+    background: rgba(60, 60, 70, 0.5); /* Slight background for contrast */
+    backdrop-filter: blur(10px) saturate(120%); /* Glassy effect */
+    will-change: transform, box-shadow, opacity; /* Optimize animation */
 }
 
-/* Style for the element being actively dragged (clone or original) */
+/* Style for the original panel when its clone is being dragged */
+.insight-panel.dragging-source-hidden {
+    opacity: 0.3; /* Make it faint */
+    /* visibility: hidden; */ /* Alternative: Completely hide but keep space */
+    /* border-style: dashed; */ /* Optional: indicate drop area */
+    /* background: rgba(255, 255, 255, 0.02); */ /* Optional: different bg */
+}
+
+/* Style for the cloned element being actively dragged */
 .insight-panel.dragging {
-    position: fixed; /* Position relative to viewport for smooth drag */
+    position: fixed; /* Position relative to viewport */
     z-index: 1000;
     opacity: 0.95; /* Slightly transparent */
     box-shadow: 0 12px 35px rgba(0,0,0,0.35);
     border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(0.95); /* Scale down slightly */
-    transition: none; /* No transition while moving */
+    /* transform: scale(0.95); /* Scale down slightly - managed by JS */
+    transition: none !important; /* No transition while moving */
     pointer-events: none; /* Prevent self-interaction */
-    cursor: grabbing; /* Use grabbing cursor directly */
+    cursor: grabbing !important; /* Use grabbing cursor directly */
+    transform-origin: center center;
 }
-
+.insight-panel.dragging * {
+    cursor: grabbing !important; /* Ensure children also show grabbing cursor */
+}
 .insight-panel.dragging .panel-header {
-     cursor: grabbing;
+     cursor: grabbing !important;
 }
 
-/* Style for panels being pushed away */
+
+/* Style for panels being pushed away (not currently implemented in JS, but style exists) */
 .insight-panel.repelled {
-     /* transform set by JS */
-     /* transition: transform 0.15s cubic-bezier(0.25, 0.8, 0.25, 1); */ /* Optional: Smooth repel */
-     /* Keep transition short or off for responsiveness */
+     /* transform set by JS if implemented */
      transition: transform 0.1s ease-out;
 }
 
 
 .panel-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    background-color: rgba(0,0,0, 0.1); flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(0,0,0, 0.1); /* Subtle darker header */
+    flex-shrink: 0; /* Prevent header from shrinking */
     cursor: grab; /* Draggable indicator */
     user-select: none; /* Prevent text selection when dragging */
     -webkit-user-select: none;
     touch-action: none; /* Prevent scrolling on touch devices when dragging header */
 }
-.panel-header:active { cursor: grabbing; }
-
-.panel-title {
-    font-size: 1.05rem; font-weight: 600; color: #fff; margin-right: 10px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-     pointer-events: none; /* Prevent title interfering */
+.panel-header:active {
+    cursor: grabbing;
 }
 
-.panel-actions { display: flex; align-items: center; gap: 6px; }
+.panel-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+    margin-right: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none; /* Prevent title interfering with drag */
+}
+
+.panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0; /* Prevent actions shrinking */
+}
 
 .panel-action-btn {
     display: inline-flex; justify-content: center; align-items: center;
@@ -130,178 +171,368 @@
     font-size: 0.9rem; cursor: pointer;
     transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
 }
-.panel-action-btn i { pointer-events: none; }
+.panel-action-btn i { pointer-events: none; } /* Icon shouldn't interfere */
 .panel-action-btn:hover { background-color: rgba(255, 255, 255, 0.2); color: #fff; }
 .panel-action-btn:active { transform: scale(0.9); }
-.panel-action-btn.remove-panel-btn:hover { background-color: rgba(220, 53, 69, 0.7); }
+.panel-action-btn.remove-panel-btn:hover { background-color: rgba(220, 53, 69, 0.7); color: #fff; }
 
 .panel-content {
-    flex-grow: 1; font-size: 0.9rem; color: #e0e0e5; line-height: 1.5;
-    padding: 15px 18px; overflow-y: auto; min-height: 0;
+    flex-grow: 1; /* Allow content to fill remaining space */
+    font-size: 0.9rem;
+    color: #e0e0e5;
+    line-height: 1.5;
+    padding: 15px 18px;
+    overflow-y: auto; /* Allow scrolling if content exceeds panel height */
+    min-height: 0; /* Required for overflow scroll in flex item */
+    display: flex; /* Use flex to push placeholder down if needed */
+    flex-direction: column; /* Stack text and placeholder */
 }
 .panel-content p { margin-bottom: 8px; }
 .panel-content p:last-of-type { margin-bottom: 0; }
+
+/* Placeholder within panel content */
 .placeholder-chart {
-    height: auto; min-height: 100px; background: rgba(0,0,0,0.1); border-radius: 8px;
-    display:flex; align-items:center; justify-content:center; color: #aaa;
-    font-size: 0.9em; margin-top: 10px; flex-grow: 1;
-    /* Ensure placeholder content doesn't block pointer events */
-     pointer-events: none;
+    height: auto;
+    min-height: 80px; /* Ensure some minimum height */
+    background: rgba(0,0,0,0.1);
+    border-radius: 8px;
+    display:flex;
+    flex-direction: column; /* Stack potential img/text */
+    align-items:center;
+    justify-content:center;
+    color: #aaa;
+    font-size: 0.9em;
+    margin-top: 10px;
+    flex-grow: 1; /* Allow placeholder to take remaining space */
+    padding: 10px;
+    overflow: hidden; /* Prevent large placeholders overflowing */
+    /* Ensure placeholder content doesn't block pointer events on panel */
+    pointer-events: none;
+}
+.placeholder-chart img,
+.placeholder-chart svg,
+.placeholder-chart ol,
+.placeholder-chart ul {
+    max-width: 100%;
+    max-height: 100px; /* Limit height of visual elements */
+    object-fit: contain;
+    opacity: 0.7;
+    margin-bottom: 5px;
 }
 
 
-/* --- Drop Zone Preview --- */
-#drop-preview {
-    position: absolute;
-    border: 2px dashed rgba(255, 255, 255, 0.5);
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 16px; /* Match panel */
-    z-index: 50; /* Below dragging panel */
-    pointer-events: none; /* Don't interfere with mouse events */
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0s linear 0.2s,
-                left 0.1s ease-out, top 0.1s ease-out,
-                width 0.1s ease-out, height 0.1s ease-out; /* Smooth position/size change */
-    box-shadow: 0 0 15px rgba(0,0,0,0.2);
-}
-
+/* --- Drop Zone Preview Slot --- */
 .drop-preview-slot {
+    /* Inherits grid sizing */
     border: 2px dashed rgba(255, 255, 255, 0.5);
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 16px; /* Match panel */
     box-sizing: border-box;
-    /* Dimensions will be set dynamically or use aspect-ratio */
-    aspect-ratio: 1 / 0.85; /* Match panel aspect ratio */
+    /* Dimensions set dynamically by JS based on grid calculation */
+    /* aspect-ratio will also be set by JS or match panel */
     min-height: 100px; /* Ensure it has some height */
-    /* Grid placement handled by DOM insertion */
+    pointer-events: none; /* Don't interfere with mouse events */
     transition: opacity 0.15s ease;
-}
-
-#drop-preview.visible {
-    opacity: 1;
-    visibility: visible;
-    transition-delay: 0s, 0s, 0s, 0s, 0s, 0s; /* Remove delay when showing */
+    box-shadow: 0 0 15px rgba(0,0,0,0.15);
+    /* Grid placement handled by DOM insertion */
 }
 
 
 /* ==========================================================================
-   Analysis Palette (Collapsible - Styles mostly remain the same)
+   Analysis Palette (Collapsible)
    ========================================================================== */
 
 .analysis-palette {
-    flex-shrink: 0; z-index: 100; margin: 15px; padding: 0; border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.25); max-width: calc(100% - 30px);
-    background: rgba(100, 100, 110, 0.75); backdrop-filter: blur(25px) saturate(160%);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15); overflow: hidden;
-    transition: all 0.35s ease-in-out; max-height: 300px; opacity: 1;
+    flex-shrink: 0; /* Prevent shrinking */
+    z-index: 100; /* Above grid content */
+    margin: 15px;
+    padding: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    max-width: calc(100% - 30px);
+    background: rgba(80, 80, 90, 0.75); /* Slightly different base */
+    backdrop-filter: blur(25px) saturate(160%);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    transition: max-height 0.35s ease-in-out, opacity 0.35s ease-in-out,
+                margin-top 0.35s ease-in-out, margin-bottom 0.35s ease-in-out,
+                border-color 0.35s ease-in-out, box-shadow 0.35s ease-in-out;
+    max-height: 300px; /* Max height when expanded */
+    opacity: 1;
+    will-change: max-height, opacity, margin;
 }
+
 .analysis-palette.collapsed {
-    max-height: 50px; margin-top: 0; margin-bottom: 0; opacity: 0.9;
-    border-color: transparent; box-shadow: none;
+    max-height: 50px; /* Height of header only */
+    margin-top: 0;
+    margin-bottom: 0;
+    opacity: 0.95; /* Slightly fade when collapsed */
+    border-color: transparent;
+    box-shadow: none;
+    /* background: rgba(80, 80, 90, 0.6); */ /* Optional: slightly different collapsed bg */
 }
+
 .palette-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    transition: border-color 0.3s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    height: 50px; /* Fixed header height */
+    box-sizing: border-box;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: border-color 0.35s ease;
+    user-select: none; /* Prevent text selection */
+    -webkit-user-select: none;
 }
-.analysis-palette.collapsed .palette-header { border-bottom-color: transparent; }
-.palette-header-title { font-size: 0.95rem; font-weight: 500; color: #fff; }
+.analysis-palette.collapsed .palette-header {
+    border-bottom-color: transparent;
+}
+
+.palette-header-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #fff;
+    margin-right: 10px;
+    pointer-events: none; /* Title shouldn't block click */
+}
+
 .palette-toggle-btn {
-    background: none; border: none; color: rgba(255, 255, 255, 0.7); font-size: 1.1rem;
-    cursor: pointer; padding: 5px; line-height: 1; border-radius: 50%;
-    transition: transform 0.3s ease, background-color 0.2s ease;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    border-radius: 50%;
+    transition: transform 0.3s ease, background-color 0.2s ease, color 0.2s ease;
 }
-.palette-toggle-btn:hover { color: #fff; background-color: rgba(255, 255, 255, 0.1); }
-.analysis-palette.collapsed .palette-toggle-btn { transform: rotate(180deg); }
+.palette-toggle-btn:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.analysis-palette.collapsed .palette-toggle-btn {
+    transform: rotate(180deg);
+}
 
+/* Container for the horizontally scrollable palette items */
 .palette-scroll-container {
-    display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden;
-    padding: 10px 15px; margin-bottom: -10px;
-    transition: opacity 0.2s ease; opacity: 1;
-    &::-webkit-scrollbar { height: 6px; }
-    &::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px; }
-    &::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.3); border-radius: 3px; }
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 15px; /* Add padding around items */
+    /* Calculate max-height based on expanded palette height minus header height */
+    max-height: calc(300px - 50px);
+    transition: opacity 0.2s ease 0.1s, visibility 0s linear 0.3s; /* Fade out quickly */
+    opacity: 1;
+    visibility: visible;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(255,255,255,0.3) rgba(0,0,0,0.1); /* Firefox */
 }
-.analysis-palette.collapsed .palette-scroll-container { opacity: 0; pointer-events: none; }
+.analysis-palette.collapsed .palette-scroll-container {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.1s ease, visibility 0s linear 0.1s; /* Hide faster */
+    padding-top: 0; /* Collapse padding too */
+    padding-bottom: 0;
+}
+/* Webkit scrollbar styling */
+.palette-scroll-container::-webkit-scrollbar { height: 8px; }
+.palette-scroll-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+.palette-scroll-container::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.3); border-radius: 4px; }
+.palette-scroll-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.5); }
 
-/* Palette Item styles remain the same */
-/* ... (copy palette item styles from previous answer) ... */
-.palette-item { position: relative; display: flex; flex-direction: column; flex-shrink: 0; width: 200px; padding: 12px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); cursor: default; transition: background-color 0.2s ease; }
-.palette-item:hover { background-color: rgba(255, 255, 255, 0.12); }
-.palette-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.palette-item-title { font-size: 0.9rem; font-weight: 500; color: #fff; margin-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.add-analysis-btn { display: inline-flex; justify-content: center; align-items: center; width: 24px; height: 24px; border: none; border-radius: 50%; background-color: rgba(255, 255, 255, 0.15); color: #fff; font-size: 1.2rem; font-weight: bold; line-height: 1; cursor: pointer; flex-shrink: 0; transition: background-color 0.2s ease, transform 0.1s ease; }
-.add-analysis-btn:hover { background-color: rgba(255, 255, 255, 0.25); }
-.add-analysis-btn:active { transform: scale(0.9); }
-.palette-item-desc { font-size: 0.8rem; color: #c5c5cc; line-height: 1.4; flex-grow: 1; }
-.palette-item-preview { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(10px) scale(0.95); transform-origin: bottom center; z-index: 110; min-width: 220px; max-width: 280px; padding: 15px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25); background: rgba(90, 90, 100, 0.85); backdrop-filter: blur(20px) saturate(140%); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s; }
-.palette-item:hover .palette-item-preview { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1); transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0s; }
-.preview-title { display: block; font-size: 0.95rem; font-weight: 500; color: #fff; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
-.preview-content { text-align: center; }
-.preview-content img { max-width: 100%; height: auto; max-height: 100px; object-fit: contain; opacity: 0.8; display: block; margin: 0 auto 5px auto;}
-.preview-content p { font-size: 0.8em; margin-top: 5px; color: #ccc; }
-.preview-content ol { margin: 5px 0 0 15px; padding: 0; text-align: left; }
-.preview-content li { margin-bottom: 3px;}
+/* Individual item within the palette */
+.palette-item {
+    position: relative; /* For potential absolute elements inside */
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0; /* Prevent items from shrinking horizontally */
+    width: 200px; /* Fixed width for palette items */
+    padding: 12px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    cursor: grab; /* Indicate draggable */
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    box-sizing: border-box;
+    /* Ensure items have height based on content */
+    min-height: 100px; /* Example min-height */
+}
+.palette-item:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+.palette-item:active {
+    cursor: grabbing;
+}
+
+.palette-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px; /* Space below header */
+    flex-shrink: 0; /* Prevent header shrinking */
+}
+
+.palette-item-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #fff;
+    margin-right: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none; /* Don't interfere with drag */
+}
+
+/* Add button inside palette item */
+.add-analysis-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 1.2rem; /* Make '+' bigger */
+    font-weight: bold;
+    line-height: 1; /* Center '+' vertically */
+    cursor: pointer;
+    flex-shrink: 0; /* Prevent button shrinking */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.add-analysis-btn:hover {
+    background-color: rgba(0, 123, 255, 0.7); /* Use accent color on hover */
+    /* background-color: rgba(255, 255, 255, 0.25); */
+}
+.add-analysis-btn:active {
+    transform: scale(0.9);
+}
+
+.palette-item-desc {
+    font-size: 0.8rem;
+    color: #c5c5cc;
+    line-height: 1.4;
+    flex-grow: 1; /* Allow description to take up space */
+    /* Limit description lines if needed */
+    /* overflow: hidden; */
+    /* display: -webkit-box; */
+    /* -webkit-line-clamp: 3; */
+    /* -webkit-box-orient: vertical; */
+    /* text-overflow: ellipsis; */
+}
+
+/* --- Palette Item Hover Preview Container (Fixed Position) --- */
+#palette-preview-container {
+    position: fixed; /* Position relative to viewport */
+    z-index: 1100; /* High z-index, above palette */
+    min-width: 220px;
+    max-width: 300px; /* Slightly wider max */
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3); /* Enhanced shadow */
+    background: rgba(75, 75, 85, 0.9); /* Slightly adjusted background */
+    backdrop-filter: blur(20px) saturate(150%);
+    /* Visibility & Animation */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none; /* Click-through by default */
+    transform: scale(0.95) translateY(10px); /* Start slightly down & scaled */
+    transform-origin: bottom center; /* Animate from bottom */
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s; /* Smooth transition */
+    will-change: opacity, transform;
+}
+
+#palette-preview-container.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1) translateY(0); /* End state */
+    pointer-events: auto; /* Allow interaction if mouse moves onto it */
+    transition-delay: 0s; /* Remove delay when becoming visible */
+}
+
+/* Styles for content inside the fixed preview container */
+#palette-preview-container .preview-title {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600; /* Slightly bolder title */
+    color: #fff;
+    margin-bottom: 10px;
+    padding-bottom: 8px; /* More padding */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Slightly stronger border */
+}
+#palette-preview-container .preview-content {
+    text-align: center;
+    font-size: 0.85rem; /* Slightly larger base font */
+    color: #ddd;
+}
+#palette-preview-container .preview-content img,
+#palette-preview-container .preview-content svg {
+    max-width: 100%;
+    height: auto;
+    max-height: 120px; /* Allow slightly taller images */
+    object-fit: contain;
+    opacity: 0.85; /* Slightly less transparent */
+    display: block;
+    margin: 5px auto 10px auto; /* More space below image */
+    border-radius: 4px; /* Slight rounding */
+}
+#palette-preview-container .preview-content p {
+    font-size: 0.9em; /* Relative to container font size */
+    margin-top: 5px;
+    color: #ccc;
+    line-height: 1.4;
+}
+#palette-preview-container .preview-content ol,
+#palette-preview-container .preview-content ul {
+    margin: 8px 0 5px 20px; /* Adjust list margins */
+    padding: 0;
+    text-align: left;
+}
+#palette-preview-container .preview-content li {
+    margin-bottom: 4px; /* More space between list items */
+}
 
 
 /* --- Mobile Adjustments --- */
 @media (max-width: 768px) {
     .insights-grid {
         grid-template-columns: 1fr; /* Single column */
-        gap: 15px;
+        gap: 15px; /* Reduce gap */
     }
     .insight-panel {
-        aspect-ratio: 1 / 0.8; /* Adjust aspect ratio if needed for single column */
-        min-height: 200px;
+        aspect-ratio: 1 / 0.8; /* Adjust aspect ratio if needed */
+        min-height: 180px; /* Maintain minimum height */
     }
-    /* Other mobile styles remain similar */
-    .analysis-palette { margin: 10px; max-width: calc(100% - 20px); }
-     @media (hover: none) { .palette-item-preview { display: none !important; } }
+    .analysis-palette {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+        max-height: 250px; /* Reduce max height on mobile */
+    }
+     .analysis-palette.collapsed {
+        max-height: 45px; /* Adjust collapsed height */
+    }
+    .palette-header { height: 45px; } /* Match collapsed height */
+    .palette-scroll-container {
+         max-height: calc(250px - 45px);
+         padding: 10px; /* Reduce padding */
+         gap: 10px; /* Reduce gap */
+    }
+    .palette-item { width: 170px; } /* Slightly smaller items */
+
+    /* Hide hover preview on touch devices */
+     @media (hover: none) {
+        #palette-preview-container {
+            display: none !important;
+        }
+     }
 }
-
-#palette-preview-container {
-    position: fixed; /* Position relative to viewport */
-    z-index: 1100; /* High z-index */
-
-    /* Appearance (copied from .palette-item-preview) */
-    min-width: 220px;
-    max-width: 280px;
-    padding: 15px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25);
-    background: rgba(90, 90, 100, 0.9); /* Slightly more opaque maybe */
-    backdrop-filter: blur(20px) saturate(140%);
-    /* Inherit glassy from HTML */
-
-    /* Visibility & Animation */
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transform: scale(0.95) translateY(10px); /* Start slightly down */
-    transform-origin: bottom center;
-     /* IMPORTANT: Define transition here */
-     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
-}
-
-#palette-preview-container.visible {
-    opacity: 1;
-    visibility: visible;
-    transform: scale(1) translateY(0);
-     transition-delay: 0s, 0s, 0s; /* Remove delay */
-}
-
-/* Styles for content inside the preview container */
-#palette-preview-container .preview-title {
-    display: block; font-size: 0.95rem; font-weight: 500; color: #fff;
-    margin-bottom: 10px; padding-bottom: 6px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-}
-#palette-preview-container .preview-content { text-align: center; }
-#palette-preview-container .preview-content img { max-width: 100%; height: auto; max-height: 100px; object-fit: contain; opacity: 0.8; display: block; margin: 0 auto 5px auto;}
-#palette-preview-container .preview-content p { font-size: 0.8em; margin-top: 5px; color: #ccc; }
-#palette-preview-container .preview-content ol { margin: 5px 0 0 15px; padding: 0; text-align: left; }
-#palette-preview-container .preview-content li { margin-bottom: 3px;}
 
 /* --- END OF FILE plannerInsightsArea.css --- */

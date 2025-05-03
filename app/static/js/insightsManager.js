@@ -5,6 +5,7 @@ let insightsView = null;
 let insightsGridContainer = null; // The scrollable container
 let insightsGrid = null;        // The grid element where panels are placed
 let palette = null;
+let paletteHeader = null; // Specifically target the header for toggle clicks
 let paletteToggleBtn = null;
 let paletteScrollContainer = null;
 let emptyMessage = null;
@@ -22,6 +23,10 @@ let gridRect = null;            // Bounding rect of the grid container (for boun
 let gridCellLayout = [];        // Array storing calculated { x, y, width, height } for each grid cell position
 let targetSlotIndex = -1;       // Index in gridCellLayout where the preview is shown / potential drop
 let animationFrameId = null;
+
+// --- Palette Preview State ---
+let previewHideTimeout = null;
+const PREVIEW_HIDE_DELAY = 150; // ms delay before hiding preview
 
 // --- Constants ---
 const DRAG_SCALE = 0.95; // Scale factor for dragged item
@@ -48,8 +53,9 @@ function generateUniqueId(prefix = 'panel') {
  */
 function createInsightPanelHTML(analysisType, title, description, placeholderContent) {
     const panelId = generateUniqueId(analysisType);
-    // Add data-panel-id here for easier selection
-    // Ensure Font Awesome is included in HTML if using these icons
+    // Decode HTML entities if necessary (if stored encoded in data-attributes)
+    const decodedPlaceholder = placeholderContent.replace(/</g, '<').replace(/>/g, '>');
+
     return `
         <div class="insight-panel glassy" data-panel-id="${panelId}" data-analysis-type="${analysisType}">
             <div class="panel-header" draggable="false">
@@ -61,7 +67,7 @@ function createInsightPanelHTML(analysisType, title, description, placeholderCon
             </div>
             <div class="panel-content">
                 <p>${description}</p>
-                <div class="placeholder-chart">${placeholderContent}</div>
+                <div class="placeholder-chart">${decodedPlaceholder}</div>
             </div>
         </div>`;
 }
@@ -83,8 +89,8 @@ function calculateGridCellLayout() {
     gridCellLayout = []; // Reset
     const gridStyle = window.getComputedStyle(insightsGrid);
     const colCount = GRID_COLS;
-    const rowGap = parseInt(gridStyle.rowGap) || 0;
-    const colGap = parseInt(gridStyle.columnGap) || 0;
+    const rowGap = parseInt(gridStyle.gap) || 25; // Use the general gap property
+    const colGap = parseInt(gridStyle.gap) || 25; // Use the general gap property
     const gridWidth = insightsGrid.offsetWidth;
 
     if (!gridWidth || gridWidth <= 0 || colCount <= 0) {
@@ -95,26 +101,27 @@ function calculateGridCellLayout() {
     const cellWidth = (gridWidth - (colCount - 1) * colGap) / colCount;
     let cellHeight = 0;
 
-    if (cellWidth > 0) {
-        // Create a temporary element *within the grid container* for accurate style computation
-        const tempPanel = document.createElement('div');
-        tempPanel.style.width = `${cellWidth}px`;
-        // Use the computed aspect ratio from CSS. Fallback if necessary.
-        const cssAspectRatio = window.getComputedStyle(insightsGrid).getPropertyValue('--panel-aspect-ratio') || '1 / 0.85'; // Read custom property or default
-        tempPanel.style.aspectRatio = cssAspectRatio;
-        tempPanel.style.position = 'absolute'; tempPanel.style.visibility = 'hidden';
-        insightsGridContainer.appendChild(tempPanel); // Append to container for style context
-        cellHeight = tempPanel.offsetHeight;
-        insightsGridContainer.removeChild(tempPanel);
-    }
+    // Use aspect-ratio defined on the panel for height calculation
+    // Create a temporary element to accurately measure based on CSS
+    const tempPanel = document.createElement('div');
+    tempPanel.className = 'insight-panel'; // Apply class for aspect-ratio
+    tempPanel.style.width = `${cellWidth}px`;
+    tempPanel.style.position = 'absolute';
+    tempPanel.style.visibility = 'hidden';
+    tempPanel.style.pointerEvents = 'none';
+    insightsGrid.appendChild(tempPanel); // Add to grid for style context
+    cellHeight = tempPanel.offsetHeight;
+    insightsGrid.removeChild(tempPanel);
+
 
     if (cellHeight <= 0) {
-        console.warn("Could not determine valid cell height.");
+        console.warn("Could not determine valid cell height from aspect ratio. Using fallback.");
         cellHeight = cellWidth / (1 / 0.85); // Fallback aspect ratio calculation
     }
 
-    const currentPanelCount = insightsGrid.querySelectorAll('.insight-panel').length;
-    const estimatedRows = Math.max(3, Math.ceil((currentPanelCount + 2) / colCount));
+    const currentPanelCount = insightsGrid.querySelectorAll('.insight-panel:not(.dragging-source-hidden)').length;
+     // Calculate needed rows: at least 1, or enough for current + dragged item + potential empty row
+    const estimatedRows = Math.max(1, Math.ceil((currentPanelCount + 1) / colCount) + 1);
 
     let currentX = 0;
     let currentY = 0;
@@ -133,6 +140,10 @@ function calculateGridCellLayout() {
 function findNearestSlotIndex(x, y) {
     let closestIndex = -1;
     let minDistSq = Infinity;
+    if (!gridCellLayout || gridCellLayout.length === 0) {
+        // console.warn("findNearestSlotIndex called before gridCellLayout is populated.");
+        return -1; // Avoid errors if called too early
+    }
     gridCellLayout.forEach((slot, index) => {
         const slotCenterX = slot.x + slot.width / 2;
         const slotCenterY = slot.y + slot.height / 2;
@@ -147,20 +158,22 @@ function findNearestSlotIndex(x, y) {
 
 /** Gets the panel currently occupying a specific slot index */
 function getPanelAtSlotIndex(index) {
-    if (index < 0 || index >= gridCellLayout.length) return null;
+    if (index < 0 || !gridCellLayout || index >= gridCellLayout.length) return null;
     const slot = gridCellLayout[index];
     let foundPanel = null;
-    let minDistSq = (slot.width / 3)**2; // Check within roughly a third of the width
+    // Use a slightly generous bounding box check around the slot center
+    const toleranceX = slot.width / 3;
+    const toleranceY = slot.height / 3;
+    const slotCenterX = slot.x + slot.width / 2;
+    const slotCenterY = slot.y + slot.height / 2;
 
-    insightsGrid.querySelectorAll('.insight-panel:not(.dragging-source-hidden)').forEach(p => {
+    insightsGrid.querySelectorAll('.insight-panel:not(.dragging-source-hidden):not(.drop-preview-slot)').forEach(p => {
         const pCenterX = p.offsetLeft + p.offsetWidth / 2;
         const pCenterY = p.offsetTop + p.offsetHeight / 2;
-        const slotCenterX = slot.x + slot.width / 2;
-        const slotCenterY = slot.y + slot.height / 2;
-        const distSq = (pCenterX - slotCenterX)**2 + (pCenterY - slotCenterY)**2;
-        if (distSq < minDistSq) {
-             minDistSq = distSq;
+        // Check if panel center is within tolerance of slot center
+        if (Math.abs(pCenterX - slotCenterX) < toleranceX && Math.abs(pCenterY - slotCenterY) < toleranceY) {
              foundPanel = p;
+             // Note: This might find multiple if panels overlap heavily, but typically finds the one visually occupying the slot.
         }
     });
     return foundPanel;
@@ -170,6 +183,11 @@ function getPanelAtSlotIndex(index) {
 function findNearestAvailableSlotIndex(x, y) {
     let closestEmptyIndex = -1;
     let minDistSq = Infinity;
+
+    if (!gridCellLayout || gridCellLayout.length === 0) {
+        // console.warn("findNearestAvailableSlotIndex called before gridCellLayout is populated.");
+        return -1; // Avoid errors if called too early
+    }
 
     gridCellLayout.forEach((slot, index) => {
         const panelInSlot = getPanelAtSlotIndex(index);
@@ -191,56 +209,70 @@ function getDropPreviewSlot() {
     if (!dropPreviewSlot) {
         dropPreviewSlot = document.createElement('div');
         dropPreviewSlot.className = 'drop-preview-slot';
-        // Get aspect ratio from CSS custom property or default
-        const cssAspectRatio = window.getComputedStyle(insightsGrid).getPropertyValue('--panel-aspect-ratio') || '1 / 0.85';
-        dropPreviewSlot.style.aspectRatio = cssAspectRatio;
-        dropPreviewSlot.style.minHeight = '100px'; // Ensure visibility
+        // Apply aspect ratio dynamically based on calculated panel height/width
+        if (gridCellLayout.length > 0 && gridCellLayout[0].width > 0 && gridCellLayout[0].height > 0) {
+            dropPreviewSlot.style.width = `${gridCellLayout[0].width}px`;
+            dropPreviewSlot.style.height = `${gridCellLayout[0].height}px`;
+        } else {
+             // Fallback if grid layout failed
+             dropPreviewSlot.style.aspectRatio = '1 / 0.85';
+             dropPreviewSlot.style.minHeight = '150px'; // Ensure some visibility
+        }
+        dropPreviewSlot.style.pointerEvents = 'none'; // Crucial: prevent interference
     }
     return dropPreviewSlot;
 }
 
 /** Inserts the drop preview slot into the grid DOM before a specific element */
 function showDropPreviewInGrid(targetIndex) {
-    if (targetIndex < 0 || targetIndex >= gridCellLayout.length) {
+     if (gridCellLayout.length === 0) calculateGridCellLayout(); // Ensure layout exists
+     if (targetIndex < 0 || targetIndex >= gridCellLayout.length) {
         hideDropPreviewInGrid();
         return;
     }
     const previewSlot = getDropPreviewSlot();
-    const slotLayout = gridCellLayout[targetIndex];
 
-    // Set size for the preview slot
+    // Ensure size matches current layout (might change on resize)
+    const slotLayout = gridCellLayout[targetIndex];
     previewSlot.style.width = `${slotLayout.width}px`;
     previewSlot.style.height = `${slotLayout.height}px`;
 
     // --- Determine insertion point ---
-    // Get currently laid out panels (excluding hidden source)
-    const currentPanels = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-source-hidden)'));
-    // Get their calculated slot indices
-    const panelIndices = currentPanels.map(p => findNearestSlotIndex(p.offsetLeft + p.offsetWidth/2, p.offsetTop + p.offsetHeight/2));
+    // Get currently laid out panels (excluding hidden source and the preview itself if already present)
+    const currentPanels = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-source-hidden):not(.drop-preview-slot)'));
+    currentPanels.sort((a, b) => { // Sort by DOM order / visual order
+        const orderA = (a.offsetTop * 1000) + a.offsetLeft; // Prioritize top, then left
+        const orderB = (b.offsetTop * 1000) + b.offsetLeft;
+        return orderA - orderB;
+    });
 
-    // Find the first panel whose *intended* slot index is >= the target drop index
+
+    // Find the element that should come AFTER the target index
     let elementToInsertBefore = null;
-    for(let i = 0; i < currentPanels.length; i++) {
-        if (panelIndices[i] >= targetIndex) {
-            elementToInsertBefore = currentPanels[i];
-            break;
+    if (targetIndex < currentPanels.length) {
+        elementToInsertBefore = currentPanels[targetIndex];
+    }
+
+    // --- Insert or Move the preview slot ---
+    const needsInsert = !previewSlot.parentElement || previewSlot.parentElement !== insightsGrid;
+    const needsMove = !needsInsert && (
+        (elementToInsertBefore && previewSlot.nextElementSibling !== elementToInsertBefore) ||
+        (!elementToInsertBefore && insightsGrid.lastElementChild !== previewSlot)
+    );
+
+    if (needsInsert || needsMove) {
+        if (elementToInsertBefore) {
+           insightsGrid.insertBefore(previewSlot, elementToInsertBefore);
+        } else {
+           insightsGrid.appendChild(previewSlot); // Append if it goes last
         }
     }
-    // ---------------------------------
-
-    // Insert the preview slot
-    if (previewSlot.parentElement !== insightsGrid || previewSlot.nextElementSibling !== elementToInsertBefore) {
-         if (elementToInsertBefore) {
-            insightsGrid.insertBefore(previewSlot, elementToInsertBefore);
-         } else {
-            insightsGrid.appendChild(previewSlot); // Append if it goes last
-         }
-     }
 
     targetSlotIndex = targetIndex; // Store the index where preview is shown
 
     if (emptyMessage) emptyMessage.style.display = 'none';
 }
+
 
 /** Removes the drop preview slot from the grid DOM */
 function hideDropPreviewInGrid() {
@@ -259,23 +291,27 @@ function hideDropPreviewInGrid() {
 /** Generates the inner HTML for the preview container */
 function generatePreviewContentHTML(analysisType) {
     // Customize these previews as needed
+    // Use backticks for potentially multi-line HTML for readability
     switch (analysisType) {
         case 'attendance-trends':
-            return `<span class="preview-title">Attendance Trends Example</span><div class="preview-content"><img src="/static/img/placeholder-line-chart.png" alt="Line chart preview"><p>Shows event attendance over time.</p></div>`;
+            return `<span class="preview-title">Attendance Trends Example</span><div class="preview-content"><img src="/static/img/placeholder-line-chart.png" alt="Line chart preview" style="max-width: 100%; height: auto; opacity: 0.7;"><p>Shows event attendance over time.</p></div>`;
         case 'active-groups':
-            return `<span class="preview-title">Active Groups Example</span><div class="preview-content" style="font-size: 0.9em; color: #ddd;"><ol style="margin: 5px 0 0 15px; padding: 0;"><li>Top Group (25)</li><li>Second Group (18)</li><li>Another One (15)</li></ol><p style="font-size: 0.8em; margin-top: 8px; color: #ccc;">Ranks groups by recent activity.</p></div>`;
+            return `<span class="preview-title">Active Groups Example</span><div class="preview-content" style="font-size: 0.9em; color: #ddd;"><ol style="margin: 5px 0 0 15px; padding: 0; text-align: left;"><li>Top Group (25)</li><li>Second Group (18)</li><li>Another One (15)</li></ol><p style="font-size: 0.8em; margin-top: 8px; color: #ccc;">Ranks groups by recent activity.</p></div>`;
          case 'rsvp-distribution':
-             return `<span class="preview-title">RSVP Distribution Example</span><div class="preview-content"><img src="/static/img/placeholder-pie-chart.png" alt="Pie chart preview"><p>Typical Going/Maybe/No breakdown.</p></div>`;
+             return `<span class="preview-title">RSVP Distribution Example</span><div class="preview-content"><img src="/static/img/placeholder-pie-chart.png" alt="Pie chart preview" style="max-width: 80%; height: auto; margin: 5px auto; display: block; opacity: 0.7;"><p>Typical Going/Maybe/No breakdown.</p></div>`;
          case 'busy-periods':
-             return `<span class="preview-title">Busy Periods Example</span><div class="preview-content"><img src="/static/img/placeholder-heatmap.png" alt="Heatmap preview"><p>Highlights days with high event density.</p></div>`;
+             return `<span class="preview-title">Busy Periods Example</span><div class="preview-content"><img src="/static/img/placeholder-heatmap.png" alt="Heatmap preview" style="max-width: 100%; height: auto; opacity: 0.7;"><p>Highlights days with high event density.</p></div>`;
         default:
-            return `<span class="preview-title">${analysisType.replace('-', ' ')} Example</span><div class="preview-content"><p>Preview not available.</p></div>`;
+            return `<span class="preview-title">${analysisType.replace(/-/g, ' ')} Example</span><div class="preview-content"><p>Preview not available.</p></div>`;
     }
 }
 
 /** Shows the palette item preview */
 function showPalettePreview(targetPaletteItem) {
-    if (!palettePreviewContainer || !targetPaletteItem || palettePreviewContainer.classList.contains('visible')) return;
+    if (!palettePreviewContainer || !targetPaletteItem || isDragging) return; // Don't show if dragging
+    clearTimeout(previewHideTimeout); // Cancel any pending hide
+    previewHideTimeout = null;
+
     const analysisType = targetPaletteItem.dataset.analysisType;
     if (!analysisType) return;
 
@@ -284,26 +320,48 @@ function showPalettePreview(targetPaletteItem) {
 
     // Calculate position after setting content
     const itemRect = targetPaletteItem.getBoundingClientRect();
-    palettePreviewContainer.style.display = 'block'; // Measure
-    const containerRect = palettePreviewContainer.getBoundingClientRect();
-    palettePreviewContainer.style.display = ''; // Reset
 
-    let top = itemRect.top - containerRect.height - 10;
-    let left = itemRect.left + (itemRect.width / 2) - (containerRect.width / 2);
-    if (top < 10) top = itemRect.bottom + 10;
-    if (left < 10) left = 10;
-    if (left + containerRect.width > window.innerWidth - 10) left = window.innerWidth - containerRect.width - 10;
+    // Temporarily make visible to measure dimensions
+    palettePreviewContainer.style.visibility = 'hidden'; // Keep hidden but allow measurement
+    palettePreviewContainer.style.display = 'block';
+    const containerRect = palettePreviewContainer.getBoundingClientRect();
+    palettePreviewContainer.style.display = ''; // Reset display
+    palettePreviewContainer.style.visibility = ''; // Reset visibility
+
+    let top = itemRect.top - containerRect.height - 10; // Position above item
+    let left = itemRect.left + (itemRect.width / 2) - (containerRect.width / 2); // Center horizontally
+
+    // Adjust if out of bounds
+    if (top < 10) top = itemRect.bottom + 10; // Flip below if not enough space above
+    if (left < 10) left = 10; // Prevent overflow left
+    if (left + containerRect.width > window.innerWidth - 10) { // Prevent overflow right
+        left = window.innerWidth - containerRect.width - 10;
+    }
 
     palettePreviewContainer.style.top = `${top}px`;
     palettePreviewContainer.style.left = `${left}px`;
     palettePreviewContainer.classList.add('visible');
 }
 
-/** Hides the palette item preview */
+/** Schedules hiding the palette item preview (allows moving mouse into preview) */
+function scheduleHidePalettePreview() {
+    clearTimeout(previewHideTimeout);
+    previewHideTimeout = setTimeout(hidePalettePreview, PREVIEW_HIDE_DELAY);
+}
+
+/** Hides the palette item preview immediately */
 function hidePalettePreview() {
+     clearTimeout(previewHideTimeout); // Ensure no lingering timeouts
+     previewHideTimeout = null;
     if (palettePreviewContainer) {
         palettePreviewContainer.classList.remove('visible');
     }
+}
+
+/** Cancels the scheduled hide if the mouse enters the preview container */
+function cancelHidePreview() {
+    clearTimeout(previewHideTimeout);
+    previewHideTimeout = null;
 }
 
 
@@ -316,11 +374,22 @@ function onPointerDown(event) {
     const addBtn = event.target.closest('.add-analysis-btn');
     const panelActions = event.target.closest('.panel-actions');
 
-    if (event.button !== 0 || addBtn || panelActions) return; // Ignore clicks on buttons or non-left clicks
+    // Prevent drag start if clicking buttons within the item/panel
+    if (addBtn || panelActions) {
+        // Handle button click directly if needed (e.g., for add button)
+        if (addBtn && paletteItem) {
+            // Optional: Directly add the panel without dragging
+            // addPanelFromPalette(paletteItem);
+            console.log("Add button clicked (not implemented for direct add yet)");
+        }
+        return;
+    }
 
-    if (panelHeader && !panelActions) { // Ensure not clicking inside actions area of header
+    if (event.button !== 0) return; // Ignore non-left clicks
+
+    if (panelHeader) { // Start grid drag
         startGridDrag(event, panelHeader.closest('.insight-panel'));
-    } else if (paletteItem) {
+    } else if (paletteItem) { // Start palette drag
         startPaletteDrag(event, paletteItem);
     }
 }
@@ -328,13 +397,16 @@ function onPointerDown(event) {
 
 /** Initiates drag from a Grid Panel */
 function startGridDrag(event, panel) {
-    if (!panel) return;
-    event.preventDefault();
-    event.stopPropagation();
+    if (!panel || isDragging) return;
+    event.preventDefault(); // Prevent default text selection, etc.
+    event.stopPropagation(); // Prevent triggering lower-level listeners
 
     isDragging = true;
     dragType = 'grid';
     sourceElement = panel;
+
+    // Ensure grid layout is up-to-date before calculating drag start
+    calculateGridCellLayout();
 
     const rect = sourceElement.getBoundingClientRect();
     startClientX = event.clientX;
@@ -346,15 +418,17 @@ function startGridDrag(event, panel) {
     draggedElement = sourceElement.cloneNode(true); // Create a clone
     draggedElement.style.pointerEvents = 'none'; // Clone shouldn't capture events
     draggedElement.classList.add('dragging');
+    draggedElement.style.position = 'fixed'; // Use fixed for smooth viewport dragging
     draggedElement.style.left = `${rect.left}px`;
     draggedElement.style.top = `${rect.top}px`;
     draggedElement.style.width = `${rect.width}px`;
     draggedElement.style.height = `${rect.height}px`;
-    draggedElement.style.transform = `scale(${DRAG_SCALE})`;
+    draggedElement.style.margin = '0'; // Reset margin for fixed positioning
+    draggedElement.style.transform = `scale(${DRAG_SCALE})`; // Apply initial scale
     document.body.appendChild(draggedElement); // Add clone to body
 
-    // Hide original position using placeholder class
-    sourceElement.classList.add('dragging-source-hidden');
+    // Hide original panel visually but keep its space in the grid
+    sourceElement.classList.add('dragging-source-hidden'); // Apply opacity/visibility hidden
 
     document.addEventListener('pointermove', onPointerMove);
     document.addEventListener('pointerup', onPointerUp, { once: true });
@@ -362,45 +436,49 @@ function startGridDrag(event, panel) {
 
 /** Initiates drag from a Palette Item */
 function startPaletteDrag(event, item) {
+    if (!item || isDragging) return;
     event.preventDefault();
     event.stopPropagation();
-    if (isDragging) return;
 
     isDragging = true;
     dragType = 'palette';
-    sourceElement = item;
+    sourceElement = item; // The palette item is the source
 
     const analysisType = item.dataset.analysisType;
     const title = item.dataset.title;
     const description = item.dataset.description;
-    const placeholderHTML = item.dataset.placeholderHtml;
+    const placeholderHTML = item.dataset.placeholderHtml || '<p>Loading...</p>'; // Get placeholder HTML
     if (!analysisType || !title) { isDragging = false; return; }
 
-    // Create the panel element to be dragged
+    // Create the panel element that will be dragged
     const panelHTML = createInsightPanelHTML(analysisType, title, description, placeholderHTML);
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = panelHTML.trim();
-    draggedElement = tempDiv.firstChild;
+    draggedElement = tempDiv.firstChild; // This is the actual .insight-panel div
 
-    // Estimate size based on grid calculation
-    calculateGridCellLayout(); // Ensure layout is calculated
-    const cellWidth = gridCellLayout.length > 0 ? gridCellLayout[0].width : 300;
-    const cellHeight = gridCellLayout.length > 0 ? gridCellLayout[0].height : 250;
-    draggedElement.style.width = `${cellWidth}px`;
+    // Ensure grid layout is calculated to estimate size
+    calculateGridCellLayout();
+    const cellWidth = gridCellLayout.length > 0 ? gridCellLayout[0].width : 300; // Use calculated width
+    const cellHeight = gridCellLayout.length > 0 ? gridCellLayout[0].height : 250; // Use calculated height
+
+    draggedElement.classList.add('dragging'); // Apply dragging styles (fixed position, etc.)
+    draggedElement.style.width = `${cellWidth}px`; // Set initial size based on grid cell
     draggedElement.style.height = `${cellHeight}px`;
-
-    draggedElement.classList.add('dragging');
-    document.body.appendChild(draggedElement);
+    draggedElement.style.margin = '0'; // Reset margins for fixed positioning
+    document.body.appendChild(draggedElement); // Add to body for dragging
 
     startClientX = event.clientX;
     startClientY = event.clientY;
-    offsetX = cellWidth * 0.5;
-    offsetY = cellHeight * 0.2;
+    // Offset slightly so pointer isn't exactly at top-left corner
+    offsetX = cellWidth * 0.15; // Adjust as needed
+    offsetY = cellHeight * 0.15; // Adjust as needed
+
+    // Position initially at pointer location (minus offset)
     draggedElement.style.left = `${startClientX - offsetX}px`;
     draggedElement.style.top = `${startClientY - offsetY}px`;
-    draggedElement.style.transform = `scale(${DRAG_SCALE})`;
+    draggedElement.style.transform = `scale(${DRAG_SCALE})`; // Apply initial scale
 
-    hidePalettePreview();
+    hidePalettePreview(); // Ensure preview is hidden when drag starts
 
     document.addEventListener('pointermove', onPointerMove);
     document.addEventListener('pointerup', onPointerUp, { once: true });
@@ -413,120 +491,124 @@ function onPointerMove(event) {
     const currentClientX = event.clientX;
     const currentClientY = event.clientY;
 
-    // Update visual dragged element position
-    draggedElement.style.left = `${currentClientX - offsetX}px`;
-    draggedElement.style.top = `${currentClientY - offsetY}px`;
+    // Use requestAnimationFrame for smoother updates
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = requestAnimationFrame(() => {
+        // Update visual dragged element position
+        draggedElement.style.left = `${currentClientX - offsetX}px`;
+        draggedElement.style.top = `${currentClientY - offsetY}px`;
 
-    // Find closest available drop slot based on *pointer* position relative to grid container
-    gridRect = insightsGridContainer.getBoundingClientRect();
-    const pointerXInGridContent = currentClientX - gridRect.left + insightsGridContainer.scrollLeft;
-    const pointerYInGridContent = currentClientY - gridRect.top + insightsGridContainer.scrollTop;
+        // Find closest available drop slot based on *pointer* position relative to grid container
+        gridRect = insightsGridContainer.getBoundingClientRect();
+        // Calculate pointer position relative to the *content* of the scrollable grid container
+        const pointerXInGridContent = currentClientX - gridRect.left + insightsGridContainer.scrollLeft;
+        const pointerYInGridContent = currentClientY - gridRect.top + insightsGridContainer.scrollTop;
 
-    const isOverGrid = currentClientX >= gridRect.left && currentClientX <= gridRect.right &&
-                       currentClientY >= gridRect.top && currentClientY <= gridRect.bottom;
+        const isOverGrid = currentClientX >= gridRect.left && currentClientX <= gridRect.right &&
+                           currentClientY >= gridRect.top && currentClientY <= gridRect.bottom;
 
-    if (isOverGrid) {
-        const nearestEmptyIndex = findNearestAvailableSlotIndex(pointerXInGridContent, pointerYInGridContent);
-        // console.log(`Pointer: (${pointerXInGridContent.toFixed(0)}, ${pointerYInGridContent.toFixed(0)}), Nearest Empty: ${nearestEmptyIndex}`);
-        if (nearestEmptyIndex !== -1) {
-             if(targetSlotIndex !== nearestEmptyIndex) { // Only update DOM if target changes
-                 showDropPreviewInGrid(nearestEmptyIndex);
-             }
+        if (isOverGrid) {
+            const nearestEmptyIndex = findNearestAvailableSlotIndex(pointerXInGridContent, pointerYInGridContent);
+            // console.log(`Pointer: (${pointerXInGridContent.toFixed(0)}, ${pointerYInGridContent.toFixed(0)}), Nearest Empty: ${nearestEmptyIndex}`);
+            if (nearestEmptyIndex !== -1) {
+                 if(targetSlotIndex !== nearestEmptyIndex) { // Only update DOM if target changes
+                     showDropPreviewInGrid(nearestEmptyIndex);
+                 }
+            } else {
+                 hideDropPreviewInGrid(); // Hide if no empty slot is near
+            }
         } else {
-             hideDropPreviewInGrid(); // Hide if no empty slot is near
+            hideDropPreviewInGrid(); // Hide preview if outside grid
         }
-    } else {
-        hideDropPreviewInGrid(); // Hide preview if outside grid
-    }
+    });
 }
+
 
 /** Handles pointer up event to end dragging */
 function onPointerUp(event) {
     if (!isDragging || !draggedElement) return;
+    cancelAnimationFrame(animationFrameId); // Cancel any pending animation frame
 
-    const previewSlot = getDropPreviewSlot();
     const finalTargetIndex = targetSlotIndex; // Use the index where the preview was last shown
 
-    hideDropPreviewInGrid(); // Remove visual placeholder
+    hideDropPreviewInGrid(); // Remove visual placeholder slot from grid DOM
 
-    // Determine where to insert the final element in the DOM
+    // Determine where to insert the final element in the DOM based on target index
     let elementToInsertBefore = null;
     if (finalTargetIndex !== -1) {
-         // Find the element that *should* be after the dropped position
-         const panels = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-source-hidden)'));
-         panels.sort((a, b) => (a.offsetTop - b.offsetTop) || (a.offsetLeft - b.offsetLeft)); // Sort by visual position
-         for (let i = 0; i < panels.length; i++) {
-             const panelIndex = findNearestSlotIndex(panels[i].offsetLeft + panels[i].offsetWidth / 2, panels[i].offsetTop + panels[i].offsetHeight / 2);
-             if (panelIndex >= finalTargetIndex) {
-                 elementToInsertBefore = panels[i];
-                 break;
-             }
+         // Find the element that currently occupies the slot *after* the target index
+         const currentPanels = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-source-hidden):not(.drop-preview-slot)'));
+         currentPanels.sort((a, b) => (a.offsetTop * 1000 + a.offsetLeft) - (b.offsetTop * 1000 + b.offsetLeft)); // Sort by visual order
+
+         if(finalTargetIndex < currentPanels.length) {
+             elementToInsertBefore = currentPanels[finalTargetIndex];
          }
      }
 
 
     if (finalTargetIndex !== -1) { // Dropped successfully onto an available slot
         if (dragType === 'grid') {
-            // Move the original source element
-            sourceElement.classList.remove('dragging-source-hidden');
-            sourceElement.style.transform = ''; // Remove scale immediately
+            // Move the original source element to the new position
+            sourceElement.classList.remove('dragging-source-hidden'); // Make original visible again
+            sourceElement.style.transform = ''; // Reset any temporary transform
 
             if (elementToInsertBefore) {
                 insightsGrid.insertBefore(sourceElement, elementToInsertBefore);
             } else {
-                insightsGrid.appendChild(sourceElement);
+                insightsGrid.appendChild(sourceElement); // Append if dropped at the end
             }
-             // Remove the temporary dragged clone
-             draggedElement.remove();
+            draggedElement.remove(); // Remove the temporary dragged clone
 
         } else if (dragType === 'palette') {
-            // Insert the newly created panel (which was the draggedElement)
-            draggedElement.classList.remove('dragging');
+            // Insert the newly created panel (which was the draggedElement) into the grid
+            draggedElement.classList.remove('dragging'); // Remove dragging styles
             draggedElement.style.position = ''; // Reset styles for grid layout
             draggedElement.style.left = '';
             draggedElement.style.top = '';
-            draggedElement.style.width = '';
-            draggedElement.style.height = '';
+            draggedElement.style.width = '';    // Let grid control size
+            draggedElement.style.height = '';   // Let grid control size
             draggedElement.style.transform = ''; // Remove scale
             draggedElement.style.pointerEvents = ''; // Re-enable pointer events
+            draggedElement.style.margin = '';   // Reset margin
 
             if (elementToInsertBefore) {
                 insightsGrid.insertBefore(draggedElement, elementToInsertBefore);
             } else {
-                insightsGrid.appendChild(draggedElement);
+                insightsGrid.appendChild(draggedElement); // Append if dropped at the end
             }
-            makePanelDraggable(draggedElement); // Make the new panel draggable
+            makePanelDraggable(draggedElement); // Make the newly added panel draggable
+            // Add event listeners for buttons inside the new panel
+            addPanelActionListeners(draggedElement);
         }
 
-    } else { // Dropped outside grid or onto occupied slot (and no other empty slot was near)
+    } else { // Drop failed (outside grid or valid slot)
         if (dragType === 'grid') {
-            // Return original panel
+            // Restore original panel to its place (just make it visible)
             sourceElement.classList.remove('dragging-source-hidden');
             sourceElement.style.transform = '';
-             draggedElement.remove(); // Remove the clone used for dragging
+            draggedElement.remove(); // Remove the clone
         } else if (dragType === 'palette') {
-            // Just remove the dragged clone
+            // Dragged from palette failed, just remove the clone
             draggedElement.remove();
         }
-        console.log("Drop outside valid area.");
+        console.log("Drop outside valid area or on occupied slot.");
     }
 
-    // Reset state
+    // --- Cleanup ---
     isDragging = false;
     draggedElement = null;
     sourceElement = null;
     dragType = null;
     targetSlotIndex = -1;
-    currentDropTarget = null; // Reset hover target as well
-
-    // Remove global listeners
+    // Remove global listeners added during drag start
     document.removeEventListener('pointermove', onPointerMove);
     // pointerup removed by {once: true}
 
-    // Final check on empty message state
-    checkGridEmpty();
-    // Recalculate grid layout after potential DOM changes
-    setTimeout(calculateGridCellLayout, 0);
+    // Recalculate grid layout and check empty state after DOM changes settle
+    setTimeout(() => {
+        calculateGridCellLayout();
+        checkGridEmpty();
+    }, 50); // Small delay might help layout settle
 }
 
 
@@ -539,22 +621,29 @@ function handlePaletteToggle() {
     paletteToggleBtn.setAttribute('title', isCollapsed ? 'Expand Palette' : 'Collapse Palette');
     const icon = paletteToggleBtn.querySelector('i');
     if (icon) icon.className = `fas ${isCollapsed ? 'fa-chevron-up' : 'fa-chevron-down'}`;
+    // Recalculate grid after palette transition finishes (affects available height)
+    setTimeout(calculateGridCellLayout, 350); // Match CSS transition duration
 }
 
-/** Handles clicks on panel action buttons (remove, share) */
+/** Handles clicks on panel action buttons (remove, share) - DELEGATED from grid */
 function handlePanelAction(event) {
     const removeButton = event.target.closest('.remove-panel-btn');
     const shareButton = event.target.closest('.share-panel-btn');
     const panel = event.target.closest('.insight-panel');
 
-    if (removeButton && panel) {
+    if (!panel) return; // Click wasn't inside a panel
+
+    if (removeButton) {
         panel.remove();
+        // Recalculate layout and check empty state after removal
         setTimeout(() => {
-            calculateGridCellLayout(); // Recalculate layout needed
+            calculateGridCellLayout();
             checkGridEmpty();
-        }, 0);
-    } else if (shareButton && panel) {
-        alert(`Sharing panel '${panel.querySelector('.panel-title')?.textContent || 'N/A'}'`);
+        }, 50);
+    } else if (shareButton) {
+        // Placeholder for share functionality
+        alert(`Sharing panel '${panel.querySelector('.panel-title')?.textContent || 'N/A'}' (functionality not implemented)`);
+        console.log("Share button clicked for panel:", panel.dataset.panelId);
     }
 }
 
@@ -562,35 +651,118 @@ function handlePanelAction(event) {
 function makePanelDraggable(panelElement) {
     const header = panelElement.querySelector('.panel-header');
     if (header) {
-        header.removeEventListener('pointerdown', onPointerDown); // Use the main handler
+        // Use the main onPointerDown handler for consistency
+        header.removeEventListener('pointerdown', onPointerDown); // Remove if already added
         header.addEventListener('pointerdown', onPointerDown);
     }
 }
+
+/** Attaches event listeners for actions within a specific panel */
+function addPanelActionListeners(panelElement) {
+    const actionsContainer = panelElement.querySelector('.panel-actions');
+    if (actionsContainer) {
+        // We use event delegation on the grid, so specific listeners here might
+        // not be strictly necessary unless we need different behavior.
+        // If needed, add listeners like this:
+        // const removeBtn = actionsContainer.querySelector('.remove-panel-btn');
+        // if (removeBtn) {
+        //     removeBtn.addEventListener('click', handlePanelAction); // Could call specific handler
+        // }
+    }
+}
+
 
 // --- Initialization ---
 
 /** Sets up all event listeners */
 function setupEventListeners() {
     if (!insightsView) return;
-    // Palette Toggle
-    const paletteHeader = palette?.querySelector('.palette-header');
-    if (paletteHeader) paletteHeader.addEventListener('click', handlePaletteToggle);
 
-    // Palette Drag Initiation & Hover Preview
+    // Palette Toggle
+    if (paletteHeader) { // Target the header specifically for toggle
+        paletteHeader.addEventListener('click', (event) => {
+            // Ensure the click isn't on a button *inside* the header if any were added
+            if (event.target.closest('button') && event.target !== paletteToggleBtn) return;
+            handlePaletteToggle();
+        });
+    } else {
+        console.warn("Palette header not found for toggle listener.");
+    }
+
+
+    // Palette Item Drag Initiation & Hover Preview (Delegated to scroll container)
     if (paletteScrollContainer) {
-        paletteScrollContainer.addEventListener('pointerdown', onPointerDown); // Handles drag start
-        paletteScrollContainer.addEventListener('mouseover', (event) => { /* ... same preview show ... */ });
-        paletteScrollContainer.addEventListener('mouseout', (event) => { /* ... same preview hide ... */ });
-        if(palettePreviewContainer) palettePreviewContainer.addEventListener('mouseleave', hidePalettePreview);
+        // Drag Start
+        paletteScrollContainer.addEventListener('pointerdown', onPointerDown);
+
+        // Hover Preview - Show
+        paletteScrollContainer.addEventListener('mouseover', (event) => {
+            if (isDragging) return; // Don't show preview while dragging
+            const targetItem = event.target.closest('.palette-item');
+            if (targetItem) {
+                showPalettePreview(targetItem);
+            }
+        });
+
+        // Hover Preview - Hide (Schedule)
+        paletteScrollContainer.addEventListener('mouseout', (event) => {
+            if (isDragging) return;
+            const targetItem = event.target.closest('.palette-item');
+            const relatedTarget = event.relatedTarget;
+             // Check if the mouse left the item AND didn't enter the preview container
+             if (targetItem && !targetItem.contains(relatedTarget) && !palettePreviewContainer.contains(relatedTarget)) {
+                 scheduleHidePalettePreview();
+             }
+        });
+
+        // Keep preview visible if mouse enters it
+        if(palettePreviewContainer) {
+            palettePreviewContainer.addEventListener('mouseenter', cancelHidePreview);
+            palettePreviewContainer.addEventListener('mouseleave', scheduleHidePalettePreview);
+        }
+
+    } else {
+        console.warn("Palette scroll container not found.");
     }
-    // Grid Panel Actions & Drag Initiation (Delegated)
+
+    // Grid Panel Actions & Drag Initiation (Delegated to grid container)
     if (insightsGrid) {
-        insightsGrid.addEventListener('click', handlePanelAction); // For remove/share
-        insightsGrid.addEventListener('pointerdown', onPointerDown); // For drag start on headers
+        // Listen for clicks on buttons within the grid (delegation)
+        insightsGrid.addEventListener('click', handlePanelAction);
+
+        // Listen for pointer down to initiate dragging panel headers (delegation)
+        // Note: onPointerDown already checks if the target is a .panel-header
+        insightsGrid.addEventListener('pointerdown', onPointerDown);
+
+        // Make existing panels draggable on load
+        insightsGrid.querySelectorAll('.insight-panel').forEach(makePanelDraggable);
+
+    } else {
+        console.warn("Insights grid not found.");
     }
-    // Resize handling
-    window.addEventListener('resize', debounce(() => { if (!isDragging) calculateGridCellLayout(); }, 250));
-    console.log("Insights event listeners attached (V3 Rigid Grid).");
+
+    // Recalculate layout on resize (debounced)
+    window.addEventListener('resize', debounce(() => {
+        if (!isDragging) { // Don't recalculate during an active drag
+             console.log("Window resized, recalculating grid layout...");
+             calculateGridCellLayout();
+             // If drop preview is visible, reposition/resize it based on new layout
+             if (targetSlotIndex !== -1) {
+                 const slotLayout = gridCellLayout[targetSlotIndex];
+                 if(slotLayout) {
+                    const previewSlot = getDropPreviewSlot();
+                    previewSlot.style.width = `${slotLayout.width}px`;
+                    previewSlot.style.height = `${slotLayout.height}px`;
+                    // Re-insert to ensure correct position if grid reflowed significantly
+                    showDropPreviewInGrid(targetSlotIndex);
+                 } else {
+                    hideDropPreviewInGrid(); // Hide if index became invalid
+                 }
+             }
+        }
+    }, 250));
+
+    console.log("Insights event listeners attached (V3 Rigid Grid - Hover Fix).");
 }
 
 /** Simple debounce utility */
@@ -604,28 +776,30 @@ function debounce(func, wait) {
 
 /** Main initialization function */
 export function initInsightsManager() {
-    console.log("Initializing Insights Manager (V3 Rigid Grid)...");
+    console.log("Initializing Insights Manager (V3 Rigid Grid - Hover Fix)...");
     // Get elements
     insightsView = document.getElementById('insights-view');
     insightsGridContainer = insightsView?.querySelector('.insights-grid-container');
     insightsGrid = document.getElementById('insights-grid');
     palette = document.getElementById('analysis-palette');
+    paletteHeader = document.getElementById('palette-header'); // Get palette header
     paletteToggleBtn = document.getElementById('palette-toggle-btn');
     paletteScrollContainer = document.getElementById('palette-scroll-container');
     emptyMessage = document.getElementById('insights-empty-message');
     palettePreviewContainer = document.getElementById('palette-preview-container');
     // dropPreviewSlot created dynamically
 
-    if (!insightsView || !insightsGridContainer || !insightsGrid || !palette || !palettePreviewContainer) {
-        console.warn("Insights view or required elements not found. Manager not fully initialized.");
+    if (!insightsView || !insightsGridContainer || !insightsGrid || !palette || !palettePreviewContainer || !paletteScrollContainer || !paletteHeader) {
+        console.error("Insights view or critical child elements not found. Manager cannot initialize properly. Check IDs: insights-view, insights-grid-container, insights-grid, analysis-palette, palette-header, palette-scroll-container, palette-preview-container");
         return;
     }
 
-    calculateGridCellLayout(); // Initial calculation
-    checkGridEmpty();
-    setupEventListeners();
+    // Initial setup
+    calculateGridCellLayout(); // Calculate layout dimensions first
+    checkGridEmpty();          // Check if empty message needed
+    setupEventListeners();     // Attach all handlers
 
-    console.log("Insights Manager Initialized Successfully (V3 Rigid Grid).");
+    console.log("Insights Manager Initialized Successfully (V3 Rigid Grid - Hover Fix).");
 }
 
 // --- END OF FILE insightsManager.js ---
