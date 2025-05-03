@@ -98,13 +98,13 @@
                 </div>
             </section>
 
-            <!-- ================== UPDATED Insights View Area ================== -->
+            <!-- ================== UPDATED Insights View Area (V9 - Scroll/Style) ================== -->
             <section class="insights-view" id="insights-view">
                 <h2 class="insights-title">Insights Dashboard</h2>
 
-                <div class="insights-grid-container"> {# Scrollable container #}
+                <div class="insights-grid-container" id="insights-grid-container"> {# Added ID for JS scroll target #}
                     <div class="insights-grid" id="insights-grid">
-                        <p class="insights-empty-message" id="insights-empty-message">Add analyses from the palette below to get started.</p>
+                        <p class="insights-empty-message" id="insights-empty-message">Add analyses from the palette below or drag existing ones to rearrange.</p>
                         {# Panels go here, layout by CSS Grid #}
                     </div>
                 </div>
@@ -129,7 +129,6 @@
                                 <button class="add-analysis-btn" aria-label="Add Attendance Trends Analysis">+</button>
                             </div>
                             <p class="palette-item-desc">Track attendance rate across your events.</p>
-                            {# Removed inline preview div #}
                        </div>
 
                        <div class="palette-item"
@@ -142,7 +141,6 @@
                                <button class="add-analysis-btn" aria-label="Add Active Groups Analysis">+</button>
                            </div>
                            <p class="palette-item-desc">See which groups are creating the most events.</p>
-                           {# Removed inline preview div #}
                        </div>
 
                         <div class="palette-item"
@@ -155,7 +153,6 @@
                                 <button class="add-analysis-btn" aria-label="Add RSVP Distribution Analysis">+</button>
                             </div>
                             <p class="palette-item-desc">Analyze typical RSVP patterns for events.</p>
-                            {# Removed inline preview div #}
                        </div>
 
                        <div class="palette-item"
@@ -168,7 +165,6 @@
                                <button class="add-analysis-btn" aria-label="Add Busy Periods Analysis">+</button>
                            </div>
                            <p class="palette-item-desc">Identify upcoming high-activity dates.</p>
-                           {# Removed inline preview div #}
                        </div>
                        {# ... Add more palette items following this structure ... #}
                    </div>
