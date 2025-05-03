@@ -1,0 +1,157 @@
+/* --- START OF FILE plannerInsightsArea.css --- */
+
+/* ==========================================================================
+   Insights View Styles
+   ========================================================================== */
+
+.insights-view {
+    /* Positioning & Box Model */
+    display: none; /* Hidden by default, shown via JS */
+    flex-direction: column;
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0; /* Allow shrinking */
+    padding: 20px;
+    border-radius: inherit; /* Match parent rounding */
+    overflow-y: auto; /* Scroll the entire view if content overflows */
+    overflow-x: hidden;
+    color: #e0e0e5;
+}
+
+.insights-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0;
+}
+
+.insights-grid {
+    display: grid;
+    /* 2 columns, taking equal space */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px; /* Gap between panels */
+    width: 100%;
+    flex-grow: 1; /* Allow grid to expand if view scrolls */
+}
+
+.insight-panel {
+    /* Inherit glassy from HTML */
+    display: flex;
+    flex-direction: column;
+    padding: 18px 22px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    min-height: 200px; /* Minimum height for panels */
+    /* Add transition for potential drag effects later */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.insight-panel.draggable {
+    /* Style applied if JS drag-and-drop is added */
+    /* Example: slightly lift on drag */
+    /* &.dragging { transform: scale(1.02); box-shadow: 0 12px 35px rgba(0,0,0,0.3); } */
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0; /* Prevent header shrinking */
+}
+
+.panel-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.drag-handle {
+    font-size: 1.4rem;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: grab;
+    padding: 0 5px;
+    transition: color 0.2s ease;
+}
+
+.drag-handle:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Add grabbing cursor if JS adds a class */
+/* .insight-panel.dragging .drag-handle { cursor: grabbing; } */
+
+.panel-content {
+    flex-grow: 1; /* Take remaining space in the panel */
+    font-size: 0.9rem;
+    color: #e0e0e5;
+    line-height: 1.5;
+}
+
+.panel-content p {
+    margin-bottom: 8px;
+}
+.panel-content p:last-of-type {
+     margin-bottom: 0;
+}
+
+.placeholder-chart {
+    /* Styles are inline in HTML for simplicity, but could be classes */
+    /* Example: */
+    /* border: 1px dashed rgba(255,255,255,0.2); */
+}
+
+/* --- Mobile Adjustments --- */
+@media (max-width: 768px) {
+    .insights-view {
+        padding: 15px;
+    }
+
+    .insights-title {
+        font-size: 1.25rem;
+        margin-bottom: 15px;
+    }
+
+    .insights-grid {
+        /* Stack panels in a single column */
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .insight-panel {
+        padding: 15px 18px;
+        min-height: 180px; /* Adjust min height if needed */
+    }
+
+    .panel-title {
+        font-size: 1rem;
+    }
+
+    /* Important: Ensure mobile event view class doesn't interfere */
+    /* when Insights view is active */
+     .planner-pane.insights-view-active.mobile-event-view-active .group-list-area,
+     .planner-pane.insights-view-active.mobile-event-view-active .event-collage-area,
+     .planner-pane.insights-view-active.mobile-event-view-active .calendar-view,
+     .planner-pane.insights-view-active.mobile-event-view-active .events-view {
+        display: none !important;
+        flex: 0 0 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    .planner-pane.insights-view-active.mobile-event-view-active .insights-view {
+        display: flex !important; /* Ensure insights view stays visible */
+        flex: 1 1 auto !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+}
+
+/* --- END OF FILE plannerInsightsArea.css --- */

@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerCalendarArea.css') }}" type="text/css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerEventsArea.css') }}" type="text/css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerGroupsArea.css') }}" type="text/css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerInsightsArea.css') }}" type="text/css"> {# <-- ADDED #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}" type="text/css">
 {% endblock %}
 
@@ -18,7 +19,7 @@
                 <button class="view-tab active" id="groups-tab">Groups</button>
                 <button class="view-tab" id="calendar-tab">Calendar</button>
                 <button class="view-tab" id="events-tab">Events</button>
-                <button class="view-tab">Insights</button> {# Add ID if needed later #}
+                <button class="view-tab" id="insights-tab">Insights</button> {# <-- ADDED ID #}
             </nav>
         </div>
 
@@ -28,21 +29,27 @@
             <aside class="group-list-area">
                  <div class="mobile-list-header"></div>
                  <ul>
-                    {% if groups %}
+                    {# Check if groups is defined and not empty #}
+                    {% if groups is defined and groups %}
                         {% for group in groups %}
-                        <li class="group-item {% if loop.first and not is_mobile_on_load %}active{% endif %}" {# Only activate first on desktop load #}
+                        {# Determine if this item should be active: only the first one on desktop initial load #}
+                        {% set is_active = loop.first and not is_mobile_on_load %}
+                        <li class="group-item {% if is_active %}active{% endif %}"
                             data-group-id="{{ group.id | e }}"
                             data-group-name="{{ group.name | e }}"
-                            data-group-avatar="{{ group.avatar_url | e }}">
-                            <img src="{{ group.avatar_url | e }}" alt="{{ group.name | e }} Avatar" class="group-avatar">
+                            data-group-avatar="{{ group.avatar_url or '/static/img/default-group-avatar.png' | e }}"> {# Added default avatar fallback #}
+                            <img src="{{ group.avatar_url or '/static/img/default-group-avatar.png' | e }}" alt="{{ group.name | e }} Avatar" class="group-avatar"> {# Added default avatar fallback #}
                             <div class="group-info">
                                 <span class="group-name">{{ group.name | e }}</span>
-                                <span class="group-stats">{{ group.upcoming_event_count }} upcoming event{{ 's' if group.upcoming_event_count != 1 else '' }}</span>
+                                {# Safely access upcoming_event_count, default to 0 if missing #}
+                                {% set event_count = group.upcoming_event_count | default(0) %}
+                                <span class="group-stats">{{ event_count }} upcoming event{{ 's' if event_count != 1 else '' }}</span>
                             </div>
                         </li>
                         {% endfor %}
                     {% else %}
-                        <li>No groups found.</li>
+                        {# Display message if no groups or groups variable is undefined #}
+                        <li class="no-groups-placeholder" style="color: #ccc; padding: 15px; text-align: center; font-style: italic;">No groups available.</li>
                     {% endif %}
                  </ul>
             </aside>
@@ -55,16 +62,17 @@
                     <div class="active-group-header glassy">
                         <button class="icon-button back-button" aria-label="Back to groups">←</button>
                         {# Initial state set by JS #}
-                        <img src="" alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
+                        <img src="/static/img/default-group-avatar.png" alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar"> {# Default src #}
                         <span class="active-group-name" id="active-group-name">Select a Group</span>
-                        <button class="icon-button settings-button">⚙️</button>
+                        <button class="icon-button settings-button" aria-label="Group Settings">⚙️</button> {# Added aria-label #}
                     </div>
                 </div>
-                {# NEW: Viewport for panning the collage content #}
+                {# Viewport for panning the collage content #}
                 <div class="collage-viewport" id="collage-viewport">
                      {# Container for absolutely positioned items (nodes & events) #}
                     <div class="event-panels-container" id="event-panels-container">
                         <!-- Nodes and Event panels will be loaded here by JS -->
+                        <p class="info-message" style="color: #bbb; text-align:center; padding-top: 50px; font-style: italic;">Select a group to view its events collage.</p> {# Default message #}
                     </div>
                     {# Optional: Controls for adding nodes - Positioned absolutely #}
                     <div class="node-controls" style="position: absolute; top: 10px; left: 10px; z-index: 100;">
@@ -76,15 +84,16 @@
             <!-- Calendar View Area (Structure remains, content by JS) -->
             <section class="calendar-view" id="calendar-view">
                 <div class="calendar-header">
-                    <button class="calendar-nav prev-month" id="calendar-prev-month"></button>
+                    <button class="calendar-nav prev-month" id="calendar-prev-month" aria-label="Previous month"><</button> {# Use < for arrow #}
                     <h2 class="calendar-month-year" id="calendar-month-year">Month Year</h2>
-                    <button class="calendar-nav next-month" id="calendar-next-month">></button>
+                    <button class="calendar-nav next-month" id="calendar-next-month" aria-label="Next month">></button> {# Use > for arrow #}
                 </div>
                 <div class="calendar-days-header">
                     <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                 </div>
                 <div class="calendar-grid" id="calendar-grid">
                     <!-- Calendar cells generated by JS -->
+                    <p style="color: #bbb; text-align:center; grid-column: 1 / -1; padding-top: 30px; font-style: italic;">Loading calendar...</p> {# Loading message #}
                 </div>
             </section>
 
@@ -97,101 +106,169 @@
                 </nav>
                 <div class="event-list-container" id="event-list-container">
                     <!-- Event tiles generated by JS -->
+                     <p style="color: #bbb; text-align:center; grid-column: 1 / -1; padding-top: 30px; font-style: italic;">Loading events...</p> {# Loading message #}
                 </div>
             </section>
+
+             <!-- ================== NEW Insights View Area ================== -->
+            <section class="insights-view" id="insights-view">
+                <h2 class="insights-title">Insights Dashboard</h2>
+                <div class="insights-grid" id="insights-grid">
+                    <!-- Placeholder Insight Panels -->
+                    <div class="insight-panel glassy draggable">
+                        <div class="panel-header">
+                            <span class="panel-title">Event Attendance Trends</span>
+                            <span class="drag-handle" title="Drag to reorder">⠿</span>
+                        </div>
+                        <div class="panel-content">
+                            <p>Visualizing attendance over the last 6 months.</p>
+                            <div class="placeholder-chart" style="height: 150px; background: rgba(0,0,0,0.1); border-radius: 8px; display:flex; align-items:center; justify-content:center; color: #aaa; font-size: 0.9em; margin-top: 10px;">Chart Area</div>
+                        </div>
+                    </div>
+
+                    <div class="insight-panel glassy draggable">
+                        <div class="panel-header">
+                            <span class="panel-title">Most Active Groups</span>
+                             <span class="drag-handle" title="Drag to reorder">⠿</span>
+                        </div>
+                        <div class="panel-content">
+                            <p>Groups ranked by number of events created recently.</p>
+                             <ul style="list-style: none; padding-left: 5px; font-size: 0.9em; margin-top: 10px;">
+                                <li style="margin-bottom: 5px;">1. Project Phoenix (15 events)</li>
+                                <li style="margin-bottom: 5px;">2. Study Buddies (12 events)</li>
+                                <li>3. Weekend Warriors (10 events)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                     <div class="insight-panel glassy draggable">
+                        <div class="panel-header">
+                            <span class="panel-title">RSVP Distribution</span>
+                             <span class="drag-handle" title="Drag to reorder">⠿</span>
+                        </div>
+                        <div class="panel-content">
+                             <p>Typical RSVP breakdown for your events.</p>
+                             <div class="placeholder-chart" style="height: 100px; width: 100px; background: rgba(0,0,0,0.1); border-radius: 50%; margin: 15px auto; display:flex; align-items:center; justify-content:center; color: #aaa; font-size: 0.9em;">Pie Chart</div>
+                        </div>
+                    </div>
+
+                    <div class="insight-panel glassy draggable">
+                        <div class="panel-header">
+                            <span class="panel-title">Upcoming Busy Periods</span>
+                            <span class="drag-handle" title="Drag to reorder">⠿</span>
+                        </div>
+                        <div class="panel-content">
+                            <p>Heatmap showing days with multiple events scheduled.</p>
+                             <div class="placeholder-chart" style="height: 120px; background: rgba(0,0,0,0.1); border-radius: 8px; display:flex; align-items:center; justify-content:center; color: #aaa; font-size: 0.9em; margin-top: 10px;">Heatmap/Calendar Snippet</div>
+                        </div>
+                    </div>
+                     <div class="insight-panel glassy draggable">
+                        <div class="panel-header">
+                            <span class="panel-title">New Members Growth</span>
+                            <span class="drag-handle" title="Drag to reorder">⠿</span>
+                        </div>
+                        <div class="panel-content">
+                            <p>Tracking new member joins across your groups.</p>
+                             <div class="placeholder-chart" style="height: 150px; background: rgba(0,0,0,0.1); border-radius: 8px; display:flex; align-items:center; justify-content:center; color: #aaa; font-size: 0.9em; margin-top: 10px;">Line Chart</div>
+                        </div>
+                    </div>
+                    <!-- Add more placeholder panels as needed -->
+                </div>
+            </section>
+             <!-- ================== END Insights View Area ================== -->
 
         </div> <!-- End of planner-pane -->
 
         <!-- Event Details Modal -->
-<div id="event-details-modal" class="modal-backdrop" style="display: none;">
-    <div class="modal-content glassy">
-        <button class="modal-close-btn" aria-label="Close event details">×</button>
+        <div id="event-details-modal" class="modal-backdrop" style="display: none;">
+            <div class="modal-content glassy">
+                <button class="modal-close-btn" aria-label="Close event details">×</button>
 
-        <div class="modal-header">
-            <img id="modal-event-image-header" src="/static/img/default-event-logo.png" alt="Event Image" class="modal-event-image-small">
-            <div class="modal-title-group">
-                <h2 id="modal-event-title">Event Title Placeholder</h2>
-                <p id="modal-event-group">Part of <span id="modal-group-name">Group Name</span></p>
-            </div>
-        </div>
-
-        <div class="modal-body">
-            <!-- Left Column: Core Details & Description -->
-            <div class="modal-col modal-col-details">
-                <div class="modal-detail-section">
-                    <h3>Event Information</h3>
-                    <div class="modal-detail-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">📅 Date & Time</span>
-                            <span id="modal-event-date">Not specified</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">📍 Location</span>
-                            <span id="modal-event-location">Not specified</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">💲 Cost</span>
-                            <span id="modal-event-cost">Not specified</span>
-                        </div>
-                        </div>
-                 </div>
-
-                <div class="modal-detail-section modal-description-section">
-                     <h3>📝 Description</h3>
-                     <p id="modal-event-description">No description provided.</p>
-                 </div>
-            </div>
-
-            <!-- Right Column: RSVP & Attendees -->
-            <div class="modal-col modal-col-rsvps">
-                <div class="modal-detail-section modal-rsvp-section">
-                    <h3>Your RSVP Status</h3>
-                    <div id="modal-rsvp-controls" class="rsvp-button-group" data-event-id="">
-                        <button class="rsvp-btn rsvp-attending" data-status="attending" aria-pressed="false">
-                            <span class="icon">✔️</span> Going
-                        </button>
-                        <button class="rsvp-btn rsvp-maybe" data-status="maybe" aria-pressed="false">
-                            <span class="icon">❓</span> Maybe
-                        </button>
-                        <button class="rsvp-btn rsvp-declined" data-status="declined" aria-pressed="false">
-                            <span class="icon">❌</span> Can't Go
-                        </button>
-                         <!-- Add a button to explicitly remove RSVP if needed -->
-                         <button class="rsvp-btn rsvp-remove" data-status="none" style="display: none;">
-                             <span class="icon">🗑️</span> Clear RSVP
-                         </button>
+                <div class="modal-header">
+                    <img id="modal-event-image-header" src="/static/img/default-event-logo.png" alt="Event Image" class="modal-event-image-small">
+                    <div class="modal-title-group">
+                        <h2 id="modal-event-title">Event Title Placeholder</h2>
+                        <p id="modal-event-group">Part of <span id="modal-group-name">Group Name</span></p>
                     </div>
-                    <p id="rsvp-confirmation-message" class="rsvp-message" style="display: none;"></p>
                 </div>
 
-                <div class="modal-detail-section modal-attendees-section">
-                    <h3>Attendees (<span id="modal-attendee-count">0</span>)</h3>
-                    <div class="attendee-list-container">
-                         <ul id="modal-attendee-list">
-                            <!-- Attendee List Items will be dynamically added here -->
-                            <!-- Example:
-                            <li>
-                                <img src="avatar_url" alt="User Avatar" class="attendee-avatar">
-                                <span class="attendee-name">User Name</span>
-                                <span class="status-pill status-attending">Going</span>
-                            </li>
-                             -->
-                         </ul>
-                    </div>
-                    <p id="attendee-list-message" style="display: none;">No one has RSVP'd yet.</p>
-                     <!-- Add Loading indicator? -->
-                     <div id="attendee-loading-indicator" style="display: none;">Loading attendees...</div>
-                 </div>
-            </div>
-        </div>
+                <div class="modal-body">
+                    <!-- Left Column: Core Details & Description -->
+                    <div class="modal-col modal-col-details">
+                        <div class="modal-detail-section">
+                            <h3>Event Information</h3>
+                            <div class="modal-detail-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">📅 Date & Time</span>
+                                    <span id="modal-event-date">Not specified</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">📍 Location</span>
+                                    <span id="modal-event-location">Not specified</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">💲 Cost</span>
+                                    <span id="modal-event-cost">Not specified</span>
+                                </div>
+                                </div>
+                         </div>
 
-        <!-- Optional Footer for Admin Actions -->
-        <!-- <div class="modal-footer">
-            <button class="admin-action-btn">Edit Event</button>
-            <button class="admin-action-btn delete-btn">Delete Event</button>
-        </div> -->
-    </div>
-</div>
+                        <div class="modal-detail-section modal-description-section">
+                             <h3>📝 Description</h3>
+                             <p id="modal-event-description">No description provided.</p>
+                         </div>
+                    </div>
+
+                    <!-- Right Column: RSVP & Attendees -->
+                    <div class="modal-col modal-col-rsvps">
+                        <div class="modal-detail-section modal-rsvp-section">
+                            <h3>Your RSVP Status</h3>
+                            <div id="modal-rsvp-controls" class="rsvp-button-group" data-event-id="">
+                                <button class="rsvp-btn rsvp-attending" data-status="attending" aria-pressed="false">
+                                    <span class="icon">✔️</span> Going
+                                </button>
+                                <button class="rsvp-btn rsvp-maybe" data-status="maybe" aria-pressed="false">
+                                    <span class="icon">❓</span> Maybe
+                                </button>
+                                <button class="rsvp-btn rsvp-declined" data-status="declined" aria-pressed="false">
+                                    <span class="icon">❌</span> Can't Go
+                                </button>
+                                 <!-- Add a button to explicitly remove RSVP if needed -->
+                                 <button class="rsvp-btn rsvp-remove" data-status="none" style="display: none;" aria-label="Clear RSVP"> {# Added Aria Label #}
+                                     <span class="icon">🗑️</span> Clear RSVP
+                                 </button>
+                            </div>
+                            <p id="rsvp-confirmation-message" class="rsvp-message" style="display: none;"></p>
+                        </div>
+
+                        <div class="modal-detail-section modal-attendees-section">
+                            <h3>Attendees (<span id="modal-attendee-count">0</span>)</h3>
+                            <div class="attendee-list-container" id="attendee-list-container-id"> {# Added ID for potential targeting #}
+                                 <ul id="modal-attendee-list">
+                                    <!-- Attendee List Items will be dynamically added here -->
+                                    <!-- Example:
+                                    <li>
+                                        <img src="avatar_url" alt="User Avatar" class="attendee-avatar">
+                                        <span class="attendee-name">User Name</span>
+                                        <span class="status-pill status-attending">Going</span>
+                                    </li>
+                                     -->
+                                 </ul>
+                            </div>
+                             <p id="attendee-list-message" style="display: none;">No one has RSVP'd yet.</p>
+                             <div id="attendee-loading-indicator" style="display: none; color: #bbb; text-align:center; padding: 15px; font-style: italic;">Loading attendees...</div> {# Loading Indicator #}
+                         </div>
+                    </div>
+                </div>
+
+                <!-- Optional Footer for Admin Actions -->
+                <!-- <div class="modal-footer">
+                    <button class="admin-action-btn">Edit Event</button>
+                    <button class="admin-action-btn delete-btn">Delete Event</button>
+                </div> -->
+            </div>
+        </div> <!-- End of Modal Backdrop -->
+
     </main>
     <div id="custom-context-menu" class="context-menu" style="display: none;"></div>
 {% endblock %}
