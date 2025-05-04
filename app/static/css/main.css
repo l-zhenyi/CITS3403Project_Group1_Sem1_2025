@@ -1,184 +1,232 @@
 /* ==========================================================================
-   Base Styles & Resets
+   Base Styles & Resets (Keep as is)
+   ========================================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; scroll-behavior: smooth; }
+body { display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #f0f0f5; background-image: url('https://sb.ecobnb.net/app/uploads/sites/3/2020/01/nature.jpg'); background-size: cover; background-position: center center; background-attachment: fixed; z-index: 0; }
+body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10px; bottom: -10px; transform: scale(1.1); background: inherit; filter: blur(10px) saturate(50%) brightness(1.0); z-index: -1; }
+
+/* ==========================================================================
+   Utility Styles (Keep as is)
+   ========================================================================== */
+.glassy { background: rgba(140, 140, 145, 0.6); backdrop-filter: blur(30px) saturate(150%); border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
+.button { display: inline-block; padding: 9px 18px; border: none; border-radius: 12px; font-weight: 500; color: white; text-shadow: none; text-align: center; text-decoration: none; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; }
+.button:active { transform: scale(0.97); }
+.button.accept { background-color: #0284C7; color: white; }
+.button.accept:hover { background-color: #0369A1; }
+.button.decline { background-color: rgba(255, 255, 255, 0.15); color: #f0f0f5; }
+.button.decline:hover { background-color: rgba(255, 255, 255, 0.25); }
+
+/* ==========================================================================
+   Navigation Bar (.top-nav) - Incorporating Fixes
+   ========================================================================== */
+.top-nav { position: sticky; top: 10px; z-index: 1000; display: flex; flex-shrink: 0; width: calc(100% - 24px); max-width: 1800px; margin: 10px auto 0 auto; padding: 10px 24px; border-radius: 16px; justify-content: space-between; align-items: center; /* Inherit .glassy style from HTML */ }
+.top-nav-left a { display: inline-block; padding: 8px 20px; margin-right: 8px; border-radius: 10px; color: #ffffff; font-weight: 500; text-decoration: none; text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); transition: background-color 0.2s ease, color 0.2s ease; }
+.top-nav-left a.active { background-color: rgba(255, 255, 255, 0.15); color: #fff; font-weight: 600; text-shadow: none; }
+.top-nav-left a:not(.active):hover { background-color: rgba(255, 255, 255, 0.15); }
+
+/* --- Container for Right-Side Icons/Widgets --- */
+.top-nav-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap; /* Keep items on one line */
+  gap: 8px;          /* Consistent spacing between items */
+}
+
+/* --- Base styles for ALL icon buttons (Profile, etc.) --- */
+.top-nav-right .icon-button {
+  /* Box Model & Shape */
+  display: inline-flex; /* Use flex to center icon content */
+  justify-content: center;
+  align-items: center;
+  width: 36px;        /* Explicit width */
+  height: 36px;       /* Explicit height */
+  border-radius: 50%; /* Ensure fully circular */
+  border: none;
+  padding: 0;         /* No padding needed with explicit w/h */
+  margin: 0;          /* Let gap handle spacing */
+  /* Appearance */
+  background: transparent; /* NO background initially */
+  color: #f0f0f5;
+  font-size: 1.4rem;
+  cursor: pointer;
+  /* Transitions */
+  transition: background-color 0.2s ease; /* Only transition background */
+  text-decoration: none;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* --- Hover state ONLY for regular icon buttons (Profile) --- */
+.top-nav-right .icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.15); /* Circle appears on hover */
+}
+
+/* ==========================================================================
+   Search Widget Styles (Sexy Revision 3)
    ========================================================================== */
 
-   * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  
-  html {
-    height: 100%; /* Ensure html takes full height */
-    scroll-behavior: smooth;
-  }
-  
-  body {
-    /* Positioning & Box Model */
-    display: flex;
-    flex-direction: column;
-    height: 100%; /* Ensure body takes full height */
-    position: relative; /* For pseudo-element positioning */
-    overflow: hidden; /* Prevent body scrollbars; let children manage scroll */
-  
-    /* Typography */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    color: #f0f0f5;
-  
-    /* Background */
-    background-image: url('https://sb.ecobnb.net/app/uploads/sites/3/2020/01/nature.jpg');
-    background-size: cover;
-    background-position: center center;
-    background-attachment: fixed;
-  
-    /* Stacking */
-    z-index: 0; /* Establish base stacking context */
-  }
-  
-  /* Blurred Background Effect */
-  body::before {
-    content: '';
-    position: fixed; /* Cover entire viewport */
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    transform: scale(1.1); /* Scale up slightly to avoid edge issues with blur */
-    background: inherit; /* Use body's background */
-    filter: blur(10px) saturate(50%) brightness(1.0);
-    z-index: -1; /* Position behind everything else */
-  }
-  
-  /* ==========================================================================
-     Utility Styles
-     ========================================================================== */
-  
-  /* Mid-tone Glass Style (Base Layer for components) */
-  .glassy {
-    background: rgba(140, 140, 145, 0.6); /* Base glass color */
-    backdrop-filter: blur(30px) saturate(150%);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-  }
-  
-  /* Basic Button Style (used in Event Panel) */
-  .button {
-    /* Box Model */
-    display: inline-block; /* Or flex if needed */
-    padding: 9px 18px;
-    border: none;
-    border-radius: 12px;
-  
-    /* Typography */
-    font-weight: 500;
-    color: white; /* Default color */
-    text-shadow: none;
-    text-align: center;
-    text-decoration: none;
-  
-    /* Visual */
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-  }
-  
-  .button:active {
-    transform: scale(0.97);
-  }
-  
-  .button.accept {
-    background-color: #0284C7; /* Sky Blue */
-    color: white;
-  }
-  .button.accept:hover {
-    background-color: #0369A1; /* Darker Sky Blue */
-  }
-  
-  .button.decline {
-    background-color: rgba(255, 255, 255, 0.15);
-    color: #f0f0f5;
-  }
-  .button.decline:hover {
-    background-color: rgba(255, 255, 255, 0.25);
-  }
-  
-  
-  /* ==========================================================================
-     Navigation Bar (.top-nav)
-     ========================================================================== */
-  
-  .top-nav {
-    /* Positioning & Box Model */
-    position: sticky; /* Stick to top during scroll */
-    top: 10px;
-    z-index: 1000; /* Above other content */
-    display: flex;
-    flex-shrink: 0; /* Prevent shrinking in flex context */
-    width: calc(100% - 24px);
-    max-width: 1800px;
-    margin: 10px auto 0 auto;
-    padding: 10px 24px;
-    border-radius: 16px;
-  
-    /* Layout */
-    justify-content: space-between;
-    align-items: center;
-  
-    /* Inherit glassy style */
-    /* background defined by .glassy if applied in HTML */
-  }
-  
-  .top-nav-left a {
-    /* Box Model */
-    display: inline-block;
-    padding: 8px 20px;
-    margin-right: 8px;
-    border-radius: 10px;
-  
-    /* Typography */
-    color: #ffffff;
-    font-weight: 500;
-    text-decoration: none;
-    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
-  
-    /* Visual */
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-  
-  .top-nav-left a.active {
-    background-color: rgba(255, 255, 255, 0.15);
-    color: #fff;
-    font-weight: 600;
-    text-shadow: none;
-  }
-  
-  .top-nav-left a:not(.active):hover {
-    background-color: rgba(255, 255, 255, 0.15);
-  }
-  
-  .top-nav-right .icon-button {
-    /* Box Model */
-    padding: 8px;
-    margin-left: 12px;
-    border: none;
-    border-radius: 50%; /* Circular */
-  
-    /* Typography */
-    font-size: 1.4rem;
-    color: #fff;
-  
-    /* Visual */
-    background: none;
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    text-decoration: none;
-  }
-  
-  .top-nav-right .icon-button:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-  }
-  
-  .view-posts {
-      max-height: 100%;  /* Adjust height to suit your design */
-      overflow-y: auto;   /* Enable vertical scrolling */
-  }
+.search-widget {
+  position: relative; /* For positioning children */
+  display: flex;      /* Use flexbox */
+  align-items: center;
+  /* Sized to fit the icon button initially */
+  width: 36px;
+  height: 36px;
+  /* --- Initially VISUALLY transparent --- */
+  background: transparent;
+  border: 1px solid transparent; /* reserve space but hide border */
+  border-radius: 18px; /* Rounded like the button */
+  /* --- Transitions --- */
+  /* Transition width linearly, background/border/blur smoothly (ease-out) */
+  /* Add a slight delay to width expansion */
+  transition:
+    width 0.3s linear 0.05s,
+    background-color 0.25s ease-out,
+    border-color 0.25s ease-out,
+    backdrop-filter 0.25s ease-out;
+  /* No overflow hidden */
+}
+
+/* Input - initially hidden */
+.search-input {
+  position: absolute; /* Position inside the widget */
+  left: 0;
+  top: 0;
+  width: 100%; /* Fill parent */
+  height: 100%;
+  padding: 0 40px 0 15px; /* Space for text and icon */
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.9em;
+  color: #f0f0f5;
+  opacity: 0; /* Hidden initially */
+  pointer-events: none;
+  /* Fade in *after* the widget starts expanding */
+  transition: opacity 0.2s ease-out 0.15s;
+}
+
+.search-input::placeholder {
+  color: rgba(240, 240, 245, 0.7);
+  font-style: italic;
+}
+
+/* Button - Initially styled like other icons */
+.search-toggle-btn {
+  /* Positioning & Size */
+  position: absolute; /* Keep it pinned */
+  right: 0;
+  top: 0;
+  width: 36px;        /* Match widget initial size */
+  height: 36px;
+  /* Base Icon Styles */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%; /* Circular */
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent; /* No BG initially */
+  color: #f0f0f5;
+  font-size: 1.4rem;
+  cursor: pointer;
+  z-index: 2; /* Above input */
+  /* Transition for hover effect */
+  transition: background-color 0.2s ease;
+}
+
+/* Button hover effect when search is COLLAPSED */
+.search-widget:not(.active) .search-toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15); /* Standard icon hover */
+}
+
+/* --- Styles when search is ACTIVE --- */
+.search-widget.active {
+  width: 220px; /* Expanded width */
+  /* --- Fade IN the glassy pill style --- */
+  background: rgba(255, 255, 255, 0.15); /* Use a slightly more opaque BG */
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(15px) saturate(120%);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Optional subtle shadow */
+  cursor: default;
+}
+
+/* Input becomes visible */
+.search-widget.active .search-input {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Button hover effect when search is EXPANDED (hover the whole widget) */
+.search-widget.active:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Optional: Dim the icon slightly when expanded? */
+/* .search-widget.active .search-toggle-btn { */
+/*   color: rgba(240, 240, 245, 0.8); */
+/* } */
+
+/* ==========================================================================
+   Search Results Dropdown (Darker & Matching Width)
+   ========================================================================== */
+.search-results-dropdown {
+  position: fixed; /* KEEP this so it stays above page flow */
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: rgba(80, 80, 90, 0.4);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+          backdrop-filter: blur(12px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  z-index: 1100;
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.search-results-dropdown.visible {
+  display: block;
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Dropdown Content Styles (Keep text light) */
+.search-results-placeholder,
+.search-results-loading,
+.search-results-error,
+.search-results-empty {
+  padding: 12px 15px;
+  color: rgba(240, 240, 245, 0.8); /* Slightly dimmed white */
+  font-style: italic;
+  font-size: 0.9em;
+  text-align: center;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Darker internal border */
+  text-decoration: none;
+  /* --- UPDATED: Light text color --- */
+  color: #f0f0f5;
+  transition: background-color 0.15s ease;
+}
+.search-result-item:last-child { border-bottom: none; }
+/* --- UPDATED: Subtle hover for dark background --- */
+.search-result-item:hover {
+  background-color: rgba(255, 255, 255, 0.1); /* Lighter shade on hover */
+}
+.search-result-avatar { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; object-fit: cover; flex-shrink: 0; background-color: rgba(255,255,255,0.1); /* Placeholder bg */ }
+.search-result-username { font-weight: 500; font-size: 0.95em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ==========================================================================
+   Flash Messages (Keep as is or adjust)
+   ========================================================================== */
+.flash-messages { list-style: none; padding: 10px; margin: 10px auto; max-width: 600px; background-color: #e7f3fe; border: 1px solid #d0e3f0; border-radius: 4px; color: #31708f; }
+.flash-messages li { margin-bottom: 5px; }
+.flash-messages li:last-child { margin-bottom: 0; }

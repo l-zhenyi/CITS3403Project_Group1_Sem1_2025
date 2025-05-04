@@ -1,57 +1,66 @@
-<!doctype html> 
+<!doctype html>
 <html lang="en">
-<head> 
+<head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      {% if title %} 
-      <title>{{ title }} - Application</title> 
-      {% else %} 
-      <title>Welcome to Application</title> 
-      {% endif %} 
+      {% if title %}
+      <title>{{ title }} - Application</title>
+      {% else %}
+      <title>Welcome to Application</title>
+      {% endif %}
       <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" type="text/css">
+      <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
       {% block head %}{% endblock %}
-</head> 
+</head>
 <body>
       {% if not hide_nav %}
       <header class="top-nav glassy">
             <nav class="top-nav-left">
                   <a href="{{ url_for('index') }}">Home</a>
-                  {% if current_user.is_anonymous %} 
-                        <a href="{{ url_for('login') }}">Login</a> 
-                  {% else %} 
+                  {% if current_user.is_anonymous %}
+                        <a href="{{ url_for('login') }}">Login</a>
+                  {% else %}
                         <a href="{{ url_for('user', username=current_user.username) }}">Profile</a>
-                        <a href="{{ url_for('logout') }}">Logout</a> 
+                        <a href="{{ url_for('logout') }}">Logout</a>
                         <a href="{{ url_for('messages') }}"> {{ ('Messages') }} </a>
-                  {% endif %} 
+                  {% endif %}
                   <a href="{{ url_for('planner') }}">Planner</a>
                   <a href="{{ url_for('explore') }}">Explore</a>
-
             </nav>
-            
-            <div class="top-nav-right">
-                  <button class="icon-button"><a href="{{ url_for('search_users') }}">🔍</a></button>
-                  <a href="{{ url_for('login') }}" class="icon-button">🔑</a>
-                  <a href="{{ url_for('profile') }}" class="icon-button">👤</a>
-                  {% if current_user.is_authenticated %} 
-                  <!-- THIS NEEDS TO BE MOVED TO THE PROFILE PAGE -->
-                        <a id="logout-button" href="{{ url_for('logout') }}">Logout</a> 
-                  {% endif %}
 
+            <div class="top-nav-right">
+                  {# --- NEW Search Widget --- #}
+                  <div class="search-widget" id="search-widget">
+                      <input type="search" id="user-search-input" class="search-input" placeholder="Search users..." autocomplete="off">
+                      <button class="icon-button search-toggle-btn" id="search-toggle-btn" aria-label="Toggle search" aria-expanded="false">🔍</button>
+                  </div>
+                  {# --- END Search Widget --- #}
+
+                  {# --- Other Icons (keep as needed) --- #}
+                  {# <a href="{{ url_for('login') }}" class="icon-button">🔑</a> #}
+                  <a href="{{ url_for('profile') }}" class="icon-button">👤</a>
+                  {# {% if current_user.is_authenticated %} #}
+                  {# This logout button is redundant if you have one in top-nav-left #}
+                  {# <a id="logout-button" href="{{ url_for('logout') }}">Logout</a> #}
+                  {# {% endif %} #}
             </div>
       </header>
       {% endif %}
-      {% with messages = get_flashed_messages() %} 
-      {% if messages %} 
-      <ul> 
-            {% for message in messages %} 
-            <li>{{ message }}</li> 
-            {% endfor %} 
-      </ul> 
-      {% endif %} 
-      {% endwith %} 
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <ul class="flash-messages"> {# Added class for styling #}
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+      </ul>
+      {% endif %}
+      {% endwith %}
 
-      {% block content %}{% endblock %} 
-      {% block scripts %}{% endblock %}
+      {% block content %}{% endblock %}
 
-      </body> 
-</html> 
+      <div id="search-results" class="search-results-dropdown">
+          <!-- Search results will appear here -->
+          <div class="search-results-placeholder">Start typing to search...</div>
+      </div>
+      </body>
+</html>
