@@ -98,11 +98,11 @@
                 </div>
             </section>
 
-            <!-- ================== UPDATED Insights View Area (V9 - Scroll/Style) ================== -->
+            <!-- ================== UPDATED Insights View Area (V11 - Final Tweaks) ================== -->
             <section class="insights-view" id="insights-view">
                 <h2 class="insights-title">Insights Dashboard</h2>
 
-                <div class="insights-grid-container" id="insights-grid-container"> {# Added ID for JS scroll target #}
+                <div class="insights-grid-container" id="insights-grid-container"> {# Scrollable container #}
                     <div class="insights-grid" id="insights-grid">
                         <p class="insights-empty-message" id="insights-empty-message">Add analyses from the palette below or drag existing ones to rearrange.</p>
                         {# Panels go here, layout by CSS Grid #}
@@ -169,8 +169,10 @@
                        {# ... Add more palette items following this structure ... #}
                    </div>
                 </div>
-                 {# Single Preview Container for Palette Hover (remains the same) #}
-                 <div id="palette-preview-container" class="palette-item-preview-container glassy"></div>
+                 {# Revamped Preview Container for Palette Hover #}
+                 <div id="palette-preview-container" class="palette-item-preview-container glassy">
+                    {# Content injected by JS #}
+                 </div>
             </section>
             <!-- ================== END Insights View Area ================== -->
 
