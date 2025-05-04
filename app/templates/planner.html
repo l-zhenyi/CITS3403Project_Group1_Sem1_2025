@@ -25,7 +25,7 @@
 
         <div class="planner-pane" id="planner-pane">
 
-            <!-- Left Side: Group List (No Changes Needed) -->
+            <!-- Left Side: Group List (No Changes) -->
             <aside class="group-list-area">
                  <div class="mobile-list-header"></div>
                  <ul>
@@ -50,7 +50,7 @@
                  </ul>
             </aside>
 
-            <!-- Right Side: Event Area (No Changes Needed) -->
+            <!-- Right Side: Event Area (No Changes) -->
             <section class="event-collage-area" id="event-collage">
                 <div class="blur-wrapper">
                     <div class="blur-overlay"></div>
@@ -71,7 +71,7 @@
                 </div>
             </section>
 
-            <!-- Calendar View Area (No Changes Needed) -->
+            <!-- Calendar View Area (No Changes) -->
             <section class="calendar-view" id="calendar-view">
                 <div class="calendar-header">
                     <button class="calendar-nav prev-month" id="calendar-prev-month" aria-label="Previous month"><</button>
@@ -86,7 +86,7 @@
                 </div>
             </section>
 
-            <!-- Events List View Area (No Changes Needed) -->
+            <!-- Events List View Area (No Changes) -->
             <section class="events-view" id="events-view">
                 <nav class="event-filter-bar glassy" id="event-filter-bar">
                     <button class="filter-pill active" data-filter="upcoming">Upcoming</button>
@@ -98,27 +98,19 @@
                 </div>
             </section>
 
-            <!-- ================== UPDATED Insights View Area (V11 - Final Tweaks) ================== -->
+            <!-- ================== UPDATED Insights View Area (V15 - Left Palette) ================== -->
             <section class="insights-view" id="insights-view">
-                <h2 class="insights-title">Insights Dashboard</h2>
 
-                <div class="insights-grid-container" id="insights-grid-container"> {# Scrollable container #}
-                    <div class="insights-grid" id="insights-grid">
-                        <p class="insights-empty-message" id="insights-empty-message">Add analyses from the palette below or drag existing ones to rearrange.</p>
-                        {# Panels go here, layout by CSS Grid #}
-                    </div>
-                </div>
-
-                {# Analysis Palette #}
-                <div class="analysis-palette glassy" id="analysis-palette">
-                   <div class="palette-header" id="palette-header"> {# Added ID for JS toggle click target #}
+                {# Analysis Palette - Moved to the LEFT #}
+                <aside class="analysis-palette glassy" id="analysis-palette">
+                   <div class="palette-header" id="palette-header">
                         <span class="palette-header-title">Analysis Palette</span>
                         <button class="palette-toggle-btn" id="palette-toggle-btn" aria-label="Collapse Palette" title="Collapse Palette">
-                            <i class="fas fa-chevron-down"></i>
+                            <i class="fas fa-chevron-left"></i> {# Default: Expanded, points left to collapse #}
                         </button>
                     </div>
                    <div class="palette-scroll-container" id="palette-scroll-container">
-                       {# --- Palette Items with FULL STRUCTURE --- #}
+                       {# --- Palette Items (Structure remains the same) --- #}
                        <div class="palette-item"
                             data-analysis-type="attendance-trends"
                             data-title="📈 Attendance Trends"
@@ -168,8 +160,17 @@
                        </div>
                        {# ... Add more palette items following this structure ... #}
                    </div>
+                </aside>
+
+                {# Main Grid Area #}
+                <div class="insights-grid-container" id="insights-grid-container">
+                    <div class="insights-grid" id="insights-grid">
+                        <p class="insights-empty-message" id="insights-empty-message">Add analyses from the palette on the left or drag existing ones to rearrange.</p>
+                        {# Panels go here, layout by CSS Grid #}
+                    </div>
                 </div>
-                 {# Revamped Preview Container for Palette Hover #}
+
+                {# Preview Container - Still needed, positioning handled by JS/CSS #}
                  <div id="palette-preview-container" class="palette-item-preview-container glassy">
                     {# Content injected by JS #}
                  </div>
