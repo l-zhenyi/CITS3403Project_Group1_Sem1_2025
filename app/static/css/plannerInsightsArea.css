@@ -1,0 +1,296 @@
+/* --- START OF FILE plannerInsightsArea.css --- */
+
+/* ==========================================================================
+   Insights View Styles (V19 - Square Panels, Correct Glassiness & Preview)
+   ========================================================================== */
+
+/* Container - Establishing Flex Row Layout */
+.insights-view {
+    display: flex; flex-direction: row; flex-grow: 1;
+    width: 100%; height: 100%; min-height: 0; padding: 15px;
+    border-radius: inherit; overflow: visible; color: #e0e0e5;
+    background-color: transparent;
+    box-sizing: border-box; position: relative;
+}
+
+/* Fill the 15 px gap between palette and grid with a subtle frosted sheet
+   so outlines/shadows don’t look cut-off. */
+.insights-view::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(140, 140, 145, 0.20);
+    pointer-events: none;
+    z-index: 0;           /* sits behind everything else inside .insights-view */
+}
+
+/* Grid Container - Takes remaining space */
+.insights-grid-container {
+    flex-grow: 1; display: flex; flex-direction: column;
+    overflow-y: auto; overflow-x: visible; min-height: 0;
+    padding: 0; position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.35) rgba(0,0,0,0.15);
+    z-index: 5;
+}
+.insights-grid-container::-webkit-scrollbar { width: 8px; }
+.insights-grid-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 4px; }
+.insights-grid-container::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.35); border-radius: 4px; }
+.insights-grid-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.55); }
+
+
+/* Grid - Fixed 2 Columns */
+.insights-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    padding: 10px;
+    width: 100%; padding-bottom: 1px;
+    user-select: none; -webkit-user-select: none;
+    align-content: start;
+}
+.insights-empty-message { color: #bbb; text-align:center; grid-column: 1 / -1; padding: 40px 0; font-style: italic; align-self: start; display: block; font-size: 1rem; pointer-events: none; }
+.insights-grid:has(.insight-panel:not(.dragging-placeholder)) > .insights-empty-message { display: none; }
+
+
+/* Panels - Square & Correct Glassy Style */
+.insight-panel {
+    display: flex; flex-direction: column; padding: 0;
+    border-radius: 16px; overflow: visible;
+    aspect-ratio: 1 / 1;
+    min-width: 180px;
+    min-height: 180px;
+    box-sizing: border-box;
+    /* --- FIX: Apply standard light glassy style --- */
+    background: rgba(140, 140, 145, 0.6); /* Match .glassy */
+    backdrop-filter: blur(30px) saturate(150%); /* Match .glassy */
+    border: 1px solid rgba(255, 255, 255, 0.25); /* Match .glassy */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2), /* Match .glassy + subtle inset */
+                inset 0 1px 2px rgba(255, 255, 255, 0.05);
+    /* --- End Fix --- */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease-out, border-color 0.25s ease, box-shadow 0.25s ease, outline 0.25s ease;
+    will-change: transform, opacity;
+    outline: 2px solid transparent; outline-offset: -2px;
+    position: relative;
+    z-index: 1;
+    margin: 10px;
+}
+
+/* Placeholder & Clone Styles */
+.insight-panel.dragging-placeholder {
+    opacity: 0.6; border-color: transparent !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: none !important; backdrop-filter: none !important;
+    outline: 3px dashed rgba(255, 255, 255, 0.8) !important;
+    outline-offset: -1px; transition: none !important;
+    z-index: 20;   /* so the dashed outline is never hidden by the palette */
+    /* aspect-ratio ensures squareness */
+    /* min-height removed */
+}
+.insight-panel.dragging-placeholder > * { visibility: hidden; pointer-events: none; }
+.insight-panel.dragging-clone {
+    position: fixed !important; z-index: 1000 !important; opacity: 0.95 !important;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    outline: none !important; transform: scale(var(--drag-scale, 0.95)) !important;
+    transition: none !important; pointer-events: none !important;
+    cursor: grabbing !important; transform-origin: center center !important;
+    grid-column: unset !important; grid-row: unset !important;
+    /* --- FIX: Consistent Glassy Background --- */
+    background: rgba(140, 140, 145, 0.75) !important; /* Glassy bg */
+    backdrop-filter: blur(30px) saturate(150%) !important; /* Glassy filter */
+    /* --- End Fix --- */
+}
+.insight-panel.dragging-clone * { cursor: grabbing !important; }
+
+/* Panel Content */
+.panel-header { padding: 14px 18px; background-color: rgba(0,0,0, 0.1); border-bottom: 1px solid rgba(255, 255, 255, 0.18); display: flex; justify-content: space-between; align-items: center; cursor: grab; touch-action: none; flex-shrink: 0; border-top-left-radius: 16px; border-top-right-radius: 16px;}
+.panel-header:active { cursor: grabbing; }
+.panel-title { font-size: 1.1rem; font-weight: 600; color: #fff; margin-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.panel-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.panel-action-btn { display: inline-flex; justify-content: center; align-items: center; width: 28px; height: 28px; border: none; border-radius: 50%; background-color: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease; }
+.panel-action-btn i { pointer-events: none; }
+.panel-action-btn:hover { background-color: rgba(255, 255, 255, 0.2); color: #fff; }
+.panel-action-btn:active { transform: scale(0.9); }
+.panel-action-btn.remove-panel-btn:hover { background-color: rgba(220, 53, 69, 0.7); color: #fff; }
+.panel-content { padding: 18px; flex-grow: 1; font-size: 0.9rem; color: #e0e0e5; line-height: 1.5; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
+.panel-content p { margin-bottom: 8px; } .panel-content p:last-of-type { margin-bottom: 0; }
+.placeholder-chart {
+    /* Let flex-grow handle height relative to square panel */
+    flex-grow: 1;
+    background: rgba(0,0,0,0.1); border-radius: 8px; display:flex;
+    flex-direction: column; align-items:center; justify-content:center;
+    color: #aaa; font-size: 0.9em; margin-top: 10px;
+    padding: 10px; overflow: hidden; pointer-events: none;
+}
+.placeholder-chart img, .placeholder-chart svg, .placeholder-chart ol, .placeholder-chart ul { max-width: 100%; max-height: 100%; /* Allow chart content to fill space */ object-fit: contain; opacity: 0.7; margin-bottom: 5px; }
+
+/* --- Palette - Left Side, Simple Collapse, Corrected Glassy Style --- */
+.analysis-palette {
+        margin-top: auto;
+    margin-bottom: auto;
+    flex-shrink: 0; z-index: 10; width: 280px; height: 100%;
+    /* max-height: 1000px; */
+    padding: 0; display: flex; flex-direction: column;
+    border-radius: 16px; overflow: visible;
+    /* --- FIX: Apply standard light glassy style --- */
+    background: rgba(140, 140, 145, 0.65); /* Palette slightly darker base */
+    backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2),
+                inset 0 1px 2px rgba(255, 255, 255, 0.05);
+    /* --- End Fix --- */
+    transition:
+        width 0.35s ease-in-out,
+        height 0.35s ease-in-out,
+        border-color 0.35s ease-in-out,
+        box-shadow 0.35s ease-in-out;
+    will-change: width; position: relative;
+}
+/* Simple Collapsed State */
+/* Desktop Collapsed State – compact pill with just the toggle icon */
+/* Collapsed palette: wide, thin rectangle, only toggle icon visible and clickable */
+.analysis-palette.collapsed {
+    width: 45px;
+    height: 110px;
+    /* max-height: 110px; */
+    align-self: center;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border-radius: 14px;
+    overflow: hidden;
+    transition:
+        width 0.35s ease,
+        height 0.35s ease,
+        border-radius 0.35s ease,
+        box-shadow 0.35s ease,
+        padding 0.35s ease;
+    cursor: pointer;
+}
+
+.analysis-palette.collapsed .palette-header {
+    justify-content: center;
+    border-bottom: none;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.analysis-palette.collapsed .palette-header-title {
+    display: none;
+}
+
+.analysis-palette.collapsed .palette-scroll-container {
+    display: none;
+}
+
+.analysis-palette.collapsed .palette-toggle-btn {
+    pointer-events: none;
+}
+/* Palette Header */
+.palette-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; height: 50px; box-sizing: border-box; border-bottom: 1px solid rgba(255, 255, 255, 0.18); transition: border-color 0.35s ease, padding 0.35s ease; user-select: none; -webkit-user-select: none; flex-shrink: 0; overflow: hidden; cursor: pointer; }
+.palette-header-title { font-size: 0.95rem; font-weight: 500; color: #fff; margin-right: 10px; pointer-events: none; white-space: nowrap; opacity: 1; transition: opacity 0.2s ease 0.1s; }
+.palette-toggle-btn { background: none; border: none; color: rgba(255, 255, 255, 0.8); font-size: 1.1rem; cursor: pointer; padding: 5px; line-height: 1; border-radius: 50%; transition: transform 0.3s ease, background-color 0.2s ease, color 0.2s ease; flex-shrink: 0; }
+.palette-toggle-btn:hover { color: #fff; background-color: rgba(255, 255, 255, 0.1); }
+.palette-toggle-btn i { transition: transform 0.3s ease-in-out; }
+.analysis-palette.collapsed .palette-toggle-btn i { transform: rotate(0deg); } /* Right */
+.analysis-palette:not(.collapsed) .palette-toggle-btn i { transform: rotate(180deg); } /* Left */
+/* Scroll Container */
+.palette-scroll-container { flex-grow: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; overflow-x: hidden; padding: 15px; min-height: 0; opacity: 1; visibility: visible; transition: opacity 0.2s ease 0.1s, visibility 0s linear 0s; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.35) rgba(0,0,0,0.15); }
+.palette-scroll-container::-webkit-scrollbar { width: 8px; }
+.palette-scroll-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 4px; }
+.palette-scroll-container::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.35); border-radius: 4px; }
+.palette-scroll-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.55); }
+
+/* Palette Item - Corrected Glassy */
+.palette-item {
+    position: relative; display: flex; flex-direction: column; flex-shrink: 0;
+    width: 100%; padding: 14px; border-radius: 12px;
+    /* --- FIX: Apply consistent light glassy style --- */
+    background: rgba(140, 140, 145, 0.5); /* Base glassy, slightly transparent */
+    backdrop-filter: blur(25px) saturate(140%); /* Slightly less blur than main bg */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Lighter border */
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05); /* Inset only */
+    /* --- End Fix --- */
+    cursor: grab; transition: background-color 0.2s ease, border-color 0.2s ease;
+    box-sizing: border-box; min-height: 95px;
+}
+.palette-item:hover { background-color: rgba(140, 140, 145, 0.6); border-color: rgba(255, 255, 255, 0.3); }
+.palette-item:active { cursor: grabbing; }
+.palette-item-header { margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.palette-item-title { font-size: 0.95rem; font-weight: 500; color: #fff; margin-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;}
+.add-analysis-btn { display: inline-flex; justify-content: center; align-items: center; width: 24px; height: 24px; border: none; border-radius: 50%; background-color: rgba(255, 255, 255, 0.1); color: #fff; font-size: 1.2rem; font-weight: bold; line-height: 1; cursor: pointer; flex-shrink: 0; transition: background-color 0.2s ease, transform 0.1s ease;}
+.add-analysis-btn:hover { background-color: rgba(0, 123, 255, 0.7); }
+.add-analysis-btn:active { transform: scale(0.9); }
+.palette-item-desc { font-size: 0.85rem; color: #e0e0e5; line-height: 1.4; flex-grow: 1; }
+
+/* Palette Preview Popup - Corrected Glassy Style & Animation */
+#palette-preview-container {
+    position: fixed; z-index: 1100;
+    width: clamp(320px, 45%, 550px);
+    padding: 22px 28px; border-radius: 18px;
+    /* --- FIX: Apply standard light glassy style --- */
+    background: rgba(140, 140, 145, 0.7); /* Base glassy, slightly more opaque */
+    backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Slightly stronger border */
+    box-shadow: 0 12px 45px rgba(0, 0, 0, 0.3),
+                inset 0 1px 2px rgba(255, 255, 255, 0.08);
+    /* --- End Fix --- */
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transform: translateX(-15px) scale(0.98); transform-origin: left center;
+    /* --- FIX: Smoother Animation --- */
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),  /* smoother overshoot */
+        visibility 0s linear 0.3s,
+        left 0.25s cubic-bezier(0.33, 1, 0.68, 1),
+        top 0.25s cubic-bezier(0.33, 1, 0.68, 1),
+        height 0.3s ease;
+    will-change: opacity, transform, left, top;
+    /* --- End Fix --- */
+}
+#palette-preview-container.visible { opacity: 1; visibility: visible; transform: translateX(0) scale(1); pointer-events: auto; transition-delay: 0s; }
+
+#palette-preview-container.visible .preview-title,
+#palette-preview-container.visible .preview-content {
+    opacity: 1;
+    transition: opacity 0.3s ease 0.1s;
+}
+/* Content styling */
+#palette-preview-container .preview-title,
+#palette-preview-container .preview-content {
+    opacity: 0;
+}
+#palette-preview-container .preview-title { display: block; font-size: 1.15rem; font-weight: 600; color: #fff; margin: 0 0 15px 0; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.25); }
+#palette-preview-container .preview-content { text-align: center; font-size: 0.95rem; color: #e0e0e5; }
+#palette-preview-container .preview-content img, #palette-preview-container .preview-content svg { max-width: 90%; height: auto; max-height: 140px; object-fit: contain; opacity: 0.9; display: block; margin: 10px auto 15px auto; border-radius: 6px; background-color: rgba(0,0,0,0.1); padding: 5px; box-sizing: border-box; }
+#palette-preview-container .preview-content p { font-size: 0.95em; margin-top: 5px; color: #d5d5dd; line-height: 1.5; text-align: left; }
+#palette-preview-container .preview-content ol, #palette-preview-container .preview-content ul { margin: 10px 0 5px 20px; padding: 0; text-align: left; }
+#palette-preview-container .preview-content li { margin-bottom: 5px; font-size: 0.95em; }
+
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .insights-view { flex-direction: column; padding: 10px; gap: 10px; }
+    .insights-grid { grid-template-columns: 1fr; } /* Single Column */
+    .insight-panel { aspect-ratio: 1 / 0.9; /* Slightly less tall than wide on mobile maybe? Or keep 1/1 */ }
+
+    /* Revert Palette to Bottom Style */
+    .analysis-palette { order: 2; width: 100%; height: auto; max-height: 250px; position: relative; margin-top: 10px; transition: max-height 0.35s ease-in-out, opacity 0.35s ease-in-out, border-color 0.35s ease-in-out, box-shadow 0.35s ease-in-out; will-change: max-height, opacity; }
+    .analysis-palette.collapsed { width: 100%; max-height: 50px; opacity: 0.95; overflow: hidden; }
+    .palette-header { height: 50px; display: flex; opacity: 1; justify-content: space-between; padding: 10px 15px; cursor: pointer; }
+    .analysis-palette.collapsed .palette-header { border-bottom-color: transparent; }
+    .palette-header-title { opacity: 1; }
+    .palette-toggle-btn { position: relative; left: auto; top: auto; width: 30px; height: 30px; background: none; border: none; backdrop-filter: none; box-shadow: none; border-radius: 50%; font-size: 1.1rem; color: rgba(255, 255, 255, 0.7); transition: transform 0.3s ease, background-color 0.2s ease, color 0.2s ease; }
+    .palette-toggle-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
+    .analysis-palette.collapsed .palette-toggle-btn i { transform: rotate(-180deg); /* Up */ }
+    .analysis-palette:not(.collapsed) .palette-toggle-btn i { transform: rotate(0deg); /* Down */ }
+    .palette-scroll-container { flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: calc(250px - 50px); padding: 12px 15px; gap: 10px; opacity: 1; visibility: visible; pointer-events: auto; }
+    .analysis-palette.collapsed .palette-scroll-container { opacity: 0; visibility: hidden; pointer-events: none; padding: 0 15px; }
+    .palette-item { width: 180px; flex-shrink: 0; }
+
+    @media (hover: none) { #palette-preview-container { display: none !important; } }
+    #palette-preview-container { width: clamp(280px, 90%, 400px); padding: 15px 20px; left: 5%; top: 60px; transform: none; }
+}
+
+/* --- END OF FILE plannerInsightsArea.css --- */
