@@ -55,10 +55,9 @@
 .insight-panel {
     display: flex; flex-direction: column; padding: 0;
     border-radius: 16px; overflow: visible;
-    /* --- FIX: Make panels square --- */
     aspect-ratio: 1 / 1;
-    /* min-height removed */
-    /* --- End Fix --- */
+    min-width: 180px;
+    min-height: 180px;
     box-sizing: border-box;
     /* --- FIX: Apply standard light glassy style --- */
     background: rgba(140, 140, 145, 0.6); /* Match .glassy */
