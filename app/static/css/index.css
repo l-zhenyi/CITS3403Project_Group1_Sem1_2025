@@ -251,6 +251,12 @@
     padding: 2px; 
 }
 
+.carousel-control-prev-icon:hover,
+.carousel-control-next-icon:hover {
+    transform: scale(1.5);
+    transition: transform 0.2s ease;
+}
+
 .review-footer {
     display: flex;
     align-items: center;
