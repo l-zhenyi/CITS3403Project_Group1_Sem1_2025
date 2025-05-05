@@ -291,22 +291,12 @@
     z-index: 2;
 }
 
-.custom_button {
-    display: inline-block;
-    background-color: #096101;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 15px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-.custom_button:hover {
-    background-color: #01471257;
+.btn.btn-primary.btn-lg {
+    transition: transform 0.2s ease-in-out;
+    font-weight: bold;
+  }
+  
+  .btn.btn-primary.btn-lg:hover {
     transform: scale(1.05);
-}
-
-.custom_button:active {
-    transform: scale(0.98);
-}
+  }
+  
