@@ -17,10 +17,9 @@
                 <form method="POST" action="">
                     {{ form.hidden_tag() }}
 
-                    <!-- Username -->
                     <div class="mb-4">
                         <label for="{{ form.username.id }}" class="form-label fw-semibold">
-                            <i class="bi bi-person-badge me-1"></i> Username
+                            Username
                         </label>
                         {{ form.username(class_="form-control", placeholder="Enter your username") }}
                         {% for error in form.username.errors %}
@@ -28,10 +27,9 @@
                         {% endfor %}
                     </div>
 
-                    <!-- About Me -->
                     <div class="mb-4">
                         <label for="{{ form.about_me.id }}" class="form-label fw-semibold">
-                            <i class="bi bi-chat-dots me-1"></i> About Me
+                            About Me
                         </label>
                         {{ form.about_me(class_="form-control", rows=4, placeholder="Tell us about yourself...") }}
                         <div class="form-text">You can write up to 250 characters.</div>
@@ -40,7 +38,6 @@
                         {% endfor %}
                     </div>
 
-                    <!-- Submit Button -->
                     <div class="text-end">
                         {{ form.submit(class_="btn btn-primary btn-lg px-4") }}
                     </div>
