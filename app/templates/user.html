@@ -9,7 +9,6 @@
 {% block content %}
 <div class="container mt-5">
     <div class="row">
-        <!-- Avatar & Basic Info -->
         <div class="col-md-3 text-center">
             <img src="{{ user.avatar(128) }}" class="img-thumbnail rounded-circle shadow" alt="User Avatar">
         </div>
@@ -20,14 +19,48 @@
             {% if user.last_seen %}<p><i class="bi bi-clock"></i> Last seen on: {{ user.last_seen }}</p>{% endif %}
             <p>
                 <i class="bi bi-people-fill"></i> {{ user.followers.count() }} followers
-                &bull; {{ user.followed.count() }} following
+                {{ user.followed.count() }} following
             </p>
 
-            <div>
-                {% include '_group.html' %}
+            <div class="d-flex gap-2 flex-wrap">
+                {% if user == current_user %}
+                <a href="{{ url_for('edit_profile') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil"></i> Edit Profile
+                </a>
+                {% elif not current_user.is_following(user) %}
+                <form action="{{ url_for('follow', username=user.username) }}" method="post" class="d-inline">
+                    {{ form.hidden_tag() }}
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-person-plus"></i> Follow
+                    </button>
+                </form>
+                {% else %}
+                <form action="{{ url_for('unfollow', username=user.username) }}" method="post" class="d-inline">
+                    {{ form.hidden_tag() }}
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-person-dash"></i> Unfollow
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if user != current_user %}
+                <a href="{{ url_for('send_message', recipient=user.username) }}" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-envelope"></i> Send Message
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
-</div>
 
+    <hr class="my-4">
+
+    <div class="mb-4">
+        <a href="{{ url_for('create_group') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create a new group
+        </a>
+    </div>
+    <div>
+        {% include '_group.html' %}
+    </div>
+</div>
 {% endblock %}
