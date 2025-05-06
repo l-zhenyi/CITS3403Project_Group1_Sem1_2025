@@ -3,249 +3,270 @@
 {% extends "base.html" %}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/planner.css') }}" type="text/css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerCalendarArea.css') }}" type="text/css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerEventsArea.css') }}" type="text/css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerGroupsArea.css') }}" type="text/css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerInsightsArea.css') }}" type="text/css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}" type="text/css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planner.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/plannerCalendarArea.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/plannerEventsArea.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/plannerGroupsArea.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/plannerInsightsArea.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block title %}{{ title | default('Planner') }}{% endblock %}
 
 {% block content %}
-    <main class="planner-interface">
-        <div class="planner-header">
-            <h1 class="planner-title">Planner</h1>
-            <nav class="view-selector glassy">
-                <button class="view-tab active" id="groups-tab">Groups</button> {# Default view might change #}
-                <button class="view-tab" id="calendar-tab">Calendar</button>
-                <button class="view-tab" id="events-tab">Events</button>
-                <button class="view-tab" id="insights-tab">Insights</button>
+<main class="planner-interface">
+    <div class="planner-header">
+        <h1 class="planner-title">Planner</h1>
+        <nav class="view-selector glassy">
+            <button class="view-tab active" id="groups-tab">Groups</button> {# Default view might change #}
+            <button class="view-tab" id="calendar-tab">Calendar</button>
+            <button class="view-tab" id="events-tab">Events</button>
+            <button class="view-tab" id="insights-tab">Insights</button>
+        </nav>
+    </div>
+
+    <div class="planner-pane" id="planner-pane">
+
+        {# Left Side: Group List (No Functional Changes) #}
+        <aside class="group-list-area">
+            <div class="mobile-list-header"></div>
+            <ul>
+                {# Check if groups exist before looping #}
+                {% if groups %}
+                {% for group in groups %}
+                {# Determine active state based on logic (e.g., first non-mobile) #}
+                {% set is_active = loop.first and not is_mobile_on_load %}
+                <li class="group-item {% if is_active %}active{% endif %}" data-group-id="{{ group.id | e }}"
+                    data-group-name="{{ group.name | e }}"
+                    data-group-avatar="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') | e }}">
+                    <img src="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') | e }}"
+                        alt="{{ group.name | e }} Avatar" class="group-avatar">
+                    <div class="group-info">
+                        <span class="group-name">{{ group.name | e }}</span>
+                        <span class="group-stats">View details</span> {# Simpler placeholder #}
+                    </div>
+                </li>
+                {% endfor %}
+                {% else %}
+                <li class="no-groups-placeholder" id="no-groups-message">
+                    No groups found. <a href="{{ url_for('create_group') }}">Create one?</a>
+                </li>
+                {% endif %}
+            </ul>
+        </aside>
+
+        {# Right Side: Event Collage Area (No Functional Changes) #}
+        <section class="event-collage-area" id="event-collage">
+            {# Content dynamically loaded by JS #}
+            <div class="blur-wrapper">
+                <div class="blur-overlay"></div>
+                <div class="active-group-header glassy">
+                    <button class="icon-button back-button" aria-label="Back to groups">←</button>
+                    <img src="{{ url_for('static', filename='img/default-group-avatar.png') }}"
+                        alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
+                    <span class="active-group-name" id="active-group-name">Select a Group</span>
+                    <button class="icon-button settings-button" aria-label="Group Settings">⚙️</button>
+                </div>
+            </div>
+            <div class="collage-viewport" id="collage-viewport">
+                <div class="event-panels-container" id="event-panels-container">
+                    <p class="info-message" id="event-collage-placeholder">Select a group to view its event collage.</p>
+                    {# Event nodes/panels added by JS #}
+                </div>
+                <div class="node-controls" style="position: absolute; top: 10px; left: 10px; z-index: 100;">
+                    {# Controls might be shown/hidden by JS based on context #}
+                    <button id="add-node-btn" class="button accept"
+                        style="padding: 8px 12px; font-size: 0.9em; display: none;">Add Category</button>
+                </div>
+            </div>
+        </section>
+
+        {# Calendar View Area (No Functional Changes) #}
+        <section class="calendar-view" id="calendar-view">
+            {# Content loaded/managed by JS #}
+            <div class="calendar-header">
+                <button class="calendar-nav prev-month" id="calendar-prev-month" aria-label="Previous month">
+                    << /button>
+                        <h2 class="calendar-month-year" id="calendar-month-year">Loading...</h2>
+                        <button class="calendar-nav next-month" id="calendar-next-month"
+                            aria-label="Next month">></button>
+            </div>
+            <div class="calendar-days-header">
+                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="calendar-grid" id="calendar-grid">
+                <p class="info-message" id="calendar-loading-message">Loading calendar...</p>
+                {# Calendar days added by JS #}
+            </div>
+        </section>
+
+        {# Events List View Area (No Functional Changes) #}
+        <section class="events-view" id="events-view">
+            {# Content loaded/managed by JS #}
+            <nav class="event-filter-bar glassy" id="event-filter-bar">
+                <button class="filter-pill active" data-filter="upcoming">Upcoming</button>
+                <button class="filter-pill" data-filter="past">Past</button>
+                <button class="filter-pill" data-filter="all">All</button>
             </nav>
-        </div>
+            <div class="event-list-container" id="event-list-container">
+                <p class="info-message" id="event-list-loading-message">Loading events...</p>
+                {# Event list items added by JS #}
+            </div>
+        </section>
 
-        <div class="planner-pane" id="planner-pane">
+        <!-- ================== Insights View Area (Backend Integrated) ================== -->
+        <section class="insights-view" id="insights-view">
 
-            {# Left Side: Group List (No Functional Changes) #}
-            <aside class="group-list-area">
-                 <div class="mobile-list-header"></div>
-                 <ul>
-                    {# Check if groups exist before looping #}
-                    {% if groups %}
-                        {% for group in groups %}
-                        {# Determine active state based on logic (e.g., first non-mobile) #}
-                        {% set is_active = loop.first and not is_mobile_on_load %}
-                        <li class="group-item {% if is_active %}active{% endif %}"
-                            data-group-id="{{ group.id | e }}"
-                            data-group-name="{{ group.name | e }}"
-                            data-group-avatar="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') | e }}">
-                            <img src="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') | e }}" alt="{{ group.name | e }} Avatar" class="group-avatar">
-                            <div class="group-info">
-                                <span class="group-name">{{ group.name | e }}</span>
-                                 <span class="group-stats">View details</span> {# Simpler placeholder #}
-                            </div>
-                        </li>
-                        {% endfor %}
+            {# Analysis Palette - Rendered by Jinja #}
+            <aside class="analysis-palette glassy" id="analysis-palette">
+                <div class="palette-header" id="palette-header">
+                    <span class="palette-header-title">Analysis Palette</span>
+                    <button class="palette-toggle-btn" id="palette-toggle-btn" aria-label="Collapse Palette"
+                        title="Collapse Palette">
+                        <i class="fas fa-chevron-left"></i> {# Icon updated by JS #}
+                    </button>
+                </div>
+                <div class="palette-scroll-container" id="palette-scroll-container">
+                    {# --- Loop through available analyses from Flask --- #}
+                    {% if available_analyses %}
+                    {% for analysis in available_analyses %}
+                    {# MODIFIED: Use url_for() here for the image URL attribute #}
+                    <div class="palette-item" data-analysis-type="{{ analysis.id | e }}"
+                        data-title="{{ analysis.title | e }}" data-description="{{ analysis.description | e }}"
+                        data-placeholder-html="{{ analysis.placeholder_html | safe }}"
+                        data-preview-title="{{ analysis.preview_title | e }}"
+                        data-preview-image-url="{{ url_for('static', filename=analysis.preview_image_filename) if analysis.preview_image_filename else '' | e }}"
+                        {# Generate URL here #} data-preview-description="{{ analysis.preview_description | e }}">
+                        <div class="palette-item-header">
+                            <span class="palette-item-title">{{ analysis.title | e }}</span>
+                            <button class="add-analysis-btn"
+                                aria-label="Add {{ analysis.title | e }} Analysis">+</button>
+                        </div>
+                        <p class="palette-item-desc">{{ analysis.description | e }}</p>
+                    </div>
+                    {% endfor %}
                     {% else %}
-                        <li class="no-groups-placeholder" id="no-groups-message">
-                            No groups found. <a href="{{ url_for('create_group') }}">Create one?</a>
-                        </li>
+                    <p class="palette-empty-message">No analysis types available.</p>
                     {% endif %}
-                 </ul>
+                </div>
             </aside>
 
-            {# Right Side: Event Collage Area (No Functional Changes) #}
-            <section class="event-collage-area" id="event-collage">
-                 {# Content dynamically loaded by JS #}
-                 <div class="blur-wrapper">
-                    <div class="blur-overlay"></div>
-                    <div class="active-group-header glassy">
-                        <button class="icon-button back-button" aria-label="Back to groups">←</button>
-                        <img src="{{ url_for('static', filename='img/default-group-avatar.png') }}" alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
-                        <span class="active-group-name" id="active-group-name">Select a Group</span>
-                        <button class="icon-button settings-button" aria-label="Group Settings">⚙️</button>
-                    </div>
-                </div>
-                <div class="collage-viewport" id="collage-viewport">
-                    <div class="event-panels-container" id="event-panels-container">
-                        <p class="info-message" id="event-collage-placeholder">Select a group to view its event collage.</p>
-                        {# Event nodes/panels added by JS #}
-                    </div>
-                    <div class="node-controls" style="position: absolute; top: 10px; left: 10px; z-index: 100;">
-                         {# Controls might be shown/hidden by JS based on context #}
-                        <button id="add-node-btn" class="button accept" style="padding: 8px 12px; font-size: 0.9em; display: none;">Add Category</button>
-                    </div>
-                </div>
-            </section>
-
-            {# Calendar View Area (No Functional Changes) #}
-            <section class="calendar-view" id="calendar-view">
-                 {# Content loaded/managed by JS #}
-                <div class="calendar-header">
-                    <button class="calendar-nav prev-month" id="calendar-prev-month" aria-label="Previous month"><</button>
-                    <h2 class="calendar-month-year" id="calendar-month-year">Loading...</h2>
-                    <button class="calendar-nav next-month" id="calendar-next-month" aria-label="Next month">></button>
-                </div>
-                <div class="calendar-days-header">
-                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                </div>
-                <div class="calendar-grid" id="calendar-grid">
-                    <p class="info-message" id="calendar-loading-message">Loading calendar...</p>
-                    {# Calendar days added by JS #}
-                </div>
-            </section>
-
-            {# Events List View Area (No Functional Changes) #}
-            <section class="events-view" id="events-view">
-                {# Content loaded/managed by JS #}
-                <nav class="event-filter-bar glassy" id="event-filter-bar">
-                    <button class="filter-pill active" data-filter="upcoming">Upcoming</button>
-                    <button class="filter-pill" data-filter="past">Past</button>
-                    <button class="filter-pill" data-filter="all">All</button>
-                </nav>
-                <div class="event-list-container" id="event-list-container">
-                     <p class="info-message" id="event-list-loading-message">Loading events...</p>
-                     {# Event list items added by JS #}
-                </div>
-            </section>
-
-            <!-- ================== Insights View Area (Backend Integrated) ================== -->
-            <section class="insights-view" id="insights-view">
-
-                {# Analysis Palette - Rendered by Jinja #}
-                <aside class="analysis-palette glassy" id="analysis-palette">
-                   <div class="palette-header" id="palette-header">
-                        <span class="palette-header-title">Analysis Palette</span>
-                        <button class="palette-toggle-btn" id="palette-toggle-btn" aria-label="Collapse Palette" title="Collapse Palette">
-                            <i class="fas fa-chevron-left"></i> {# Icon updated by JS #}
-                        </button>
-                    </div>
-                   <div class="palette-scroll-container" id="palette-scroll-container">
-                       {# --- Loop through available analyses from Flask --- #}
-                       {% if available_analyses %}
-                           {% for analysis in available_analyses %}
-                           {# MODIFIED: Use url_for() here for the image URL attribute #}
-                           <div class="palette-item"
-                                data-analysis-type="{{ analysis.id | e }}"
-                                data-title="{{ analysis.title | e }}"
-                                data-description="{{ analysis.description | e }}"
-                                data-placeholder-html="{{ analysis.placeholder_html | safe }}"
-                                data-preview-title="{{ analysis.preview_title | e }}"
-                                data-preview-image-url="{{ url_for('static', filename=analysis.preview_image_filename) if analysis.preview_image_filename else '' | e }}" {# Generate URL here #}
-                                data-preview-description="{{ analysis.preview_description | e }}">
-                                <div class="palette-item-header">
-                                    <span class="palette-item-title">{{ analysis.title | e }}</span>
-                                    <button class="add-analysis-btn" aria-label="Add {{ analysis.title | e }} Analysis">+</button>
-                                </div>
-                                <p class="palette-item-desc">{{ analysis.description | e }}</p>
-                           </div>
-                           {% endfor %}
-                       {% else %}
-                           <p class="palette-empty-message">No analysis types available.</p>
-                       {% endif %}
-                   </div>
-                </aside>
-
-                {# Main Grid Area - Rendered by Jinja #}
-                <div class="insights-grid-container" id="insights-grid-container">
-                    <div class="insights-grid" id="insights-grid">
-                        {# --- Loop through user's saved panels from Flask --- #}
-                        {% if user_panels %}
-                            {% for panel in user_panels %}
-                            <div class="insight-panel glassy"
-                                 data-panel-id="{{ panel.id }}"
-                                 data-analysis-type="{{ panel.analysis_type | e }}">
-                                <div class="panel-header" draggable="false">
-                                    <span class="panel-title">{{ panel.title | e }}</span>
-                                    <div class="panel-actions">
-                                        <button class="panel-action-btn share-panel-btn" aria-label="Share Analysis" title="Share"><i class="fas fa-share-alt"></i></button>
-                                        <button class="panel-action-btn remove-panel-btn" aria-label="Remove Analysis" title="Remove"><i class="fas fa-times"></i></button>
-                                    </div>
-                                </div>
-                                <div class="panel-content">
-                                    <p>{{ panel.description | e }}</p>
-                                    <div class="placeholder-chart">
-                                         {# Find placeholder HTML from available_analyses based on panel.analysis_type #}
-                                         {% set analysis_details = available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first %}
-                                         {{ analysis_details.placeholder_html | safe if analysis_details else '<p>Loading data...</p>' }}
-                                    </div>
-                                </div>
+            {# Main Grid Area - Rendered by Jinja #}
+            <div class="insights-grid-container" id="insights-grid-container">
+                <div class="insights-grid" id="insights-grid">
+                    {# --- Loop through user's saved panels from Flask --- #}
+                    {% if user_panels %}
+                    {% for panel in user_panels %}
+                    <div class="insight-panel glassy" data-panel-id="{{ panel.id }}"
+                        data-analysis-type="{{ panel.analysis_type | e }}">
+                        <div class="panel-header" draggable="false">
+                            <span class="panel-title">{{ panel.title | e }}</span>
+                            <div class="panel-actions">
+                                <button class="panel-action-btn share-panel-btn" aria-label="Share Analysis"
+                                    title="Share"><i class="fas fa-share-alt"></i></button>
+                                <button class="panel-action-btn remove-panel-btn" aria-label="Remove Analysis"
+                                    title="Remove"><i class="fas fa-times"></i></button>
                             </div>
-                            {% endfor %}
-                        {% endif %}
-
-                        {# Empty message - Displayed only if no panels AND handled by JS checkGridEmpty #}
-                        <p class="insights-empty-message" id="insights-empty-message" style="display: '{{ 'block' if not user_panels else 'none' }}';">
-                            Add analyses from the palette on the left or drag existing ones to rearrange.
-                        </p>
-                    </div>
-                </div>
-
-                {# Preview Container - Positioned by JS, content built by JS #}
-                 <div id="palette-preview-container" class="palette-item-preview-container glassy" style="display: none; position: absolute;">
-                    {# Content dynamically built by JS based on data-* attributes #}
-                 </div>
-            </section>
-            <!-- ================== END Insights View Area ================== -->
-
-        </div> <!-- End of planner-pane -->
-
-        <!-- Event Details Modal (No Functional Changes Needed Here) -->
-        <div id="event-details-modal" class="modal-backdrop" style="display: none;">
-             <div class="modal-content glassy">
-                <button class="modal-close-btn" aria-label="Close event details">×</button>
-                <div class="modal-header">
-                    <img id="modal-event-image-header" src="{{ url_for('static', filename='img/default-event-logo.png') }}" alt="Event Image" class="modal-event-image-small">
-                    <div class="modal-title-group">
-                        <h2 id="modal-event-title">Event Title Placeholder</h2>
-                        <p id="modal-event-group">Part of <span id="modal-group-name">Group Name</span></p>
-                    </div>
-                </div>
-                <div class="modal-body">
-                    <div class="modal-col modal-col-details">
-                        <div class="modal-detail-section">
-                            <h3>Event Information</h3>
-                            <div class="modal-detail-grid">
-                                <div class="detail-item"><span class="detail-label">📅 Date & Time</span><span id="modal-event-date">Not specified</span></div>
-                                <div class="detail-item"><span class="detail-label">📍 Location</span><span id="modal-event-location">Not specified</span></div>
-                                <div class="detail-item"><span class="detail-label">💲 Cost</span><span id="modal-event-cost">Not specified</span></div>
-                            </div>
-                         </div>
-                        <div class="modal-detail-section modal-description-section">
-                             <h3>📝 Description</h3>
-                             <p id="modal-event-description">No description provided.</p>
-                         </div>
-                    </div>
-                    <div class="modal-col modal-col-rsvps">
-                        <div class="modal-detail-section modal-rsvp-section">
-                            <h3>Your RSVP Status</h3>
-                            <div id="modal-rsvp-controls" class="rsvp-button-group" data-event-id="">
-                                <button class="rsvp-btn rsvp-attending" data-status="attending" aria-pressed="false"><span class="icon">✔️</span> Going</button>
-                                <button class="rsvp-btn rsvp-maybe" data-status="maybe" aria-pressed="false"><span class="icon">❓</span> Maybe</button>
-                                <button class="rsvp-btn rsvp-declined" data-status="declined" aria-pressed="false"><span class="icon">❌</span> Can't Go</button>
-                                 <button class="rsvp-btn rsvp-remove" data-status="none" style="display: none;" aria-label="Clear RSVP"><span class="icon">🗑️</span> Clear RSVP</button>
-                            </div>
-                            <p id="rsvp-confirmation-message" class="rsvp-message" style="display: none;"></p>
                         </div>
-                        <div class="modal-detail-section modal-attendees-section">
-                            <h3>Attendees (<span id="modal-attendee-count">0</span>)</h3>
-                            <div class="attendee-list-container" id="attendee-list-container-id">
-                                 <ul id="modal-attendee-list"></ul>
+                        <div class="panel-content">
+                            <p>{{ panel.description | e }}</p>
+                            <div class="placeholder-chart">
+                                {# Find placeholder HTML from available_analyses based on panel.analysis_type #}
+                                {% set analysis_details = available_analyses | selectattr('id', 'equalto',
+                                panel.analysis_type) | first %}
+                                {{ analysis_details.placeholder_html | safe if analysis_details else '<p>Loading data...
+                                </p>' }}
                             </div>
-                             <p id="attendee-list-message" style="display: none;">No one has RSVP'd yet.</p>
-                             <div id="attendee-loading-indicator" style="display: none; color: #bbb; text-align:center; padding: 15px; font-style: italic;">Loading attendees...</div>
-                         </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+
+                    {# Empty message - Displayed only if no panels AND handled by JS checkGridEmpty #}
+                    <p class="insights-empty-message" id="insights-empty-message"
+                        style="display: '{{ 'block' if not user_panels else 'none' }}';">
+                        Add analyses from the palette on the left or drag existing ones to rearrange.
+                    </p>
+                </div>
+            </div>
+
+            {# Preview Container - Positioned by JS, content built by JS #}
+            <div id="palette-preview-container" class="palette-item-preview-container glassy"
+                style="display: none; position: absolute;">
+                {# Content dynamically built by JS based on data-* attributes #}
+            </div>
+        </section>
+        <!-- ================== END Insights View Area ================== -->
+
+    </div> <!-- End of planner-pane -->
+
+    <!-- Event Details Modal (No Functional Changes Needed Here) -->
+    <div id="event-details-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content glassy">
+            <button class="modal-close-btn" aria-label="Close event details">×</button>
+            <div class="modal-header">
+                <img id="modal-event-image-header" src="{{ url_for('static', filename='img/default-event-logo.png') }}"
+                    alt="Event Image" class="modal-event-image-small">
+                <div class="modal-title-group">
+                    <h2 id="modal-event-title">Event Title Placeholder</h2>
+                    <p id="modal-event-group">Part of <span id="modal-group-name">Group Name</span></p>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-col modal-col-details">
+                    <div class="modal-detail-section">
+                        <h3>Event Information</h3>
+                        <div class="modal-detail-grid">
+                            <div class="detail-item"><span class="detail-label">📅 Date & Time</span><span
+                                    id="modal-event-date">Not specified</span></div>
+                            <div class="detail-item"><span class="detail-label">📍 Location</span><span
+                                    id="modal-event-location">Not specified</span></div>
+                            <div class="detail-item"><span class="detail-label">💲 Cost</span><span
+                                    id="modal-event-cost">Not specified</span></div>
+                        </div>
+                    </div>
+                    <div class="modal-detail-section modal-description-section">
+                        <h3>📝 Description</h3>
+                        <div class="editable-field-wrapper" id="modal-description-wrapper">
+                            <p id="modal-event-description">No description provided.</p>
+                        </div>
                     </div>
                 </div>
-                {# Optional Footer #}
-                {# <div class="modal-footer"> ... </div> #}
+                <div class="modal-col modal-col-rsvps">
+                    <div class="modal-detail-section modal-rsvp-section">
+                        <h3>Your RSVP Status</h3>
+                        <div id="modal-rsvp-controls" class="rsvp-button-group" data-event-id="">
+                            <button class="rsvp-btn rsvp-attending" data-status="attending" aria-pressed="false"><span
+                                    class="icon">✔️</span> Going</button>
+                            <button class="rsvp-btn rsvp-maybe" data-status="maybe" aria-pressed="false"><span
+                                    class="icon">❓</span> Maybe</button>
+                            <button class="rsvp-btn rsvp-declined" data-status="declined" aria-pressed="false"><span
+                                    class="icon">❌</span> Can't Go</button>
+                            <button class="rsvp-btn rsvp-remove" data-status="none" style="display: none;"
+                                aria-label="Clear RSVP"><span class="icon">🗑️</span> Clear RSVP</button>
+                        </div>
+                        <p id="rsvp-confirmation-message" class="rsvp-message" style="display: none;"></p>
+                    </div>
+                    <div class="modal-detail-section modal-attendees-section">
+                        <h3>Attendees (<span id="modal-attendee-count">0</span>)</h3>
+                        <div class="attendee-list-container" id="attendee-list-container-id">
+                            <ul id="modal-attendee-list"></ul>
+                        </div>
+                        <p id="attendee-list-message" style="display: none;">No one has RSVP'd yet.</p>
+                        <div id="attendee-loading-indicator"
+                            style="display: none; color: #bbb; text-align:center; padding: 15px; font-style: italic;">
+                            Loading attendees...</div>
+                    </div>
+                </div>
             </div>
-        </div> <!-- End of Modal Backdrop -->
+            {# Optional Footer #}
+            {# <div class="modal-footer"> ... </div> #}
+        </div>
+    </div> <!-- End of Modal Backdrop -->
 
-    </main>
-    {# Optional: Context menu container if still used #}
-    {# <div id="custom-context-menu" class="context-menu" style="display: none;"></div> #}
+</main>
+{# Optional: Context menu container if still used #}
+{# <div id="custom-context-menu" class="context-menu" style="display: none;"></div> #}
 {% endblock %}
 {# --- END OF FILE planner.html --- #}

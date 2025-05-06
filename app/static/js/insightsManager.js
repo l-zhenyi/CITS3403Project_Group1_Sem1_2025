@@ -76,7 +76,7 @@ async function fetchApi(url, options = {}) {
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         if (response.status === 204 || response.headers.get('content-length') === '0') {
-             return null;
+            return null;
         }
         return await response.json();
     } catch (error) {
@@ -117,7 +117,7 @@ async function fetchAnalysisData(analysisType, panelId = null) {
         if (!isNaN(panelIdInt)) {
             url += `?panel_id=${panelIdInt}`;
         } else {
-             console.warn(`Invalid panelId (${panelId}) passed to fetchAnalysisData.`);
+            console.warn(`Invalid panelId (${panelId}) passed to fetchAnalysisData.`);
         }
     }
     return await fetchApi(url);
@@ -168,7 +168,7 @@ async function loadPanelContent(panelElement) {
 
     if (!analysisType || !panelId || !contentContainer) {
         console.error("Cannot load panel content: Missing type, ID, or container.", { analysisType, panelId, panelElement });
-        if(contentContainer) contentContainer.innerHTML = "<p style='color: red; text-align: center;'>Error loading: Invalid panel data.</p>";
+        if (contentContainer) contentContainer.innerHTML = "<p style='color: red; text-align: center;'>Error loading: Invalid panel data.</p>";
         return;
     }
 
@@ -182,13 +182,13 @@ async function loadPanelContent(panelElement) {
     if (paletteItemForType && paletteItemForType.dataset.placeholderHtml) {
         contentContainer.innerHTML = paletteItemForType.dataset.placeholderHtml;
     } else {
-         contentContainer.innerHTML = `<div style='text-align: center; padding: 20px; color: #aaa;'><i class='fas fa-spinner fa-spin fa-2x'></i><p style='margin-top: 10px;'>Loading data...</p></div>`;
+        contentContainer.innerHTML = `<div style='text-align: center; padding: 20px; color: #aaa;'><i class='fas fa-spinner fa-spin fa-2x'></i><p style='margin-top: 10px;'>Loading data...</p></div>`;
     }
 
 
     try {
         if (typeof Chart === 'undefined') {
-             throw new Error("Chart.js library is not loaded.");
+            throw new Error("Chart.js library is not loaded.");
         }
 
         const analysisResult = await fetchAnalysisData(analysisType, panelId);
@@ -208,11 +208,11 @@ async function loadPanelContent(panelElement) {
                 const amounts = analysisResult.data.map(item => item.amount);
 
                 const generateColors = (numColors) => {
-                  const colors = []; const hueStep = 360 / numColors;
-                  for (let i = 0; i < numColors; i++) {
-                    const hue = (i * hueStep) % 360; const saturation = 60 + (i % 3) * 5; const lightness = 55 + (i % 2) * 10;
-                    colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-                  } return colors;
+                    const colors = []; const hueStep = 360 / numColors;
+                    for (let i = 0; i < numColors; i++) {
+                        const hue = (i * hueStep) % 360; const saturation = 60 + (i % 3) * 5; const lightness = 55 + (i % 2) * 10;
+                        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+                    } return colors;
                 };
                 const backgroundColors = generateColors(labels.length);
                 const hoverBackgroundColors = backgroundColors.map(color => {
@@ -231,7 +231,7 @@ async function loadPanelContent(panelElement) {
                             tooltip: {
                                 backgroundColor: 'rgba(20, 20, 30, 0.8)', titleColor: '#eee', bodyColor: '#ddd',
                                 callbacks: {
-                                    label: function(context) {
+                                    label: function (context) {
                                         let label = context.label || ''; if (label) { label += ': '; }
                                         if (context.parsed !== null) {
                                             label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
@@ -245,27 +245,27 @@ async function loadPanelContent(panelElement) {
                         },
                         animation: { duration: CHART_ANIMATION_DURATION }
                     }
-                 };
+                };
                 activeChartInstances[panelId] = new Chart(ctx, chartConfig);
                 console.log(`Created chart for panel ${panelId}`);
             } else {
-                 contentContainer.innerHTML = '<p style="text-align: center; color: #bbb; padding: 15px 5px;">No spending data found matching the criteria.</p>';
+                contentContainer.innerHTML = '<p style="text-align: center; color: #bbb; padding: 15px 5px;">No spending data found matching the criteria.</p>';
             }
         }
         // --- Add rendering logic for other analysis types here ---
         else {
-             if (analysisResult) {
-                  contentContainer.innerHTML = `<p style='text-align: center; color: orange; padding: 15px 5px;'>Data display not implemented for analysis type: ${analysisType}</p>`;
-             } else {
-                  contentContainer.innerHTML = `<p style='text-align: center; color: orange; padding: 15px 5px;'>Received no data for analysis type: ${analysisType}</p>`;
-             }
+            if (analysisResult) {
+                contentContainer.innerHTML = `<p style='text-align: center; color: orange; padding: 15px 5px;'>Data display not implemented for analysis type: ${analysisType}</p>`;
+            } else {
+                contentContainer.innerHTML = `<p style='text-align: center; color: orange; padding: 15px 5px;'>Received no data for analysis type: ${analysisType}</p>`;
+            }
         }
 
     } catch (error) {
         console.error(`Failed to load content for panel ${panelId} (${analysisType}):`, error);
         contentContainer.innerHTML = `<p style='color: red; text-align: center; padding: 15px 5px;'>Error loading analysis data.<br><small>${error.message || 'Check console for details.'}</small></p>`;
-         if (activeChartInstances[panelId]) {
-            try { activeChartInstances[panelId].destroy(); } catch(e){}
+        if (activeChartInstances[panelId]) {
+            try { activeChartInstances[panelId].destroy(); } catch (e) { }
             delete activeChartInstances[panelId];
         }
     }
@@ -302,11 +302,11 @@ function calculateGridCellLayout() {
         const panelRect = firstPanel.getBoundingClientRect(); const panelStyle = window.getComputedStyle(firstPanel);
         sampleCellWidth = panelRect.width; sampleCellHeight = panelRect.height; sampleMargin = parseInt(panelStyle.marginRight) || sampleMargin;
     } else {
-         const gridWidth = insightsGrid.offsetWidth - parseInt(gridComputedStyle.paddingLeft) - parseInt(gridComputedStyle.paddingRight);
-         if (gridWidth > 0 && gridColCount > 0) {
-             const totalMarginSpace = (gridColCount > 1) ? (gridColCount - 1) * (2 * sampleMargin) : 0;
-             sampleCellWidth = Math.max(200, (gridWidth - totalMarginSpace) / gridColCount); sampleCellHeight = sampleCellWidth * 1.0;
-         }
+        const gridWidth = insightsGrid.offsetWidth - parseInt(gridComputedStyle.paddingLeft) - parseInt(gridComputedStyle.paddingRight);
+        if (gridWidth > 0 && gridColCount > 0) {
+            const totalMarginSpace = (gridColCount > 1) ? (gridColCount - 1) * (2 * sampleMargin) : 0;
+            sampleCellWidth = Math.max(200, (gridWidth - totalMarginSpace) / gridColCount); sampleCellHeight = sampleCellWidth * 1.0;
+        }
     }
     const effectiveColGap = 2 * sampleMargin; const effectiveRowGap = 2 * sampleMargin;
     const startOffsetX = (parseInt(gridComputedStyle.paddingLeft) || 0) + sampleMargin; const startOffsetY = (parseInt(gridComputedStyle.paddingTop) || 0) + sampleMargin;
@@ -316,7 +316,7 @@ function calculateGridCellLayout() {
     for (let r = 0; r < estimatedRows; r++) {
         currentX = startOffsetX;
         for (let c = 0; c < gridColCount; c++) {
-             gridCellLayout.push({
+            gridCellLayout.push({
                 x: currentX - sampleMargin, y: currentY - sampleMargin, width: sampleCellWidth + 2 * sampleMargin, height: sampleCellHeight + 2 * sampleMargin,
                 contentX: currentX, contentY: currentY, contentWidth: sampleCellWidth, contentHeight: sampleCellHeight
             }); currentX += sampleCellWidth + effectiveColGap;
@@ -328,8 +328,8 @@ function findNearestSlotIndex(pointerX, pointerY) {
     // ... (No changes needed in this function) ...
     let closestIndex = -1; let minDistSq = Infinity;
     if (!gridCellLayout || gridCellLayout.length === 0) {
-         console.warn("findNearestSlotIndex called with no grid layout."); calculateGridCellLayout();
-         if (!gridCellLayout || gridCellLayout.length === 0) { console.error("Grid layout unavailable."); return -1; }
+        console.warn("findNearestSlotIndex called with no grid layout."); calculateGridCellLayout();
+        if (!gridCellLayout || gridCellLayout.length === 0) { console.error("Grid layout unavailable."); return -1; }
     }
     gridCellLayout.forEach((slot, index) => {
         const slotContentCenterX = slot.contentX + slot.contentWidth / 2; const slotContentCenterY = slot.contentY + slot.contentHeight / 2;
@@ -481,14 +481,14 @@ function hidePalettePreview() {
 
         setTimeout(() => {
             if (palettePreviewContainer && !palettePreviewContainer.classList.contains('visible')) {
-                 palettePreviewContainer.style.display = 'none';
-                 palettePreviewContainer.innerHTML = ''; // Clear content after hiding
+                palettePreviewContainer.style.display = 'none';
+                palettePreviewContainer.innerHTML = ''; // Clear content after hiding
             }
         }, maxTotalDuration || 300);
     } else if (palettePreviewContainer) {
-         // Ensure it's hidden and clear content even if class wasn't present
-         palettePreviewContainer.style.display = 'none';
-         palettePreviewContainer.innerHTML = '';
+        // Ensure it's hidden and clear content even if class wasn't present
+        palettePreviewContainer.style.display = 'none';
+        palettePreviewContainer.innerHTML = '';
     }
 }
 
@@ -512,7 +512,7 @@ function onPointerDown(event) {
         const panel = panelHeader.closest('.insight-panel:not(.dragging-placeholder)');
         if (panel && panel.dataset.panelId) { initiateDrag(event, panel, 'grid'); }
     } else if (paletteItem && !palette?.classList.contains('collapsed')) {
-         if(paletteItem.dataset.analysisType) { initiateDrag(event, paletteItem, 'palette'); }
+        if (paletteItem.dataset.analysisType) { initiateDrag(event, paletteItem, 'palette'); }
     }
 }
 
@@ -640,20 +640,20 @@ async function onPointerUp(event) {
             }
         } else { // Dropped Outside Grid
             if (dragType === 'grid' && originalSourceElement) {
-                 originalSourceElement.style = ''; insertElementAtIndex(originalSourceElement, sourceIndex);
-                 const panelId = originalSourceElement.dataset.panelId;
-                 if (panelId) { console.warn(`Panel ${panelId} dropped outside, reloading content.`); loadPanelContent(originalSourceElement); }
+                originalSourceElement.style = ''; insertElementAtIndex(originalSourceElement, sourceIndex);
+                const panelId = originalSourceElement.dataset.panelId;
+                if (panelId) { console.warn(`Panel ${panelId} dropped outside, reloading content.`); loadPanelContent(originalSourceElement); }
             }
             placeholderElement?.remove(); placeholderElement = null;
         }
     } catch (apiError) {
-         console.error("API Error during panel drop/reorder:", apiError); alert(`Error saving changes: ${apiError.message}`);
-         if (dragType === 'palette' && droppedInsideGrid) { placeholderElement?.remove(); }
-         if (dragType === 'grid' && originalSourceElement) {
-              insertElementAtIndex(originalSourceElement, sourceIndex); placeholderElement?.remove();
-              if (originalSourceElement.dataset.panelId) { loadPanelContent(originalSourceElement); }
-         }
-         finalPanelElement = null; addedPanelData = null;
+        console.error("API Error during panel drop/reorder:", apiError); alert(`Error saving changes: ${apiError.message}`);
+        if (dragType === 'palette' && droppedInsideGrid) { placeholderElement?.remove(); }
+        if (dragType === 'grid' && originalSourceElement) {
+            insertElementAtIndex(originalSourceElement, sourceIndex); placeholderElement?.remove();
+            if (originalSourceElement.dataset.panelId) { loadPanelContent(originalSourceElement); }
+        }
+        finalPanelElement = null; addedPanelData = null;
     } finally {
         isDragging = false; sourceElement = null; originalSourceElement = null; placeholderElement = null; sourceIndex = -1; dragType = null; currentTargetIndex = -1;
         setTimeout(() => {
@@ -661,7 +661,7 @@ async function onPointerUp(event) {
             const currentPanelIds = new Set(Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder)')).map(p => p.dataset.panelId));
             for (const panelId in activeChartInstances) {
                 if (!currentPanelIds.has(panelId)) {
-                    try { activeChartInstances[panelId].destroy(); } catch(e) {}
+                    try { activeChartInstances[panelId].destroy(); } catch (e) { }
                     delete activeChartInstances[panelId]; console.log(`Cleaned up orphaned chart for panel ${panelId}`);
                 }
             }
@@ -681,11 +681,11 @@ function insertElementAtIndex(elementToInsert, targetIndex) {
     let needsInsert = true;
     if (referenceElement && referenceElement.parentElement === insightsGrid) { if (referenceElement.previousElementSibling === elementToInsert) { needsInsert = false; } }
     else {
-         const lastPanelElement = Array.from(insightsGrid.children).filter(el => el.classList.contains('insight-panel') && !el.classList.contains('insights-empty-message')).pop();
-         if (lastPanelElement === elementToInsert) { needsInsert = false; }
-         else if (!lastPanelElement && insightsGrid.firstElementChild === elementToInsert && !elementToInsert.classList.contains('insights-empty-message')) { needsInsert = false; }
+        const lastPanelElement = Array.from(insightsGrid.children).filter(el => el.classList.contains('insight-panel') && !el.classList.contains('insights-empty-message')).pop();
+        if (lastPanelElement === elementToInsert) { needsInsert = false; }
+        else if (!lastPanelElement && insightsGrid.firstElementChild === elementToInsert && !elementToInsert.classList.contains('insights-empty-message')) { needsInsert = false; }
     }
-     if (!elementToInsert.parentElement || elementToInsert.parentElement !== insightsGrid) { needsInsert = true; }
+    if (!elementToInsert.parentElement || elementToInsert.parentElement !== insightsGrid) { needsInsert = true; }
     if (needsInsert) {
         if (referenceElement && referenceElement.parentElement === insightsGrid) { insightsGrid.insertBefore(elementToInsert, referenceElement); }
         else {
@@ -693,7 +693,7 @@ function insertElementAtIndex(elementToInsert, targetIndex) {
             if (emptyMessage && emptyMessage.parentElement !== insightsGrid) { insightsGrid.appendChild(emptyMessage); }
         }
     }
- }
+}
 
 // --- Panel Actions & Palette Toggle ---
 
@@ -705,9 +705,9 @@ async function handlePanelAction(event) {
     const panelId = panel.dataset.panelId;
     if (removeButton && panelId) {
         if (activeChartInstances[panelId]) {
-             try { activeChartInstances[panelId].destroy(); console.log(`Destroyed chart for panel ${panelId} before removal.`); }
-             catch (e) { console.error("Error destroying chart:", e); }
-             delete activeChartInstances[panelId];
+            try { activeChartInstances[panelId].destroy(); console.log(`Destroyed chart for panel ${panelId} before removal.`); }
+            catch (e) { console.error("Error destroying chart:", e); }
+            delete activeChartInstances[panelId];
         }
         panel.remove(); checkGridEmpty(); calculateGridCellLayout();
         try { await removePanelFromServer(parseInt(panelId)); console.log(`Panel ${panelId} removed from server.`); }
@@ -758,8 +758,8 @@ function setupEventListeners() {
 
     // --- Palette Header & Toggle Button ---
     if (paletteHeader && paletteToggleBtn) {
-         paletteHeader.addEventListener('click', (event) => { if (paletteToggleBtn.contains(event.target) || event.target.closest('.add-analysis-btn')) { return; } handlePaletteToggle(); });
-         paletteToggleBtn.addEventListener('click', (event) => { event.stopPropagation(); handlePaletteToggle(); });
+        paletteHeader.addEventListener('click', (event) => { if (paletteToggleBtn.contains(event.target) || event.target.closest('.add-analysis-btn')) { return; } handlePaletteToggle(); });
+        paletteToggleBtn.addEventListener('click', (event) => { event.stopPropagation(); handlePaletteToggle(); });
     } else { console.warn("Palette header or toggle button not found."); }
 
     // --- Palette Items (Drag Start, Preview, Add Button) ---
@@ -769,11 +769,11 @@ function setupEventListeners() {
 
         // Show preview on hover (uses refactored showPalettePreview)
         paletteScrollContainer.addEventListener('mouseover', (event) => {
-             if (isDragging || (palette && palette.classList.contains('collapsed') && window.innerWidth > 768)) return;
-             const targetItem = event.target.closest('.palette-item');
-             if (targetItem) {
-                 showPalettePreview(targetItem); // Will now read data-* and build DOM
-             }
+            if (isDragging || (palette && palette.classList.contains('collapsed') && window.innerWidth > 768)) return;
+            const targetItem = event.target.closest('.palette-item');
+            if (targetItem) {
+                showPalettePreview(targetItem); // Will now read data-* and build DOM
+            }
         });
 
         // Hide preview on mouseout
@@ -788,8 +788,8 @@ function setupEventListeners() {
 
         // '+' Add Analysis Button Click
         paletteScrollContainer.addEventListener('click', async (event) => {
-             const addButton = event.target.closest('.add-analysis-btn');
-             if (addButton && !isDragging) {
+            const addButton = event.target.closest('.add-analysis-btn');
+            if (addButton && !isDragging) {
                 const item = addButton.closest('.palette-item');
                 if (item && item.dataset.analysisType) {
                     const analysisType = item.dataset.analysisType;
@@ -808,16 +808,16 @@ function setupEventListeners() {
                     } catch (error) {
                         console.error("Error adding panel via '+' button:", error); alert(`Failed to add panel: ${error.message || 'Server error'}`); newPanelElement?.remove();
                     } finally { addButton.disabled = false; addButton.innerHTML = '+'; }
-                 }
-             }
+                }
+            }
         });
     } else { console.warn("Palette scroll container not found."); }
 
     // --- Palette Preview Container (Cancel Hide on Hover) ---
     if (palettePreviewContainer) {
         palettePreviewContainer.addEventListener('mouseleave', (event) => {
-             const relatedTarget = event.relatedTarget;
-             if (!relatedTarget || !relatedTarget.closest('.palette-item')) { scheduleHidePalettePreview(); }
+            const relatedTarget = event.relatedTarget;
+            if (!relatedTarget || !relatedTarget.closest('.palette-item')) { scheduleHidePalettePreview(); }
         });
         palettePreviewContainer.addEventListener('mouseenter', cancelHidePreview);
     } else { console.warn("Palette preview container not found, hover previews will not work."); }
@@ -827,7 +827,7 @@ function setupEventListeners() {
         insightsGrid.addEventListener('click', handlePanelAction);
         // Initialize existing panels (make draggable, load content)
         insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder)').forEach(panel => {
-            if(panel.dataset.panelId) { makePanelDraggable(panel); loadPanelContent(panel); }
+            if (panel.dataset.panelId) { makePanelDraggable(panel); loadPanelContent(panel); }
             else { console.warn("Found grid panel without panel ID:", panel); } // Warn if ID missing
         });
     } else { console.warn("Insights grid element not found."); }

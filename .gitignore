@@ -193,3 +193,5 @@ app.db
 
 #Script I used to automatically add users and create groups
 users.py
+
+.idea/
