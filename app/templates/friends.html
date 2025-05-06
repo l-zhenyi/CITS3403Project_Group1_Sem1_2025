@@ -1,0 +1,22 @@
+{%extends "base.html"%}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/friends.css') }}" type="text/css">
+{% endblock %}
+
+{% block content %}
+
+<div class="glassy friends-container">
+    <h1>Friends</h1>
+    <p>Welcome to the Friends page! Here you can manage your friends list.</p>
+
+    <div class="friends-content">
+        <h2>Your Friends</h2>
+        <ul class="friends-list">
+
+        </ul>
+
+        <h2>Add a Friend</h2>
+    </div>
+</div>
+{% endblock %}

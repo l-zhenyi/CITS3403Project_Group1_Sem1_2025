@@ -102,6 +102,11 @@ def profile():
 def explore():
     return render_template('explore.html', title='Explore')
 
+@app.route('/friends')
+@login_required
+def friends():
+    return render_template('friends.html', title='Friends')
+
 @app.route('/planner')
 @login_required
 def planner():
