@@ -106,6 +106,10 @@
     font-weight: 500;
     transition: color 0.2s ease;
 }
+a.friend-link{
+    margin: 0;
+    width: 100%;
+}
 
 .friend-link:hover {
     color: #007bff;
