@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from dateutil.parser import isoparse
 from functools import wraps
 from sqlalchemy.orm import aliased, joinedload
+from sqlalchemy import or_
 
 # --- Helper Functions ---
 def is_group_member(user_id, group_id):
@@ -121,15 +122,23 @@ def search_friends():
     search_results = []
 
     if query:
-        # Search for users whose username contains the query (case-insensitive)
-        search_results = User.query.filter(User.username.ilike(f'%{query}%')).all()
+        # Perform a fuzzy search for usernames containing the query (case-insensitive)
+        search_results = User.query.filter(
+            or_(
+                User.username.ilike(f'%{query}%'),  # Case-insensitive partial match
+                User.email.ilike(f'%{query}%')     # Optionally allow searching by email
+            )
+        ).all()
 
     # Exclude the current user from the search results
     search_results = [user for user in search_results if user.id != current_user.id]
 
-    # Render the friends page with search results
+    # Get a list of users to whom the current user has already sent friend requests
+    sent_requests = {req.receiver_id for req in FriendRequest.query.filter_by(sender_id=current_user.id).all()}
+
+    # Render the friends page with search results and sent requests
     friends = current_user.friends.all()
-    return render_template('friends.html', friends=friends, search_results=search_results)
+    return render_template('friends.html', friends=friends, search_results=search_results, sent_requests=sent_requests)
 
 @app.route('/handle_friend_request', methods=['POST'])
 @login_required
@@ -178,6 +187,30 @@ def add_friend():
         current_user.add_friend(friend)
         db.session.commit()
         flash(f'{friend.username} has been added to your friends list!', 'success')
+
+    return redirect(url_for('friends'))
+
+@app.route('/remove_friend', methods=['POST'])
+@login_required
+def remove_friend():
+    friend_id = request.form.get('friend_id')
+    if not friend_id:
+        flash('Invalid friend ID.', 'danger')
+        return redirect(url_for('friends'))
+
+    # Find the user by ID
+    friend = User.query.get(friend_id)
+    if not friend:
+        flash('User not found.', 'danger')
+        return redirect(url_for('friends'))
+
+    # Remove the friend
+    if current_user.is_friend(friend):
+        current_user.remove_friend(friend)
+        db.session.commit()
+        flash(f'{friend.username} has been removed from your friends list.', 'success')
+    else:
+        flash(f'{friend.username} is not in your friends list.', 'info')
 
     return redirect(url_for('friends'))
 
