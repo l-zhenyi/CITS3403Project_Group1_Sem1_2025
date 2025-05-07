@@ -51,6 +51,21 @@
     margin-bottom: 10px;
 }
 
+/* Styling for inline search form */
+.search-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between input and button */
+}
+
+.search-inline .search-bar {
+    flex: 1; /* Input takes up remaining space */
+}
+
+.search-inline .btn {
+    flex-shrink: 0; /* Prevent button from shrinking */
+}
+
 /* Friends list styling */
 .list-group {
     list-style: none;

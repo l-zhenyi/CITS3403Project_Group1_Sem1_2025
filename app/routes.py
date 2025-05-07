@@ -132,13 +132,27 @@ def search_friends():
 
     # Exclude the current user from the search results
     search_results = [user for user in search_results if user.id != current_user.id]
+    
+    # Exclude users who are already friends with the current user
+    search_results = [user for user in search_results if not current_user.is_friend(user)]
 
     # Get a list of users to whom the current user has already sent friend requests
     sent_requests = {req.receiver_id for req in FriendRequest.query.filter_by(sender_id=current_user.id).all()}
 
-    # Render the friends page with search results and sent requests
+    # Get users who have sent friend requests to the current user
+    received_requests = {req.sender_id: req.id for req in FriendRequest.query.filter_by(receiver_id=current_user.id).all()}
+
+    # Also get the pending friend requests
+    friend_requests = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
+
+    # Render the friends page with search results, sent requests, and friend requests
     friends = current_user.friends.all()
-    return render_template('friends.html', friends=friends, search_results=search_results, sent_requests=sent_requests)
+    return render_template('friends.html', 
+                          friends=friends, 
+                          search_results=search_results, 
+                          sent_requests=sent_requests,
+                          received_requests=received_requests,
+                          friend_requests=friend_requests)
 
 @app.route('/handle_friend_request', methods=['POST'])
 @login_required
