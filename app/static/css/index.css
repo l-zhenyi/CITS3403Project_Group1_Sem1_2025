@@ -257,12 +257,6 @@
     transition: transform 0.3s ease;
 }
 
-.carousel-control-prev:active,
-.carousel-control-next:active {
-    transform: scale(0.8);
-    transition: transform 0.3s ease;
-}
-
 .review-footer {
     display: flex;
     align-items: center;
