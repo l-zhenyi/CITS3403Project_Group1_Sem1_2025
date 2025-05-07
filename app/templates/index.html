@@ -65,23 +65,28 @@
 
                     <!-- Text Column -->
                     <div class="col-lg-6 slide-in">
-                        <h2 class="text-black fw-bold mb-4" style="text-shadow: none;"><em>Plannit Makes Life Easier</em></h2>
+                        <h2 class="text-black fw-bold mb-4" style="text-shadow: none;"><em>Plannit Makes Life
+                                Easier</em></h2>
                         <ul class="list-unstyled">
-                        <li class="mb-2"><i class="bi bi-check2-circle"></i> Reduce planning stress and keep everyone aligned</li>
-                        <li class="mb-2"><i class="bi bi-check2-circle"></i> Plan your events with built-in tools</li>
-                        <li class="mb-2"><i class="bi bi-check2-circle"></i> Transparent split cost</li>
+                            <li class="mb-2"><i class="bi bi-check2-circle"></i> Reduce planning stress and keep
+                                everyone aligned</li>
+                            <li class="mb-2"><i class="bi bi-check2-circle"></i> Plan your events with built-in tools
+                            </li>
+                            <li class="mb-2"><i class="bi bi-check2-circle"></i> Transparent split cost</li>
                         </ul>
-                        <button type="button" onclick="location.href='{{ url_for('create_group') }}'" class="btn btn-primary mt-3">
-                        CREATE A GROUP
+                        <button type="button" onclick="location.href='{{ url_for('create_group') }}'"
+                            class="btn btn-primary mt-3">
+                            CREATE A GROUP
                         </button>
                     </div>
 
                     <!-- Image Column -->
                     <div class="col-lg-6 text-center position-relative">
-                        <img src="https://images.unsplash.com/photo-1567306226416-28f0efdc88ce"
-                            class="img-fluid rounded" alt="Collaboration">
-                        <i class="bi bi-play-fill fs-2 text-white"></i>
-                        </button>
+                        <div class="fade-up">
+                            <img src="https://a.storyblok.com/f/252228/762x508/e14ec69236/how-to-start-a-conversation-in-english-a-guide-to-small-talk.webp/m/3840x2560/filters:blur(0)"
+                                class="img-fluid rounded" alt="Collaboration">
+                            <i class="bi bi-play-fill fs-2 text-white"></i>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -291,7 +296,7 @@
             <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-facebook"></i></a>
             <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-instagram"></i></a>
             <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-linkedin"></i></a>
-        </div>        
+        </div>
     </div>
 </footer>
 
