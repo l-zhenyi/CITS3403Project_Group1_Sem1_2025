@@ -3,7 +3,7 @@ from flask import render_template, redirect, url_for, flash, request, session, j
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest
+from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 from dateutil.parser import isoparse
@@ -102,10 +102,109 @@ def profile():
 def explore():
     return render_template('explore.html', title='Explore')
 
-@app.route('/friends')
+@app.route('/friends', methods=['GET'])
 @login_required
 def friends():
-    return render_template('friends.html', title='Friends', friends=current_user.friends)
+    # Get the current user's friends
+    friends = current_user.friends.all()  # Use `.all()` if the relationship is lazy="dynamic"
+
+    # Get pending friend requests (assuming a FriendRequest model exists)
+    friend_requests = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
+
+    return render_template('friends.html', friends=friends, friend_requests=friend_requests)
+
+
+@app.route('/search_friends', methods=['GET'])
+@login_required
+def search_friends():
+    query = request.args.get('query', '').strip()
+    search_results = []
+
+    if query:
+        # Search for users whose username contains the query (case-insensitive)
+        search_results = User.query.filter(User.username.ilike(f'%{query}%')).all()
+
+    # Exclude the current user from the search results
+    search_results = [user for user in search_results if user.id != current_user.id]
+
+    # Render the friends page with search results
+    friends = current_user.friends.all()
+    return render_template('friends.html', friends=friends, search_results=search_results)
+
+@app.route('/handle_friend_request', methods=['POST'])
+@login_required
+def handle_friend_request():
+    request_id = request.form.get('request_id')
+    action = request.form.get('action')
+
+    # Fetch the friend request
+    friend_request = FriendRequest.query.get(request_id)
+    if not friend_request or friend_request.receiver_id != current_user.id:
+        flash('Invalid friend request.', 'danger')
+        return redirect(url_for('friends'))
+
+    if action == 'accept':
+        # Add the sender as a friend
+        current_user.add_friend(friend_request.sender)
+        db.session.delete(friend_request)  # Remove the friend request
+        db.session.commit()
+        flash(f'You are now friends with {friend_request.sender.username}!', 'success')
+    elif action == 'reject':
+        # Reject the friend request
+        db.session.delete(friend_request)
+        db.session.commit()
+        flash('Friend request rejected.', 'info')
+
+    return redirect(url_for('friends'))
+
+@app.route('/add_friend', methods=['POST'])
+@login_required
+def add_friend():
+    friend_id = request.form.get('friend_id')
+    if not friend_id:
+        flash('Invalid friend request.', 'danger')
+        return redirect(url_for('friends'))
+
+    # Find the user by ID
+    friend = User.query.get(friend_id)
+    if not friend:
+        flash('User not found.', 'danger')
+        return redirect(url_for('friends'))
+
+    # Add the friend
+    if current_user.is_friend(friend):
+        flash(f'{friend.username} is already your friend.', 'info')
+    else:
+        current_user.add_friend(friend)
+        db.session.commit()
+        flash(f'{friend.username} has been added to your friends list!', 'success')
+
+    return redirect(url_for('friends'))
+
+@app.route('/send_friend_request', methods=['POST'])
+@login_required
+def send_friend_request():
+    receiver_username = request.form.get('receiver_username')
+    if not receiver_username:
+        flash('Please provide a username.', 'danger')
+        return redirect(url_for('friends'))
+
+    receiver = User.query.filter_by(username=receiver_username).first()
+    if not receiver:
+        flash('User not found.', 'danger')
+        return redirect(url_for('friends'))
+
+    if current_user.is_friend(receiver):
+        flash(f'{receiver.username} is already your friend.', 'info')
+    elif FriendRequest.query.filter_by(sender_id=current_user.id, receiver_id=receiver.id).first():
+        flash(f'You have already sent a friend request to {receiver.username}.', 'info')
+    else:
+        friend_request = FriendRequest(sender=current_user, receiver=receiver)
+        db.session.add(friend_request)
+        db.session.commit()
+        flash(f'Friend request sent to {receiver.username}!', 'success')
+
+    return redirect(url_for('friends'))
 
 @app.route('/planner')
 @login_required

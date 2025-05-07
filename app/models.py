@@ -22,7 +22,13 @@ friends = db.Table(
     db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
     db.Column('friend_id', db.Integer, db.ForeignKey('user.id'))
 )
+class FriendRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_requests')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_requests')
 class User(UserMixin, db.Model):
     __tablename__ = "user"
     

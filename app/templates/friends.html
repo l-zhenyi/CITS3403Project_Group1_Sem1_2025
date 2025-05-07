@@ -1,4 +1,4 @@
-{%extends "base.html"%}
+{% extends "base.html" %}
 
 {% block head %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/friends.css') }}" type="text/css">
@@ -12,28 +12,45 @@
         <div class="my-friends col-md-8">
             <h3>My Friends List</h3>
             <ul>
-                {% for friend in friends %}
-                    <li>
-                        <div class="friend-item">
-                            <span>{{ friend.name }}</span>
-                            <form action="{{ url_for('remove_friend', friend_id=friend.id) }}" method="POST" class="remove-friend-form">
-                                <button type="submit" class="btn btn-danger">Remove</button>
-                            </form>
-                        </div>
-                    </li>
-                {% endfor %}
-                {% if not friends %}
-                    <li>No friends added yet.</li>
+                {% if friends %}
+                    {% for friend in friends %}
+                        <li>{{ friend.username }}</li>
+                    {% endfor %}
+                {% else %}
+                    <p>You have no friends yet. Add some friends to get started!</p>
                 {% endif %}
             </ul>
         </div>
         <div class="add-friend col-md-4">
             <h3>Add a Friend</h3>
-                <input type="text" name="friend_name" placeholder="Enter friend's name" required>
-                <button type="submit">Add Friend</button>
+            <form action="{{ url_for('send_friend_request') }}" method="POST">
+                <input type="text" name="receiver_username" placeholder="Enter friend's username" required>
+                <button type="submit" class="btn btn-primary">Send Friend Request</button>
+            </form>
         </div>
     </div>
 
-
+    <div class="row mt-4">
+        <div class="friend-requests col-md-12">
+            <h3>Friend Requests</h3>
+            <ul>
+                {% if friend_requests %}
+                    {% for request in friend_requests %}
+                        <li>
+                            {{ request.sender.username }}
+                            <form action="{{ url_for('handle_friend_request') }}" method="POST" class="d-inline">
+                                <input type="hidden" name="request_id" value="{{ request.id }}">
+                                <button type="submit" name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
+                                <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+                            </form>
+                        </li>
+                    {% endfor %}
+                {% else %}
+                    <p>You have no pending friend requests.</p>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
 </div>
+
 {% endblock %}
