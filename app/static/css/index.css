@@ -244,19 +244,6 @@
     }
 }
 
-.carousel-control-prev-icon,
-.carousel-control-next-icon {
-    background-color: black; 
-    border-radius: 100%; 
-    padding: 2px; 
-}
-
-.carousel-control-prev:hover,
-.carousel-control-next:hover {
-    transform: scale(1.1);
-    transition: transform 0.3s ease;
-}
-
 .review-footer {
     display: flex;
     align-items: center;
@@ -308,3 +295,21 @@
   #white_container {
     border-radius: 1.0rem;
 }
+
+.carousel-arrow {
+    color: #6c757d; 
+    transition: color 0.2s ease;
+  }
+  
+  .carousel-arrow:hover {
+    color: #1e2225;
+  }
+  
+  .carousel-control-prev:focus .carousel-arrow,
+  .carousel-control-next:focus .carousel-arrow,
+  .carousel-control-prev:active .carousel-arrow,
+  .carousel-control-next:active .carousel-arrow {
+    color: #6c757d !important; /* reset back to neutral after click */
+    outline: none;
+  }
+  
