@@ -20,3 +20,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 100 * index);
     });
 });
+
+//white background fades in when user entersw the page asap
+document.addEventListener("DOMContentLoaded", () => {
+    const chatContainer = document.querySelector(".chat-container");
+    if (chatContainer) {
+        requestAnimationFrame(() => chatContainer.classList.add("fade-in"));
+    }
+});
