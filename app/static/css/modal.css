@@ -1,6 +1,6 @@
-/* ==========================================================================
-    Event Details Modal Styles (Revised for Larger Size - Majority of Screen)
-   ========================================================================== */
+/* --- START OF FILE modal.css --- */
+
+/* ... (All previous CSS up to the .modal-header styles) ... */
 
 .modal-backdrop {
     position: fixed;
@@ -12,7 +12,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Padding ensures modal content doesn't touch edges */
     padding: 30px;
     opacity: 0;
     visibility: hidden;
@@ -27,23 +26,16 @@
 
 .modal-content {
     position: relative;
-    /* Glassy Effect */
-    background: rgba(140, 140, 145, 0.7);
+    background: rgba(140, 140, 145, 0.7); /* Main modal glass */
     backdrop-filter: blur(40px) saturate(180%);
     -webkit-backdrop-filter: blur(40px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 18px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-
     padding: 25px 35px;
-    /* Make modal take up most screen space with fixed margins */
-    width: calc(100% - 60px);  /* 30px margin left/right */
-    height: calc(100% - 60px); /* 30px margin top/bottom */
-    /* Remove max-width/max-height to allow filling the space */
-    /* max-width: 1100px; */ /* Removed */
-    /* max-height: 95vh; */ /* Replaced by height */
-
-    overflow: hidden; /* Important: Container clips, body scrolls */
+    width: calc(100% - 60px);
+    height: calc(100% - 60px);
+    overflow: hidden; /* Clips content, .modal-body handles internal scroll */
     display: flex;
     flex-direction: column;
     color: #f0f0f5;
@@ -67,10 +59,9 @@
     cursor: pointer;
     padding: 0 5px;
     line-height: 1;
-    z-index: 10; /* Ensure it's above scrolling content */
+    z-index: 10; /* Above other modal content */
     transition: color 0.2s ease, transform 0.2s ease;
 }
-
 .modal-close-btn:hover {
     color: #fff;
     transform: scale(1.1);
@@ -84,7 +75,7 @@
     padding-bottom: 18px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 25px;
-    flex-shrink: 0; /* Prevent header shrinking */
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .modal-event-image-small {
@@ -93,29 +84,50 @@
     border-radius: 50%;
     object-fit: cover;
     border: 1px solid rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.1); /* Placeholder bg */
 }
 
 .modal-title-group {
     flex-grow: 1;
+    min-width: 0; /* CRITICAL for flex children that might overflow */
+                 /* This allows #modal-event-title to be constrained by max-width */
 }
 
-.modal-header h2 { margin: 0 0 3px 0; font-size: 1.7rem; font-weight: 600; color: #fff; line-height: 1.2; }
-.modal-header p { margin: 0; font-size: 0.95rem; color: #c5c5cc; }
-#modal-group-name { font-weight: 500; }
+.modal-header h2, #modal-event-title { 
+    margin: 0 0 3px 0;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+    /* Text overflow handling for the static title */
+    white-space: nowrap; /* Keep title on one line if static */
+    overflow: hidden;    /* Hide overflow */
+    text-overflow: ellipsis; /* Add ... if too long */
+    /* Max-width will be applied to .editable-field version below */
+}
+.modal-header p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #c5c5cc;
+}
+#modal-group-name {
+    font-weight: 500;
+    /* Add text overflow if group name can also be long */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px; /* Example */
+}
 
 /* Modal Body */
 .modal-body {
     display: flex;
-    flex-grow: 1; /* Takes remaining space within fixed height modal-content */
+    flex-grow: 1; 
     gap: 35px;
-    overflow-y: auto; /* Enables scrolling ONLY for the body */
-    padding-right: 15px; /* Space for scrollbar */
-    margin-right: -15px; /* Offset scrollbar padding */
-    min-height: 0; /* CRITICAL for flex-grow + overflow */
+    overflow-y: auto; 
+    padding: 5px 10px 5px 10px; 
+    min-height: 0; 
 }
-
-/* Scrollbar Styling (Matches planner.css) */
 .modal-body::-webkit-scrollbar { width: 8px; }
 .modal-body::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px; }
 .modal-body::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
@@ -123,22 +135,299 @@
 .modal-body { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.08); }
 
 
-.modal-col { display: flex; flex-direction: column; gap: 25px; }
-.modal-col-details { flex: 1 1 62%; }
-.modal-col-rsvps { flex: 1 1 38%; border-left: 1px solid rgba(255, 255, 255, 0.2); padding-left: 35px; }
+.modal-col {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+.modal-col-details {
+    flex: 1 1 62%;
+    min-width: 0; 
+    display: flex; 
+    flex-direction: column;
+}
+.modal-col-rsvps {
+    flex: 1 1 38%;
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+    padding-left: 35px;
+}
 
-.modal-detail-section h3 { font-size: 1.15rem; font-weight: 500; color: #fff; margin-bottom: 15px; margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.modal-detail-section h3 {
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 15px;
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
 
-.modal-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; }
+.modal-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 18px;
+}
 
-.detail-item { background: rgba(255, 255, 255, 0.1); padding: 12px 15px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.15); transition: background-color 0.2s ease; }
-.detail-label { display: block; font-size: 0.8rem; color: rgba(255, 255, 255, 0.65); margin-bottom: 4px; font-weight: 500; }
-.detail-item span:not(.detail-label) { font-size: 0.95rem; color: #f0f0f5; }
+.detail-item {
+    background: rgba(255, 255, 255, 0.05); 
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.detail-label {
+    display: block;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+.detail-item span:not(.detail-label) { 
+    font-size: 0.95rem;
+    color: #f0f0f5;
+}
 
-.modal-description-section p { font-size: 0.95rem; line-height: 1.65; color: #e0e0e5; margin: 0; white-space: pre-wrap; }
+.modal-description-section {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; 
+    min-height: 0; 
+}
+#modal-description-wrapper { 
+    position: relative;
+    flex-grow: 1; 
+    min-height: 100px; 
+    overflow-y: auto;  
+    border-radius: 8px; 
+    display: flex; 
+    flex-direction: column;
+    margin: 5px; 
+    outline-offset: 3px; 
+}
+#modal-description-wrapper::-webkit-scrollbar { width: 6px; }
+#modal-description-wrapper::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); border-radius: 3px; }
 
-/* RSVP Controls */
-.rsvp-button-group { display: flex; gap: 10px; flex-wrap: wrap; }
+#modal-event-description { 
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: #e0e0e5;
+    margin: 0;
+    padding: 8px 10px; 
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    flex-grow: 1; 
+}
+
+
+/* --- Styles for Editable Fields (Consistent Outline) --- */
+.editable-field {
+    position: relative;
+    cursor: pointer;
+    display: block; 
+    border-radius: 6px; 
+    
+    outline: 1.5px solid transparent; 
+    outline-offset: 5px; 
+    transition: outline-color 0.2s ease-out;
+}
+
+.editable-field:focus, .editable-field:focus-visible {
+    outline-color: transparent !important; 
+}
+
+/* Specific display types AND CONSTRAINTS */
+#modal-event-title.editable-field {
+    display: block;
+    /* Max-width to prevent the title (and its input) from becoming too wide */
+    max-width: calc(100% - 30px); /* Adjust if close button or other elements are factors */
+    /* For example, if close button is 30px wide + 10px gap: max-width: calc(100% - 40px); */
+    /* It will take 100% of .modal-title-group up to this max-width */
+    /* The text-overflow for static text is handled in the .modal-header h2 rule */
+}
+#modal-description-wrapper.editable-field { 
+    display: flex; flex-direction:column; 
+    /* outline-offset is already set on its own ID rule */
+} 
+.detail-item span.editable-field { display: block; }
+
+
+.editable-field:hover:not(.is-editing-field),
+.is-editing-field { 
+    outline-color: rgba(255, 255, 255, 0.40); 
+}
+.is-editing-field {
+    cursor: default;
+}
+
+
+.editable-input-wrapper {
+    position: relative; 
+    width: 100%;
+    height: 100%; 
+    display: flex; 
+}
+
+.editable-input {
+    flex-grow: 1; 
+    width: 100%; /* Input takes full width of its constrained parent */
+    height: 100%; 
+    border: none; 
+    font: inherit; 
+    color: inherit;
+    background-color: transparent; 
+    resize: none !important; 
+    box-sizing: border-box; 
+    
+    padding: 6px 8px; 
+    /* padding-right will be handled specifically where text shouldn't flow under buttons */
+}
+.editable-input:focus {
+    outline: none; 
+}
+
+/* Specific internal padding for inputs */
+#modal-event-title.is-editing-field .editable-input {
+    font-size: 1.7rem; 
+    font-weight: 600;  
+    line-height: 1.2; 
+    padding: 0; 
+    padding-left: 2px; 
+    /* If title text can flow under buttons (single line usually short enough not to) */
+    /* padding-right: 10px; Or some small value if buttons are far right */
+    /* If buttons must not overlap, then: padding-right: 60px; */
+}
+
+#modal-description-wrapper.is-editing-field .editable-input { /* The textarea */
+    font-size: 0.95rem; 
+    line-height: 1.65; 
+    padding: 8px 10px; /* Match original #modal-event-description's padding */
+    /* Let text flow under buttons: remove padding-right */
+    padding-bottom: 10px; 
+}
+
+.detail-item span.is-editing-field .editable-input {
+    font-size: 0.95rem; 
+    padding: 2px 4px; 
+    /* Let text flow under buttons: remove padding-right */
+    line-height: 1.4; 
+}
+
+
+/* Container for Save/Cancel buttons */
+.editable-actions-container {
+    position: absolute;
+    top: 50%; 
+    transform: translateY(-50%);
+    right: 8px; /* Default right offset */
+    display: flex;
+    gap: 6px; 
+    z-index: 5; 
+}
+#modal-description-wrapper.is-editing-field .editable-actions-container {
+    top: auto; 
+    bottom: 10px; 
+    right: 10px;
+    transform: none; 
+}
+#modal-event-title.is-editing-field .editable-actions-container {
+    /* Buttons for title might need to be closer if title is short */
+    /* Or ensure input has enough padding-right if they should not overlap */
+    right: 10px; 
+}
+
+/* Action Buttons Styling */
+.edit-action-button { 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; 
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2); 
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    font-size: 14px; 
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: none; 
+
+    background: rgba(140, 140, 145, 0.35); 
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.edit-action-button:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(150, 150, 155, 0.45);
+    transform: scale(1.08) translateY(-1px); 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.18);
+}
+.edit-action-button:active {
+    transform: scale(1.02) translateY(0px);
+    background: rgba(130, 130, 135, 0.4);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* Spinner, error messages, responsive, RSVP, Attendee, Footer etc. */
+/* ... (These sections remain identical to the previous full CSS provided) ... */
+.edit-save-btn.is-loading {
+    color: transparent !important; 
+    pointer-events: none;
+    position: relative; 
+    background: rgba(150, 150, 155, 0.6); 
+}
+.edit-save-btn.is-loading::after {
+    content: ''; display: block;
+    width: 14px; height: 14px; 
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: rgba(255,255,255,0.9); 
+    animation: spin 0.7s linear infinite;
+    position: absolute; top: 50%; left: 50%;
+    margin-top: -7px; margin-left: -7px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.edit-error-message {
+    position: absolute; 
+    bottom: -20px; 
+    left: 0;
+    width: 100%;
+    color: #ff8a80; 
+    font-size: 0.8rem;
+    text-align: center;
+    animation: fadeInSoft 0.3s ease-out;
+}
+@keyframes fadeInSoft {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.editable-input.input-error-glow {
+    box-shadow: 0 0 0 2px rgba(255, 100, 100, 0.5) !important; 
+}
+
+
+@media (max-width: 768px) {
+    .modal-content { padding: 20px 20px; width: calc(100% - 20px); height: calc(100% - 20px); }
+    .modal-body { padding: 3px 5px; } 
+    #modal-description-wrapper { min-height: 80px; margin: 3px; outline-offset: 2px; }
+    #modal-event-description { padding: 6px 8px; }
+    
+    .editable-field { outline-offset: 3px; } 
+    
+    #modal-event-title.is-editing-field .editable-input,
+    .modal-header h2, #modal-event-title { font-size: 1.4rem; }
+    #modal-event-title.is-editing-field .editable-input { padding: 0 2px; /* padding-right if buttons must not overlap */ }
+
+    #modal-description-wrapper.is-editing-field .editable-input {
+        padding: 6px 8px; /* padding-right if needed */ padding-bottom: 30px; 
+    }
+
+    .editable-actions-container { right: 4px; gap: 4px; }
+    #modal-description-wrapper.is-editing-field .editable-actions-container { bottom: 5px; right: 5px; }
+    .edit-action-button { width: 26px; height: 26px; font-size: 13px; }
+}
+
+.rsvp-button-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
 .rsvp-btn { flex-grow: 1; padding: 10px 15px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 10px; background-color: rgba(255, 255, 255, 0.08); color: #e0e0e5; font-size: 0.9rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease; min-width: 90px; }
 .rsvp-btn:hover { background-color: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.35); }
 .rsvp-btn:active { transform: scale(0.97); }
@@ -150,13 +439,11 @@
 .rsvp-btn.rsvp-remove:hover { background-color: rgba(108, 117, 125, 0.75); border-color: rgba(108, 117, 125, 0.9); }
 .rsvp-message { font-size: 0.85rem; margin-top: 12px; text-align: center; color: rgba(255, 255, 255, 0.8); }
 
-/* Attendees List */
 .attendee-list-container { max-height: 300px; overflow-y: auto; padding: 8px; margin: 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; background: rgba(0, 0, 0, 0.1); }
 .attendee-list-container::-webkit-scrollbar { width: 8px; }
 .attendee-list-container::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; margin: 4px 0; }
 .attendee-list-container::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
 .attendee-list-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.45); }
-.attendee-list-container { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05); }
 #modal-attendee-list { list-style: none; padding: 0; margin: 0; }
 #modal-attendee-list li { display: flex; align-items: center; padding: 8px 10px; border-radius: 8px; transition: background-color 0.2s ease; }
 #modal-attendee-list li:not(:last-child) { margin-bottom: 2px; }
@@ -170,19 +457,7 @@
 #event-details-modal .status-pill.status-unknown { background-color: rgba(108, 117, 125, 0.8); }
 #attendee-list-message, #attendee-loading-indicator { font-size: 0.9rem; color: rgba(255, 255, 255, 0.6); text-align: center; padding: 15px; }
 
-
-/* Optional Footer */
-.modal-footer {
-    padding-top: 18px;
-    margin-top: 25px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    flex-shrink: 0; /* Prevent footer shrinking */
-}
-
-/* Admin Buttons Styled like main.css .button.decline */
+.modal-footer { padding-top: 18px; margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.2); display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0; }
 .admin-action-btn { padding: 9px 18px; border-radius: 12px; cursor: pointer; font-weight: 500; color: #f0f0f5; background-color: rgba(255, 255, 255, 0.15); border: none; transition: background-color 0.2s ease, transform 0.1s ease; text-shadow: none; text-align: center; text-decoration: none; }
 .admin-action-btn:hover { background-color: rgba(255, 255, 255, 0.25); }
 .admin-action-btn:active { transform: scale(0.97); }
@@ -190,38 +465,4 @@
 .admin-action-btn.delete-btn:hover { background-color: rgba(220, 53, 69, 0.9); }
 
 
-/* --- Responsive Adjustments --- */
-@media (max-width: 768px) {
-    .modal-backdrop {
-        padding: 10px; /* Smaller padding for mobile */
-    }
-
-    .modal-content {
-        padding: 20px 20px;
-        /* Adjust width/height for smaller margins on mobile */
-        width: calc(100% - 20px); /* 10px margin left/right */
-        height: calc(100% - 20px); /* 10px margin top/bottom */
-        border-radius: 16px;
-    }
-    .modal-body {
-        flex-direction: column;
-        gap: 20px; /* Slightly reduce gap */
-        padding-right: 10px;
-        margin-right: -10px;
-    }
-    .modal-col-rsvps {
-        border-left: none;
-        padding-left: 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.2);
-        padding-top: 20px; /* Slightly reduce padding */
-        flex-basis: auto;
-    }
-     .modal-col-details {
-         flex-basis: auto;
-     }
-     .modal-header h2 { font-size: 1.4rem; }
-     .modal-header p { font-size: 0.85rem; }
-     .attendee-list-container { max-height: 180px; } /* Adjust height */
-     .modal-footer { padding-top: 12px; margin-top: 15px; }
-     .admin-action-btn { padding: 8px 14px; font-size: 0.9rem; }
-}
+/* --- END OF FILE modal.css --- */
