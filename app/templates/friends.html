@@ -2,21 +2,38 @@
 
 {% block head %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/friends.css') }}" type="text/css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
 {% endblock %}
 
 {% block content %}
 
-<div class="glassy friends-container">
-    <h1>Friends</h1>
-    <p>Welcome to the Friends page! Here you can manage your friends list.</p>
-
-    <div class="friends-content">
-        <h2>Your Friends</h2>
-        <ul class="friends-list">
-
-        </ul>
-
-        <h2>Add a Friend</h2>
+<div class="glassy container">
+    <div class="row">
+        <div class="my-friends col-md-8">
+            <h3>My Friends List</h3>
+            <ul>
+                {% for friend in friends %}
+                    <li>
+                        <div class="friend-item">
+                            <span>{{ friend.name }}</span>
+                            <form action="{{ url_for('remove_friend', friend_id=friend.id) }}" method="POST" class="remove-friend-form">
+                                <button type="submit" class="btn btn-danger">Remove</button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+                {% if not friends %}
+                    <li>No friends added yet.</li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="add-friend col-md-4">
+            <h3>Add a Friend</h3>
+                <input type="text" name="friend_name" placeholder="Enter friend's name" required>
+                <button type="submit">Add Friend</button>
+        </div>
     </div>
+
+
 </div>
 {% endblock %}

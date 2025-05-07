@@ -105,7 +105,7 @@ def explore():
 @app.route('/friends')
 @login_required
 def friends():
-    return render_template('friends.html', title='Friends')
+    return render_template('friends.html', title='Friends', friends=current_user.friends)
 
 @app.route('/planner')
 @login_required

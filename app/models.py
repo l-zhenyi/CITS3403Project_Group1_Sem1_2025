@@ -17,7 +17,13 @@ group_members = db.Table('group_members',
     db.Column('group_id', db.Integer, db.ForeignKey('groups.id'))
 )
 
-class User(UserMixin,db.Model):
+friends = db.Table(
+    'friends',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('friend_id', db.Integer, db.ForeignKey('user.id'))
+)
+
+class User(UserMixin, db.Model):
     __tablename__ = "user"
     
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -27,10 +33,10 @@ class User(UserMixin,db.Model):
     about_me: Mapped[str] = mapped_column(String(140), nullable=True)
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=True)
     
+    # Existing relationships
     groups: Mapped[list["GroupMember"]] = relationship("GroupMember", back_populates="user", lazy="dynamic")
     rsvps: Mapped[list["EventRSVP"]] = relationship("EventRSVP", back_populates="user")
     posts: Mapped[list["Post"]] = relationship("Post", back_populates="author", lazy="dynamic")
-
     followed: Mapped[list["User"]] = relationship(
         "User",
         secondary=followers,
@@ -39,11 +45,20 @@ class User(UserMixin,db.Model):
         backref=db.backref("followers", lazy="dynamic"),
         lazy="dynamic"
     )
-
     messages_sent: Mapped[List["Message"]] = relationship("Message", foreign_keys="[Message.sender_id]", back_populates="sender")
     messages_received: Mapped[List["Message"]] = relationship("Message", foreign_keys="[Message.recipient_id]", back_populates="recipient")
-
     last_message_read_time: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+
+    # New friends relationship
+    friends: Mapped[List["User"]] = relationship(
+        "User",
+        secondary=friends,
+        primaryjoin=(friends.c.user_id == id),
+        secondaryjoin=(friends.c.friend_id == id),
+        backref="friend_of",
+        lazy="dynamic"
+    )
+
     def __repr__(self) -> str:
         return f"<User {self.username}>"
     
@@ -93,6 +108,17 @@ class User(UserMixin,db.Model):
     def search_users_by_username(search_term):
     # Case insensitive search for usernames that match the search_term
         return User.query.filter(User.username.ilike(f'%{search_term}%')).all()
+
+    def add_friend(self, user):
+        if not self.is_friend(user):
+            self.friends.append(user)
+
+    def remove_friend(self, user):
+        if self.is_friend(user):
+            self.friends.remove(user)
+
+    def is_friend(self, user):
+        return self.friends.filter(friends.c.friend_id == user.id).count() > 0
 
 class Post(db.Model):
     __tablename__ = "post"
@@ -291,4 +317,3 @@ class Message(db.Model):
     def __repr__(self):
         return f"<Message {self.body}>"
 
-    
