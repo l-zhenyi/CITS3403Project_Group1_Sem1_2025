@@ -5,6 +5,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/index.js') }}"></script>
 {% endblock %}
 
 
@@ -63,16 +64,15 @@
                 <div class="row align-items-center">
 
                     <!-- Text Column -->
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 slide-in">
                         <h2 class="text-black fw-bold mb-4" style="text-shadow: none;"><em>Plannit Makes Life Easier</em></h2>
                         <ul class="list-unstyled">
-                            <li class="mb-2"><i class="bi bi-check2-circle"></i> Reduce planning stress and keep everyone aligned</li>
-                            <li class="mb-2"><i class="bi bi-check2-circle"></i> Plan your events with built-in tools</li>
-                            <li class="mb-2"><i class="bi bi-check2-circle"></i> Transparent split cost</li>
+                        <li class="mb-2"><i class="bi bi-check2-circle"></i> Reduce planning stress and keep everyone aligned</li>
+                        <li class="mb-2"><i class="bi bi-check2-circle"></i> Plan your events with built-in tools</li>
+                        <li class="mb-2"><i class="bi bi-check2-circle"></i> Transparent split cost</li>
                         </ul>
-                        <button type="button" onclick="location.href='{{ url_for('create_group') }}'"
-                            class="btn btn-primary mt-3">
-                            CREATE A GROUP
+                        <button type="button" onclick="location.href='{{ url_for('create_group') }}'" class="btn btn-primary mt-3">
+                        CREATE A GROUP
                         </button>
                     </div>
 
