@@ -305,4 +305,6 @@
   .btn.btn-primary.btn-lg:hover {
     transform: scale(1.05);
   }
-  
+  #white_container {
+    border-radius: 1.0rem;
+}
