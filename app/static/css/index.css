@@ -323,4 +323,31 @@
     opacity: 1;
     transform: translateY(0);
   }
+
+  .footer-social {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.social-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #aaa;
+    border-radius: 50%;
+    color: #ffffffc5;
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.social-icon:hover {
+    background-color: #363636;
+    color: white;
+    transform: scale(1.1);
+}
+
   
