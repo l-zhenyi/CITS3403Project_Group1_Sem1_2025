@@ -251,10 +251,16 @@
     padding: 2px; 
 }
 
-.carousel-control-prev-icon:hover,
-.carousel-control-next-icon:hover {
-    transform: scale(1.5);
-    transition: transform 0.2s ease;
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+    transform: scale(1.1);
+    transition: transform 0.3s ease;
+}
+
+.carousel-control-prev:active,
+.carousel-control-next:active {
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
 }
 
 .review-footer {
