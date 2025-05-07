@@ -55,7 +55,38 @@
             </div>
         </div>
         <br>
-
+        <br>
+        <br>
+        <br>
+        <div class="bg-white py-5" id="white_container">
+            <div class="container">
+              <div class="row align-items-center">
+                
+                <!-- Text Column -->
+                <div class="col-lg-6">
+                  <h2 class="text-black fw-bold mb-4" style="text-shadow: none;">Plannit Makes Life Easier</h2>
+                  <ul class="list-unstyled">
+                    <li class="mb-2">✔ Reduce planning stress and keep everyone aligned</li>
+                    <li class="mb-2">✔ Plan your events with built-in tools</li>
+                    <li class="mb-2">✔ Transparent split cost</li>
+                  </ul>
+                  <button type="button" onclick="location.href='{{ url_for('create_group') }}'"
+                          class="btn btn-primary mt-3">
+                    Create a new group
+                  </button>
+                </div>
+          
+                <!-- Image Column -->
+                <div class="col-lg-6 text-center position-relative">
+                  <img src="https://images.unsplash.com/photo-1567306226416-28f0efdc88ce" class="img-fluid rounded" alt="Collaboration">
+                    <i class="bi bi-play-fill fs-2 text-white"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          
         <button type="button" onclick="location.href='{{ url_for('create_group')}}'"
             class="btn btn-primary btn-lg">Create a new group
         </button>
