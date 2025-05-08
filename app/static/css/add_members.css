@@ -1,0 +1,107 @@
+.container {
+    padding: 20px;
+    max-width: 90%;
+    min-width: 80%;
+    margin: 0 auto;
+    border-radius: 20px;
+    margin-top: 50px;
+}
+
+.section-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.friend-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: background-color 0.2s ease;
+}
+
+.friend-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.friend-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #fff;
+}
+
+.friend-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+    object-fit: cover;
+}
+
+.search-bar {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.manual-add {
+    margin-top: 30px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.manual-add-form {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-add {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.btn-add:hover {
+    background-color: #218838;
+}
+
+.group-info {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.friends-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.back-button {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.inline-form {
+    display: inline;
+}

@@ -4,7 +4,7 @@ from flask import render_template, redirect, url_for, flash, request, session, j
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, InsightPanel # Ensure InsightPanel is imported
+from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest, InsightPanel
 from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta
 from dateutil.parser import isoparse
@@ -81,12 +81,9 @@ def index():
         return redirect(url_for('index'))
 
     page = request.args.get('page', 1, type=int)
-    posts = current_user.followed_posts().paginate(page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
     groups = Group.query.join(GroupMember).filter(GroupMember.user_id == current_user.id).all()
 
-    return render_template('index.html', title='Home', form=form, posts=posts.items,
-                           next_url=url_for('index', page=posts.next_num) if posts.has_next else None,
-                           prev_url=url_for('index', page=posts.prev_num) if posts.has_prev else None,
+    return render_template('index.html', title='Home', form=form,
                            groups=groups, user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -134,6 +131,156 @@ def profile():
 @login_required
 def explore():
     return render_template('explore.html', title='Explore')
+
+@app.route('/friends', methods=['GET'])
+@login_required
+def friends():
+    # Get the current user's friends
+    friends = current_user.friends.all()  # Use `.all()` if the relationship is lazy="dynamic"
+
+    # Get pending friend requests (assuming a FriendRequest model exists)
+    friend_requests = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
+
+    return render_template('friends.html', friends=friends, friend_requests=friend_requests)
+
+
+@app.route('/search_friends', methods=['GET'])
+@login_required
+def search_friends():
+    query = request.args.get('query', '').strip()
+    search_results = []
+
+    if query:
+        # Perform a fuzzy search for usernames containing the query (case-insensitive)
+        search_results = User.query.filter(
+            or_(
+                User.username.ilike(f'%{query}%'),  # Case-insensitive partial match
+                User.email.ilike(f'%{query}%')     # Optionally allow searching by email
+            )
+        ).all()
+
+    # Exclude the current user from the search results
+    search_results = [user for user in search_results if user.id != current_user.id]
+    
+    # Exclude users who are already friends with the current user
+    search_results = [user for user in search_results if not current_user.is_friend(user)]
+
+    # Get a list of users to whom the current user has already sent friend requests
+    sent_requests = {req.receiver_id for req in FriendRequest.query.filter_by(sender_id=current_user.id).all()}
+
+    # Get users who have sent friend requests to the current user
+    received_requests = {req.sender_id: req.id for req in FriendRequest.query.filter_by(receiver_id=current_user.id).all()}
+
+    # Also get the pending friend requests
+    friend_requests = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
+
+    # Render the friends page with search results, sent requests, and friend requests
+    friends = current_user.friends.all()
+    return render_template('friends.html', 
+                          friends=friends, 
+                          search_results=search_results, 
+                          sent_requests=sent_requests,
+                          received_requests=received_requests,
+                          friend_requests=friend_requests)
+
+@app.route('/handle_friend_request', methods=['POST'])
+@login_required
+def handle_friend_request():
+    request_id = request.form.get('request_id')
+    action = request.form.get('action')
+
+    # Fetch the friend request
+    friend_request = FriendRequest.query.get(request_id)
+    if not friend_request or friend_request.receiver_id != current_user.id:
+        flash('Invalid friend request.', 'danger')
+        return redirect(url_for('friends'))
+
+    if action == 'accept':
+        # Add the sender as a friend
+        current_user.add_friend(friend_request.sender)
+        db.session.delete(friend_request)  # Remove the friend request
+        db.session.commit()
+        flash(f'You are now friends with {friend_request.sender.username}!', 'success')
+    elif action == 'reject':
+        # Reject the friend request
+        db.session.delete(friend_request)
+        db.session.commit()
+        flash('Friend request rejected.', 'info')
+
+    return redirect(url_for('friends'))
+
+@app.route('/add_friend', methods=['POST'])
+@login_required
+def add_friend():
+    friend_id = request.form.get('friend_id')
+    if not friend_id:
+        flash('Invalid friend request.', 'danger')
+        return redirect(url_for('friends'))
+
+    # Find the user by ID
+    friend = User.query.get(friend_id)
+    if not friend:
+        flash('User not found.', 'danger')
+        return redirect(url_for('friends'))
+
+    # Add the friend
+    if current_user.is_friend(friend):
+        flash(f'{friend.username} is already your friend.', 'info')
+    else:
+        current_user.add_friend(friend)
+        db.session.commit()
+        flash(f'{friend.username} has been added to your friends list!', 'success')
+
+    return redirect(url_for('friends'))
+
+@app.route('/remove_friend', methods=['POST'])
+@login_required
+def remove_friend():
+    friend_id = request.form.get('friend_id')
+    if not friend_id:
+        flash('Invalid friend ID.', 'danger')
+        return redirect(url_for('friends'))
+
+    # Find the user by ID
+    friend = User.query.get(friend_id)
+    if not friend:
+        flash('User not found.', 'danger')
+        return redirect(url_for('friends'))
+
+    # Remove the friend
+    if current_user.is_friend(friend):
+        current_user.remove_friend(friend)
+        db.session.commit()
+        flash(f'{friend.username} has been removed from your friends list.', 'success')
+    else:
+        flash(f'{friend.username} is not in your friends list.', 'info')
+
+    return redirect(url_for('friends'))
+
+@app.route('/send_friend_request', methods=['POST'])
+@login_required
+def send_friend_request():
+    receiver_username = request.form.get('receiver_username')
+    if not receiver_username:
+        flash('Please provide a username.', 'danger')
+        return redirect(url_for('friends'))
+
+    receiver = User.query.filter_by(username=receiver_username).first()
+    if not receiver:
+        flash('User not found.', 'danger')
+        return redirect(url_for('friends'))
+
+    if current_user.is_friend(receiver):
+        flash(f'{receiver.username} is already your friend.', 'info')
+    elif FriendRequest.query.filter_by(sender_id=current_user.id, receiver_id=receiver.id).first():
+        flash(f'You have already sent a friend request to {receiver.username}.', 'info')
+    else:
+        friend_request = FriendRequest(sender=current_user, receiver=receiver)
+        db.session.add(friend_request)
+        db.session.commit()
+        flash(f'Friend request sent to {receiver.username}!', 'success')
+
+    return redirect(url_for('friends'))
 
 @app.route('/planner')
 @login_required
@@ -205,41 +352,6 @@ def user(username):
                            prev_url=url_for('user', username=user_obj.username, page=posts_pagination.prev_num) if posts_pagination.has_prev else None,
                            form=form, groups=shared_groups) # groups here refers to shared_groups
 
-@app.route('/follow/<username>', methods=['POST'])
-@login_required
-def follow(username):
-    form = EmptyForm()
-    if form.validate_on_submit():
-        user_to_follow = db.session.scalar(db.select(User).filter_by(username=username))
-        if user_to_follow is None:
-            flash(f'User {username} not found.')
-            return redirect(url_for('index'))
-        if user_to_follow == current_user:
-            flash('You cannot follow yourself!')
-            return redirect(url_for('user', username=username))
-        current_user.follow(user_to_follow)
-        db.session.commit()
-        flash(f'You are following {username}!')
-        return redirect(url_for('user', username=username))
-    return redirect(url_for('index'))
-
-@app.route('/unfollow/<username>', methods=['POST'])
-@login_required
-def unfollow(username):
-    form = EmptyForm()
-    if form.validate_on_submit():
-        user_to_unfollow = db.session.scalar(db.select(User).filter_by(username=username))
-        if user_to_unfollow is None:
-            flash(f'User {username} not found.')
-            return redirect(url_for('index'))
-        if user_to_unfollow == current_user:
-            flash('You cannot unfollow yourself!')
-            return redirect(url_for('user', username=username))
-        current_user.unfollow(user_to_unfollow)
-        db.session.commit()
-        flash(f'You are not following {username}.')
-        return redirect(url_for('user', username=username))
-    return redirect(url_for('index'))
 
 @app.route("/create_group", methods=["GET", "POST"])
 @login_required
@@ -295,6 +407,9 @@ def add_members(group_id):
     if not group:
         abort(404)
 
+    # Get all the current user's friends
+    friends = current_user.friends.all()
+    
     if request.method == 'POST':
         username_to_add = request.form.get('username')
         if not username_to_add:
@@ -307,11 +422,19 @@ def add_members(group_id):
             flash(f'User "{username_to_add}" not found.')
             return redirect(url_for('add_members', group_id=group_id))
 
+        # Check if user is already a member
         existing_member = is_group_member(user_to_add.id, group_id)
         if existing_member:
             flash(f'{user_to_add.username} is already a group member.')
             return redirect(url_for('add_members', group_id=group_id))
 
+        # Check for mutual follow
+        is_friends = current_user.is_friend(user_to_add)
+        if not is_friends:
+            flash(f"You need to be friends with {user_to_add.username} before adding them to the group.")
+            return redirect(url_for('add_members', group_id=group_id))
+
+        # Add the user to the group
         new_membership = GroupMember(user_id=user_to_add.id, group_id=group_id)
         db.session.add(new_membership)
         db.session.commit()
@@ -319,7 +442,17 @@ def add_members(group_id):
         flash(f'{user_to_add.username} has been added to the group!')
         return redirect(url_for('view_group', group_id=group_id))
 
-    return render_template('add_members.html', title='Add Members', group=group)
+    # For GET request, render template with friends list
+    # Filter to only show friends who aren't already in the group and have mutual follow
+    eligible_friends = []
+    for friend in friends:
+        if not is_group_member(friend.id, group_id):
+            eligible_friends.append(friend)
+
+    return render_template('add_members.html', 
+                          title='Add Members', 
+                          group=group, 
+                          friends=eligible_friends)
 
 @app.route('/send_message/<recipient_username>', methods=['GET', 'POST']) # Changed param name
 @login_required
