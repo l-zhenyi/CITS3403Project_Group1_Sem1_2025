@@ -100,15 +100,29 @@ class User(UserMixin, db.Model):
         return User.query.filter(User.username.ilike(f'%{search_term}%')).all()
 
     def add_friend(self, user):
+        """Add a user as a friend (bidirectional relationship)"""
         if not self.is_friend(user):
+            # Add the target user to this user's friends
             self.friends.append(user)
-
+            
+            # Also add this user to the target user's friends (bidirectional)
+            # Check to prevent duplicates if the relationship is already being added from the other side
+            if not user.is_friend(self):
+                user.friends.append(self)
+    
     def remove_friend(self, user):
+        """Remove a user from friends (bidirectional removal)"""
         if self.is_friend(user):
+            # Remove the relationship from both sides
             self.friends.remove(user)
-
+            
+            # Also remove the relationship from the other user's side
+            if user.is_friend(self):
+                user.friends.remove(self)
+            
     def is_friend(self, user):
-        return self.friends.filter(friends.c.friend_id == user.id).count() > 0
+        """Check if this user is friends with another user"""
+        return user in self.friends.all()
     
     def is_member(self, group_id):
         """Check if user is a member of the specified group"""
