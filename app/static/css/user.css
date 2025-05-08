@@ -8,3 +8,9 @@
     opacity: 1;
     transform: translateX(0);
 }
+
+.group-container {
+    max-height: 550px; /* or use height: 400px; for fixed height */
+    overflow-y: auto;  /* ensures vertical scrollbar */
+    overflow-x: hidden;
+}
