@@ -93,7 +93,7 @@
                  /* This allows #modal-event-title to be constrained by max-width */
 }
 
-.modal-header h2, #modal-event-title { 
+.modal-header h2, #modal-event-title {
     margin: 0 0 3px 0;
     font-size: 1.7rem;
     font-weight: 600;
@@ -122,11 +122,11 @@
 /* Modal Body */
 .modal-body {
     display: flex;
-    flex-grow: 1; 
+    flex-grow: 1;
     gap: 35px;
-    overflow-y: auto; 
-    padding: 5px 10px 5px 10px; 
-    min-height: 0; 
+    overflow-y: auto;
+    padding: 5px 10px 5px 10px;
+    min-height: 0;
 }
 .modal-body::-webkit-scrollbar { width: 8px; }
 .modal-body::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px; }
@@ -142,8 +142,8 @@
 }
 .modal-col-details {
     flex: 1 1 62%;
-    min-width: 0; 
-    display: flex; 
+    min-width: 0;
+    display: flex;
     flex-direction: column;
 }
 .modal-col-rsvps {
@@ -169,7 +169,7 @@
 }
 
 .detail-item {
-    background: rgba(255, 255, 255, 0.05); 
+    background: rgba(255, 255, 255, 0.05);
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -181,7 +181,7 @@
     margin-bottom: 4px;
     font-weight: 500;
 }
-.detail-item span:not(.detail-label) { 
+.detail-item span:not(.detail-label) {
     font-size: 0.95rem;
     color: #f0f0f5;
 }
@@ -189,32 +189,32 @@
 .modal-description-section {
     display: flex;
     flex-direction: column;
-    flex-grow: 1; 
-    min-height: 0; 
+    flex-grow: 1;
+    min-height: 0;
 }
-#modal-description-wrapper { 
+#modal-description-wrapper {
     position: relative;
-    flex-grow: 1; 
-    min-height: 100px; 
-    overflow-y: auto;  
-    border-radius: 8px; 
-    display: flex; 
+    flex-grow: 1;
+    min-height: 100px;
+    overflow-y: auto;
+    border-radius: 8px;
+    display: flex;
     flex-direction: column;
-    margin: 5px; 
-    outline-offset: 3px; 
+    margin: 5px;
+    outline-offset: 3px;
 }
 #modal-description-wrapper::-webkit-scrollbar { width: 6px; }
 #modal-description-wrapper::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); border-radius: 3px; }
 
-#modal-event-description { 
+#modal-event-description {
     font-size: 0.95rem;
     line-height: 1.65;
     color: #e0e0e5;
     margin: 0;
-    padding: 8px 10px; 
+    padding: 8px 10px;
     white-space: pre-wrap;
     word-wrap: break-word;
-    flex-grow: 1; 
+    flex-grow: 1;
 }
 
 
@@ -222,16 +222,16 @@
 .editable-field {
     position: relative;
     cursor: pointer;
-    display: block; 
-    border-radius: 6px; 
-    
-    outline: 1.5px solid transparent; 
-    outline-offset: 5px; 
+    display: block;
+    border-radius: 6px;
+
+    outline: 1.5px solid transparent;
+    outline-offset: 5px;
     transition: outline-color 0.2s ease-out;
 }
 
 .editable-field:focus, .editable-field:focus-visible {
-    outline-color: transparent !important; 
+    outline-color: transparent !important;
 }
 
 /* Specific display types AND CONSTRAINTS */
@@ -243,16 +243,16 @@
     /* It will take 100% of .modal-title-group up to this max-width */
     /* The text-overflow for static text is handled in the .modal-header h2 rule */
 }
-#modal-description-wrapper.editable-field { 
-    display: flex; flex-direction:column; 
+#modal-description-wrapper.editable-field {
+    display: flex; flex-direction:column;
     /* outline-offset is already set on its own ID rule */
-} 
+}
 .detail-item span.editable-field { display: block; }
 
 
 .editable-field:hover:not(.is-editing-field),
-.is-editing-field { 
-    outline-color: rgba(255, 255, 255, 0.40); 
+.is-editing-field {
+    outline-color: rgba(255, 255, 255, 0.40);
 }
 .is-editing-field {
     cursor: default;
@@ -260,96 +260,96 @@
 
 
 .editable-input-wrapper {
-    position: relative; 
+    position: relative;
     width: 100%;
-    height: 100%; 
-    display: flex; 
+    height: 100%;
+    display: flex;
 }
 
 .editable-input {
-    flex-grow: 1; 
+    flex-grow: 1;
     width: 100%; /* Input takes full width of its constrained parent */
-    height: 100%; 
-    border: none; 
-    font: inherit; 
+    height: 100%;
+    border: none;
+    font: inherit;
     color: inherit;
-    background-color: transparent; 
-    resize: none !important; 
-    box-sizing: border-box; 
-    
-    padding: 6px 8px; 
+    background-color: transparent;
+    resize: none !important;
+    box-sizing: border-box;
+
+    padding: 6px 8px;
     /* padding-right will be handled specifically where text shouldn't flow under buttons */
 }
 .editable-input:focus {
-    outline: none; 
+    outline: none;
 }
 
 /* Specific internal padding for inputs */
 #modal-event-title.is-editing-field .editable-input {
-    font-size: 1.7rem; 
-    font-weight: 600;  
-    line-height: 1.2; 
-    padding: 0; 
-    padding-left: 2px; 
+    font-size: 1.7rem;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 0;
+    padding-left: 2px;
     /* If title text can flow under buttons (single line usually short enough not to) */
     /* padding-right: 10px; Or some small value if buttons are far right */
     /* If buttons must not overlap, then: padding-right: 60px; */
 }
 
 #modal-description-wrapper.is-editing-field .editable-input { /* The textarea */
-    font-size: 0.95rem; 
-    line-height: 1.65; 
+    font-size: 0.95rem;
+    line-height: 1.65;
     padding: 8px 10px; /* Match original #modal-event-description's padding */
     /* Let text flow under buttons: remove padding-right */
-    padding-bottom: 10px; 
+    padding-bottom: 10px;
 }
 
 .detail-item span.is-editing-field .editable-input {
-    font-size: 0.95rem; 
-    padding: 2px 4px; 
+    font-size: 0.95rem;
+    padding: 2px 4px;
     /* Let text flow under buttons: remove padding-right */
-    line-height: 1.4; 
+    line-height: 1.4;
 }
 
 
 /* Container for Save/Cancel buttons */
 .editable-actions-container {
     position: absolute;
-    top: 50%; 
+    top: 50%;
     transform: translateY(-50%);
     right: 8px; /* Default right offset */
     display: flex;
-    gap: 6px; 
-    z-index: 5; 
+    gap: 6px;
+    z-index: 5;
 }
 #modal-description-wrapper.is-editing-field .editable-actions-container {
-    top: auto; 
-    bottom: 10px; 
+    top: auto;
+    bottom: 10px;
     right: 10px;
-    transform: none; 
+    transform: none;
 }
 #modal-event-title.is-editing-field .editable-actions-container {
     /* Buttons for title might need to be closer if title is short */
     /* Or ensure input has enough padding-right if they should not overlap */
-    right: 10px; 
+    right: 10px;
 }
 
 /* Action Buttons Styling */
-.edit-action-button { 
+.edit-action-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px; 
+    width: 28px;
     height: 28px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.2); 
+    border: 1px solid rgba(255, 255, 255, 0.2);
     cursor: pointer;
     transition: all 0.15s ease-in-out;
-    font-size: 14px; 
+    font-size: 14px;
     color: rgba(255, 255, 255, 0.85);
-    text-shadow: none; 
+    text-shadow: none;
 
-    background: rgba(140, 140, 145, 0.35); 
+    background: rgba(140, 140, 145, 0.35);
     backdrop-filter: blur(8px) saturate(140%);
     -webkit-backdrop-filter: blur(8px) saturate(140%);
     box-shadow: 0 1px 3px rgba(0,0,0,0.12);
@@ -358,7 +358,7 @@
     color: #fff;
     border-color: rgba(255, 255, 255, 0.4);
     background: rgba(150, 150, 155, 0.45);
-    transform: scale(1.08) translateY(-1px); 
+    transform: scale(1.08) translateY(-1px);
     box-shadow: 0 2px 5px rgba(0,0,0,0.18);
 }
 .edit-action-button:active {
@@ -370,17 +370,17 @@
 /* Spinner, error messages, responsive, RSVP, Attendee, Footer etc. */
 /* ... (These sections remain identical to the previous full CSS provided) ... */
 .edit-save-btn.is-loading {
-    color: transparent !important; 
+    color: transparent !important;
     pointer-events: none;
-    position: relative; 
-    background: rgba(150, 150, 155, 0.6); 
+    position: relative;
+    background: rgba(150, 150, 155, 0.6);
 }
 .edit-save-btn.is-loading::after {
     content: ''; display: block;
-    width: 14px; height: 14px; 
+    width: 14px; height: 14px;
     border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: rgba(255,255,255,0.9); 
+    border-top-color: rgba(255,255,255,0.9);
     animation: spin 0.7s linear infinite;
     position: absolute; top: 50%; left: 50%;
     margin-top: -7px; margin-left: -7px;
@@ -388,11 +388,11 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .edit-error-message {
-    position: absolute; 
-    bottom: -20px; 
+    position: absolute;
+    bottom: -20px;
     left: 0;
     width: 100%;
-    color: #ff8a80; 
+    color: #ff8a80;
     font-size: 0.8rem;
     text-align: center;
     animation: fadeInSoft 0.3s ease-out;
@@ -402,24 +402,24 @@
     to { opacity: 1; transform: translateY(0); }
 }
 .editable-input.input-error-glow {
-    box-shadow: 0 0 0 2px rgba(255, 100, 100, 0.5) !important; 
+    box-shadow: 0 0 0 2px rgba(255, 100, 100, 0.5) !important;
 }
 
 
 @media (max-width: 768px) {
     .modal-content { padding: 20px 20px; width: calc(100% - 20px); height: calc(100% - 20px); }
-    .modal-body { padding: 3px 5px; } 
+    .modal-body { padding: 3px 5px; }
     #modal-description-wrapper { min-height: 80px; margin: 3px; outline-offset: 2px; }
     #modal-event-description { padding: 6px 8px; }
-    
-    .editable-field { outline-offset: 3px; } 
-    
+
+    .editable-field { outline-offset: 3px; }
+
     #modal-event-title.is-editing-field .editable-input,
     .modal-header h2, #modal-event-title { font-size: 1.4rem; }
     #modal-event-title.is-editing-field .editable-input { padding: 0 2px; /* padding-right if buttons must not overlap */ }
 
     #modal-description-wrapper.is-editing-field .editable-input {
-        padding: 6px 8px; /* padding-right if needed */ padding-bottom: 30px; 
+        padding: 6px 8px; /* padding-right if needed */ padding-bottom: 30px;
     }
 
     .editable-actions-container { right: 4px; gap: 4px; }
@@ -464,5 +464,53 @@
 .admin-action-btn.delete-btn { background-color: rgba(220, 53, 69, 0.7); border: none; color: #fff; }
 .admin-action-btn.delete-btn:hover { background-color: rgba(220, 53, 69, 0.9); }
 
+/* In modal.css or your main stylesheet */
+#cost-interpretation-helper-dynamic {
+    /* Position, left, top, width are set by JavaScript to place it under the cost input.
+       JavaScript will set position: absolute; and append to document.body */
+    box-sizing: border-box; /* IMPORTANT: So JS width includes padding/border */
+
+    padding: 8px 12px; /* Reduced padding for a "shorter" feel */
+    border-radius: 8px; /* Adjusted radius */
+
+    background: rgba(60, 60, 70, 0.75); /* Glassy background */
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+
+    color: #e0e0e5;
+    font-size: 0.8em; /* Smaller font size */
+    line-height: 1.4;   /* Tighter line height */
+    text-align: center; /* JS also sets this, but good to have as default */
+
+    z-index: 1060; /* Ensure it's above modal content */
+
+    opacity: 0;
+    /* Animate only vertical position; horizontal is set by JS */
+    transform: translateY(5px); /* Start slightly below its final JS-calculated top position */
+    transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
+                transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    pointer-events: none;
+    /* Optional: If you want a minimum sensible width even if input is tiny */
+    /* min-width: 160px; */
+}
+
+#cost-interpretation-helper-dynamic.visible {
+    opacity: 1;
+    transform: translateY(0); /* Move to its final JS-calculated top position */
+    pointer-events: auto;
+}
+
+#cost-interpretation-helper-dynamic strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+#cost-interpretation-helper-dynamic em {
+    font-style: italic;
+    opacity: 0.8;
+}
 
 /* --- END OF FILE modal.css --- */
