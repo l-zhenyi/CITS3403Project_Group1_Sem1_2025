@@ -473,9 +473,9 @@
     padding: 8px 12px; /* Reduced padding for a "shorter" feel */
     border-radius: 8px; /* Adjusted radius */
 
-    background: rgba(60, 60, 70, 0.75); /* Glassy background */
-    backdrop-filter: blur(10px) saturate(160%);
-    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    background: rgba(255, 255, 255, 0.08); /* Glassy background */
+    backdrop-filter: blur(1px) saturate(160%);
+    -webkit-backdrop-filter: blur(1px) saturate(160%);
 
     border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);

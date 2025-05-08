@@ -334,7 +334,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                     costInterpretationHelper.style.position = 'absolute';
                     costInterpretationHelper.style.boxSizing = 'border-box';
                     costInterpretationHelper.style.left = `${targetRect.left + window.pageXOffset}px`;
-                    costInterpretationHelper.style.top = `${targetRect.bottom + window.pageYOffset + 5}px`;
+                    costInterpretationHelper.style.top = `${targetRect.bottom + window.pageYOffset + 20}px`;
                     costInterpretationHelper.style.width = `${targetRect.width}px`;
                     costInterpretationHelper.style.textAlign = 'center';
                     costInterpretationHelper.style.zIndex = '1060';
