@@ -1,0 +1,11 @@
+.btn.btn-secondary {
+    transition: transform 0.2s ease-in-out;
+}
+
+.btn.btn-secondary:hover {
+    transform: scale(1.05);
+}
+
+.btn.btn-secondary:active {
+    transform: scale(0.95);
+}

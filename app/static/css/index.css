@@ -244,19 +244,6 @@
     }
 }
 
-.carousel-control-prev-icon,
-.carousel-control-next-icon {
-    background-color: black; 
-    border-radius: 100%; 
-    padding: 2px; 
-}
-
-.carousel-control-prev-icon:hover,
-.carousel-control-next-icon:hover {
-    transform: scale(1.5);
-    transition: transform 0.2s ease;
-}
-
 .review-footer {
     display: flex;
     align-items: center;
@@ -305,4 +292,71 @@
   .btn.btn-primary.btn-lg:hover {
     transform: scale(1.05);
   }
+  #white_container {
+    border-radius: 1.0rem;
+}
+
+.carousel-arrow {
+    color: #6c757d; 
+    transition: color 0.2s ease;
+  }
   
+  .carousel-arrow:hover {
+    color: #1e2225;
+  }
+  
+  .carousel-control-prev:focus .carousel-arrow,
+  .carousel-control-next:focus .carousel-arrow,
+  .carousel-control-prev:active .carousel-arrow,
+  .carousel-control-next:active .carousel-arrow {
+    color: #6c757d !important; /* reset back to neutral after click */
+    outline: none;
+  }
+  
+  .slide-in {
+    opacity: 0;
+    transform: translateX(-40px);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  }
+  
+  .slide-in.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .footer-social {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.social-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #aaa;
+    border-radius: 50%;
+    color: #ffffffc5;
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.social-icon:hover {
+    background-color: #363636;
+    color: white;
+    transform: scale(1.1);
+}
+
+.fade-up {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.fade-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
