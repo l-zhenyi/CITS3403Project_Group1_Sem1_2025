@@ -81,12 +81,9 @@ def index():
         return redirect(url_for('index'))
 
     page = request.args.get('page', 1, type=int)
-    posts = current_user.followed_posts().paginate(page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
     groups = Group.query.join(GroupMember).filter(GroupMember.user_id == current_user.id).all()
 
-    return render_template('index.html', title='Home', form=form, posts=posts.items,
-                           next_url=url_for('index', page=posts.next_num) if posts.has_next else None,
-                           prev_url=url_for('index', page=posts.prev_num) if posts.has_prev else None,
+    return render_template('index.html', title='Home', form=form,
                            groups=groups, user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -355,41 +352,6 @@ def user(username):
                            prev_url=url_for('user', username=user_obj.username, page=posts_pagination.prev_num) if posts_pagination.has_prev else None,
                            form=form, groups=shared_groups) # groups here refers to shared_groups
 
-@app.route('/follow/<username>', methods=['POST'])
-@login_required
-def follow(username):
-    form = EmptyForm()
-    if form.validate_on_submit():
-        user_to_follow = db.session.scalar(db.select(User).filter_by(username=username))
-        if user_to_follow is None:
-            flash(f'User {username} not found.')
-            return redirect(url_for('index'))
-        if user_to_follow == current_user:
-            flash('You cannot follow yourself!')
-            return redirect(url_for('user', username=username))
-        current_user.follow(user_to_follow)
-        db.session.commit()
-        flash(f'You are following {username}!')
-        return redirect(url_for('user', username=username))
-    return redirect(url_for('index'))
-
-@app.route('/unfollow/<username>', methods=['POST'])
-@login_required
-def unfollow(username):
-    form = EmptyForm()
-    if form.validate_on_submit():
-        user_to_unfollow = db.session.scalar(db.select(User).filter_by(username=username))
-        if user_to_unfollow is None:
-            flash(f'User {username} not found.')
-            return redirect(url_for('index'))
-        if user_to_unfollow == current_user:
-            flash('You cannot unfollow yourself!')
-            return redirect(url_for('user', username=username))
-        current_user.unfollow(user_to_unfollow)
-        db.session.commit()
-        flash(f'You are not following {username}.')
-        return redirect(url_for('user', username=username))
-    return redirect(url_for('index'))
 
 @app.route("/create_group", methods=["GET", "POST"])
 @login_required
@@ -467,9 +429,9 @@ def add_members(group_id):
             return redirect(url_for('add_members', group_id=group_id))
 
         # Check for mutual follow
-        mutual_follow = current_user.is_following(user_to_add) and user_to_add.is_following(current_user)
-        if not mutual_follow:
-            flash(f"You need to follow each other with {user_to_add.username} before adding them to the group.")
+        is_friends = current_user.is_friend(user_to_add)
+        if not is_friends:
+            flash(f"You need to be friends with {user_to_add.username} before adding them to the group.")
             return redirect(url_for('add_members', group_id=group_id))
 
         # Add the user to the group
@@ -484,7 +446,7 @@ def add_members(group_id):
     # Filter to only show friends who aren't already in the group and have mutual follow
     eligible_friends = []
     for friend in friends:
-        if not is_group_member(friend.id, group_id) and current_user.is_following(friend) and friend.is_following(current_user):
+        if not is_group_member(friend.id, group_id):
             eligible_friends.append(friend)
 
     return render_template('add_members.html', 

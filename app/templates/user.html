@@ -18,8 +18,7 @@
             {% if user.about_me %}<p class="text-muted">{{ user.about_me }}</p>{% endif %}
             {% if user.last_seen %}<p><i class="bi bi-clock"></i> Last seen on: {{ user.last_seen }}</p>{% endif %}
             <p>
-                <i class="bi bi-people-fill"></i> {{ user.followers.count() }} followers
-                {{ user.followed.count() }} following
+                <i class="bi bi-people-fill"></i> {{ user.friends.count() }} friends
             </p>
 
             <div class="d-flex gap-2 flex-wrap">
@@ -27,18 +26,20 @@
                 <a href="{{ url_for('edit_profile') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-pencil"></i> Edit Profile
                 </a>
-                {% elif not current_user.is_following(user) %}
-                <form action="{{ url_for('follow', username=user.username) }}" method="post" class="d-inline">
+                {% elif current_user.is_friend(user) %}
+                <form action="{{ url_for('remove_friend') }}" method="post" class="d-inline">
+                    <input type="hidden" name="friend_id" value="{{ user.id }}">
                     {{ form.hidden_tag() }}
-                    <button type="submit" class="btn btn-success btn-sm">
-                        <i class="bi bi-person-plus"></i> Follow
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-person-dash"></i> Remove Friend
                     </button>
                 </form>
                 {% else %}
-                <form action="{{ url_for('unfollow', username=user.username) }}" method="post" class="d-inline">
+                <form action="{{ url_for('send_friend_request') }}" method="post" class="d-inline">
+                    <input type="hidden" name="receiver_username" value="{{ user.username }}">
                     {{ form.hidden_tag() }}
-                    <button type="submit" class="btn btn-danger btn-sm">
-                        <i class="bi bi-person-dash"></i> Unfollow
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-person-plus"></i> Add Friend
                     </button>
                 </form>
                 {% endif %}
