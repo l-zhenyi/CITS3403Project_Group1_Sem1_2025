@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import unittest
 from app import app, db
-from app.models import User, Post, Group, GroupMember
+from app.models import User, Post, Group, GroupMember, FriendRequest
 
 class UserModelCase(unittest.TestCase):
     def setUp(self):
@@ -28,79 +28,70 @@ class UserModelCase(unittest.TestCase):
                                          'd4c74594d841139328695756648b6bd6'
                                          '?d=identicon&s=128'))
 
-    def test_follow(self):
+    def test_add_friend(self):
+        # Create two users
         u1 = User(username='john', email='john@example.com')
         u2 = User(username='susan', email='susan@example.com')
-        u1.set_password('password')  # Ensure password is set for both users
+        u1.set_password('password')
         u2.set_password('password')
 
         db.session.add(u1)
         db.session.add(u2)
         db.session.commit()
 
-        self.assertEqual(u1.followed.all(), [])
-        self.assertEqual(u1.followers.all(), [])
-
-        u1.follow(u2)
+        # Initially they should not be friends
+        self.assertEqual(u1.friends.all(), [])
+        
+        # Add friendship (bidirectional)
+        u1.add_friend(u2)
         db.session.commit()
 
-        self.assertTrue(u1.is_following(u2))
-        self.assertEqual(u1.followed.count(), 1)
-        self.assertEqual(u1.followed.first().username, 'susan')
-        self.assertEqual(u2.followers.count(), 1)
-        self.assertEqual(u2.followers.first().username, 'john')
+        # Check that the friendship is created correctly
+        self.assertTrue(u1.is_friend(u2))
+        self.assertTrue(u2.is_friend(u1))  # Friendships are bidirectional
+        self.assertEqual(u1.friends.count(), 1)
+        self.assertEqual(u1.friends.first().username, 'susan')
+        self.assertEqual(u2.friends.count(), 1)
+        self.assertEqual(u2.friends.first().username, 'john')
 
-        u1.unfollow(u2)
+        # Test removing friendship
+        u1.remove_friend(u2)
         db.session.commit()
 
-        self.assertFalse(u1.is_following(u2))
-        self.assertEqual(u1.followed.count(), 0)
-        self.assertEqual(u2.followers.count(), 0)
+        # Check that the friendship is removed
+        self.assertFalse(u1.is_friend(u2))
+        self.assertFalse(u2.is_friend(u1))  # Should be removed for both
+        self.assertEqual(u1.friends.count(), 0)
+        self.assertEqual(u2.friends.count(), 0)
 
-    def test_follow_posts(self):
-        # create four users
+    def test_friend_request(self):
+        # Create two users
         u1 = User(username='john', email='john@example.com')
         u2 = User(username='susan', email='susan@example.com')
-        u3 = User(username='mary', email='mary@example.com')
-        u4 = User(username='david', email='david@example.com')
-
-        u1.set_password('password')  # Ensure password is set for each user
+        u1.set_password('password')
         u2.set_password('password')
-        u3.set_password('password')
-        u4.set_password('password')
 
-        db.session.add_all([u1, u2, u3, u4])
-
-        # create four posts
-        now = datetime.now(timezone.utc)
-        p1 = Post(body="post from john", author=u1,
-                  timestamp=now + timedelta(seconds=1))
-        p2 = Post(body="post from susan", author=u2,
-                  timestamp=now + timedelta(seconds=4))
-        p3 = Post(body="post from mary", author=u3,
-                  timestamp=now + timedelta(seconds=3))
-        p4 = Post(body="post from david", author=u4,
-                  timestamp=now + timedelta(seconds=2))
-        db.session.add_all([p1, p2, p3, p4])
+        db.session.add(u1)
+        db.session.add(u2)
         db.session.commit()
 
-        # setup the followers
-        u1.follow(u2)  # john follows susan
-        u1.follow(u4)  # john follows david
-        u2.follow(u3)  # susan follows mary
-        u3.follow(u4)  # mary follows david
+        # Create a friend request from u1 to u2
+        request = FriendRequest(sender_id=u1.id, receiver_id=u2.id)
+        db.session.add(request)
         db.session.commit()
 
-        # check the followed posts of each user
-        f1 = u1.followed_posts().all()
-        f2 = u2.followed_posts().all()
-        f3 = u3.followed_posts().all()
-        f4 = u4.followed_posts().all()
-
-        self.assertEqual(f1, [p2, p4, p1])  # john's followed posts
-        self.assertEqual(f2, [p2, p3])  # susan's followed posts
-        self.assertEqual(f3, [p3, p4])  # mary's followed posts
-        self.assertEqual(f4, [p4])  # david's followed posts
+        # Check that the request exists
+        pending_request = FriendRequest.query.filter_by(sender_id=u1.id, receiver_id=u2.id).first()
+        self.assertIsNotNone(pending_request)
+        
+        # Accept the request
+        u2.add_friend(u1)  # This should happen when accepting a request
+        db.session.delete(pending_request)  # Delete the request after accepting
+        db.session.commit()
+        
+        # Verify they are now friends
+        self.assertTrue(u1.is_friend(u2))
+        self.assertTrue(u2.is_friend(u1))
 
 class GroupModelCase(unittest.TestCase):
     def setUp(self):
@@ -211,7 +202,7 @@ class GroupModelCase(unittest.TestCase):
             post_in_db = Post.query.filter_by(body="Unauthorized post").first()
             self.assertIsNotNone(post_in_db, "Post should have been added as u2 is in the group.")
 
-    def test_add_mutual_follower_to_group(self):
+    def test_add_friend_to_group(self):
         # Create two users
         u1 = User(username="james", email="james@example.com")
         u2 = User(username="jane", email="jane@example.com")
@@ -220,9 +211,8 @@ class GroupModelCase(unittest.TestCase):
         db.session.add_all([u1, u2])
         db.session.commit()
 
-        # Mutual follow
-        u1.follow(u2)
-        u2.follow(u1)
+        # Make them friends
+        u1.add_friend(u2)
         db.session.commit()
 
         # Create a group and add u1
@@ -234,9 +224,8 @@ class GroupModelCase(unittest.TestCase):
         db.session.add(member)
         db.session.commit()
 
-        # Now simulate adding u2 (mutual follower) to the group
-        # First check mutual following
-        self.assertTrue(u1.is_following(u2) and u2.is_following(u1))
+        # Verify friendship
+        self.assertTrue(u1.is_friend(u2))
 
         # Add u2 to the group
         new_member = GroupMember(user_id=u2.id, group_id=group.id)
@@ -247,7 +236,7 @@ class GroupModelCase(unittest.TestCase):
         added_member = GroupMember.query.filter_by(user_id=u2.id, group_id=group.id).first()
         self.assertIsNotNone(added_member)
 
-    def test_cannot_add_without_mutual_follow(self):
+    def test_cannot_add_without_friendship(self):
         # Create two users
         u1 = User(username="alice", email="alice@example.com")
         u2 = User(username="bob", email="bob@example.com")
@@ -256,9 +245,9 @@ class GroupModelCase(unittest.TestCase):
         db.session.add_all([u1, u2])
         db.session.commit()
 
-        # Only one-way follow: u1 follows u2, but u2 doesn't follow back
-        u1.follow(u2)
-        db.session.commit()
+        # Don't create a friendship between them
+        # Verify they are not friends
+        self.assertFalse(u1.is_friend(u2))
 
         # Create a group and add u1
         group = Group(name="Private Group", about="Private stuff")
@@ -269,18 +258,13 @@ class GroupModelCase(unittest.TestCase):
         db.session.add(member)
         db.session.commit()
 
-        # Confirm no mutual follow
-        self.assertTrue(u1.is_following(u2))
-        self.assertFalse(u2.is_following(u1))
+        # Only allow adding if they're friends
+        is_friend = u1.is_friend(u2)
+        self.assertFalse(is_friend)
 
-        # Now try to "simulate" adding u2 — but you should block it
-        mutual = u1.is_following(u2) and u2.is_following(u1)
-        self.assertFalse(mutual)
-
-        # Only allow adding if mutual — so in actual app logic, prevent adding
-        # Here, don't even add to db
+        # Only add if they're friends
         result = None
-        if mutual:
+        if is_friend:
             result = GroupMember(user_id=u2.id, group_id=group.id)
             db.session.add(result)
             db.session.commit()
@@ -288,6 +272,7 @@ class GroupModelCase(unittest.TestCase):
         # Assert that no GroupMember was created
         member_check = GroupMember.query.filter_by(user_id=u2.id, group_id=group.id).first()
         self.assertIsNone(member_check)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

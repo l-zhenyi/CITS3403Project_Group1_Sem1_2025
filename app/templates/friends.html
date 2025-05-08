@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/friends.css') }}" type="text/css">
+{% endblock %}
+
+{% block content %}
+
+<div class="glassy container">
+    <div class="row">
+        <!-- Left Column: My Friends List -->
+        <div class="col">
+            <div class="friends-section">
+                <h3 class="section-title">My Friends List</h3>
+                <input type="text" id="friend-search" class="search-bar" placeholder="Search your friends..." oninput="filterFriends()">
+                <ul id="friends-list" class="list-group">
+                    {% if friends %}
+                        {% for friend in friends %}
+                            <li class="friend-item">
+                                <a href="{{ url_for('user', username=friend.username) }}" class="friend-link">
+                                    <img src="{{ friend.avatar(128) or url_for('static', filename='images/default-avatar.png') }}" alt="{{ friend.username }}'s avatar" class="friend-avatar">
+                                    <span>{{ friend.username }}</span>
+                                </a>
+                                <form action="{{ url_for('remove_friend') }}" method="POST" class="inline-form">
+                                    <input type="hidden" name="friend_id" value="{{ friend.id }}">
+                                    <button type="submit" class="btn btn-danger">Remove</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">You have no friends yet. Add some friends to get started!</p>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Right Column: Search for Friends, Search Results, and Pending Friend Requests -->
+        <div class="col">
+            <div class="friends-section">
+                <h3 class="section-title">Search for Friends</h3>
+                <form id="search-form" method="GET" action="{{ url_for('search_friends') }}" class="search-form">
+                    <div class="search-inline">
+                        <input type="text" name="query" id="search-query" class="search-bar" placeholder="Enter username or email" required>
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="friends-section">
+                <h3 class="section-title">Search Results</h3>
+                <ul class="list-group" id="search-results">
+                    {% if search_results %}
+                        {% for user in search_results %}
+                            <li class="friend-item">
+                                <a href="{{ url_for('user', username=user.username) }}" class="friend-link">
+                                    <img src="{{ user.avatar(128) or url_for('static', filename='images/default-avatar.png') }}" alt="{{ user.username }}'s avatar" class="friend-avatar">
+                                    <span>{{ user.username }}</span>
+                                </a>
+                                
+                                {% if user.id in received_requests %}
+                                    <!-- This user has sent a friend request to the current user -->
+                                    <form action="{{ url_for('handle_friend_request') }}" method="POST" class="inline-form">
+                                        <input type="hidden" name="request_id" value="{{ received_requests[user.id] }}">
+                                        <button type="submit" name="action" value="accept" class="btn btn-success">Accept Request</button>
+                                        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                                    </form>
+                                {% else %}
+                                    <!-- This user has not sent a friend request to the current user -->
+                                    <form action="{{ url_for('send_friend_request') }}" method="POST" class="inline-form">
+                                        <input type="hidden" name="receiver_username" value="{{ user.username }}">
+                                        <button type="submit" class="btn btn-primary" 
+                                                {% if user.id in sent_requests %} disabled style="background-color: grey;" {% endif %}>
+                                            {% if user.id in sent_requests %} Request Sent {% else %} Send Friend Request {% endif %}
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted friend-item">No users found matching your search.</p>
+                    {% endif %}
+                </ul>
+            </div>
+            {% if not search_results %}
+            <div class="friends-section" id="pending-requests-section">
+                <h3 class="section-title">Pending Friend Requests</h3>
+                <ul class="list-group">
+                    {% if friend_requests %}
+                        {% for request in friend_requests %}
+                            <li class="friend-item">
+                                <a href="{{ url_for('user', username=request.sender.username) }}" class="friend-link">
+                                    <img src="{{ request.sender.avatar(128) or url_for('static', filename='images/default-avatar.png') }}" alt="{{ request.sender.username }}'s avatar" class="friend-avatar">
+                                    <span>{{ request.sender.username }}</span>
+                                </a>
+                                <form action="{{ url_for('handle_friend_request') }}" method="POST" class="inline-form">
+                                    <input type="hidden" name="request_id" value="{{ request.id }}">
+                                    <button type="submit" name="action" value="accept" class="btn btn-success">Accept</button>
+                                    <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">You have no pending friend requests.</p>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterFriends() {
+        const searchInput = document.getElementById('friend-search').value.toLowerCase();
+        const friends = document.querySelectorAll('.friend-item');
+
+        friends.forEach(friend => {
+            const friendName = friend.querySelector('.friend-link span').textContent.toLowerCase();
+            if (friendName.includes(searchInput)) {
+                friend.style.display = '';
+            } else {
+                friend.style.display = 'none';
+            }
+        });
+    }
+</script>
+
+{% endblock %}

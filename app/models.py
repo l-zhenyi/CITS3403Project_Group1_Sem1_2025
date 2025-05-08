@@ -10,17 +10,25 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Float, text, Text # Added Text type
 from typing import Annotated, Optional, List
 
-followers = db.Table('followers',
-    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
-    db.Column('followed_id', db.Integer, db.ForeignKey('user.id'))
-)
 
 group_members = db.Table('group_members',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
     db.Column('group_id', db.Integer, db.ForeignKey('groups.id'))
 )
 
-class User(UserMixin,db.Model):
+friends = db.Table(
+    'friends',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('friend_id', db.Integer, db.ForeignKey('user.id'))
+)
+class FriendRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_requests')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_requests')
+class User(UserMixin, db.Model):
     __tablename__ = "user"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -30,29 +38,27 @@ class User(UserMixin,db.Model):
     about_me: Mapped[str] = mapped_column(String(140), nullable=True)
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=True)
 
+    # Existing relationships
     groups: Mapped[list["GroupMember"]] = relationship("GroupMember", back_populates="user", lazy="dynamic")
     rsvps: Mapped[list["EventRSVP"]] = relationship("EventRSVP", back_populates="user")
     posts: Mapped[list["Post"]] = relationship("Post", back_populates="author", lazy="dynamic")
 
-    followed: Mapped[list["User"]] = relationship(
-        "User",
-        secondary=followers,
-        primaryjoin=(followers.c.follower_id == id),
-        secondaryjoin=(followers.c.followed_id == id),
-        backref=db.backref("followers", lazy="dynamic"),
-        lazy="dynamic"
-    )
-
     messages_sent: Mapped[List["Message"]] = relationship("Message", foreign_keys="[Message.sender_id]", back_populates="sender")
     messages_received: Mapped[List["Message"]] = relationship("Message", foreign_keys="[Message.recipient_id]", back_populates="recipient")
-
     last_message_read_time: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
-    # Add relationship to InsightPanel
-    insight_panels: Mapped[List["InsightPanel"]] = relationship(
-        "InsightPanel", back_populates="user", cascade="all, delete-orphan", order_by="InsightPanel.display_order"
-    )
+    insight_panels: Mapped[list["InsightPanel"]] = relationship("InsightPanel", back_populates="user", lazy="dynamic")
 
+
+    # New friends relationship
+    friends: Mapped[List["User"]] = relationship(
+        "User",
+        secondary=friends,
+        primaryjoin=(friends.c.user_id == id),
+        secondaryjoin=(friends.c.friend_id == id),
+        backref="friend_of",
+        lazy="dynamic"
+    )
     def __repr__(self) -> str:
         return f"<User {self.username}>"
 
@@ -75,16 +81,6 @@ class User(UserMixin,db.Model):
         if self.is_following(user):
             self.followed.remove(user)
 
-    def is_following(self, user):
-        return self.followed.filter(
-            followers.c.followed_id == user.id).count() > 0
-
-    def followed_posts(self):
-        followed = Post.query.join(
-            followers, (followers.c.followed_id == Post.user_id)).filter(
-                followers.c.follower_id == self.id)
-        own = Post.query.filter_by(user_id=self.id)
-        return followed.union(own).order_by(Post.timestamp.desc())
 
     def group_posts(self, group_id: int):
         return Post.query.join(GroupMember).filter(
@@ -102,6 +98,38 @@ class User(UserMixin,db.Model):
     def search_users_by_username(search_term):
     # Case insensitive search for usernames that match the search_term
         return User.query.filter(User.username.ilike(f'%{search_term}%')).all()
+
+    def add_friend(self, user):
+        """Add a user as a friend (bidirectional relationship)"""
+        if not self.is_friend(user):
+            # Add the target user to this user's friends
+            self.friends.append(user)
+            
+            # Also add this user to the target user's friends (bidirectional)
+            # Check to prevent duplicates if the relationship is already being added from the other side
+            if not user.is_friend(self):
+                user.friends.append(self)
+    
+    def remove_friend(self, user):
+        """Remove a user from friends (bidirectional removal)"""
+        if self.is_friend(user):
+            # Remove the relationship from both sides
+            self.friends.remove(user)
+            
+            # Also remove the relationship from the other user's side
+            if user.is_friend(self):
+                user.friends.remove(self)
+            
+    def is_friend(self, user):
+        """Check if this user is friends with another user"""
+        return user in self.friends.all()
+    
+    def is_member(self, group_id):
+        """Check if user is a member of the specified group"""
+        return db.session.scalar(db.select(GroupMember).filter_by(
+            user_id=self.id, group_id=group_id)) is not None
+    
+    
 
 class Post(db.Model):
     __tablename__ = "post"
@@ -291,6 +319,7 @@ class Message(db.Model):
     def __repr__(self):
         return f"<Message {self.body}>"
 
+
 # --- NEW: InsightPanel Model ---
 class InsightPanel(db.Model):
     __tablename__ = "insight_panel"
@@ -324,5 +353,6 @@ class InsightPanel(db.Model):
 
     def __repr__(self):
         return f"<InsightPanel {self.id} (User: {self.user_id}, Type: {self.analysis_type}, Order: {self.display_order})>"
+
 
 # --- END OF FILE models.py ---
