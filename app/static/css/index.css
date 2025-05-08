@@ -360,3 +360,14 @@
     opacity: 1;
     transform: translateY(0);
 }
+
+.card.animated-card {
+    opacity: 0;
+    transform: translateX(50px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.card.card.animated-card.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
