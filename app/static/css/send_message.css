@@ -1,0 +1,9 @@
+.message-form-container {
+    opacity: 0;
+    transform: translateX(-40px);
+    transition: all 0.6s ease-out;
+}
+.message-form-container.animate-in {
+    opacity: 1;
+    transform: translatex(0);
+}

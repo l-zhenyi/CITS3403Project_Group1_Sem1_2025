@@ -7,6 +7,12 @@
     border-radius: 12px;
     box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
     overflow: auto;
+    opacity: 0;
+    transition: opacity 1.0s ease-out, transform 1.0s ease-out;
+}
+
+.chat-container.fade-in {
+    opacity: 1;
 }
 
 .chat-title {
@@ -108,4 +114,26 @@
 
 .pager-link:hover {
     color: #0056b3;
+}
+
+.chat-message {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.chat-message.animate-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.pager-link {
+    opacity: 0;
+    transform: translateX(40px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.pager-link.animate-in {
+    opacity: 1;
+    transform: translateX(0);
 }
