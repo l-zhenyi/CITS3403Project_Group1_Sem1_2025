@@ -1,6 +1,7 @@
 /* --- START OF FILE modal.css --- */
 
 /* ... (All previous CSS up to the .modal-header styles) ... */
+/* This comment is a placeholder, the actual content starts below */
 
 .modal-backdrop {
     position: fixed;
@@ -181,9 +182,20 @@
     margin-bottom: 4px;
     font-weight: 500;
 }
+
+/* Base style for the value part of a detail item */
 .detail-item span:not(.detail-label) {
     font-size: 0.95rem;
     color: #f0f0f5;
+    display: block; /* Consistent layout, also helps editable-field */
+    line-height: 1.4; /* For consistency between display and edit (input) */
+}
+
+/* Apply ellipsis for detail item values ONLY when NOT editing */
+.detail-item span:not(.detail-label):not(.is-editing-field) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .modal-description-section {
@@ -220,11 +232,10 @@
 
 /* --- Styles for Editable Fields (Consistent Outline) --- */
 .editable-field {
-    position: relative;
+    position: relative; /* For positioning of ::before, ::after, or child action buttons */
     cursor: pointer;
     display: block;
     border-radius: 6px;
-
     outline: 1.5px solid transparent;
     outline-offset: 5px;
     transition: outline-color 0.2s ease-out;
@@ -234,24 +245,25 @@
     outline-color: transparent !important;
 }
 
+/* Ensure editable fields DON'T clip their absolutely positioned children (like action buttons) when editing */
+.editable-field.is-editing-field {
+    overflow: visible !important;
+}
+
+
 /* Specific display types AND CONSTRAINTS */
 #modal-event-title.editable-field {
     display: block;
-    /* Max-width to prevent the title (and its input) from becoming too wide */
     max-width: calc(100% - 30px); /* Adjust if close button or other elements are factors */
-    /* For example, if close button is 30px wide + 10px gap: max-width: calc(100% - 40px); */
-    /* It will take 100% of .modal-title-group up to this max-width */
-    /* The text-overflow for static text is handled in the .modal-header h2 rule */
 }
 #modal-description-wrapper.editable-field {
     display: flex; flex-direction:column;
-    /* outline-offset is already set on its own ID rule */
 }
 .detail-item span.editable-field { display: block; }
 
 
 .editable-field:hover:not(.is-editing-field),
-.is-editing-field {
+.is-editing-field { /* This rule now only controls outline, not overflow */
     outline-color: rgba(255, 255, 255, 0.40);
 }
 .is-editing-field {
@@ -268,7 +280,7 @@
 
 .editable-input {
     flex-grow: 1;
-    width: 100%; /* Input takes full width of its constrained parent */
+    width: 100%;
     height: 100%;
     border: none;
     font: inherit;
@@ -276,39 +288,39 @@
     background-color: transparent;
     resize: none !important;
     box-sizing: border-box;
-
-    padding: 6px 8px;
-    /* padding-right will be handled specifically where text shouldn't flow under buttons */
+    padding: 6px 8px; /* Default padding, will be overridden by specifics below */
 }
 .editable-input:focus {
     outline: none;
 }
 
-/* Specific internal padding for inputs */
+/* Specific internal padding for inputs to make space for action buttons */
 #modal-event-title.is-editing-field .editable-input {
     font-size: 1.7rem;
     font-weight: 600;
     line-height: 1.2;
-    padding: 0;
+    padding-top: 0;
+    padding-right: 75px; /* Space for buttons (approx 62px buttons + 10px offset + buffer) */
+    padding-bottom: 0;
     padding-left: 2px;
-    /* If title text can flow under buttons (single line usually short enough not to) */
-    /* padding-right: 10px; Or some small value if buttons are far right */
-    /* If buttons must not overlap, then: padding-right: 60px; */
 }
 
 #modal-description-wrapper.is-editing-field .editable-input { /* The textarea */
     font-size: 0.95rem;
     line-height: 1.65;
-    padding: 8px 10px; /* Match original #modal-event-description's padding */
-    /* Let text flow under buttons: remove padding-right */
-    padding-bottom: 10px;
+    padding-top: 8px;    /* Original padding */
+    padding-right: 75px; /* Space for buttons (approx 62px + 10px offset + buffer) */
+    padding-bottom: 45px;/* Space for buttons (28px height + 10px bottom offset + buffer) */
+    padding-left: 10px;  /* Original padding */
 }
 
 .detail-item span.is-editing-field .editable-input {
-    font-size: 0.95rem;
-    padding: 2px 4px;
-    /* Let text flow under buttons: remove padding-right */
-    line-height: 1.4;
+    font-size: 0.95rem;   /* Matches display font-size */
+    line-height: 1.4;     /* Matches display line-height */
+    padding-top: 2px;
+    padding-right: 70px;  /* Space for buttons (approx 62px + 8px offset) */
+    padding-bottom: 2px;
+    padding-left: 4px;
 }
 
 
@@ -329,8 +341,6 @@
     transform: none;
 }
 #modal-event-title.is-editing-field .editable-actions-container {
-    /* Buttons for title might need to be closer if title is short */
-    /* Or ensure input has enough padding-right if they should not overlap */
     right: 10px;
 }
 
@@ -367,8 +377,6 @@
     box-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 
-/* Spinner, error messages, responsive, RSVP, Attendee, Footer etc. */
-/* ... (These sections remain identical to the previous full CSS provided) ... */
 .edit-save-btn.is-loading {
     color: transparent !important;
     pointer-events: none;
@@ -416,14 +424,29 @@
 
     #modal-event-title.is-editing-field .editable-input,
     .modal-header h2, #modal-event-title { font-size: 1.4rem; }
-    #modal-event-title.is-editing-field .editable-input { padding: 0 2px; /* padding-right if buttons must not overlap */ }
+
+    /* Responsive padding adjustments for inputs */
+    #modal-event-title.is-editing-field .editable-input {
+        /* padding-top, padding-bottom, padding-left are inherited (0,0,2px) */
+        padding-right: 65px; /* Space for smaller buttons (approx 56px + 4px offset + buffer) */
+    }
 
     #modal-description-wrapper.is-editing-field .editable-input {
-        padding: 6px 8px; /* padding-right if needed */ padding-bottom: 30px;
+        /* Original responsive padding: 6px 8px; padding-bottom: 30px; */
+        padding-top: 6px;
+        padding-right: 65px;  /* Space for smaller buttons */
+        padding-bottom: 36px; /* Space for smaller buttons (26px height + 5px bottom offset + buffer) */
+        padding-left: 8px;
+    }
+
+    .detail-item span.is-editing-field .editable-input {
+        /* padding-top, padding-bottom, padding-left are inherited (2px,2px,4px) */
+        padding-right: 65px; /* Space for smaller buttons */
     }
 
     .editable-actions-container { right: 4px; gap: 4px; }
     #modal-description-wrapper.is-editing-field .editable-actions-container { bottom: 5px; right: 5px; }
+    /* #modal-event-title .editable-actions-container right offset remains 4px due to general rule */
     .edit-action-button { width: 26px; height: 26px; font-size: 13px; }
 }
 
