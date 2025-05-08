@@ -1,16 +1,19 @@
+# --- START OF FILE models.py ---
+
 from app import db, login
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, current_user
 from hashlib import md5
 from datetime import datetime, timezone
+from sqlalchemy.types import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Float, text
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Float, text, Text # Added Text type
 from typing import Annotated, Optional, List
 
 followers = db.Table('followers',
-    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')), 
-    db.Column('followed_id', db.Integer, db.ForeignKey('user.id')) 
-) 
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('followed_id', db.Integer, db.ForeignKey('user.id'))
+)
 
 group_members = db.Table('group_members',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
@@ -31,14 +34,14 @@ class FriendRequest(db.Model):
     receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_requests')
 class User(UserMixin, db.Model):
     __tablename__ = "user"
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(64), index=True, unique=True)
     email: Mapped[str] = mapped_column(String(120), index=True, unique=True)
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     about_me: Mapped[str] = mapped_column(String(140), nullable=True)
     last_active: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=True)
-    
+
     # Existing relationships
     groups: Mapped[list["GroupMember"]] = relationship("GroupMember", back_populates="user", lazy="dynamic")
     rsvps: Mapped[list["EventRSVP"]] = relationship("EventRSVP", back_populates="user")
@@ -55,6 +58,7 @@ class User(UserMixin, db.Model):
     messages_received: Mapped[List["Message"]] = relationship("Message", foreign_keys="[Message.recipient_id]", back_populates="recipient")
     last_message_read_time: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
+
     # New friends relationship
     friends: Mapped[List["User"]] = relationship(
         "User",
@@ -63,14 +67,13 @@ class User(UserMixin, db.Model):
         secondaryjoin=(friends.c.friend_id == id),
         backref="friend_of",
         lazy="dynamic"
-    )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
-    
-    def avatar(self, size): 
-        digest = md5(self.email.lower().encode('utf-8')).hexdigest() 
-        return 'https://www.gravatar.com/avatar/{}?d=identicon&s={}'.format( 
+
+    def avatar(self, size):
+        digest = md5(self.email.lower().encode('utf-8')).hexdigest()
+        return 'https://www.gravatar.com/avatar/{}?d=identicon&s={}'.format(
             digest, size)
 
     def set_password(self, password: str) -> None:
@@ -79,25 +82,25 @@ class User(UserMixin, db.Model):
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
 
-    def follow(self, user): 
-        if not self.is_following(user): 
-            self.followed.append(user) 
+    def follow(self, user):
+        if not self.is_following(user):
+            self.followed.append(user)
 
-    def unfollow(self, user): 
-        if self.is_following(user): 
-            self.followed.remove(user) 
-            
+    def unfollow(self, user):
+        if self.is_following(user):
+            self.followed.remove(user)
+
     def is_following(self, user):
-        return self.followed.filter( 
+        return self.followed.filter(
             followers.c.followed_id == user.id).count() > 0
 
-    def followed_posts(self): 
-        followed = Post.query.join( 
-            followers, (followers.c.followed_id == Post.user_id)).filter( 
-                followers.c.follower_id == self.id) 
+    def followed_posts(self):
+        followed = Post.query.join(
+            followers, (followers.c.followed_id == Post.user_id)).filter(
+                followers.c.follower_id == self.id)
         own = Post.query.filter_by(user_id=self.id)
-        return followed.union(own).order_by(Post.timestamp.desc()) 
-    
+        return followed.union(own).order_by(Post.timestamp.desc())
+
     def group_posts(self, group_id: int):
         return Post.query.join(GroupMember).filter(
             GroupMember.user_id == self.id,
@@ -105,12 +108,12 @@ class User(UserMixin, db.Model):
             Post.user_id == self.id,
             Post.group_id == group_id
         ).order_by(Post.timestamp.desc())
-    
-    def new_messages(self): 
-        last_read_time = self.last_message_read_time or datetime(1900, 1, 1) 
-        return Message.query.filter_by(recipient=self).filter( 
-        Message.timestamp > last_read_time).count() 
-    
+
+    def new_messages(self):
+        last_read_time = self.last_message_read_time or datetime(1900, 1, 1)
+        return Message.query.filter_by(recipient=self).filter(
+        Message.timestamp > last_read_time).count()
+
     def search_users_by_username(search_term):
     # Case insensitive search for usernames that match the search_term
         return User.query.filter(User.username.ilike(f'%{search_term}%')).all()
@@ -128,7 +131,7 @@ class User(UserMixin, db.Model):
 
 class Post(db.Model):
     __tablename__ = "post"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     body: Mapped[str] = mapped_column(String(140))
     timestamp: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.now(timezone.utc))
@@ -136,10 +139,10 @@ class Post(db.Model):
     group_id: Mapped[Optional[int]] = mapped_column(ForeignKey("groups.id"), nullable=True)
     group: Mapped[Optional["Group"]] = relationship(back_populates="posts")
 
-    
+
     # Relationship to User
     author: Mapped["User"] = relationship("User", back_populates="posts")
-    
+
     def __repr__(self):
         return f"<Post {self.body}>"
 
@@ -223,13 +226,12 @@ class Event(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(120))
-    # --- Explicitly add mapped_column for date ---
-    date: Mapped[datetime] = mapped_column(DateTime, nullable=False) # Assuming date is required
-    # --- End Change ---
+    date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     location: Mapped[str] = mapped_column(String(120))
-    description: Mapped[str] = mapped_column(String(240), nullable=True) # Allow null description
+    description: Mapped[str] = mapped_column(String(240), nullable=True)
     image_url: Mapped[str] = mapped_column(String(255), nullable=True)
-    cost_display: Mapped[str] = mapped_column(String(50), nullable=True)
+    cost_display: Mapped[str] = mapped_column(String(50), nullable=True) # User-facing display string
+    cost_value: Mapped[Optional[Float]] = mapped_column(Float, nullable=True) # Actual numeric cost for calculations
     node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
 
     # Relationships
@@ -239,41 +241,33 @@ class Event(db.Model):
     guests: Mapped[List["InvitedGuest"]] = relationship("InvitedGuest", back_populates="event")
 
     # --- MODIFIED to_dict ---
-    def to_dict(self, current_user_id=None): # Accept optional user ID
+    def to_dict(self, current_user_id=None):
         """Serializes the Event object to a dictionary, optionally including the
            RSVP status for the specified user."""
         data = {
             "id": self.id,
             "title": self.title,
-            # Ensure date handling is robust
             "date": self.date.isoformat().replace('+00:00', 'Z') if self.date and isinstance(self.date, datetime) else None,
             "location": self.location,
             "description": self.description,
             "image_url": self.image_url,
             "cost_display": self.cost_display,
+            "cost_value": self.cost_value, # Include numeric cost
             "node_id": self.node_id,
-            # Initialize status, will be overwritten if user ID provided
             "current_user_rsvp_status": None
         }
 
-        # If a user ID is provided, fetch their specific RSVP status for this event
         if current_user_id is not None:
-            # We need access to the EventRSVP model here
-            # This import is okay inside the method for models usually
             from app.models import EventRSVP
             my_rsvp = db.session.execute(
                 db.select(EventRSVP).filter_by(event_id=self.id, user_id=current_user_id)
-            ).scalar_one_or_none() # Efficient way to get 0 or 1 result
-
-            # Use .scalar_one_or_none() to avoid errors if multiple exist (shouldn't happen with unique constraint)
-            # my_rsvp = EventRSVP.query.filter_by(event_id=self.id, user_id=current_user_id).first() # Alternative
+            ).scalar_one_or_none()
 
             if my_rsvp:
                 data['current_user_rsvp_status'] = my_rsvp.status
-            # else: status remains None (already set)
 
         return data
-    
+
 class GroupMember(db.Model):
     __tablename__ = "group_member"
 
@@ -323,3 +317,39 @@ class Message(db.Model):
     def __repr__(self):
         return f"<Message {self.body}>"
 
+
+# --- NEW: InsightPanel Model ---
+class InsightPanel(db.Model):
+    __tablename__ = "insight_panel"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    analysis_type: Mapped[str] = mapped_column(String(80), nullable=False) # e.g., 'spending-by-category'
+    title: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Use JSON or Text for configuration, JSON is more structured if your DB supports it
+    # For SQLite, Text is safer unless you configure JSON support explicitly.
+    configuration: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # Example: {"time_period": "last_month"}
+    # configuration: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # Alternative using Text
+
+    # Relationship back to User
+    user: Mapped["User"] = relationship("User", back_populates="insight_panels")
+
+    def to_dict(self):
+        """Serializes the InsightPanel object to a dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "analysis_type": self.analysis_type,
+            "title": self.title,
+            "description": self.description,
+            "display_order": self.display_order,
+            "configuration": self.configuration # Will be dict or None if using JSON type
+            # "configuration": json.loads(self.configuration) if self.configuration else None # If using Text type
+        }
+
+    def __repr__(self):
+        return f"<InsightPanel {self.id} (User: {self.user_id}, Type: {self.analysis_type}, Order: {self.display_order})>"
+
+# --- END OF FILE models.py ---

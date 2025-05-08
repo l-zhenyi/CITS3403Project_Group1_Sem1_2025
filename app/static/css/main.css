@@ -186,6 +186,7 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
   opacity: 0;
   transform: scale(0.98);
   transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  display: none; /* Add this line */
 }
 
 .search-results-dropdown.visible {
