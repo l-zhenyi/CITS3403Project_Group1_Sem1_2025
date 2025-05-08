@@ -445,6 +445,9 @@ def add_members(group_id):
     if not group:
         abort(404)
 
+    # Get all the current user's friends
+    friends = current_user.friends.all()
+    
     if request.method == 'POST':
         username_to_add = request.form.get('username')
         if not username_to_add:
@@ -457,11 +460,19 @@ def add_members(group_id):
             flash(f'User "{username_to_add}" not found.')
             return redirect(url_for('add_members', group_id=group_id))
 
+        # Check if user is already a member
         existing_member = is_group_member(user_to_add.id, group_id)
         if existing_member:
             flash(f'{user_to_add.username} is already a group member.')
             return redirect(url_for('add_members', group_id=group_id))
 
+        # Check for mutual follow
+        mutual_follow = current_user.is_following(user_to_add) and user_to_add.is_following(current_user)
+        if not mutual_follow:
+            flash(f"You need to follow each other with {user_to_add.username} before adding them to the group.")
+            return redirect(url_for('add_members', group_id=group_id))
+
+        # Add the user to the group
         new_membership = GroupMember(user_id=user_to_add.id, group_id=group_id)
         db.session.add(new_membership)
         db.session.commit()
@@ -469,7 +480,17 @@ def add_members(group_id):
         flash(f'{user_to_add.username} has been added to the group!')
         return redirect(url_for('view_group', group_id=group_id))
 
-    return render_template('add_members.html', title='Add Members', group=group)
+    # For GET request, render template with friends list
+    # Filter to only show friends who aren't already in the group and have mutual follow
+    eligible_friends = []
+    for friend in friends:
+        if not is_group_member(friend.id, group_id) and current_user.is_following(friend) and friend.is_following(current_user):
+            eligible_friends.append(friend)
+
+    return render_template('add_members.html', 
+                          title='Add Members', 
+                          group=group, 
+                          friends=eligible_friends)
 
 @app.route('/send_message/<recipient_username>', methods=['GET', 'POST']) # Changed param name
 @login_required

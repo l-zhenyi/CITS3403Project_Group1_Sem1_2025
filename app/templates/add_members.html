@@ -1,11 +1,77 @@
 {% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/add_members.css') }}" type="text/css">
+{% endblock %}
+
 {% block content %}
-    <h1>Add Members to {{ group.name }}</h1>
+<div class="glassy container">
+    <div class="section-header">
+        <h1>Add Members to {{ group.name }}</h1>
+        <div class="group-info">
+            <p><strong>Group Name:</strong> {{ group.name }}</p>
+            {% if group.about %}<p><strong>About:</strong> {{ group.about }}</p>{% endif %}
+            <p><strong>Current Members:</strong> {{ group.members|length }}</p>
+        </div>
+    </div>
 
-    <form method="post">
-        <input type="text" name="username" placeholder="Enter username to add" required>
-        <button type="submit" class="btn btn-success">Add Member</button>
-    </form>
+    <div class="row">
+        <div class="col">
+            <h3>Add Friends to Group</h3>
+            <input type="text" id="friend-search" class="search-bar" placeholder="Search your friends..." oninput="filterFriends()">
+            
+            <div class="friends-list">
+                {% if current_user.friends %}
+                    <ul class="list-group" id="friends-list">
+                        {% for friend in current_user.friends %}
+                            {% if not friend.is_member(group.id) %}
+                                <li class="friend-item">
+                                    <a href="{{ url_for('user', username=friend.username) }}" class="friend-link">
+                                        <img src="{{ friend.avatar(128) or url_for('static', filename='images/default-avatar.png') }}" alt="{{ friend.username }}'s avatar" class="friend-avatar">
+                                        <span>{{ friend.username }}</span>
+                                    </a>
+                                    <form action="{{ url_for('add_members', group_id=group.id) }}" method="POST" class="inline-form">
+                                        <input type="hidden" name="username" value="{{ friend.username }}">
+                                        <button type="submit" class="btn-add">Add to Group</button>
+                                    </form>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="empty-message">You don't have any friends yet. Add friends to see them here.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-    <a href="{{ url_for('view_group', group_id=group.id) }}" class="btn btn-secondary">Back to Group</a>
+    <div class="manual-add">
+        <h3>Add by Username</h3>
+        <p>Don't see the person you're looking for? Add them directly by username:</p>
+        <form method="post" class="manual-add-form">
+            <input type="text" name="username" class="search-bar" placeholder="Enter username to add" required>
+            <button type="submit" class="btn-add">Add Member</button>
+        </form>
+    </div>
+
+    <div class="back-button">
+        <a href="{{ url_for('view_group', group_id=group.id) }}" class="btn btn-secondary">Back to Group</a>
+    </div>
+</div>
+
+<script>
+    function filterFriends() {
+        const searchInput = document.getElementById('friend-search').value.toLowerCase();
+        const friends = document.querySelectorAll('#friends-list .friend-item');
+
+        friends.forEach(friend => {
+            const friendName = friend.querySelector('.friend-link span').textContent.toLowerCase();
+            if (friendName.includes(searchInput)) {
+                friend.style.display = '';
+            } else {
+                friend.style.display = 'none';
+            }
+        });
+    }
+</script>
 {% endblock %}

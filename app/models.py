@@ -130,6 +130,13 @@ class User(UserMixin, db.Model):
 
     def is_friend(self, user):
         return self.friends.filter(friends.c.friend_id == user.id).count() > 0
+    
+    def is_member(self, group_id):
+        """Check if user is a member of the specified group"""
+        return db.session.scalar(db.select(GroupMember).filter_by(
+            user_id=self.id, group_id=group_id)) is not None
+    
+    
 
 class Post(db.Model):
     __tablename__ = "post"
@@ -353,5 +360,6 @@ class InsightPanel(db.Model):
 
     def __repr__(self):
         return f"<InsightPanel {self.id} (User: {self.user_id}, Type: {self.analysis_type}, Order: {self.display_order})>"
+
 
 # --- END OF FILE models.py ---
