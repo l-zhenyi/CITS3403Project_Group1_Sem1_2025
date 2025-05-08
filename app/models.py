@@ -58,6 +58,8 @@ class User(UserMixin, db.Model):
     messages_received: Mapped[List["Message"]] = relationship("Message", foreign_keys="[Message.recipient_id]", back_populates="recipient")
     last_message_read_time: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
+    insight_panels: Mapped[list["InsightPanel"]] = relationship("InsightPanel", back_populates="user", lazy="dynamic")
+
 
     # New friends relationship
     friends: Mapped[List["User"]] = relationship(
@@ -67,7 +69,7 @@ class User(UserMixin, db.Model):
         secondaryjoin=(friends.c.friend_id == id),
         backref="friend_of",
         lazy="dynamic"
-
+    )
     def __repr__(self) -> str:
         return f"<User {self.username}>"
 
