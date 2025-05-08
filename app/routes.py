@@ -651,70 +651,167 @@ def create_node_api(group_id):
 @app.route("/api/events/<int:event_id>", methods=["GET", "PATCH", "DELETE"])
 @login_required
 def manage_event(event_id):
-    event_obj = db.session.get(Event, event_id) # Renamed
+    event_obj = db.session.get(Event, event_id)
     if not event_obj:
         return jsonify({"error": "Event not found"}), 404
 
-    authorized = False
     group_id_for_event = None
+    authorized = False
     if event_obj.node_id:
-        node_of_event = db.session.get(Node, event_obj.node_id) # Renamed
+        node_of_event = db.session.get(Node, event_obj.node_id)
         if node_of_event and node_of_event.group_id:
             group_id_for_event = node_of_event.group_id
             if is_group_member(current_user.id, group_id_for_event):
                 authorized = True
     
-    if not authorized and request.method != "GET":
+    # For GET, authorization might be broader (e.g., invited guest, public event).
+    # For PATCH/DELETE, strictly enforce group membership for now.
+    if request.method != "GET" and not authorized:
         return jsonify({"error": "Unauthorized action. Must be a member of the event's group."}), 403
 
     if request.method == "GET":
-        # For GET, broader authorization might be needed (e.g. invited guest)
-        # For now, assume only group members can GET if they are authorized for other methods.
-        # If you need _check_event_authorization here, uncomment and use it.
-        # authorized_get, _, _ = _check_event_authorization(event_id, current_user.id)
-        # if not authorized_get:
-        #    return jsonify({"error": "Unauthorized to view this event."}), 403
-        if not authorized: # Stricter GET for now, align with PATCH/DELETE
+        # Simplified GET authorization for now: only group members.
+        # You might want to expand this later using _check_event_authorization
+        if not authorized:
              return jsonify({"error": "Unauthorized to view this event. Must be group member."}), 403
         return jsonify(event_obj.to_dict(current_user_id=current_user.id))
 
     if request.method == "PATCH":
-        if not authorized:
-            return jsonify({"error": "Unauthorized action. Must be a member of the event's group."}), 403
+        # Authorization already checked above for PATCH
         data = request.get_json() or {}
-        updated = False
-        if "title" in data and data["title"].strip():
-            event_obj.title = data["title"].strip(); updated = True
-        if "location" in data:
-            event_obj.location = data["location"].strip(); updated = True
-        if "description" in data:
-            event_obj.description = data["description"].strip(); updated = True
-        if "date" in data:
-            try:
-                new_date = isoparse(data["date"])
-                if new_date.tzinfo is None: new_date = new_date.replace(tzinfo=timezone.utc)
-                event_obj.date = new_date; updated = True
-            except (ValueError, TypeError): pass
-        if "cost_display" in data:
-            event_obj.cost_display = data["cost_display"]; updated = True
-        if "cost_value" in data:
-             try:
-                 event_obj.cost_value = float(data["cost_value"]) if data["cost_value"] is not None and str(data["cost_value"]).strip() != "" else None; updated = True
-             except (ValueError, TypeError): pass # Keep old value if conversion fails
-        if "node_id" in data and data["node_id"] != event_obj.node_id:
-             new_node_id = data["node_id"]
-             if new_node_id is None or node_belongs_to_group(new_node_id, group_id_for_event):
-                  event_obj.node_id = new_node_id; updated = True
-             else:
-                  return jsonify({"error": "Cannot assign event to a node in a different group."}), 400
+        updated_fields = [] # Keep track of what was actually changed
 
-        if updated:
-            db.session.commit()
+        # Title (string, can be empty but not null in DB if model defines it so)
+        if "title" in data:
+            new_title = data["title"]
+            if isinstance(new_title, str): # Ensure it's a string
+                event_obj.title = new_title.strip()
+                updated_fields.append("title")
+            elif new_title is None: # Disallow None for title, default to "Untitled Event" or keep old
+                # Decide: event_obj.title = "Untitled Event" or ignore
+                pass # Or handle as error if title cannot be None
+
+        # Location (string, can be empty)
+        if "location" in data:
+            new_location = data["location"]
+            if isinstance(new_location, str):
+                event_obj.location = new_location.strip()
+                updated_fields.append("location")
+            elif new_location is None: # If you want to allow clearing location to empty string
+                event_obj.location = ""
+                updated_fields.append("location")
+        
+        # Location Coordinates (string, nullable)
+        if "location_coordinates" in data: # Assuming frontend sends this key
+            new_coords = data["location_coordinates"]
+            if isinstance(new_coords, str) and new_coords.strip():
+                event_obj.location_coordinates = new_coords.strip()
+            else: # Handles null or empty string from frontend to clear coordinates
+                event_obj.location_coordinates = None
+            updated_fields.append("location_coordinates")
+
+        # Location Key (string, nullable)
+        if "location_key" in data: # Assuming frontend sends this key
+            new_key = data["location_key"]
+            if isinstance(new_key, str) and new_key.strip():
+                event_obj.location_key = new_key.strip()
+            else: # Handles null or empty string from frontend to clear key
+                event_obj.location_key = None
+            updated_fields.append("location_key")
+
+
+        # Description (string, can be empty, nullable in DB if model allows)
+        if "description" in data:
+            new_description = data["description"]
+            if isinstance(new_description, str):
+                event_obj.description = new_description.strip() # Allows empty string
+                updated_fields.append("description")
+            elif new_description is None: # Explicitly set to None if sent as null
+                event_obj.description = None
+                updated_fields.append("description")
+
+        # Date (datetime, nullable)
+        if "date" in data:
+            new_date_str = data["date"]
+            if new_date_str is None: # Frontend wants to clear the date
+                event_obj.date = None
+                updated_fields.append("date")
+            elif isinstance(new_date_str, str):
+                try:
+                    parsed_date = isoparse(new_date_str)
+                    if parsed_date.tzinfo is None:
+                        parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+                    event_obj.date = parsed_date
+                    updated_fields.append("date")
+                except (ValueError, TypeError):
+                    app.logger.warning(f"Invalid date format for event {event_id}: {new_date_str}")
+                    # Optionally return an error: return jsonify({"error": "Invalid date format"}), 400
+                    pass # Or ignore invalid date and keep the old one
+            # else: Malformed date data, ignore or error
+
+        # Cost Display (string, usually not empty if cost_value exists)
+        if "cost_display" in data: # Frontend might send 'original_input_text' or 'cost_display'
+            cost_display_val = data.get("cost_display") # Standardized display from parseAndFormatCost
+            original_input = data.get("original_input_text") # Raw input from user
+
+            # Prefer original_input_text if provided, as it's what user typed.
+            # The 'cost_display' on the Event model should store the user's *intended* display,
+            # which is better represented by their raw input.
+            # The parseAndFormatCost in JS is for client-side validation and display standardization in the modal.
+            if original_input is not None: # Check for None, empty string is a valid input for "Free" etc.
+                 event_obj.cost_display = str(original_input) # Ensure it's a string
+                 updated_fields.append("cost_display")
+            elif cost_display_val is not None: # Fallback if only standardized display is sent
+                 event_obj.cost_display = str(cost_display_val)
+                 updated_fields.append("cost_display")
+
+
+        # Cost Value (float, nullable)
+        if "cost_value" in data: # This key should come from parseAndFormatCost's result
+            cost_val_input = data["cost_value"]
+            if cost_val_input is None: # Explicitly clear
+                event_obj.cost_value = None
+                updated_fields.append("cost_value")
+            else:
+                try:
+                    event_obj.cost_value = float(cost_val_input)
+                    updated_fields.append("cost_value")
+                except (ValueError, TypeError):
+                    app.logger.warning(f"Invalid cost_value for event {event_id}: {cost_val_input}")
+                    # Optionally return error, or ignore and keep old value
+                    pass
+        
+        # Node ID (integer, nullable, foreign key)
+        if "node_id" in data and data["node_id"] != event_obj.node_id:
+             new_node_id_val = data["node_id"] # Renamed variable
+             if new_node_id_val is None: # Allow unassigning from a node
+                  event_obj.node_id = None
+                  updated_fields.append("node_id")
+             else:
+                try:
+                    new_node_id_int = int(new_node_id_val)
+                    if node_belongs_to_group(new_node_id_int, group_id_for_event): # Ensure new node is in same group
+                        event_obj.node_id = new_node_id_int
+                        updated_fields.append("node_id")
+                    else:
+                        return jsonify({"error": "Cannot assign event to a node in a different group or invalid node."}), 400
+                except (ValueError, TypeError):
+                    return jsonify({"error": "Invalid node_id format."}), 400
+
+
+        if updated_fields:
+            try:
+                db.session.commit()
+                app.logger.info(f"Event {event_id} updated fields: {', '.join(updated_fields)}")
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Error committing updates for event {event_id}: {e}")
+                return jsonify({"error": "Could not save changes to the event."}), 500
+        
         return jsonify(event_obj.to_dict(current_user_id=current_user.id))
 
     if request.method == "DELETE":
-        if not authorized:
-             return jsonify({"error": "Unauthorized action. Must be a member of the event's group."}), 403
+        # Authorization already checked above for DELETE
         db.session.delete(event_obj)
         db.session.commit()
         return jsonify({"success": True, "message": "Event deleted successfully."})
