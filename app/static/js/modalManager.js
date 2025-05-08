@@ -237,64 +237,56 @@ async function _fetchEventDetails(eventId) {
 }
 
 // --- EDITABLE FIELD LOGIC ---
-function _makeFieldEditable(targetElement, apiFieldName, initialValue, config = {}) {
-    if (!targetElement || targetElement.dataset.isEditing === 'true') {
-        return;
-    }
+function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, config = {}) {
+    if (!targetElement || targetElement.dataset.isEditing === 'true') return;
 
     const inputType = config.inputType || 'text';
     const originalDisplayIsHTML = config.isHTML || false;
-    // If not specified, targetElement itself is the content display.
-    const contentDisplayElement = config.contentDisplayElementId 
     const contentDisplayElement = config.contentDisplayElementId
         ? document.getElementById(config.contentDisplayElementId)
         : targetElement;
 
-    if (!contentDisplayElement) {
-        console.error("Content display element not found for", targetElement);
-        return;
-    }
-
     if (!contentDisplayElement) { console.error("Content display element not found for", targetElement); return; }
 
     targetElement.classList.add('editable-field');
-    targetElement.dataset.apiFieldName = apiFieldName;
-    targetElement.dataset.originalContentForReset = originalDisplayIsHTML ? contentDisplayElement.innerHTML : contentDisplayElement.textContent;
     targetElement.dataset.editMode = apiFieldNameOrMode;
     targetElement.dataset.originalDisplayIsHtml = originalDisplayIsHTML.toString();
     targetElement.dataset.inputType = inputType;
     if (config.contentDisplayElementId) {
         targetElement.dataset.contentDisplayElementId = config.contentDisplayElementId;
     }
-
-
-    targetElement.dataset.currentDataValue = (apiFieldName === 'date' && initialValue)
-        ? new Date(initialValue).toISOString()
-        : String(initialValue || '');
-
+    if (apiFieldNameOrMode === 'cost') {
+        targetElement.dataset.originalContentForReset = initialValue.display || '';
+        targetElement.dataset.currentDisplayValue = initialValue.display || '';
+        targetElement.dataset.currentNumericValue = initialValue.value === null || initialValue.value === undefined ? '' : String(initialValue.value);
+    } else {
+        const initialText = originalDisplayIsHTML ? contentDisplayElement.innerHTML : contentDisplayElement.textContent;
+        targetElement.dataset.originalContentForReset = initialText;
+        targetElement.dataset.currentDataValue = (apiFieldNameOrMode === 'date' && initialValue)
+            ? new Date(initialValue).toISOString() : String(initialValue || '');
+    }
 
     const handleClickToEdit = (e) => {
         if (targetElement.dataset.isEditing === 'true' || !currentEventId) return;
-        if (e.target.closest('.edit-action-button')) return;
+        if (e.target.closest('.edit-action-button') || e.target.closest('.cost-interpretation-helper')) return;
 
         if (activeEditField && activeEditField.target !== targetElement) {
-            if (!activeEditField.cancelChanges()) { 
-                return; 
-            }
+            if (!activeEditField.cancelChanges()) { return; }
         }
 
         targetElement.classList.add('is-editing-field');
         targetElement.dataset.isEditing = 'true';
 
-        // Store the current visual display for cancellation (from the actual display element)
         const originalVisualForCancel = targetElement.dataset.originalContentForReset;
-        const currentValueForInput = targetElement.dataset.currentDataValue;
-        // This is what the input field will be populated with initially.
-        const initialInputValueForDirtyCheck = (apiFieldName === 'date' && currentValueForInput)
-            ? new Date(new Date(currentValueForInput).getTime() - new Date(currentValueForInput).getTimezoneOffset() * 60000).toISOString().slice(0,16)
-            : currentValueForInput;
+        let currentEditMode = targetElement.dataset.editMode;
+        let initialInputValueForDirtyCheck;
 
-        targetElement.innerHTML = ''; // Clear the targetElement (e.g., the wrapper)
+        let costInterpretationHelper = null; // Declared here, will be null if not cost mode
+        if (currentEditMode === 'cost') {
+            costInterpretationHelper = document.createElement('div');
+            costInterpretationHelper.id = 'cost-interpretation-helper-dynamic';
+            costInterpretationHelper.className = 'cost-interpretation-helper';
+            document.body.appendChild(costInterpretationHelper);
         }
 
         targetElement.innerHTML = '';
