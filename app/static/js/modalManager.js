@@ -12,41 +12,70 @@ function formatEventDateForDisplay(date) {
     } catch (e) { console.error("Error formatting date:", date, e); return 'Error displaying date'; }
 }
 
-// --- Cost Parsing Helper (Enhanced version) ---
-function parseCostInput(inputText) {
+// --- Cost Parsing and Formatting Helper ---
+function parseAndFormatCost(inputText) {
     const text = String(inputText || '').trim();
-    let cost_display = text;
+    let original_input_text = text; // Keep the raw input for the edit field
+    let cost_display_standardized = text; // This will be the standardized display for static view
     let cost_value = null;
-    let interpreted_as_free = false;
     const lowerText = text.toLowerCase();
 
-    if (['free', 'free entry', 'no cost', '0', '0.0', '0.00'].includes(lowerText)) {
-        cost_display = 'Free'; cost_value = 0.0; interpreted_as_free = true;
-    } else if (['donation', 'by donation', 'donations welcome', 'pay what you can', 'pwyc'].includes(lowerText)) {
-        cost_display = 'By Donation'; cost_value = null;
-    } else if (['varies', 'tbd', 'contact for price', 'see description'].includes(lowerText)) {
-        if (lowerText === 'varies') cost_display = 'Varies';
-        else if (lowerText === 'tbd') cost_display = 'TBD';
-        else if (lowerText === 'contact for price') cost_display = 'Contact for Price';
-        else if (lowerText === 'see description') cost_display = 'See Description';
-        else cost_display = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    const freeKeywords = ['free', 'free entry', 'no cost', '0', '0.0', '0.00'];
+    const donationKeywords = ['donation', 'by donation', 'donations welcome', 'pay what you can', 'pwyc'];
+    const otherSpecialKeywords = {
+        'varies': 'Varies',
+        'tbd': 'TBD',
+        'contact for price': 'Contact for Price',
+        'see description': 'See Description'
+    };
+
+    if (freeKeywords.includes(lowerText)) {
+        cost_display_standardized = 'Free';
+        cost_value = 0.0;
+    } else if (donationKeywords.includes(lowerText)) {
+        cost_display_standardized = 'By Donation';
         cost_value = null;
-    } else if (!interpreted_as_free) {
-        let numericString = lowerText.replace(/(usd|eur|gbp|jpy|aud|cad)/gi, '');
-        numericString = numericString.replace(/\s*(per person|pp)\s*/gi, '');
-        numericString = numericString.replace(/[$,€£¥₹]/g, '');
+    } else if (otherSpecialKeywords[lowerText]) {
+        cost_display_standardized = otherSpecialKeywords[lowerText];
+        cost_value = null;
+    } else {
+        // Attempt to parse as a number (dollars or cents)
+        let numericString = lowerText.replace(/(usd|eur|gbp|jpy|aud|cad)/gi, ''); // Remove currency symbols/codes
+        numericString = numericString.replace(/\s*(per person|pp)\s*/gi, ''); // Remove "per person"
+        numericString = numericString.replace(/[$,€£¥₹]/g, ''); // Remove common currency symbols again
+
         const centsMatch = numericString.match(/^(\d+)\s*(c|cent|cents)$/);
+        let potentialNumber;
+
         if (centsMatch) {
             const cents = parseInt(centsMatch[1], 10);
-            if (!isNaN(cents)) { cost_value = cents / 100.0; /* cost_display = text; // Keep original for display */ }
+            if (!isNaN(cents)) {
+                potentialNumber = cents / 100.0;
+            }
         } else {
-            // Allow for formats like "1,500.50" or "1500.50"
-            const potentialValue = parseFloat(numericString.replace(/,/g, ''));
-            if (!isNaN(potentialValue)) { cost_value = potentialValue; /* cost_display = text; or reformat */ }
+            potentialNumber = parseFloat(numericString.replace(/,/g, ''));
+        }
+
+        if (!isNaN(potentialNumber) && potentialNumber !== null) {
+            cost_value = potentialNumber;
+            if (cost_value === 0) { // If parsed number is 0, treat as "Free"
+                cost_display_standardized = 'Free';
+            } else {
+                cost_display_standardized = `$${cost_value.toFixed(2)}`;
+            }
+        } else {
+            // If it's not recognized, keep the original text for display, value remains null
+            // but we'll use the original_input_text for the input field if editing.
+            // For static display, if not any special keyword or number, use original input.
+            cost_display_standardized = original_input_text;
+            cost_value = null;
         }
     }
-    return { cost_display, cost_value };
+    // The input field during editing will show original_input_text (or currentDisplayValue from dataset)
+    // The static display (modalEventCost) will show cost_display_standardized
+    return { original_input_text, cost_display_standardized, cost_value };
 }
+
 
 let modalElement, modalContent, closeButton, modalEventImage, modalEventTitle,
     modalGroupName, modalEventDate, modalEventLocation, modalEventCost,
@@ -54,11 +83,10 @@ let modalElement, modalContent, closeButton, modalEventImage, modalEventTitle,
     modalRsvpControls, rsvpButtons = [], rsvpConfirmationMessage,
     clearRsvpButton, modalAttendeeList, modalAttendeeCount, attendeeListContainer,
     attendeeListMessage, attendeeLoadingIndicator;
-    // NO global costInterpretationHelperElement reference here anymore
 
 let currentEventId = null;
 let isInitialized = false;
-let activeEditField = null; // Will store { target, cancelChanges, inputElement, costInterpretationHelper (if any) }
+let activeEditField = null;
 
 function _initializeModalElements() {
     modalElement = document.getElementById('event-details-modal');
@@ -84,8 +112,6 @@ function _initializeModalElements() {
     attendeeListMessage = modalElement.querySelector('#attendee-list-message');
     attendeeLoadingIndicator = modalElement.querySelector('#attendee-loading-indicator');
 
-    // No helper element to initialize here from HTML
-
     if (!modalContent || !closeButton || !modalEventTitle || !modalDescriptionWrapper || !modalEventDescription) {
         console.error("One or more essential modal sub-elements not found!");
         return false;
@@ -97,11 +123,9 @@ function _initializeModalElements() {
 function _resetModal() {
     if (!isInitialized) return;
     if (activeEditField && activeEditField.cancelChanges) {
-        activeEditField.cancelChanges(true); // This will also remove the helper if it exists
+        activeEditField.cancelChanges(true);
     }
     activeEditField = null;
-
-    // No need to query for stray helpers if they are managed by activeEditField
 
     const editableFields = modalElement.querySelectorAll('.editable-field');
     editableFields.forEach(field => {
@@ -126,18 +150,17 @@ function _resetModal() {
         delete field.dataset.originalDisplayIsHtml;
         delete field.dataset.inputType;
         delete field.dataset.contentDisplayElementId;
-        delete field.dataset.currentDisplayValue;
+        delete field.dataset.currentDisplayValue; // For cost, this was the raw input value
         delete field.dataset.currentNumericValue;
         delete field.dataset.currentDataValue;
     });
 
     if (modalEventImage) modalEventImage.setAttribute('src', '/static/img/default-event-logo.png');
     if (modalEventTitle) modalEventTitle.textContent = 'Loading...';
-    // ... (rest of modal element resets)
     if (modalGroupName) modalGroupName.textContent = 'Loading...';
     if (modalEventDate) modalEventDate.textContent = 'Loading...';
     if (modalEventLocation) modalEventLocation.textContent = 'Loading...';
-    if (modalEventCost) modalEventCost.textContent = 'Loading...';
+    if (modalEventCost) modalEventCost.textContent = 'Loading...'; // Will be updated by openEventModal
     if (modalEventDescription) modalEventDescription.innerHTML = 'Loading...';
     if (modalRsvpControls) modalRsvpControls.dataset.eventId = '';
     if (modalAttendeeList) modalAttendeeList.innerHTML = '';
@@ -155,10 +178,8 @@ function _resetModal() {
 
 function _populateAttendeeList(attendees = []) {
      if (!isInitialized || !modalAttendeeList || !attendeeListContainer || !attendeeListMessage || !modalAttendeeCount) return;
-
     modalAttendeeList.innerHTML = '';
     modalAttendeeCount.textContent = attendees.length;
-
     if (attendees.length === 0) {
         attendeeListMessage.textContent = 'No one has RSVP\'d yet.';
         attendeeListMessage.style.display = 'block';
@@ -170,7 +191,6 @@ function _populateAttendeeList(attendees = []) {
             const li = document.createElement('li');
             const status = attendee.status?.toLowerCase() || 'unknown';
             const displayName = attendee.username || 'Guest User';
-
             li.innerHTML = `
                 <img src="${attendee.avatar_url || '/static/img/default-avatar.png'}" alt="${displayName} Avatar" class="attendee-avatar">
                 <span class="attendee-name" title="${displayName}">${displayName}</span>
@@ -185,7 +205,6 @@ function _updateRSVPButtonState(status) {
     if (!isInitialized || !rsvpButtons || rsvpButtons.length === 0) return;
     const normalizedStatus = status?.toLowerCase();
     rsvpButtons.forEach(btn => btn.setAttribute('aria-pressed', 'false'));
-
     if (normalizedStatus && ['attending', 'maybe', 'declined'].includes(normalizedStatus)) {
         const activeButton = modalRsvpControls?.querySelector(`.rsvp-btn[data-status="${normalizedStatus}"]`);
         if (activeButton) activeButton.setAttribute('aria-pressed', 'true');
@@ -197,29 +216,23 @@ function _updateRSVPButtonState(status) {
 
 async function _fetchEventDetails(eventId) {
     if (!isInitialized || !attendeeLoadingIndicator || !attendeeListMessage || !attendeeListContainer || !modalRsvpControls) return;
-
     attendeeLoadingIndicator.style.display = 'block';
     attendeeListMessage.style.display = 'none';
     attendeeListContainer.style.display = 'none';
     modalRsvpControls.style.pointerEvents = 'none';
     modalRsvpControls.style.opacity = '0.6';
-
     try {
         const [attendeesRes, myRsvpRes] = await Promise.all([
             fetch(`/api/events/${eventId}/attendees`),
             fetch(`/api/events/${eventId}/my-rsvp`)
         ]);
-
         if (!attendeesRes.ok || !myRsvpRes.ok) {
              throw new Error(`Failed to fetch details (${attendeesRes.status}/${myRsvpRes.status})`);
         }
-
         const attendees = await attendeesRes.json();
         const myRsvp = await myRsvpRes.json();
-
         _populateAttendeeList(attendees);
         _updateRSVPButtonState(myRsvp.status);
-
     } catch (error) {
         console.error("Error fetching event details:", error);
         if (attendeeListMessage) {
@@ -237,7 +250,7 @@ async function _fetchEventDetails(eventId) {
 }
 
 // --- EDITABLE FIELD LOGIC ---
-function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, config = {}) {
+function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, config = {}) {
     if (!targetElement || targetElement.dataset.isEditing === 'true') return;
 
     const inputType = config.inputType || 'text';
@@ -255,15 +268,18 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, con
     if (config.contentDisplayElementId) {
         targetElement.dataset.contentDisplayElementId = config.contentDisplayElementId;
     }
+
+    // Store initial values for reset and input field initialization
     if (apiFieldNameOrMode === 'cost') {
-        targetElement.dataset.originalContentForReset = initialValue.display || '';
-        targetElement.dataset.currentDisplayValue = initialValue.display || '';
-        targetElement.dataset.currentNumericValue = initialValue.value === null || initialValue.value === undefined ? '' : String(initialValue.value);
+        // initialData is { raw_input_for_field: '...', standardized_display: '...', value: ... }
+        targetElement.dataset.originalContentForReset = initialData.standardized_display || ''; // Standardized for static display
+        targetElement.dataset.currentDisplayValue = initialData.raw_input_for_field || ''; // Raw text for input field
+        targetElement.dataset.currentNumericValue = initialData.value === null || initialData.value === undefined ? '' : String(initialData.value);
     } else {
         const initialText = originalDisplayIsHTML ? contentDisplayElement.innerHTML : contentDisplayElement.textContent;
         targetElement.dataset.originalContentForReset = initialText;
-        targetElement.dataset.currentDataValue = (apiFieldNameOrMode === 'date' && initialValue)
-            ? new Date(initialValue).toISOString() : String(initialValue || '');
+        targetElement.dataset.currentDataValue = (apiFieldNameOrMode === 'date' && initialData)
+            ? new Date(initialData).toISOString() : String(initialData || '');
     }
 
     const handleClickToEdit = (e) => {
@@ -277,11 +293,14 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, con
         targetElement.classList.add('is-editing-field');
         targetElement.dataset.isEditing = 'true';
 
-        const originalVisualForCancel = targetElement.dataset.originalContentForReset;
-        let currentEditMode = targetElement.dataset.editMode;
-        let initialInputValueForDirtyCheck;
+        const originalStaticDisplayForCancel = targetElement.dataset.originalContentForReset; // For static display on cancel
+        const initialInputFieldValue = (apiFieldNameOrMode === 'cost')
+            ? targetElement.dataset.currentDisplayValue // Use raw input for cost field
+            : originalStaticDisplayForCancel; // For other fields, it's the same as static
 
-        let costInterpretationHelper = null; // Declared here, will be null if not cost mode
+        let currentEditMode = targetElement.dataset.editMode;
+        let costInterpretationHelper = null;
+
         if (currentEditMode === 'cost') {
             costInterpretationHelper = document.createElement('div');
             costInterpretationHelper.id = 'cost-interpretation-helper-dynamic';
@@ -292,27 +311,26 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, con
         targetElement.innerHTML = '';
         const inputWrapper = document.createElement('div');
         inputWrapper.className = 'editable-input-wrapper';
-
         let inputElement;
+
         if (currentEditMode === 'cost') {
             inputElement = document.createElement('input');
             inputElement.type = 'text';
             inputElement.className = 'editable-input editable-cost-input';
-            inputElement.value = targetElement.dataset.currentDisplayValue || '';
-            initialInputValueForDirtyCheck = inputElement.value;
+            inputElement.value = initialInputFieldValue; // Raw input value
             inputWrapper.appendChild(inputElement);
 
-            if (costInterpretationHelper) { // This check is fine
-                const updateCostInterpretation = () => {
-                    const parsed = parseCostInput(inputElement.value);
+            if (costInterpretationHelper) {
+                const updateCostInterpretation = () => { // Renamed for clarity
+                    const parsed = parseAndFormatCost(inputElement.value); // Use new helper
                     let numericValDisplay = parsed.cost_value === null || parsed.cost_value === undefined ? '<em>Not set</em>' : String(parsed.cost_value);
                     if (typeof parsed.cost_value === 'number') {
                          numericValDisplay = `<strong>${parsed.cost_value.toFixed(2)}</strong>`;
                     }
-                    costInterpretationHelper.innerHTML = `Interpreted: Display as "<strong>${parsed.cost_display}</strong>", Value as ${numericValDisplay}`;
+                    // Display the *standardized* version in the helper
+                    costInterpretationHelper.innerHTML = `Interpreted: Display as "<strong>${parsed.cost_display_standardized}</strong>", Value as ${numericValDisplay}`;
 
                     const targetRect = targetElement.getBoundingClientRect();
-
                     costInterpretationHelper.style.position = 'absolute';
                     costInterpretationHelper.style.boxSizing = 'border-box';
                     costInterpretationHelper.style.left = `${targetRect.left + window.pageXOffset}px`;
@@ -320,28 +338,28 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, con
                     costInterpretationHelper.style.width = `${targetRect.width}px`;
                     costInterpretationHelper.style.textAlign = 'center';
                     costInterpretationHelper.style.zIndex = '1060';
-
                     costInterpretationHelper.classList.add('visible');
                 };
                 inputElement.addEventListener('input', updateCostInterpretation);
                 inputElement.addEventListener('focus', updateCostInterpretation);
                 requestAnimationFrame(updateCostInterpretation);
             }
-        } else {
+        } else { // Non-cost fields
             if (targetElement.dataset.inputType === 'textarea') {
                 inputElement = document.createElement('textarea');
-                inputElement.value = originalVisualForCancel;
             } else if (targetElement.dataset.inputType === 'datetime-local') {
                 inputElement = document.createElement('input');
                 inputElement.type = 'datetime-local';
                 const dateVal = targetElement.dataset.currentDataValue;
                 inputElement.value = (dateVal) ? new Date(new Date(dateVal).getTime() - new Date(dateVal).getTimezoneOffset() * 60000).toISOString().slice(0,16) : '';
+                // For datetime, initialInputFieldValue is not directly used, but inputElement.value is set here.
             } else {
                 inputElement = document.createElement('input');
                 inputElement.type = 'text';
-                inputElement.value = originalVisualForCancel;
             }
-            initialInputValueForDirtyCheck = inputElement.value;
+            if(targetElement.dataset.inputType !== 'datetime-local') {
+                inputElement.value = initialInputFieldValue; // From originalStaticDisplayForCancel
+            }
             inputElement.classList.add('editable-input');
             inputWrapper.appendChild(inputElement);
         }
@@ -362,49 +380,51 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, con
         }
 
         const handleDocumentClick = (event) => {
-            // costInterpretationHelper will be null if not in cost mode, this is fine.
             if (!targetElement.contains(event.target) &&
                 event.target !== costInterpretationHelper &&
-                !costInterpretationHelper?.contains(event.target)
-               ) {
+                !costInterpretationHelper?.contains(event.target)) {
                 cancelChanges();
             }
         };
 
-        const exitEditMode = (savedServerData) => {
+        const exitEditMode = (savedDataFromServer) => {
             document.removeEventListener('click', handleDocumentClick, true);
-
-            if (costInterpretationHelper) { // This is correct
-                costInterpretationHelper.remove();
-            }
-
+            if (costInterpretationHelper) costInterpretationHelper.remove();
             targetElement.innerHTML = '';
-            const isHTMLContent = targetElement.dataset.originalDisplayIsHtml === 'true';
 
-            if (savedServerData !== undefined) {
-                let newDisplayToShow;
+            const isHTML = targetElement.dataset.originalDisplayIsHtml === 'true';
+            let finalDisplayToShow;
+
+            if (savedDataFromServer) { // Data was saved successfully
                 if (currentEditMode === 'cost') {
-                    newDisplayToShow = savedServerData.cost_display;
-                    targetElement.dataset.currentDisplayValue = savedServerData.cost_display || '';
-                    targetElement.dataset.currentNumericValue = savedServerData.cost_value === null || savedServerData.cost_value === undefined ? '' : String(savedServerData.cost_value);
-                } else if (currentEditMode === 'description') {
-                    newDisplayToShow = savedServerData.description;
+                    // Server returns cost_display (standardized) and cost_value
+                    finalDisplayToShow = savedDataFromServer.cost_display || '';
+                    targetElement.dataset.currentDisplayValue = savedDataFromServer.original_input_text || inputElement.value; // Store raw input if available from server, else current input
+                    targetElement.dataset.currentNumericValue = savedDataFromServer.cost_value === null || savedDataFromServer.cost_value === undefined ? '' : String(savedDataFromServer.cost_value);
                 } else if (currentEditMode === 'date') {
-                    newDisplayToShow = formatEventDateForDisplay(new Date(savedServerData.date));
-                    targetElement.dataset.currentDataValue = savedServerData.date;
+                    finalDisplayToShow = formatEventDateForDisplay(new Date(savedDataFromServer.date));
+                    targetElement.dataset.currentDataValue = savedDataFromServer.date;
+                } else if (currentEditMode === 'description') {
+                    finalDisplayToShow = savedDataFromServer.description || '';
                 } else {
-                    newDisplayToShow = savedServerData[currentEditMode];
-                    targetElement.dataset.currentDataValue = newDisplayToShow;
+                    finalDisplayToShow = savedDataFromServer[currentEditMode] || '';
+                    targetElement.dataset.currentDataValue = finalDisplayToShow;
                 }
-                if (isHTMLContent || currentEditMode === 'description') { contentDisplayElement.innerHTML = newDisplayToShow || ''; }
-                else { contentDisplayElement.textContent = newDisplayToShow || ''; }
-                targetElement.dataset.originalContentForReset = newDisplayToShow || '';
-            } else {
-                if (isHTMLContent) { contentDisplayElement.innerHTML = originalVisualForCancel; }
-                else { contentDisplayElement.textContent = originalVisualForCancel; }
+                targetElement.dataset.originalContentForReset = finalDisplayToShow; // Update baseline for next edit
+            } else { // Edit was cancelled
+                finalDisplayToShow = originalStaticDisplayForCancel; // Revert to what was there before edit
+                // For cost, dataset.currentDisplayValue (raw input) remains as it was at start of edit
             }
+
+            // Update the static display element
+            if (isHTML || currentEditMode === 'description') {
+                contentDisplayElement.innerHTML = finalDisplayToShow;
+            } else {
+                contentDisplayElement.textContent = finalDisplayToShow;
+            }
+
             if (targetElement !== contentDisplayElement && !targetElement.contains(contentDisplayElement)) {
-                 targetElement.appendChild(contentDisplayElement);
+                targetElement.appendChild(contentDisplayElement);
             }
             targetElement.classList.remove('is-editing-field');
             delete targetElement.dataset.isEditing;
@@ -412,38 +432,35 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, con
         };
 
         const cancelChanges = (force = false) => {
-            const isDirty = inputElement.value !== initialInputValueForDirtyCheck;
+            const isDirty = inputElement.value !== initialInputFieldValue; // Compare with input field's initial value
             if (!force && isDirty) {
                 if (!window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
                     inputElement.focus(); return false;
                 }
             }
-            exitEditMode();
+            exitEditMode(null); // Pass null to indicate cancellation
             return true;
         };
 
-        // ***** THE FIX IS HERE *****
-        // Use the correctly scoped variable `costInterpretationHelper`
         activeEditField = { target: targetElement, cancelChanges, inputElement, costInterpretationHelper };
-        // ***** END OF FIX *****
-
-        setTimeout(() => {
-            document.addEventListener('click', handleDocumentClick, true);
-        }, 0);
+        setTimeout(() => document.addEventListener('click', handleDocumentClick, true), 0);
 
         saveBtn.onclick = async () => {
             let payload = {};
-            let apiActualFieldName = currentEditMode;
             if (currentEditMode === 'cost') {
-                const parsed = parseCostInput(inputElement.value);
-                payload.cost_display = parsed.cost_display;
-                payload.cost_value = parsed.cost_value;
+                const parsedForSave = parseAndFormatCost(inputElement.value);
+                payload.cost_display = parsedForSave.cost_display_standardized; // Send standardized display
+                payload.cost_value = parsedForSave.cost_value;
+                payload.original_input_text = inputElement.value; // Also send the raw input
             } else if (currentEditMode === 'date') {
-                if (!inputElement.value) { payload[apiActualFieldName] = null; }
-                else { try { payload[apiActualFieldName] = new Date(inputElement.value).toISOString(); }
+                if (!inputElement.value) { payload.date = null; }
+                else { try { payload.date = new Date(inputElement.value).toISOString(); }
                     catch (err) { inputElement.classList.add('input-error-glow'); setTimeout(() => inputElement.classList.remove('input-error-glow'), 2000); return; }
                 }
-            } else { payload[apiActualFieldName] = inputElement.value; }
+            } else {
+                payload[currentEditMode] = inputElement.value;
+            }
+
             saveBtn.classList.add('is-loading'); saveBtn.innerHTML = ''; saveBtn.disabled = true; cancelBtn.disabled = true;
             try {
                 const response = await fetch(`/api/events/${currentEventId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -451,10 +468,14 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, con
                     const errorData = await response.json().catch(() => ({ detail: `Update failed (${response.status})` }));
                     throw new Error(errorData.detail || `Update failed (${response.status})`);
                 }
-                const updatedEvent = await response.json();
-                exitEditMode(updatedEvent);
+                const updatedEventDataFromServer = await response.json(); // Server should return the updated event fields
+                exitEditMode(updatedEventDataFromServer);
                 const eventDataUpdatedEvent = new CustomEvent('eventDataUpdated', {
-                    detail: { eventId: currentEventId, field: currentEditMode, value: (currentEditMode === 'cost' ? payload : updatedEvent[currentEditMode]), fullEvent: updatedEvent },
+                    detail: {
+                        eventId: currentEventId, field: currentEditMode,
+                        value: updatedEventDataFromServer, // Send the whole updated field data from server
+                        fullEvent: updatedEventDataFromServer // Or the full event if server returns that
+                    },
                     bubbles: true, composed: true });
                 document.dispatchEvent(eventDataUpdatedEvent);
             } catch (error) {
@@ -467,19 +488,18 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialValue, con
                 saveBtn.classList.remove('is-loading'); saveBtn.innerHTML = '✔'; saveBtn.disabled = false; cancelBtn.disabled = false;
             }
         };
-        cancelBtn.onclick = () => { cancelChanges(); };
+        cancelBtn.onclick = () => cancelChanges();
         inputElement.onkeydown = (ev) => {
             const nonTextareaEnter = targetElement.dataset.inputType !== 'textarea' && !(currentEditMode ==='cost' && ev.shiftKey);
             if (ev.key === 'Enter' && nonTextareaEnter) { ev.preventDefault(); saveBtn.click(); }
-            else if (ev.key === 'Escape') { cancelChanges(); }
+            else if (ev.key === 'Escape') cancelChanges();
         };
     };
 
-    if (targetElement.clickHandler) { targetElement.removeEventListener('click', targetElement.clickHandler); }
+    if (targetElement.clickHandler) targetElement.removeEventListener('click', targetElement.clickHandler);
     targetElement.clickHandler = handleClickToEdit;
     targetElement.addEventListener('click', targetElement.clickHandler);
 }
-
 // --- End EDITABLE FIELD LOGIC ---
 
 function _closeEventModal() {
@@ -508,13 +528,9 @@ function _closeEventModal() {
 
 function _setupInternalModalEventListeners() {
     if (!isInitialized) return;
-    if (closeButton) {
-        closeButton.addEventListener('click', _closeEventModal);
-    }
+    if (closeButton) closeButton.addEventListener('click', _closeEventModal);
     modalElement.addEventListener('click', (event) => {
-        if (event.target === modalElement && !activeEditField) {
-            _closeEventModal();
-        }
+        if (event.target === modalElement && !activeEditField) _closeEventModal();
     });
     if (modalRsvpControls) {
         modalRsvpControls.addEventListener('click', async (event) => {
@@ -560,7 +576,7 @@ function _setupInternalModalEventListeners() {
                     rsvpConfirmationMessage.textContent = `Error: ${error.message || 'Could not update.'}`;
                     rsvpConfirmationMessage.style.color = 'red';
                 }
-                await _fetchEventDetails(eventId); // Re-fetch to ensure consistent state
+                await _fetchEventDetails(eventId);
             } finally {
                 if (modalRsvpControls) {
                     modalRsvpControls.style.pointerEvents = 'auto';
@@ -572,9 +588,7 @@ function _setupInternalModalEventListeners() {
 }
 
 export function setupModal() {
-    if (isInitialized) {
-        console.warn("Modal already initialized."); return;
-    }
+    if (isInitialized) { console.warn("Modal already initialized."); return; }
     if (_initializeModalElements()) {
         _setupInternalModalEventListeners();
         console.log("Modal setup complete.");
@@ -594,7 +608,6 @@ export async function openEventModal(eventData) {
         alert("Sorry, could not load details for this event.");
         return;
     }
-
     _resetModal();
     currentEventId = eventData.id;
 
@@ -614,11 +627,19 @@ export async function openEventModal(eventData) {
         _makeFieldEditable(modalEventLocation, 'location', eventData.location);
     }
     if (modalEventCost) {
-        const initialCostDisplay = eventData.cost_display || 'No cost information';
-        modalEventCost.textContent = initialCostDisplay;
-        _makeFieldEditable(modalEventCost, 'cost',
-            { display: initialCostDisplay, value: eventData.cost_value } // Pass object
-        );
+        // eventData.cost_display is assumed to be the user's raw input or a previously saved raw input.
+        // eventData.cost_value is the numeric value.
+        // We need to parse it to get the standardized display for the static view.
+        const initialRawCostInput = eventData.cost_display_raw || eventData.cost_display || 'Not specified'; // Prefer a raw field if server provides it
+        const parsedInitialCost = parseAndFormatCost(initialRawCostInput);
+
+        modalEventCost.textContent = parsedInitialCost.cost_display_standardized; // Show standardized initially
+
+        _makeFieldEditable(modalEventCost, 'cost', {
+            raw_input_for_field: initialRawCostInput, // This is what goes into the input field
+            standardized_display: parsedInitialCost.cost_display_standardized, // For static display and reset
+            value: parsedInitialCost.cost_value
+        });
     }
     if (modalDescriptionWrapper && modalEventDescription) {
         modalEventDescription.innerHTML = eventData.description || 'No description provided.';
@@ -633,13 +654,8 @@ export async function openEventModal(eventData) {
         modalRsvpControls.style.pointerEvents = 'none';
         modalRsvpControls.style.opacity = '0.6';
     }
-
     modalElement.style.display = 'flex';
-    requestAnimationFrame(() => {
-        modalElement.classList.add('visible');
-    });
-
+    requestAnimationFrame(() => modalElement.classList.add('visible'));
     await _fetchEventDetails(eventData.id);
 }
-
 // --- END OF FILE modalManager.js ---
