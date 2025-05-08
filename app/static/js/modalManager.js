@@ -450,7 +450,6 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
         // Action buttons (Save/Cancel) are appended to inputWrapper
         const actionsContainer = document.createElement('div');
         actionsContainer.className = 'editable-actions-container';
-        actionsContainer.style.marginTop = '10px';
         const saveBtn = document.createElement('button');
         saveBtn.innerHTML = '✔'; saveBtn.className = 'edit-action-button edit-save-btn'; saveBtn.title = 'Save';
         const cancelBtn = document.createElement('button');
