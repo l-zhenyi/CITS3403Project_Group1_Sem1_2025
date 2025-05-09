@@ -2,7 +2,7 @@
   Global Variables & Base Styles
   ========================================================================== */
 :root {
-    /* Darker, Muted Color Palette (for event dots) */
+    /* Event Dot Colors */
     --color-deep-blue: #4A90E2;
     --color-terracotta: #C06C58;
     --color-olive-gold: #B3A54A;
@@ -10,36 +10,33 @@
     --color-muted-purple: #8A6BAA;
     --color-cranberry: #B84B66;
 
-    /* Calendar UI Colors - Keeping cells glassy */
-    --calendar-cell-base-bg-value: 255, 255, 255; /* RGB for white, used in rgba */
-    --calendar-cell-bg-opacity: 0.05;
-    --calendar-cell-bg-hover-opacity: 0.1;
-    --calendar-cell-bg-today-opacity: 0.12;
+    /* Calendar UI Colors - Glassy Cells */
+    --calendar-cell-base-rgb: 255, 255, 255; /* For rgba calculations */
+    --calendar-cell-bg-opacity: 0.06; /* Slightly adjusted for balance */
+    --calendar-cell-bg-hover-opacity: 0.12;
+    --calendar-cell-bg-today-opacity: 0.15;
+    --calendar-cell-other-month-bg-opacity: 0.04;
 
-    /* Calculated background colors for cells - USED BY FADE LOGIC */
-    --calendar-cell-bg: rgba(var(--calendar-cell-base-bg-value), var(--calendar-cell-bg-opacity));
-    --calendar-cell-bg-hover: rgba(var(--calendar-cell-base-bg-value), var(--calendar-cell-bg-hover-opacity));
-    --calendar-cell-bg-today: rgba(var(--calendar-cell-base-bg-value), var(--calendar-cell-bg-today-opacity));
-    /* For 'other-month' cells, slightly different base if needed, or just opacity change */
-    --calendar-cell-other-month-bg-opacity: 0.03;
-    --calendar-cell-other-month-bg: rgba(var(--calendar-cell-base-bg-value), var(--calendar-cell-other-month-bg-opacity));
-
+    --calendar-cell-bg: rgba(var(--calendar-cell-base-rgb), var(--calendar-cell-bg-opacity));
+    --calendar-cell-bg-hover: rgba(var(--calendar-cell-base-rgb), var(--calendar-cell-bg-hover-opacity));
+    --calendar-cell-bg-today: rgba(var(--calendar-cell-base-rgb), var(--calendar-cell-bg-today-opacity));
+    --calendar-cell-other-month-bg: rgba(var(--calendar-cell-base-rgb), var(--calendar-cell-other-month-bg-opacity));
 
     /* "More Events" Pill */
-    --calendar-more-indicator-bg: rgba(60, 62, 80, 0.25); /* More transparent base for glass */
-    --calendar-more-indicator-border: rgba(255, 255, 255, 0.2);
-    --calendar-more-indicator-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    --calendar-more-indicator-bg: rgba(70, 72, 90, 0.2); /* Slightly more substance for the pill */
+    --calendar-more-indicator-border: rgba(255, 255, 255, 0.15);
+    --calendar-more-indicator-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 
     /* Text Colors */
     --text-color-primary: #e0e0e5;
-    --text-color-secondary: #b8c0c8; /* Brighter secondary */
+    --text-color-secondary: #bccfe2;
     --text-color-muted: #98a0a8;
     --text-color-headings: #ffffff;
-    --text-color-on-dark-box: #e8eaed; /* For 'more' indicator text */
+    --text-color-on-dark-box: #f0f0f5; /* Brighter text for pill */
 
-    /* Modal Colors (example - you might have these elsewhere) */
+    /* Modal Colors */
     --modal-backdrop-bg: rgba(30, 30, 35, 0.65);
-    --modal-content-bg-glass: rgba(50, 52, 60, 0.75); /* Slightly adjusted modal glass */
+    --modal-content-bg-glass: rgba(50, 52, 60, 0.8); /* More opaque modal for readability */
     --modal-border-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -47,18 +44,17 @@
   Calendar View Styles
   ========================================================================== */
 .calendar-view {
-    display: none; /* Hidden by default, shown via JS/class */
+    display: none;
     flex-direction: column;
     flex-grow: 1;
     width: 100%;
     height: 100%;
-    min-height: 0; /* Allow shrinking in flex context */
+    min-height: 0;
     padding: 20px;
-    border-radius: inherit; /* Match parent rounding */
-    overflow-y: auto; /* Scroll if content exceeds height */
+    border-radius: inherit;
+    overflow-y: auto;
     overflow-x: hidden;
     color: var(--text-color-primary);
-    /* NO explicit background-color here, let page background show through */
 }
 
 .calendar-header {
@@ -67,7 +63,7 @@
     align-items: center;
     padding: 0 5px 15px 5px;
     flex-shrink: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.18); /* Slightly more visible border */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
     margin-bottom: 15px;
 }
 
@@ -77,7 +73,7 @@
     color: var(--text-color-headings);
     text-align: center;
     flex-grow: 1;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); /* Adjusted shadow for depth */
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 .calendar-nav {
@@ -125,30 +121,24 @@
 }
 
 /* ==========================================================================
-  Calendar Cell Styles
+  Calendar Cell Styles (Implementing Option 2 Fade)
   ========================================================================== */
 .calendar-cell {
-    /* Default background set by variable */
     background: var(--calendar-cell-bg);
     border-radius: 8px;
     padding: 8px;
     display: flex;
     flex-direction: column;
     position: relative;
-    border: 1px solid transparent; /* Keep for .today state */
+    border: 1px solid transparent;
     transition: background-color 0.2s ease;
-    overflow: hidden;
-    min-height: 90px;
+    overflow: hidden; /* Important for mask behavior and general neatness */
+    min-height: 90px; /* Adjust based on desired cell size */
 }
 
 .calendar-cell:hover {
     background: var(--calendar-cell-bg-hover);
 }
-/* When a cell is hovered, we need its event list fade to target the new hover background */
-.calendar-cell:hover .calendar-events-preview-list.has-overflow::after {
-    background: linear-gradient(to bottom, transparent, var(--calendar-cell-bg-hover) 95%);
-}
-
 
 .calendar-cell.has-events {
     cursor: pointer;
@@ -161,35 +151,31 @@
     text-align: right;
     flex-shrink: 0;
     position: relative;
-    z-index: 2;
+    z-index: 2; /* Above event list */
     color: var(--text-color-primary);
 }
 
 /* Container for the list of event previews inside the cell */
 .calendar-cell .calendar-events-preview-list {
     flex-grow: 1;
-    overflow: hidden;
+    overflow: hidden; /* MUST be hidden for mask to appear to clip content */
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    min-height: 0;
-    z-index: 1;
+    gap: 4px; /* Space between event items */
+    min-height: 0; /* Allow shrinking */
+    z-index: 1; /* Below day number, above cell bg */
 }
 
-/* General fade effect for the BOTTOM of the event list container if it has overflow */
-.calendar-cell .calendar-events-preview-list.has-overflow::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 25px;
-    /* Default fade targets the normal cell background */
-    background: linear-gradient(to bottom, transparent, var(--calendar-cell-bg) 95%);
-    pointer-events: none;
-    z-index: 3;
-    transition: background 0.2s ease; /* Smooth transition for the gradient if possible, though direct gradient animation is tricky */
+/* Mask applied to the event list itself when it has overflow */
+.calendar-cell .calendar-events-preview-list.has-overflow {
+    /* Adjust percentages: black X% (visible until), transparent Y% (fully faded from) */
+    mask-image: linear-gradient(to bottom,
+        black 0%,    /* Top of list is fully visible */
+        black 60%,   /* Content fully visible up to 60% of list height */
+        transparent 90% /* Content fades to fully transparent by 90% of list height */
+    );
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 90%);
 }
 
 /* Individual event item (dot + title) */
@@ -201,11 +187,11 @@
     line-height: 1.3;
     color: var(--text-color-secondary);
     white-space: nowrap;
-    overflow: hidden;
+    overflow: hidden; /* Ellipsis needs this */
     text-overflow: ellipsis;
     flex-shrink: 0;
     padding: 1px 2px;
-    position: relative;
+    position: relative; /* For stacking context if needed by sub-masks */
 }
 
 .calendar-cell .event-dot {
@@ -213,11 +199,9 @@
     height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
-    /* Add a subtle shadow to dots if they blend too much */
-    /* box-shadow: 0 0 2px rgba(0,0,0,0.3); */
 }
 
-/* Darker, Muted Color Classes for Dots */
+/* Event Dot Color Classes */
 .event-dot.color-1 { background-color: var(--color-deep-blue); }
 .event-dot.color-2 { background-color: var(--color-terracotta); }
 .event-dot.color-3 { background-color: var(--color-olive-gold); }
@@ -231,14 +215,19 @@
     white-space: nowrap;
 }
 
-.calendar-cell .calendar-event-item-preview.is-fading-out {
-    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+/* Optional: Apply a more aggressive MASK to the text of the very last item.
+   Your JS adds this class if (j === numEventsToDisplayInCell - 1 && eventsOnThisDay.length > MAX_CELL_EVENT_PREVIEWS)
+   This mask applies *within* the item, on top of the list's overall mask.
+*/
+.calendar-cell .calendar-events-preview-list.has-overflow .calendar-event-item-preview.is-fading-out {
+    /* This mask makes the item's own content fade more sharply at its bottom */
+    mask-image: linear-gradient(to bottom, black 30%, transparent 90%);
+    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 90%);
 }
 
-/* Glassy Pill for "More Events" Indicator with Shadow */
+/* Glassy Pill for "More Events" Indicator */
 .calendar-cell .more-events-indicator {
-    margin-top: auto;
+    margin-top: auto; /* Pushes to bottom if list doesn't fill space after masking */
     align-self: center;
     padding: 3px 12px;
     font-size: 0.7em;
@@ -248,57 +237,40 @@
     color: var(--text-color-on-dark-box);
     border: 1px solid var(--calendar-more-indicator-border);
     border-radius: 50px;
-    margin-top: 6px;
+    margin-top: 6px; /* Space above it, might need adjustment depending on mask */
     flex-shrink: 0;
-    z-index: 4;
+    z-index: 4; /* Must be on top of the masked event list */
     position: relative;
-    backdrop-filter: blur(4px); /* Enhance glassiness */
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(5px); /* Slightly more blur for pronounced glass */
+    -webkit-backdrop-filter: blur(5px);
     box-shadow: var(--calendar-more-indicator-shadow);
 }
 
+/* Styling for 'other-month' cells */
 .calendar-cell.other-month {
-    background-color: var(--calendar-cell-other-month-bg);
+    background: var(--calendar-cell-other-month-bg);
 }
 .calendar-cell.other-month .day-number,
-.calendar-cell.other-month .calendar-events-preview-list,
+.calendar-cell.other-month .calendar-events-preview-list, /* Content within will be affected */
 .calendar-cell.other-month .more-events-indicator {
-    opacity: 0.5; /* Slightly more visible for contrast on very transparent bg */
+    opacity: 0.55; /* Slightly more visible for better contrast on dim bg */
 }
 .calendar-cell.other-month .event-dot {
-   opacity: 0.6;
-}
-/* Ensure fade on other-month cells also targets their specific background */
-.calendar-cell.other-month .calendar-events-preview-list.has-overflow::after {
-    background: linear-gradient(to bottom, transparent, var(--calendar-cell-other-month-bg) 95%);
-}
-.calendar-cell.other-month:hover .calendar-events-preview-list.has-overflow::after {
-    /* Assuming other-month cells don't have a distinct hover state, or if they do, define another variable */
-    background: linear-gradient(to bottom, transparent, var(--calendar-cell-bg-hover) 95%); /* Or a specific other-month-hover-bg */
+   opacity: 0.65;
 }
 
-
+/* Styling for 'today' cell */
 .calendar-cell.today {
-    border-color: rgba(255, 255, 255, 0.4); /* Brighter border for today */
+    border-color: rgba(255, 255, 255, 0.45); /* Brighter border */
     background: var(--calendar-cell-bg-today);
 }
-/* Fade on 'today' cell should target its specific background */
-.calendar-cell.today .calendar-events-preview-list.has-overflow::after {
-    background: linear-gradient(to bottom, transparent, var(--calendar-cell-bg-today) 95%);
-}
-.calendar-cell.today:hover .calendar-events-preview-list.has-overflow::after {
-    /* If 'today' cell has a unique hover, define another var or use general hover */
-    background: linear-gradient(to bottom, transparent, var(--calendar-cell-bg-hover) 95%);
-}
-
-
 .calendar-cell.today .day-number {
     font-weight: 700;
     color: var(--text-color-headings);
 }
 
 /* ==========================================================================
-  Day Events Modal Styles (Largely unchanged from previous good version)
+  Day Events Modal Styles
   ========================================================================== */
 .day-events-modal {
     position: fixed;
@@ -360,7 +332,6 @@
     line-height: 1;
     transition: color 0.2s ease, transform 0.2s ease;
 }
-
 .day-events-modal .modal-close-btn:hover {
     color: var(--text-color-headings);
     transform: scale(1.1);
@@ -375,11 +346,7 @@
     padding-bottom: 12px;
 }
 
-.day-events-modal .day-event-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
+.day-events-modal .day-event-list { list-style: none; padding: 0; margin: 0; }
 
 .day-events-modal .day-event-item {
     padding: 10px 8px;
@@ -392,160 +359,62 @@
     transition: background-color 0.2s ease;
     border-radius: 6px;
 }
+.day-events-modal .day-event-item:hover { background-color: rgba(255, 255, 255, 0.07); }
+.day-events-modal .day-event-item:last-child { border-bottom: none; }
 
-.day-events-modal .day-event-item:hover {
-    background-color: rgba(255, 255, 255, 0.07);
-}
-
-.day-events-modal .day-event-item:last-child {
-    border-bottom: none;
-}
-
-.day-events-modal .day-event-title {
-    flex-grow: 1;
-    font-weight: 500;
-    color: var(--text-color-primary);
-    font-size: 0.95rem;
-}
-
-.day-events-modal .day-event-group {
-    font-size: 0.8em;
-    color: var(--text-color-secondary);
-    flex-shrink: 0;
-    max-width: 100px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.day-events-modal .day-event-time {
-    font-size: 0.8em;
-    color: var(--text-color-secondary);
-    flex-shrink: 0;
-}
+.day-events-modal .day-event-title { flex-grow: 1; font-weight: 500; color: var(--text-color-primary); font-size: 0.95rem; }
+.day-events-modal .day-event-group { font-size: 0.8em; color: var(--text-color-secondary); flex-shrink: 0; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-events-modal .day-event-time { font-size: 0.8em; color: var(--text-color-secondary); flex-shrink: 0; }
 
 .day-events-modal .modal-content::-webkit-scrollbar { width: 8px; }
 .day-events-modal .modal-content::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
 .day-events-modal .modal-content::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.25); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
 
-
 /* ==========================================================================
   Media Queries & Mobile Adjustments
   ========================================================================== */
 @media (max-width: 768px) {
-    .calendar-view {
-        padding: 10px;
-    }
+    .calendar-view { padding: 10px; }
+    .calendar-header { padding: 0 0 10px 0; margin-bottom: 10px; }
+    .calendar-month-year { font-size: 1.1rem; }
+    .calendar-nav { width: 32px; height: 32px; line-height: 32px; font-size: 1.2rem; }
+    .calendar-days-header { font-size: 0.75rem; padding-bottom: 5px; }
+    .calendar-grid { gap: 4px; }
 
-    .calendar-header {
-        padding: 0 0 10px 0;
-        margin-bottom: 10px;
+    .calendar-cell { padding: 6px; border-radius: 6px; min-height: 75px; }
+    .calendar-cell .day-number { font-size: 0.8rem; margin-bottom: 4px; }
+    .calendar-cell .calendar-events-preview-list { gap: 3px; }
+    .calendar-cell .calendar-events-preview-list.has-overflow {
+        mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 85%); /* Adjust mask for smaller cells */
+        -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 85%);
     }
-
-    .calendar-month-year {
-        font-size: 1.1rem;
-    }
-
-    .calendar-nav {
-        width: 32px;
-        height: 32px;
-        line-height: 32px;
-        font-size: 1.2rem;
-    }
-
-    .calendar-days-header {
-        font-size: 0.75rem;
-        padding-bottom: 5px;
-    }
-
-    .calendar-grid {
-        gap: 4px;
-    }
-
-    .calendar-cell {
-        padding: 6px;
-        border-radius: 6px;
-        min-height: 75px;
-    }
-
-    .calendar-cell .day-number {
-        font-size: 0.8rem;
-        margin-bottom: 4px;
-    }
-
-    .calendar-cell .calendar-events-preview-list {
-        gap: 3px;
-    }
-    .calendar-cell .calendar-events-preview-list.has-overflow::after {
-        height: 20px;
-        /* Ensure mobile also respects the cell background for fade target */
-        background: linear-gradient(to bottom, transparent, var(--calendar-cell-bg) 90%);
-    }
-    .calendar-cell:hover .calendar-events-preview-list.has-overflow::after {
-         background: linear-gradient(to bottom, transparent, var(--calendar-cell-bg-hover) 90%);
-    }
-    .calendar-cell.today .calendar-events-preview-list.has-overflow::after {
-        background: linear-gradient(to bottom, transparent, var(--calendar-cell-bg-today) 90%);
-    }
-     .calendar-cell .event-dot {
-        width: 6px;
-        height: 6px;
-    }
-    .calendar-cell .calendar-event-item-preview {
-        font-size: 0.7em;
-        gap: 5px;
+    .calendar-cell .event-dot { width: 6px; height: 6px; }
+    .calendar-cell .calendar-event-item-preview { font-size: 0.7em; gap: 5px; }
+    .calendar-cell .calendar-events-preview-list.has-overflow .calendar-event-item-preview.is-fading-out {
+        mask-image: linear-gradient(to bottom, black 20%, transparent 80%); /* Adjust sub-mask for mobile */
+        -webkit-mask-image: linear-gradient(to bottom, black 20%, transparent 80%);
     }
 
     .calendar-cell .more-events-indicator {
         font-size: 0.65em;
         padding: 2px 8px;
         margin-top: 4px;
-        backdrop-filter: blur(2px); /* Lighter blur on mobile if perf is an issue */
-        -webkit-backdrop-filter: blur(2px);
+        backdrop-filter: blur(3px); /* Lighter blur on mobile */
+        -webkit-backdrop-filter: blur(3px);
         box-shadow: 0 1px 3px rgba(0,0,0,0.25);
     }
 
-    /* Planner pane specific overrides ... (kept as is) */
+    /* Planner pane specific overrides ... */
     .planner-pane.calendar-view-active.mobile-event-view-active .group-list-area,
-    .planner-pane.calendar-view-active.mobile-event-view-active .event-collage-area {
-        display: none !important;
-        flex: 0 0 0 !important;
-        opacity: 0;
-        pointer-events: none;
-    }
+    .planner-pane.calendar-view-active.mobile-event-view-active .event-collage-area { display: none !important; flex: 0 0 0 !important; opacity: 0; pointer-events: none; }
+    .planner-pane.calendar-view-active.mobile-event-view-active .calendar-view { display: flex !important; flex: 1 1 auto !important; opacity: 1; pointer-events: auto; }
+    .planner-pane.calendar-view-active .event-panel { position: relative; transform: none !important; }
 
-    .planner-pane.calendar-view-active.mobile-event-view-active .calendar-view {
-        display: flex !important;
-        flex: 1 1 auto !important;
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    .planner-pane.calendar-view-active .event-panel {
-        position: relative;
-        transform: none !important;
-    }
-
-    /* Day Events Modal on Mobile ... (kept as is) */
-    .day-events-modal .modal-content {
-        padding: 15px 20px;
-        max-height: 80vh;
-        width: 95%;
-    }
-    .day-events-modal h3 {
-        font-size: 1.25rem;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-    }
-    .day-events-modal .day-event-item {
-        padding: 8px 5px;
-        gap: 8px;
-    }
-    .day-events-modal .day-event-title {
-        font-size: 0.9rem;
-    }
+    /* Day Events Modal on Mobile ... */
+    .day-events-modal .modal-content { padding: 15px 20px; max-height: 80vh; width: 95%; }
+    .day-events-modal h3 { font-size: 1.25rem; margin-bottom: 15px; padding-bottom: 10px; }
+    .day-events-modal .day-event-item { padding: 8px 5px; gap: 8px; }
+    .day-events-modal .day-event-title { font-size: 0.9rem; }
     .day-events-modal .day-event-group,
-    .day-events-modal .day-event-time {
-        font-size: 0.75em;
-    }
+    .day-events-modal .day-event-time { font-size: 0.75em; }
 }
