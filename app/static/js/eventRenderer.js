@@ -15,7 +15,7 @@ const collageViewport = document.getElementById('collage-viewport');
 // Store layout instances (Node Element -> Layout Manager Instance)
 export const layoutInstances = new Map();
 
-const MAX_CELL_EVENT_PREVIEWS = 3; // Number of event titles to show directly in cell
+const OVERFLOW_THRESHOLD = 4; // If more than this number of events, show fade and 'more' indicator
 
 // --- Day Events Modal Elements ---
 let dayEventsModalEl = null;
@@ -479,8 +479,7 @@ export function renderCalendar(year, month) {
     const createOtherMonthCellElement = (dayNum) => {
         const cell = document.createElement('div');
         cell.className = "calendar-cell other-month";
-        // Add day number and an empty preview list for consistent DOM structure
-        cell.innerHTML = `<span class="day-number">${dayNum}</span><div class="calendar-events-preview-list"></div>`;
+        cell.innerHTML = `<span class="day-number">${dayNum}</span><div class="calendar-events-preview-list"></div>`; // Include empty list
         return cell;
     };
 
@@ -496,7 +495,7 @@ export function renderCalendar(year, month) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         const isToday = currentDate.getTime() === today.getTime();
         const eventsOnThisDay = eventsByDate[dateStr] || [];
-        
+
         const cell = document.createElement('div');
         cell.className = "calendar-cell";
         if (isToday) cell.classList.add("today");
@@ -513,49 +512,45 @@ export function renderCalendar(year, month) {
         const previewListContainer = document.createElement('div');
         previewListContainer.className = 'calendar-events-preview-list';
 
-        const numEventsToDisplayInCell = Math.min(eventsOnThisDay.length, MAX_CELL_EVENT_PREVIEWS);
-
-        for (let j = 0; j < numEventsToDisplayInCell; j++) {
-            const event = eventsOnThisDay[j];
+        // Render *all* events for the day into the preview list container
+        eventsOnThisDay.forEach(event => { // REMOVED .slice()
             const eventItemEl = document.createElement('div');
             eventItemEl.className = 'calendar-event-item-preview';
 
             const eventDot = document.createElement('span');
             eventDot.className = 'event-dot';
-            // Cycle through 6 pastel color classes (color-1 to color-6)
-            eventDot.classList.add(`color-${(j % 6) + 1}`);
-            // Example: if event object had a specific color:
-            // if (event.color) eventDot.style.backgroundColor = event.color;
+            // Cycle through 6 color classes
+            eventDot.classList.add(`color-${(event.id % 6) + 1}`); // Use event ID for potentially consistent color per event type? Or just index j above. Index j might be better as it cycles evenly. Let's use a stable property like event ID if available, or just index for variety. Using index of this loop `eventsOnThisDay.forEach((event, j) => ... eventDot.classList.add(`color-${(j % 6) + 1}`))` is simpler. Let's stick with index:
+            // To use index: change forEach to: `eventsOnThisDay.forEach((event, j) => { ... eventDot.classList.add(`color-${(j % 6) + 1}`); ... });`
 
             const eventTitlePreview = document.createElement('span');
             eventTitlePreview.className = 'event-title-preview';
             eventTitlePreview.textContent = event.title || 'Untitled Event';
-            
+
             eventItemEl.appendChild(eventDot);
             eventItemEl.appendChild(eventTitlePreview);
             eventItemEl.title = `${event.title || 'Untitled Event'} (${event.group_name || 'Personal'})`; // Tooltip
 
-            // If this is the last item being shown AND there are more hidden events,
-            // apply the special "is-fading-out" class for the glazed effect.
-            if (j === numEventsToDisplayInCell - 1 && eventsOnThisDay.length > MAX_CELL_EVENT_PREVIEWS) {
-                eventItemEl.classList.add('is-fading-out');
-            }
+            // REMOVED: is-fading-out class logic here
+
             previewListContainer.appendChild(eventItemEl);
-        }
+        });
         cell.appendChild(previewListContainer);
 
-        // "More Events" Indicator
-        if (eventsOnThisDay.length > MAX_CELL_EVENT_PREVIEWS) {
-            const remainingCount = eventsOnThisDay.length - MAX_CELL_EVENT_PREVIEWS;
+        // "More Events" Indicator and .has-overflow class
+        // Apply these if the total number of events exceeds a threshold
+        if (eventsOnThisDay.length > OVERFLOW_THRESHOLD) { // Check total count
+            const remainingCount = eventsOnThisDay.length - OVERFLOW_THRESHOLD; // This count is less relevant now, the pill just means "more exist"
             const moreIndicator = document.createElement('div');
             moreIndicator.className = 'more-events-indicator';
-            moreIndicator.textContent = `+${remainingCount} more`;
+            moreIndicator.textContent = `+${eventsOnThisDay.length - OVERFLOW_THRESHOLD} more`; // Show actual count
+
             cell.appendChild(moreIndicator);
-            
-            // Add class to preview list container to enable its general bottom fade
+
+            // Add class to preview list container to enable its mask
             previewListContainer.classList.add('has-overflow');
         }
-        
+
         // Click listener for the cell to open day events modal
         if (eventsOnThisDay.length > 0) {
             cell.addEventListener('click', () => {
@@ -574,9 +569,11 @@ export function renderCalendar(year, month) {
 
     // Dynamically set grid rows for proper filling of space
     const totalCellsInGrid = firstDayWeekday + numDays + remainingCells;
-    const numRows = Math.ceil(totalCellsInGrid / 7); 
-    // minmax ensures rows have a minimum height but can grow to fill available space (1fr)
-    calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, minmax(90px, 1fr))`;
+    const numRows = Math.ceil(totalCellsInGrid / 7);
+    // Now, minmax height is more about the grid structure itself, not pushed by content
+    // The content (event list) is constrained by its max-height
+    // Keeping 1fr still ensures rows distribute remaining space evenly
+    calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, minmax(90px, 1fr))`; // Keep base min-height
 }
 
 
