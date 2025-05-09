@@ -5,10 +5,11 @@ import { loadGroups, groupsData, parseHash, updateHash } from './dataHandle.js';
 import { renderGroupEvents, showContextMenu } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
 import { hookEventFilterBar } from './eventActions.js';
-import { setupModal, openEventModal } from './modalManager.js';
+import { setupModal as setupEventDetailsModal, openEventModal } from './modalManager.js'; // Renamed for clarity
+import { setupCreateGroupModal } from './groupModalManager.js'; // <-- NEW IMPORT
 import { setupViewportInteractions, getTransformState, setTransformState, debounce } from './viewportManager.js';
 import { setupSearchWidget } from './search.js';
-import { initInsightsManager } from './insightsManager.js'; // <-- NEW IMPORT
+import { initInsightsManager } from './insightsManager.js';
 
 // --- Global Variables ---
 window.draggingAllowed = true; // Still needed for viewport panning
@@ -71,7 +72,8 @@ async function setupPlannerView() {
      if (!activeGroupAvatarEl) console.warn("Active group avatar element missing.");
 
 
-    setupModal(); // Setup modal regardless of other elements
+    setupEventDetailsModal(); // Setup event details modal
+    setupCreateGroupModal(); // <-- SETUP NEW CREATE GROUP MODAL
     // Only setup viewport interactions if the collage exists
     if (collageViewport && eventPanelsContainer) {
         setupViewportInteractions(collageViewport, eventPanelsContainer);
@@ -79,7 +81,7 @@ async function setupPlannerView() {
     setupViewSwitching();
     hookEventFilterBar();
     hookCalendarNavigation();
-    initInsightsManager(); // <-- INITIALIZE INSIGHTS MANAGER
+    initInsightsManager(); 
 
     // Load groups only if group list exists
     if(groupListUL) {
@@ -115,7 +117,7 @@ async function setupPlannerView() {
         // If no group activated from hash, try the first group (on desktop)
         const isMobile = window.innerWidth <= 768;
         if (!activated && !isMobile && groupListUL) {
-            const firstLi = groupListUL.querySelector(".group-item");
+            const firstLi = groupListUL.querySelector(".group-item:not(.add-new-group-item)"); // Exclude create button
             if (firstLi) {
                 const firstGroupId = firstLi.dataset.groupId;
                  console.log(`Activating first group: ${firstGroupId}`);
@@ -140,7 +142,8 @@ async function setupPlannerView() {
     // Group list click
     groupListUL?.addEventListener('click', (e) => {
         const li = e.target.closest('.group-item');
-        if (!li) return;
+        if (!li || li.classList.contains('add-new-group-item')) return; // Ignore clicks on the "Add Group" button here
+        
         // Allow re-clicking active on mobile to show view, but not on desktop
         if (li.classList.contains('active') && window.innerWidth > 768) return;
         const groupId = li.dataset.groupId;
@@ -180,7 +183,7 @@ async function setupPlannerView() {
             if (!isCurrentlyMobile) { // Transitioning TO Desktop
                 // Ensure a group is active if we are in the groups view
                 if (currentLogicalView === 'groups') {
-                     const activeLi = groupListUL?.querySelector('.group-item.active') || groupListUL?.querySelector('.group-item');
+                     const activeLi = groupListUL?.querySelector('.group-item.active:not(.add-new-group-item)') || groupListUL?.querySelector('.group-item:not(.add-new-group-item)');
                      if (activeLi) {
                          console.log("Resize to Desktop: Re-activating group:", activeLi.dataset.groupId);
                          activateGroup(activeLi, activeLi.dataset.groupId); // Re-activate to ensure collage shows
@@ -218,6 +221,9 @@ async function activateGroup(groupListItem, groupId) {
          console.warn("activateGroup called with invalid item or groupId:", groupListItem, groupId);
          return false;
     }
+    if (groupListItem.classList.contains('add-new-group-item')) { // Prevent activating the "Create Group" button
+        return false;
+    }
      // Ensure elements exist before proceeding
      if (!groupListUL || !activeGroupNameEl || !activeGroupAvatarEl || !plannerPane || !eventPanelsContainer) {
          console.error("Cannot activate group: Required UI elements missing.");
@@ -233,7 +239,7 @@ async function activateGroup(groupListItem, groupId) {
      console.log(`Activating Group: ${group.name} (ID: ${groupId})`);
 
     const isMobile = window.innerWidth <= 768;
-    const currentActiveGroupLi = groupListUL.querySelector('.group-item.active');
+    const currentActiveGroupLi = groupListUL.querySelector('.group-item.active:not(.add-new-group-item)');
 
     // Save state of the previously active group
     if (currentActiveGroupLi && currentActiveGroupLi !== groupListItem) {
@@ -265,7 +271,7 @@ async function activateGroup(groupListItem, groupId) {
      } catch (e) {
          console.warn("Could not set transform state:", e);
          // Ensure transform is reset even on error
-          eventPanelsContainer.style.transform = 'translate(0px, 0px) scale(1)';
+          if(eventPanelsContainer) eventPanelsContainer.style.transform = 'translate(0px, 0px) scale(1)';
      }
 
 

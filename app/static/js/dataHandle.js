@@ -58,13 +58,16 @@ export async function loadGroups() {
         groupsData.length = 0; // Clear existing
         groupsData.push(...groups);
 
-        const groupList = document.querySelector('.group-list-area ul');
-        if (!groupList) {
-            console.warn("Group list UL element not found.");
+        const groupListUL = document.querySelector('.group-list-area .groups-ul'); // Target specific UL
+        if (!groupListUL) {
+            console.warn("Group list UL element (.groups-ul) not found.");
             return; // Cannot populate list
         }
 
-        groupList.innerHTML = ''; // Clear previous items
+        // REMOVED: Logic for detaching/re-attaching the "Add New Group" button
+        // as it's now outside this UL.
+
+        groupListUL.innerHTML = ''; // Clear previous dynamic items
 
         groups.forEach(group => {
             const li = document.createElement('li');
@@ -76,19 +79,13 @@ export async function loadGroups() {
             li.innerHTML = `
                 <img src="${group.avatar_url || '/static/img/default-group-avatar.png'}" alt="${group.name || 'Group'} Avatar" class="group-avatar">
                 <span class="group-name">${group.name || 'Unnamed Group'}</span>`;
-            groupList.appendChild(li);
+            groupListUL.appendChild(li);
         });
 
         // Call handler attachment AFTER list is populated
         // NOTE: Click handling is now primarily done in main.js for better state management.
-        // attachGroupClickHandlers(); // REMOVE this if main.js handles the clicks on the UL
-
-        // Process events only if needed immediately (might be redundant if renderGroupEvents does it)
-        // processAllEvents(); // Consider calling this only when switching to 'events' or 'calendar' view
 
         console.log("Groups loaded:", groupsData.length);
-
-        // Don't automatically click firstLi here, let main.js handle initial activation logic
 
     } catch (error) {
         console.error("Error loading groups:", error);
@@ -140,47 +137,4 @@ export function processAllEvents() {
     console.log(`Processed ${allEventsData.length} events for calendar/list based on groupsData.`);
 }
 
-
-// --- Redundant Click Handler (Keep ONLY if main.js doesn't handle it) ---
-// It's generally better to have a single point of handling in main.js using event delegation.
-/*
-export function attachGroupClickHandlers() {
-    const groupListUL = document.querySelector('.group-list-area ul');
-    if (!groupListUL) return;
-
-    // Remove previous listener if any (simple approach)
-    // A more robust way involves storing the listener function reference
-    // groupListUL.removeEventListener('click', handleGroupItemClick); // Needs named function
-
-    const handleGroupItemClick = (e) => {
-        const li = e.target.closest('.group-item');
-        if (!li || li.classList.contains('active')) return; // Ignore if not on item or already active
-
-        // Remove active from others
-        document.querySelectorAll('.group-item.active').forEach(item => item.classList.remove('active'));
-        // Add active to clicked
-        li.classList.add('active');
-
-        // Update header (example, adjust selectors/logic as needed)
-        const name = li.dataset.groupName || 'Group Events';
-        const avatar = li.dataset.groupAvatar || '/static/img/default-group-avatar.png';
-        const activeGroupNameEl = document.getElementById('active-group-name');
-        const activeGroupAvatarEl = document.getElementById('active-group-avatar');
-        if (activeGroupNameEl) activeGroupNameEl.textContent = name;
-        if (activeGroupAvatarEl) activeGroupAvatarEl.src = avatar;
-
-
-        const groupId = li.dataset.groupId;
-        console.log(`Group item clicked (dataHandle): ID ${groupId}`);
-        if (groupId) {
-            // Call renderGroupEvents from eventRenderer.js
-            renderGroupEvents(groupId);
-            // Update hash
-            updateHash('groups', groupId);
-        }
-    };
-
-    groupListUL.addEventListener('click', handleGroupItemClick);
-}
-*/
 // --- END OF FILE dataHandle.js ---

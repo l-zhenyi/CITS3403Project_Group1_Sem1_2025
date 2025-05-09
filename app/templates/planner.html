@@ -34,10 +34,10 @@
 
     <div class="planner-pane" id="planner-pane">
 
-        {# Left Side: Group List (No Functional Changes) #}
+        {# Left Side: Group List #}
         <aside class="group-list-area">
             <div class="mobile-list-header"></div>
-            <ul>
+            <ul class="groups-ul"> {# Added a class to the UL for easier selection #}
                 {# Check if groups exist before looping #}
                 {% if groups %}
                 {% for group in groups %}
@@ -60,6 +60,11 @@
                 </li>
                 {% endif %}
             </ul>
+            {# MOVED THE NEW GROUP BUTTON HERE - CHANGED TO <button> #}
+            <button class="add-new-group-button-fixed" id="add-new-group-button">
+                <span class="add-new-group-icon">+</span>
+                <span class="add-new-group-text">Create New Group</span>
+            </button>
         </aside>
 
         {# Right Side: Event Collage Area (No Functional Changes) #}
@@ -269,6 +274,50 @@
             {# <div class="modal-footer"> ... </div> #}
         </div>
     </div> <!-- End of Modal Backdrop -->
+
+    <!-- Create Group Modal -->
+    <div id="create-group-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content glassy create-group-modal-content">
+            <button class="modal-close-btn" id="create-group-modal-close-btn-x" aria-label="Close create group dialog">×</button>
+            <div class="modal-header">
+                <h2 id="create-group-modal-title">Create New Group</h2>
+            </div>
+            <form id="create-group-form">
+                <div class="modal-body">
+                    {# MODIFIED LAYOUT: Each main input on its own line #}
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-group-name">Group Name*</label>
+                            <input type="text" id="new-group-name" name="name" required class="modal-input">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-group-description">Description (Optional)</label>
+                            <textarea id="new-group-description" name="description" rows="3" class="modal-textarea"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-group">
+                            <h4>Add Friends to Group (Optional)</h4>
+                            <input type="text" id="modal-friend-search" placeholder="Search friends..." class="modal-input friend-search-input">
+                            <div id="modal-friends-list-container" class="friends-list-scroll-container">
+                                <p class="loading-friends-message">Loading friends...</p>
+                                {# Friends list populated by JS #}
+                            </div>
+                        </div>
+                    </div>
+                    <div id="create-group-error-message" class="modal-error-message" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="button secondary" id="create-group-cancel-btn">Cancel</button>
+                    <button type="submit" class="button primary" id="create-group-save-btn">Create Group</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
 </main>
 {# Optional: Context menu container if still used #}

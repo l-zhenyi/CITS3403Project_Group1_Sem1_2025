@@ -5,24 +5,38 @@
     ========================================================================== */
 .group-list-area {
     flex: 0 0 340px;
-    height: 100%;
     min-height: 0;
-    padding: 12px;
+    display: block;
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    padding: 12px 12px 0 12px;
     border-right: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 18px 0 0 18px;
-    position: relative;
     z-index: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
     background-color: transparent;
     transition: flex 0.3s ease, opacity 0.3s ease;
 }
 
-.group-list-area ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.group-list-scroll-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
 }
+
+.groups-ul {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 65px; /* Height of the button */
+    overflow-y: auto;
+    padding: 12px 12px 0 12px;
+    margin: 0;
+    list-style: none;
+}
+
 
 .group-item {
     display: flex;
@@ -76,6 +90,45 @@
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.9);
     white-space: nowrap;
+}
+
+/* Styling for the "Create New Group" button (now a <button>) */
+.add-new-group-button-fixed {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1.5px dashed rgba(255, 255, 255, 0.35);
+    border-radius: 10px;
+    padding: 15px 10px;
+    width: calc(100% - 24px); /* match .group-list-area padding */
+    margin: 0 12px 12px 12px;
+    text-align: center;
+    color: #e0e0e5;
+    font-family: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+    box-sizing: border-box;
+    backdrop-filter: blur(8px);
+}
+
+.add-new-group-button-fixed:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.55);
+    color: #fff;
+}
+
+.add-new-group-icon {
+    font-size: 1.6em; /* Larger icon */
+    margin-right: 10px;
+    line-height: 1;
+    font-weight: 300;
+}
+
+.add-new-group-text {
+    font-weight: 500;
 }
 
 /* ==========================================================================
@@ -660,7 +713,7 @@
 /* --- Mobile Specific Adjustments --- */
 @media (max-width: 768px) {
     .group-list-area {
-        padding: 8px;
+        padding: 8px 8px 0 8px; /* Remove bottom padding for fixed button */
         border-radius: 12px;
     }
 
@@ -850,7 +903,7 @@
         display: block;
         border-right: none;
         border-radius: 12px;
-        padding: 8px;
+       /* padding: 8px; -- Handled by parent */
         opacity: 1;
         pointer-events: auto;
         transition: flex 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
