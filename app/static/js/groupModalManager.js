@@ -16,7 +16,7 @@ async function fetchFriends() {
     if (friendsListContainer) friendsListContainer.innerHTML = '<p class="loading-friends-message">Loading friends...</p>';
 
     try {
-        const response = await fetch('/api/me/friends');
+        const response = await fetch('/api/me/friends'); // GET, no CSRF needed
         if (!response.ok) throw new Error('Failed to fetch friends list.');
         allFriendsCache = await response.json();
         return allFriendsCache;
@@ -156,11 +156,14 @@ async function handleCreateGroupSubmit(event) {
 
     try {
         const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
         if (csrfTokenMeta) {
             headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
         } else {
-            console.warn("CSRF token not found for Create Group. Request may fail.");
+            console.warn("CSRF token meta tag not found for Create Group. Request may fail.");
         }
 
         const response = await fetch('/api/groups', {

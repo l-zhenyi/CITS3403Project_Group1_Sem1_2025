@@ -179,8 +179,8 @@ async function _fetchEventDetails(eventId) { /* ... (same) ... */
     modalRsvpControls.style.opacity = '0.6';
     try {
         const [attendeesRes, myRsvpRes] = await Promise.all([
-            fetch(`/api/events/${eventId}/attendees`),
-            fetch(`/api/events/${eventId}/my-rsvp`)
+            fetch(`/api/events/${eventId}/attendees`), // GET, no CSRF needed
+            fetch(`/api/events/${eventId}/my-rsvp`)   // GET, no CSRF needed
         ]);
         if (!attendeesRes.ok || !myRsvpRes.ok) {
              throw new Error(`Failed to fetch details (${attendeesRes.status}/${myRsvpRes.status})`);
@@ -290,7 +290,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                     const targetRect = targetElement.getBoundingClientRect();
                     costInterpretationHelper.style.position = 'absolute'; costInterpretationHelper.style.boxSizing = 'border-box';
                     costInterpretationHelper.style.left = `${targetRect.left + window.pageXOffset}px`;
-                    costInterpretationHelper.style.top = `${targetRect.bottom + window.pageYOffset + 20}px`;
+                    costInterpretationHelper.style.top = `${targetRect.bottom + window.pageYOffset + 20}px`; // Increased gap
                     costInterpretationHelper.style.width = `${targetRect.width}px`;
                     costInterpretationHelper.classList.add('visible');
                 };
@@ -341,7 +341,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             locationMapFloatingPanel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
             const textInputRect = locationTextInput.getBoundingClientRect(); // Position below the text input
             locationMapFloatingPanel.style.left = `${textInputRect.left + window.pageXOffset}px`;
-            locationMapFloatingPanel.style.top = `${textInputRect.bottom + window.pageYOffset + 20}px`;
+            locationMapFloatingPanel.style.top = `${textInputRect.bottom + window.pageYOffset + 20}px`; // Increased gap
             locationMapFloatingPanel.style.width = `${Math.max(textInputRect.width, 350)}px`; // Min width
 
             setTimeout(() => { // Initialize Leaflet Map
@@ -554,8 +554,9 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             let payload = {};
             if (currentEditMode === 'cost') { /* ... (payload from inputElementForDirtyCheckAndSave) ... */
                 const parsedForSave = parseAndFormatCost(inputElementForDirtyCheckAndSave.value);
-                payload.cost_display = parsedForSave.cost_display_standardized; payload.cost_value = parsedForSave.cost_value;
-                payload.original_input_text = inputElementForDirtyCheckAndSave.value;
+                payload.cost_display = parsedForSave.cost_display_standardized; // Use this for the model's cost_display field
+                payload.cost_value = parsedForSave.cost_value;
+                payload.original_input_text = inputElementForDirtyCheckAndSave.value; // Send this for the model's cost_display for max fidelity
             } else if (currentEditMode === 'date') { /* ... (payload from inputElementForDirtyCheckAndSave) ... */
                 if (!inputElementForDirtyCheckAndSave.value) { payload.date = null; }
                 else { try { payload.date = new Date(inputElementForDirtyCheckAndSave.value).toISOString(); }
@@ -571,29 +572,23 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             }
             saveBtn.classList.add('is-loading'); saveBtn.innerHTML = ''; saveBtn.disabled = true; cancelBtn.disabled = true;
             try {
-                // **** START CSRF TOKEN HANDLING ****
                 const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-                let csrfToken = null;
-                if (csrfTokenMeta) {
-                    csrfToken = csrfTokenMeta.getAttribute('content');
-                } else {
-                    console.warn('CSRF token meta tag not found. PATCH request might fail.');
-                }
-
                 const requestHeaders = {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 };
-                if (csrfToken) {
-                    requestHeaders['X-CSRFToken'] = csrfToken;
+                if (csrfTokenMeta) {
+                    requestHeaders['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
+                } else {
+                     console.warn('CSRF token meta tag not found. PATCH request might fail.');
                 }
-                // **** END CSRF TOKEN HANDLING ****
 
                 const response = await fetch(`/api/events/${currentEventId}`, {
                     method: 'PATCH',
-                    headers: requestHeaders, // Use the updated headers
+                    headers: requestHeaders, 
                     body: JSON.stringify(payload)
                 });
-                if (!response.ok) { const errData = await response.json().catch(()=>({})); throw new Error(errData.detail || `Update failed (${response.status})`);}
+                if (!response.ok) { const errData = await response.json().catch(()=>({})); throw new Error(errData.detail || errData.error || `Update failed (${response.status})`);}
                 const updatedEventDataFromServer = await response.json();
                 exitEditMode(updatedEventDataFromServer);
                 document.dispatchEvent(new CustomEvent('eventDataUpdated', { detail: { eventId: currentEventId, field: currentEditMode, value: updatedEventDataFromServer[currentEditMode], fullEvent: updatedEventDataFromServer }, bubbles: true, composed: true }));
@@ -613,8 +608,8 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
         if (inputElementForDirtyCheckAndSave) { /* ... (keydown handler) ... */
             inputElementForDirtyCheckAndSave.onkeydown = (ev) => {
                 const isTextarea = (inputElementForDirtyCheckAndSave && inputElementForDirtyCheckAndSave.tagName === 'TEXTAREA');
-                const nonTextareaEnter = !isTextarea && !(currentEditMode ==='cost' && ev.shiftKey);
-                if (ev.key === 'Enter' && nonTextareaEnter) { // Enter saves for all non-textarea fields now
+                const nonTextareaEnter = !isTextarea && !(currentEditMode ==='cost' && ev.shiftKey); // Allow shift+enter in cost
+                if (ev.key === 'Enter' && nonTextareaEnter) { 
                     ev.preventDefault(); saveBtn.click();
                 } else if (ev.key === 'Escape') { cancelChanges(true); }
             };
@@ -630,7 +625,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
 function _closeEventModal() { /* ... (same) ... */
     if (!isInitialized || !modalElement || !modalElement.classList.contains('visible')) return;
     if (activeEditField && activeEditField.cancelChanges) {
-        if (!activeEditField.cancelChanges(false)) return;
+        if (!activeEditField.cancelChanges(false)) return; // Pass false to allow prompt if dirty
     }
     modalElement.classList.remove('visible'); const transitionDuration = 300;
     const handleTransitionEnd = (event) => {
@@ -656,29 +651,23 @@ function _setupInternalModalEventListeners() { /* ... (same, RSVP verified) ... 
             if (rsvpConfirmationMessage) { rsvpConfirmationMessage.textContent = "Updating RSVP..."; rsvpConfirmationMessage.style.color = ''; rsvpConfirmationMessage.style.display = 'block';}
             modalRsvpControls.style.pointerEvents = 'none'; modalRsvpControls.style.opacity = '0.6';
             try {
-                // **** START CSRF TOKEN HANDLING ****
                 const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-                let csrfToken = null;
+                const requestHeaders = {
+                    'Content-Type': 'application/json',
+                     'Accept': 'application/json'
+                };
                 if (csrfTokenMeta) {
-                    csrfToken = csrfTokenMeta.getAttribute('content');
+                    requestHeaders['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
                 } else {
                     console.warn('CSRF token meta tag not found for RSVP. POST request might fail.');
                 }
 
-                const requestHeaders = {
-                    'Content-Type': 'application/json'
-                };
-                if (csrfToken) {
-                    requestHeaders['X-CSRFToken'] = csrfToken;
-                }
-                // **** END CSRF TOKEN HANDLING ****
-
                 const response = await fetch(`/api/events/${eventId}/rsvp`, {
                     method: 'POST',
-                    headers: requestHeaders, // Use the updated headers
+                    headers: requestHeaders, 
                     body: JSON.stringify({ status: apiStatus })
                 });
-                if (!response.ok) { const errorData = await response.json().catch(()=>({ detail: `RSVP Update failed (${response.status})` })); throw new Error(errorData.detail);}
+                if (!response.ok) { const errorData = await response.json().catch(()=>({ detail: `RSVP Update failed (${response.status})` })); throw new Error(errorData.detail || errorData.error);}
                 const result = await response.json();
                 _updateRSVPButtonState(result.status);
                 if (rsvpConfirmationMessage) { const friendlyStatus = result.status ? result.status.charAt(0).toUpperCase() + result.status.slice(1) : 'cleared'; rsvpConfirmationMessage.textContent = result.status ? `Your RSVP is set to ${friendlyStatus}!` : "Your RSVP has been cleared."; setTimeout(() => { if(rsvpConfirmationMessage) rsvpConfirmationMessage.style.display = 'none'; }, 3000);}
@@ -704,7 +693,7 @@ export async function openEventModal(eventData) { /* ... (same) ... */
     if (!eventData || !eventData.id) { alert("Error: Invalid event data."); return; }
     _resetModal(); currentEventId = eventData.id;
     if (modalEventImage) modalEventImage.src = eventData.image_url || '/static/img/default-event-logo.png';
-    if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group';
+    if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group'; // Use group_name from eventData
     if (modalEventTitle) { modalEventTitle.textContent = eventData.title || 'Untitled Event'; _makeFieldEditable(modalEventTitle, 'title', eventData.title); }
     if (modalEventDate) { const d = eventData.date ? new Date(eventData.date) : null; modalEventDate.textContent = formatEventDateForDisplay(d); _makeFieldEditable(modalEventDate, 'date', d ? d.toISOString() : null, { inputType: 'datetime-local' }); }
     if (modalEventLocation) {
@@ -717,14 +706,14 @@ export async function openEventModal(eventData) { /* ... (same) ... */
         _makeFieldEditable(modalEventLocation, 'location', initialLocationData, { inputType: 'custom-location-map' });
     }
     if (modalEventCost) {
-        const initialRawCostInput = eventData.cost_display_raw || eventData.cost_display || 'Not specified';
+        const initialRawCostInput = eventData.cost_display || 'Not specified'; // Use cost_display from eventData
         const parsedInitialCost = parseAndFormatCost(initialRawCostInput);
         modalEventCost.textContent = parsedInitialCost.cost_display_standardized;
         _makeFieldEditable(modalEventCost, 'cost', { raw_input_for_field: initialRawCostInput, standardized_display: parsedInitialCost.cost_display_standardized, value: parsedInitialCost.cost_value });
     }
     if (modalDescriptionWrapper && modalEventDescription) {
         const descContent = eventData.description || 'No description provided.';
-        modalEventDescription.innerHTML = descContent;
+        modalEventDescription.innerHTML = descContent; //innerHTML for potential HTML content
         _makeFieldEditable(modalDescriptionWrapper, 'description', descContent, { inputType: 'textarea', isHTML: true, contentDisplayElementId: 'modal-event-description' });
     }
     if (modalRsvpControls) { modalRsvpControls.dataset.eventId = eventData.id; modalRsvpControls.style.display = 'flex'; modalRsvpControls.style.pointerEvents = 'none'; modalRsvpControls.style.opacity = '0.6'; }

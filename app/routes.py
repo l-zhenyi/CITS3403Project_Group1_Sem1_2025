@@ -1,5 +1,7 @@
 # --- START OF FILE routes.py ---
 
+# --- START OF FILE routes.py ---
+
 from flask import render_template, redirect, url_for, flash, request, session, jsonify, abort
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm
@@ -596,7 +598,14 @@ def get_group_nodes(group_id):
     query = db.select(Node).where(Node.group_id == group_id)
 
     if include_events_flag:
-        query = query.options(joinedload(Node.events).joinedload(Event.attendees).joinedload(EventRSVP.user)) # Example of deeper load
+        # Eagerly load events, their attendees (RSVPs), and the users for those RSVPs.
+        # Also load the group associated with the node for each event.
+        query = query.options(
+            joinedload(Node.events)
+                .joinedload(Event.attendees)
+                .joinedload(EventRSVP.user),
+            joinedload(Node.group) # Eager load group for node for group_name in event.to_dict()
+        )
 
     nodes = db.session.scalars(query).unique().all() # .unique() if joinedload might cause duplicates
 
@@ -622,8 +631,14 @@ def get_group_nodes(group_id):
 @login_required
 @require_group_member
 def get_group_events_flat(group_id):
-    events_query = db.select(Event).join(Node).filter(Node.group_id == group_id).order_by(Event.date.desc())
-    events_list = db.session.scalars(events_query).all() # Renamed
+    # Eagerly load related data for to_dict() efficiency
+    events_query = db.select(Event).join(Node).filter(Node.group_id == group_id)\
+        .options(
+            joinedload(Event.node).joinedload(Node.group), # For group_name, group_id
+            joinedload(Event.attendees).joinedload(EventRSVP.user) # For RSVP status
+        )\
+        .order_by(Event.date.desc())
+    events_list = db.session.scalars(events_query).all() 
     events_data = [event.to_dict(current_user_id=current_user.id) for event in events_list]
     return jsonify(events_data)
 
@@ -661,6 +676,11 @@ def create_event_api(group_id):
             cost_value = float(cost_input)
     except (ValueError, TypeError):
         cost_value = None # Explicitly set to None if conversion fails
+    
+    # Ensure location_coordinates and location_key are handled
+    location_coordinates = data.get("location_coordinates")
+    location_key = data.get("location_key")
+
 
     event = Event(
         title=title,
@@ -670,9 +690,18 @@ def create_event_api(group_id):
         image_url=data.get("image_url"),
         cost_display=cost_display,
         cost_value=cost_value,
-        node_id=node_id
+        node_id=node_id,
+        location_coordinates=location_coordinates,
+        location_key=location_key
     )
     db.session.add(event)
+    db.session.flush() # to get event.id for to_dict if it relies on it before commit
+
+    # Eager load node and group for to_dict
+    db.session.refresh(event, attribute_names=['node'])
+    if event.node:
+        db.session.refresh(event.node, attribute_names=['group'])
+
     db.session.commit()
     return jsonify(event.to_dict(current_user_id=current_user.id)), 201
 
@@ -710,25 +739,40 @@ def manage_event(event_id):
     if not event_obj:
         return jsonify({"error": "Event not found"}), 404
 
+    # Eager load for to_dict and authorization checks
+    event_obj_loaded = db.session.query(Event).options(
+        joinedload(Event.node).joinedload(Node.group),
+        joinedload(Event.attendees).joinedload(EventRSVP.user)
+    ).filter(Event.id == event_id).first()
+    
+    if not event_obj_loaded: # Should not happen if event_obj was found, but defensive
+        return jsonify({"error": "Event not found (post-load)"}), 404
+    event_obj = event_obj_loaded
+
+
     group_id_for_event = None
     authorized = False
-    if event_obj.node_id:
-        node_of_event = db.session.get(Node, event_obj.node_id)
-        if node_of_event and node_of_event.group_id:
-            group_id_for_event = node_of_event.group_id
-            if is_group_member(current_user.id, group_id_for_event):
-                authorized = True
+    if event_obj.node_id and event_obj.node and event_obj.node.group_id: # Check event_obj.node exists
+        group_id_for_event = event_obj.node.group_id
+        if is_group_member(current_user.id, group_id_for_event):
+            authorized = True
     
     # For GET, authorization might be broader (e.g., invited guest, public event).
     # For PATCH/DELETE, strictly enforce group membership for now.
     if request.method != "GET" and not authorized:
-        return jsonify({"error": "Unauthorized action. Must be a member of the event's group."}), 403
+        # Check if invited for GET, but for PATCH/DELETE, group membership is stricter
+        is_authorized_by_invite_or_group, _, _ = _check_event_authorization(event_id, current_user.id)
+        if not is_authorized_by_invite_or_group : # Stricter check for modification
+             return jsonify({"error": "Unauthorized action. Must be a member of the event's group."}), 403
+        # if PATCH/DELETE and only invited, not group member, still might want to deny
+        if not is_group_member(current_user.id, group_id_for_event) and group_id_for_event:
+             return jsonify({"error": "Unauthorized action. Must be a member of the event's group to modify."}), 403
+
 
     if request.method == "GET":
-        # Simplified GET authorization for now: only group members.
-        # You might want to expand this later using _check_event_authorization
-        if not authorized:
-             return jsonify({"error": "Unauthorized to view this event. Must be group member."}), 403
+        is_authorized_get, msg_get, status_get = _check_event_authorization(event_id, current_user.id)
+        if not is_authorized_get:
+             return jsonify({"error": msg_get}), status_get
         return jsonify(event_obj.to_dict(current_user_id=current_user.id))
 
     if request.method == "PATCH":
@@ -805,18 +849,15 @@ def manage_event(event_id):
             # else: Malformed date data, ignore or error
 
         # Cost Display (string, usually not empty if cost_value exists)
-        if "cost_display" in data: # Frontend might send 'original_input_text' or 'cost_display'
-            cost_display_val = data.get("cost_display") # Standardized display from parseAndFormatCost
-            original_input = data.get("original_input_text") # Raw input from user
-
-            # Prefer original_input_text if provided, as it's what user typed.
-            # The 'cost_display' on the Event model should store the user's *intended* display,
-            # which is better represented by their raw input.
-            # The parseAndFormatCost in JS is for client-side validation and display standardization in the modal.
-            if original_input is not None: # Check for None, empty string is a valid input for "Free" etc.
-                 event_obj.cost_display = str(original_input) # Ensure it's a string
+        # This field (cost_display) on the model should store the user's original input for display flexibility.
+        if "original_input_text" in data: # Prefer this if sent by frontend
+            original_input = data["original_input_text"]
+            if original_input is not None: # Check for None, empty string is valid (e.g., for "Free")
+                 event_obj.cost_display = str(original_input)
                  updated_fields.append("cost_display")
-            elif cost_display_val is not None: # Fallback if only standardized display is sent
+        elif "cost_display" in data: # Fallback if only standardized display is sent (less ideal)
+            cost_display_val = data.get("cost_display")
+            if cost_display_val is not None:
                  event_obj.cost_display = str(cost_display_val)
                  updated_fields.append("cost_display")
 
@@ -845,11 +886,27 @@ def manage_event(event_id):
              else:
                 try:
                     new_node_id_int = int(new_node_id_val)
-                    if node_belongs_to_group(new_node_id_int, group_id_for_event): # Ensure new node is in same group
-                        event_obj.node_id = new_node_id_int
-                        updated_fields.append("node_id")
-                    else:
-                        return jsonify({"error": "Cannot assign event to a node in a different group or invalid node."}), 400
+                    # Use group_id_for_event which is the group of the event's *original* node
+                    # If event is unassigned (node_id=null), group_id_for_event might be None.
+                    # Need the group_id of the *target* node.
+                    target_node = db.session.get(Node, new_node_id_int)
+                    if not target_node:
+                        return jsonify({"error": "Target node not found."}), 400
+                    
+                    # Event can only be moved to a node within a group the user is a member of.
+                    # And ideally, the original group context of the event should be considered if fixed.
+                    # For simplicity, if an event is part of a group, its new node must be in *that same* group.
+                    # If the event was node-less, it can be assigned to any node in a group the user is a member of.
+                    
+                    if group_id_for_event and target_node.group_id != group_id_for_event:
+                        return jsonify({"error": "Cannot move event to a node in a different group."}), 400
+                    
+                    if not is_group_member(current_user.id, target_node.group_id):
+                        return jsonify({"error": "Cannot assign event to a node in a group you are not a member of."}), 403
+
+                    event_obj.node_id = new_node_id_int
+                    updated_fields.append("node_id")
+
                 except (ValueError, TypeError):
                     return jsonify({"error": "Invalid node_id format."}), 400
 
@@ -858,15 +915,27 @@ def manage_event(event_id):
             try:
                 db.session.commit()
                 app.logger.info(f"Event {event_id} updated fields: {', '.join(updated_fields)}")
+                # Re-fetch with eager loads for consistent response
+                event_obj_updated = db.session.query(Event).options(
+                    joinedload(Event.node).joinedload(Node.group),
+                    joinedload(Event.attendees).joinedload(EventRSVP.user)
+                ).filter(Event.id == event_id).first()
+                return jsonify(event_obj_updated.to_dict(current_user_id=current_user.id))
+
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Error committing updates for event {event_id}: {e}")
                 return jsonify({"error": "Could not save changes to the event."}), 500
         
-        return jsonify(event_obj.to_dict(current_user_id=current_user.id))
+        return jsonify(event_obj.to_dict(current_user_id=current_user.id)) # Return current state if no fields updated
+
 
     if request.method == "DELETE":
-        # Authorization already checked above for DELETE
+        # Authorization already checked
+        # Ensure event_obj has its relationships loaded if needed by dependent deletes or logging
+        # For Event, cascading deletes for EventRSVP and InvitedGuest should be handled by DB schema if set up.
+        # Otherwise, delete them manually here. For now, assume DB handles it.
+
         db.session.delete(event_obj)
         db.session.commit()
         return jsonify({"success": True, "message": "Event deleted successfully."})
@@ -916,19 +985,24 @@ def manage_node(node_id):
     return jsonify({"error": "Method not allowed"}), 405
 
 def _check_event_authorization(event_id, user_id_to_check): # Renamed parameter
-    event_to_check = db.session.get(Event, event_id) # Renamed
+    # Eager load node and group for efficiency in checking group membership.
+    event_to_check = db.session.query(Event).options(
+        joinedload(Event.node).joinedload(Node.group)
+    ).filter(Event.id == event_id).first()
+    
     if not event_to_check:
         return False, "Event not found", 404
 
     user_checking = db.session.get(User, user_id_to_check) # Renamed
     if not user_checking:
-        return False, "User performing check not found", 404
+        return False, "User performing check not found", 404 # Should not happen with @login_required
 
-    if event_to_check.node_id:
-        node_of_event = db.session.get(Node, event_to_check.node_id) # Renamed
-        if node_of_event and node_of_event.group_id and is_group_member(user_id_to_check, node_of_event.group_id):
+    # Check 1: Group Member
+    if event_to_check.node_id and event_to_check.node and event_to_check.node.group_id:
+        if is_group_member(user_id_to_check, event_to_check.node.group_id):
             return True, "Authorized as group member", 200
 
+    # Check 2: Invited Guest
     is_invited = db.session.scalar(
         db.select(InvitedGuest.id).filter_by(event_id=event_to_check.id, email=user_checking.email)
     )
@@ -1273,7 +1347,7 @@ def get_analysis_data(analysis_type):
             )
         final_event_ids_to_sum = db.session.scalars(final_event_ids_to_sum_stmt).all()
 
-        print(f"Final event IDs to sum: {final_event_ids_to_sum}") # Debugging line
+        # print(f"Final event IDs to sum: {final_event_ids_to_sum}") # Debugging line # Keep this commented
         
         if not final_event_ids_to_sum:
             # No events meet all criteria (attended, accessible, and panel's group filter)
@@ -1332,5 +1406,47 @@ def get_analysis_data(analysis_type):
     else:
         return jsonify({"error": f"Analysis type '{analysis_type}' not implemented or not configured correctly."}), 404
 
+
+# --- Endpoint for All User Events (Calendar/List View) ---
+@app.route('/api/me/all_events', methods=['GET'])
+@login_required
+def get_all_my_events():
+    user_id = current_user.id
+    user_email = current_user.email
+
+    # Events from groups user is a member of
+    group_events_stmt = db.select(Event).distinct() \
+        .join(Node, Event.node_id == Node.id) \
+        .join(Group, Node.group_id == Group.id) \
+        .join(GroupMember, Group.id == GroupMember.group_id) \
+        .where(GroupMember.user_id == user_id) \
+        .options(
+            joinedload(Event.node).joinedload(Node.group), # for group_name, group_id in to_dict
+            joinedload(Event.attendees).joinedload(EventRSVP.user) # for rsvp status in to_dict
+        )
+    
+    # Events user is directly invited to
+    invited_events_stmt = db.select(Event).distinct() \
+        .join(InvitedGuest, Event.id == InvitedGuest.event_id) \
+        .where(InvitedGuest.email == user_email) \
+        .options(
+            joinedload(Event.node).joinedload(Node.group),
+            joinedload(Event.attendees).joinedload(EventRSVP.user)
+        )
+
+    group_events = db.session.scalars(group_events_stmt).all()
+    invited_events = db.session.scalars(invited_events_stmt).all()
+
+    # Combine and deduplicate
+    all_user_events_map = {event.id: event for event in group_events}
+    for event in invited_events:
+        if event.id not in all_user_events_map:
+            all_user_events_map[event.id] = event
+    
+    # Sort by date (descending, or choose your preferred default)
+    sorted_events = sorted(list(all_user_events_map.values()), key=lambda e: (e.date is None, e.date), reverse=True)
+
+    events_data = [event.to_dict(current_user_id=user_id) for event in sorted_events]
+    return jsonify(events_data)
 
 # --- END OF FILE routes.py ---

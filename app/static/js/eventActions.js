@@ -1,7 +1,7 @@
 // --- START OF FILE eventActions.js ---
 
 // eventActions.js
-import { groupsData, processAllEvents } from './dataHandle.js';
+import { groupsData, loadAllUserEventsAndProcess } from './dataHandle.js'; // MODIFIED: Removed processAllEvents, using loadAllUserEventsAndProcess
 import { renderGroupEvents, renderAllEventsList, renderCalendar, createNodeElement } from './eventRenderer.js';
 
 let calendarDate = new Date();
@@ -32,10 +32,21 @@ export async function addGroup(name, avatarUrl, makeActive = false) {
 
     const defaultAvatar = avatarUrl || `https://via.placeholder.com/40/cccccc/FFFFFF?text=${name[0].toUpperCase()}`;
 
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const headers = { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    };
+    if (csrfTokenMeta) {
+        headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
+    } else {
+        console.warn("CSRF token meta tag not found. addGroup POST request may fail.");
+    }
+
     // 🔁 Call your Flask API
     const res = await fetch('/api/groups', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify({ name, avatar_url: defaultAvatar })
     });
 

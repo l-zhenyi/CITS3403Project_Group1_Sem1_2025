@@ -1,7 +1,7 @@
 // --- START OF FILE main.js ---
 
 // --- Imports ---
-import { loadGroups, groupsData, parseHash, updateHash } from './dataHandle.js';
+import { loadGroups, groupsData, parseHash, updateHash, loadAllUserEventsAndProcess } from './dataHandle.js'; // Added loadAllUserEventsAndProcess
 import { renderGroupEvents, showContextMenu } from './eventRenderer.js';
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList } from './viewManager.js';
 import { hookEventFilterBar } from './eventActions.js';
@@ -87,6 +87,9 @@ async function setupPlannerView() {
     if(groupListUL) {
         await loadGroups();
     }
+    // Load all events data for calendar and list views
+    await loadAllUserEventsAndProcess();
+
 
     // Activate view based on hash
     const { view: initialView, groupId: initialGroupId } = parseHash();

@@ -95,46 +95,61 @@ export async function loadGroups() {
 
 
 /**
- * Flattens all group events into allEventsData and maps them by date for the calendar view.
- * NOTE: This relies on `groupsData` having nested `events`. This is inefficient.
- * It's better to have a dedicated `/api/events` endpoint for the 'all events' list
- * and `/api/calendar-events` for calendar-specific data.
- * Keeping this structure as per the original file for now.
+ * Fetches all events accessible to the user and processes them for various views.
  */
-export function processAllEvents() {
-    console.warn("processAllEvents relies on groupsData containing nested events, which might be inefficient or outdated. Consider dedicated API endpoints.");
+export async function loadAllUserEventsAndProcess() {
+    console.log("Loading all user events...");
     allEventsData = [];
     eventsByDate = {};
 
-    groupsData.forEach(group => {
-        // This assumes the /api/groups response INCLUDES all events nested within each group.
-        // This is generally NOT how it's structured with the /nodes?include=events approach.
-        // The data for 'all events' list and 'calendar' likely needs separate fetching.
-        const eventsToProcess = group.events || []; // Use events if available
+    try {
+        const response = await fetch('/api/me/all_events'); // GET request, CSRF not strictly needed here
+        if (!response.ok) {
+            throw new Error(`Failed to fetch all user events: ${response.status} ${response.statusText}`);
+        }
+        const events = await response.json();
 
-        eventsToProcess.forEach(event => {
-            // Ensure date is a Date object
-            const eventDate = event.date instanceof Date ? event.date : (event.date ? new Date(event.date) : null);
-            if (!eventDate || isNaN(eventDate)) return; // Skip if date is invalid
+        events.forEach(event => {
+            const eventDate = event.date ? new Date(event.date) : null;
+            if (eventDate && isNaN(eventDate.getTime())) {
+                 console.warn(`Invalid date for event ID ${event.id}: ${event.date}. Skipping this event for calendar/list.`);
+                 return; // Skip if date is invalid
+            }
 
-            allEventsData.push({
+            // Ensure group_name and group_id are directly on the event object for easy access
+            const processedEvent = {
                 ...event,
-                group_id: group.id,
-                group_name: group.name,
-                date: eventDate // Store as Date object
-            });
+                date: eventDate, // Store as Date object
+                // group_id and group_name should be part of event.to_dict()
+                // If not, fallback might be needed or error logged
+                group_id: event.group_id,
+                group_name: event.group_name || 'Direct Invite/Other',
+            };
+            allEventsData.push(processedEvent);
 
-            const dateKey = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
-            if (!eventsByDate[dateKey]) eventsByDate[dateKey] = [];
-            eventsByDate[dateKey].push({
-                title: event.title,
-                group: group.name,
-                id: event.id // Include ID if needed for clicking calendar event
-            });
+            if (eventDate) { // Only add to calendar if there's a valid date
+                const dateKey = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                if (!eventsByDate[dateKey]) eventsByDate[dateKey] = [];
+                eventsByDate[dateKey].push({
+                    title: event.title,
+                    group_name: processedEvent.group_name, // Use consistent name
+                    id: event.id,
+                    // Add any other minimal info needed for calendar popups/tooltips
+                    status: event.current_user_rsvp_status 
+                });
+            }
         });
-    });
+        console.log(`Processed ${allEventsData.length} total events. Events by date keys: ${Object.keys(eventsByDate).length}`);
 
-    console.log(`Processed ${allEventsData.length} events for calendar/list based on groupsData.`);
+    } catch (error) {
+        console.error("Error loading or processing all user events:", error);
+        // Potentially update UI to show error
+        const eventListContainer = document.getElementById('event-list-container');
+        if (eventListContainer) eventListContainer.innerHTML = '<p class="error-message">Could not load events.</p>';
+        const calendarGridEl = document.getElementById('calendar-grid');
+        if (calendarGridEl) calendarGridEl.innerHTML = '<p class="error-message" style="text-align:center; grid-column: 1/-1;">Could not load calendar events.</p>';
+    }
 }
+
 
 // --- END OF FILE dataHandle.js ---
