@@ -69,3 +69,18 @@
     display: flex;
     justify-content: flex-end;
 }
+
+@keyframes slideContainerDown {
+    from {
+        transform: translateY(0);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.messages-section.animate-down {
+    animation: slideContainerDown 0.8s ease-out;
+}
