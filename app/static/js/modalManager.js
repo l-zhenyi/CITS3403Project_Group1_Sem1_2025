@@ -565,7 +565,6 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             } else if (currentEditMode === 'location') {
                 payload.location = inputElementForDirtyCheckAndSave.value; // Text from the main input field
                 payload.location_coordinates = locationMapController.currentCoords; // Coords from map interaction
-                payload.location_key = locationMapController.currentKey;
 
             } else { /* ... (payload from inputElementForDirtyCheckAndSave) ... */
                 payload[currentEditMode] = inputElementForDirtyCheckAndSave.value;

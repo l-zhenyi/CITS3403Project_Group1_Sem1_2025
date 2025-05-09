@@ -224,6 +224,7 @@ class Event(db.Model):
     title: Mapped[str] = mapped_column(String(120))
     date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     location: Mapped[str] = mapped_column(String(120))
+    location_coordinates: Mapped[str] = mapped_column(String(120), nullable=True) # e.g., "lat,lng"
     description: Mapped[str] = mapped_column(String(240), nullable=True)
     image_url: Mapped[str] = mapped_column(String(255), nullable=True)
     cost_display: Mapped[str] = mapped_column(String(50), nullable=True) # User-facing display string
@@ -245,6 +246,7 @@ class Event(db.Model):
             "title": self.title,
             "date": self.date.isoformat().replace('+00:00', 'Z') if self.date and isinstance(self.date, datetime) else None,
             "location": self.location,
+            "location_coordinates": self.location_coordinates,
             "description": self.description,
             "image_url": self.image_url,
             "cost_display": self.cost_display,

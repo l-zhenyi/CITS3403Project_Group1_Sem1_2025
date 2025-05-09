@@ -679,7 +679,6 @@ def create_event_api(group_id):
     
     # Ensure location_coordinates and location_key are handled
     location_coordinates = data.get("location_coordinates")
-    location_key = data.get("location_key")
 
 
     event = Event(
@@ -691,8 +690,7 @@ def create_event_api(group_id):
         cost_display=cost_display,
         cost_value=cost_value,
         node_id=node_id,
-        location_coordinates=location_coordinates,
-        location_key=location_key
+        location_coordinates=location_coordinates
     )
     db.session.add(event)
     db.session.flush() # to get event.id for to_dict if it relies on it before commit

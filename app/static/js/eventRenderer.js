@@ -23,18 +23,6 @@ let dayEventsModalTitleEl = null;
 let dayEventsModalListEl = null;
 let dayEventsModalCloseBtn = null;
 
-// --- Helper: Format Date for Day Events Modal (Time only or "All Day") ---
-function formatEventTimeForDayModal(date) {
-    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return "Time TBD";
-    // Check if time is midnight (could indicate an all-day event or just unspecified time)
-    if (date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0) {
-        // Could be more sophisticated if an 'all_day' flag exists on event
-        return "All Day"; 
-    }
-    return date.toLocaleTimeString(undefined, {
-        hour: 'numeric', minute: '2-digit', hour12: true
-    });
-}
 
 function setupDayEventsModal() {
     // Try to find the modal elements that should now be in the HTML
@@ -811,13 +799,27 @@ function getRelativeCoordsToContainer(pageX, pageY) {
     return { x: relX, y: relY };
 }
 
-async function createEvent(groupId, nodeId = null) { 
+async function createEvent(groupId, nodeId = null) { // Removed coords parameter as it's not used for default null
     if (!groupId) throw new Error("Cannot create event without active group ID.");
-    if (!nodeId) { alert("Please right-click on a Node to create an event attached to it."); return; }
-    const eventData = { title: "New Event", date: new Date(Date.now() + 3600000).toISOString(), location: "TBD", description: "", node_id: nodeId };
-    
+    if (!nodeId) {
+        alert("Please right-click on a Node to create an event attached to it.");
+        return;
+    }
+
+    const eventData = {
+        title: "New Event",
+        date: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
+        location: "TBD", // Human-readable location name
+        description: "",
+        node_id: nodeId,
+        location_coordinates: "TBD",
+        cost_display: null,
+        cost_value: null,
+        image_url: null
+    };
+
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = { 
+    const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
@@ -826,24 +828,70 @@ async function createEvent(groupId, nodeId = null) {
     }
 
     try {
-        const response = await fetch(`/api/groups/${groupId}/events`, { method: 'POST', headers: headers, body: JSON.stringify(eventData) });
-        if (!response.ok) { const errorData = await response.json().catch(() => ({ detail: 'Unknown error' })); throw new Error(`Event creation failed: ${errorData.detail || response.statusText}`); }
-        const event = await response.json();
-        event.date = event.date ? new Date(event.date) : null;
-        event.current_user_rsvp_status = null; 
+        const response = await fetch(`/api/groups/${groupId}/events`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(eventData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error during event creation.' }));
+            throw new Error(`Event creation failed: ${errorData.detail || response.statusText}`);
+        }
+
+        const event = await response.json(); // Assuming backend returns the created event
+        // Process the newly created event (e.g., add to UI)
+        event.date = event.date ? new Date(event.date) : null; // Ensure date is a Date object
+        event.current_user_rsvp_status = null; // New events won't have RSVP status from current user yet
+
+        // Add to allEventsData and eventsByDate (if your dataHandle.js exports functions for this)
+        // Example: addEventToCache(event); or similar to update local data stores.
+        // This part depends on how your dataHandle.js is structured.
+        // For now, we'll assume renderGroupEvents and renderAllEventsList will refetch or update.
+        allEventsData.push(event); // Simplistic update, might need more robust cache handling
+        const dateStr = event.date.toISOString().split('T')[0];
+        if (!eventsByDate[dateStr]) {
+            eventsByDate[dateStr] = [];
+        }
+        eventsByDate[dateStr].push(event);
+
+
         const newPanel = createEventPanel(event);
-        if (!newPanel) throw new Error("Failed to create event panel element.");
-        if (!eventPanelsContainer) throw new Error("Event container not found");
-        eventPanelsContainer.appendChild(newPanel);
-        const nodeEl = eventPanelsContainer.querySelector(`.event-node[data-node-id="${nodeId}"]`);
-        if (nodeEl) {
-            const instance = layoutInstances.get(nodeEl);
-            const updatedPanelsArray = Array.from(eventPanelsContainer.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`));
-            if (instance) { instance.updateLayout(updatedPanelsArray); }
-            else { const newInstance = new OrbitLayoutManager(nodeEl, updatedPanelsArray); layoutInstances.set(nodeEl, newInstance); }
-        } else { console.warn(`Node element ${nodeId} not found for layout update.`); }
-        if (document.getElementById('event-list-container')?.offsetParent !== null) renderAllEventsList();
-    } catch (error) { console.error("Error creating event:", error); alert(`Event creation failed: ${error.message}`); }
+        if (!newPanel) {
+            console.warn("Failed to create event panel element for new event.");
+        } else if (eventPanelsContainer) {
+            eventPanelsContainer.appendChild(newPanel);
+            const nodeEl = eventPanelsContainer.querySelector(`.event-node[data-node-id="${nodeId}"]`);
+            if (nodeEl) {
+                const instance = layoutInstances.get(nodeEl);
+                const updatedPanelsArray = Array.from(eventPanelsContainer.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`));
+                if (instance) {
+                    instance.updateLayout(updatedPanelsArray);
+                } else {
+                    const newInstance = new OrbitLayoutManager(nodeEl, updatedPanelsArray);
+                    layoutInstances.set(nodeEl, newInstance);
+                }
+            } else {
+                console.warn(`Node element ${nodeId} not found for layout update after event creation.`);
+            }
+        } else {
+            console.warn("Event panels container not found for new event panel.");
+        }
+
+        // Optionally refresh lists/calendar if they don't auto-update from cache changes
+        if (document.getElementById('event-list-container')?.offsetParent !== null) {
+            renderAllEventsList(); // This will re-filter and re-render based on allEventsData
+        }
+        if (document.getElementById('calendar-grid')?.offsetParent !== null) {
+            const currentCalDate = new Date(calendarMonthYearEl.textContent); // Basic way to get current view
+            renderCalendar(currentCalDate.getFullYear(), currentCalDate.getMonth());
+        }
+
+
+    } catch (error) {
+        console.error("Error creating event:", error);
+        alert(`Event creation failed: ${error.message}`);
+    }
 }
 
 // --- Outside Click Handling ---
