@@ -15,7 +15,7 @@ const collageViewport = document.getElementById('collage-viewport');
 // Store layout instances (Node Element -> Layout Manager Instance)
 export const layoutInstances = new Map();
 
-const OVERFLOW_THRESHOLD = 4; // If more than this number of events, show fade and 'more' indicator
+const OVERFLOW_THRESHOLD = 3; // If more than this number of events, show fade and 'more' indicator
 
 // --- Day Events Modal Elements ---
 let dayEventsModalEl = null;
@@ -36,28 +36,34 @@ function formatEventTimeForDayModal(date) {
     });
 }
 
-
-// --- Create and Setup Day Events Modal ---
 function setupDayEventsModal() {
-    if (dayEventsModalEl) return; // Already initialized
+    // Try to find the modal elements that should now be in the HTML
+    dayEventsModalEl = document.getElementById('day-events-modal');
 
-    dayEventsModalEl = document.createElement('div');
-    dayEventsModalEl.className = 'day-events-modal'; // Use the new class
-    dayEventsModalEl.id = 'day-events-modal';
-    dayEventsModalEl.innerHTML = `
-        <div class="modal-content">
-            <button class="modal-close-btn" id="day-events-modal-close-btn" aria-label="Close day events list">×</button>
-            <h3 id="day-events-modal-title">Events for Date</h3>
-            <ul class="day-event-list" id="day-events-modal-list">
-                <!-- Event items will be populated here -->
-            </ul>
-        </div>
-    `;
-    document.body.appendChild(dayEventsModalEl);
+    if (!dayEventsModalEl) {
+        // If the modal element is not found, we're likely not on the planner page
+        // or something went wrong with the HTML.
+        // console.warn("Day Events Modal (#day-events-modal) not found in DOM. Cannot initialize.");
+        return; // Do nothing further
+    }
+
+    // If dayEventsModalEl exists, proceed to find its children and attach listeners
+    // Check if already "initialized" (listeners attached) by checking one of its children
+    if (dayEventsModalTitleEl) {
+        // console.log("Day Events Modal already initialized (listeners attached).");
+        return; // Already set up
+    }
 
     dayEventsModalTitleEl = dayEventsModalEl.querySelector('#day-events-modal-title');
     dayEventsModalListEl = dayEventsModalEl.querySelector('#day-events-modal-list');
     dayEventsModalCloseBtn = dayEventsModalEl.querySelector('#day-events-modal-close-btn');
+
+    // Double-check if children were found before attaching listeners
+    if (!dayEventsModalTitleEl || !dayEventsModalListEl || !dayEventsModalCloseBtn) {
+        console.error("Could not find all required child elements within #day-events-modal.");
+        dayEventsModalEl = null; // Nullify to prevent usage
+        return;
+    }
 
     dayEventsModalCloseBtn.addEventListener('click', closeDayEventsModal);
     dayEventsModalEl.addEventListener('click', (event) => {
@@ -65,12 +71,20 @@ function setupDayEventsModal() {
             closeDayEventsModal();
         }
     });
+    // console.log("Day Events Modal initialized from existing DOM.");
 }
 
 export function openDayEventsModal(dateString, eventsForDay) {
-    if (!dayEventsModalEl) setupDayEventsModal(); // Ensure modal is created
+    if (!dayEventsModalEl) {
+        // Attempt to set it up if it hasn't been (e.g., if openDayEventsModal is called before DOMContentLoaded)
+        setupDayEventsModal();
+        if (!dayEventsModalEl) { // Still not found after setup attempt
+            console.warn("Day Events Modal could not be initialized or found. Cannot open.");
+            return;
+        }
+    }
 
-    const dateObj = new Date(dateString + 'T00:00:00'); // Ensure correct date parsing
+    const dateObj = new Date(dateString + 'T00:00:00');
     dayEventsModalTitleEl.textContent = `Events on ${dateObj.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
     
     dayEventsModalListEl.innerHTML = ''; // Clear previous events
@@ -81,7 +95,7 @@ export function openDayEventsModal(dateString, eventsForDay) {
         eventsForDay.forEach(event => {
             const li = document.createElement('li');
             li.className = 'day-event-item';
-            li.dataset.eventId = event.id; // Store event ID
+            li.dataset.eventId = event.id;
 
             const titleSpan = document.createElement('span');
             titleSpan.className = 'day-event-title';
@@ -93,9 +107,6 @@ export function openDayEventsModal(dateString, eventsForDay) {
             
             const timeSpan = document.createElement('span');
             timeSpan.className = 'day-event-time';
-            // eventsByDate stores the full date object, which might not be readily available here.
-            // We need to ensure eventsForDay items have the date object or parse it.
-            // For now, assuming event.date is the full date object from allEventsData processing
             let eventDateForTime = null;
             const fullEventData = allEventsData.find(e => e.id === event.id);
             if (fullEventData && fullEventData.date instanceof Date) {
@@ -103,20 +114,18 @@ export function openDayEventsModal(dateString, eventsForDay) {
             }
             timeSpan.textContent = formatEventTimeForDayModal(eventDateForTime);
 
-
             li.appendChild(titleSpan);
             li.appendChild(groupSpan);
             li.appendChild(timeSpan);
 
             li.addEventListener('click', () => {
-                // Find the full event data from allEventsData to pass to the main modal
                 const fullEvent = allEventsData.find(e => e.id === event.id);
                 if (fullEvent) {
                     document.dispatchEvent(new CustomEvent('openEventModalRequest', {
                         detail: { eventData: fullEvent },
                         bubbles: true, composed: true
                     }));
-                    closeDayEventsModal(); // Close this small modal after requesting main one
+                    closeDayEventsModal();
                 } else {
                     console.warn(`Full event data not found for ID ${event.id} to open main modal.`);
                 }
@@ -135,13 +144,13 @@ function closeDayEventsModal() {
 }
 
 // --- Initialize Day Events Modal when eventRenderer is loaded ---
-// (or call setupDayEventsModal() from main.js after DOMContentLoaded)
-// For simplicity, calling it here.
+// This will now primarily attach listeners if the modal HTML is present.
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupDayEventsModal);
 } else {
-    setupDayEventsModal();
+    setupDayEventsModal(); // Potentially run setup if DOM is already ready
 }
+
 
 
 // --- Helper: Format Date ---

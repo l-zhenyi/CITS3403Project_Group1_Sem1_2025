@@ -10,12 +10,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Float, text, Text # Added Text type
 from typing import Annotated, Optional, List
 
-
-group_members = db.Table('group_members',
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
-    db.Column('group_id', db.Integer, db.ForeignKey('groups.id'))
-)
-
 friends = db.Table(
     'friends',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id')),

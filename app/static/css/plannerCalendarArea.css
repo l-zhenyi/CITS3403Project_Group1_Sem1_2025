@@ -122,14 +122,13 @@
 .calendar-cell {
     background: var(--calendar-cell-bg);
     border-radius: 8px;
-    padding: 8px;
+    padding: 8px; /* Overall cell padding */
     display: flex;
     flex-direction: column;
-    position: relative; /* For absolute positioning of 'more' indicator */
+    position: relative;
     border: 1px solid transparent;
     transition: background-color 0.2s ease;
-    overflow: hidden; /* Clip content that might try to escape cell boundaries */
-    /* Height is controlled by grid-template-rows on .calendar-grid */
+    overflow: hidden;
 }
 .calendar-cell:hover { background: var(--calendar-cell-bg-hover); }
 .calendar-cell.has-events { cursor: pointer; }
@@ -137,35 +136,38 @@
 .calendar-cell .day-number {
     font-size: 0.9rem;
     font-weight: 500;
-    margin-bottom: 4px;
+    margin-bottom: 2px; /* <<< REDUCED: Closer to event list */
     text-align: right;
-    flex-shrink: 0; /* Prevent day number from shrinking */
+    flex-shrink: 0;
     position: relative;
-    z-index: 2; /* Above event list */
+    z-index: 2;
     color: var(--text-color-primary);
+    padding-right: 2px; /* Slight padding if number is too close to edge */
 }
 
 .calendar-cell .calendar-events-preview-list {
-    flex-grow: 1; /* Takes up remaining vertical space in the cell */
-    min-height: 0; /* Allows this element to shrink if space is constrained */
-    overflow: hidden; /* Clips events that don't fit */
+    flex-grow: 1;
+    min-height: 0;
+    overflow: hidden;
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px; /* <<< REDUCED: Tighter spacing between event items */
     z-index: 1;
-    padding-bottom: 5px; /* Space for last item before mask fully applies */
+    /* padding-bottom controls how much space is left at the bottom before mask fully applies */
+    padding-bottom: 3px; /* <<< REDUCED: Less space needed if items are tighter */
 }
 
 .calendar-cell .calendar-events-preview-list.has-overflow {
+    /* Fade height is now 20px, adjust if needed */
     mask-image: linear-gradient(to bottom,
         black 0%,
-        black calc(100% - 25px), /* Opaque until 25px from bottom of this container */
+        black calc(100% - 20px), /* Opaque until 20px from bottom of this container */
         transparent 100%
     );
     -webkit-mask-image: linear-gradient(to bottom,
         black 0%,
-        black calc(100% - 25px),
+        black calc(100% - 20px),
         transparent 100%
     );
 }
@@ -173,22 +175,23 @@
 .calendar-cell .calendar-event-item-preview {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.78em;
-    line-height: 1.3;
+    gap: 5px; /* <<< REDUCED: Tighter gap between dot and text */
+    font-size: 0.75em; /* <<< SLIGHTLY REDUCED: To fit more */
+    line-height: 1.25; /* <<< REDUCED: Tighter line height */
     color: var(--text-color-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     flex-shrink: 0;
-    padding: 1px 2px;
+    padding: 1px 0; /* Reduced vertical padding */
 }
 
 .calendar-cell .event-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px; /* <<< SLIGHTLY REDUCED */
+    height: 6px; /* <<< SLIGHTLY REDUCED */
     border-radius: 50%;
     flex-shrink: 0;
+    margin-top: 1px; /* Align better with tighter text */
 }
 .event-dot.color-1 { background-color: var(--color-deep-blue); }
 .event-dot.color-2 { background-color: var(--color-terracotta); }
@@ -205,11 +208,11 @@
 
 .calendar-cell .more-events-indicator {
     position: absolute;
-    bottom: 8px;
+    bottom: 6px; /* <<< ADJUSTED: Position relative to new tighter layout */
     left: 50%;
     transform: translateX(-50%);
-    padding: 3px 12px;
-    font-size: 0.7em;
+    padding: 2px 10px; /* <<< SLIGHTLY REDUCED PADDING */
+    font-size: 0.65em; /* <<< SLIGHTLY REDUCED FONT SIZE */
     font-weight: 500;
     text-align: center;
     background-color: var(--calendar-more-indicator-bg);
@@ -220,7 +223,7 @@
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     box-shadow: var(--calendar-more-indicator-shadow);
-    pointer-events: none; /* Allow clicks on cell to pass through */
+    pointer-events: none;
 }
 
 .calendar-cell.other-month { background: var(--calendar-cell-other-month-bg); }
@@ -297,21 +300,25 @@
     .calendar-grid { gap: 4px; }
 
     .calendar-cell { padding: 6px; border-radius: 6px; }
-    .calendar-cell .day-number { font-size: 0.8rem; margin-bottom: 3px; }
+    .calendar-cell .day-number { font-size: 0.8rem; margin-bottom: 2px; }
     .calendar-cell .calendar-events-preview-list {
-        gap: 3px;
-        padding-bottom: 3px; /* Smaller padding for mobile */
+        gap: 2px;
+        padding-bottom: 2px;
     }
     .calendar-cell .calendar-events-preview-list.has-overflow {
-        mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 20px), transparent 100%); /* Adjust fade height for mobile */
-        -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 20px), transparent 100%);
+        mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 18px), transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 18px), transparent 100%);
     }
-    .calendar-cell .event-dot { width: 6px; height: 6px; }
-    .calendar-cell .calendar-event-item-preview { font-size: 0.7em; gap: 5px; }
+    .calendar-cell .event-dot { width: 5px; height: 5px; }
+    .calendar-cell .calendar-event-item-preview {
+        font-size: 0.68em; /* Even smaller for mobile */
+        line-height: 1.2;
+        gap: 4px;
+    }
 
     .calendar-cell .more-events-indicator {
-        bottom: 6px;
-        font-size: 0.65em;
+        bottom: 5px;
+        font-size: 0.6em;
         padding: 2px 8px;
         backdrop-filter: blur(3px);
         -webkit-backdrop-filter: blur(3px);
