@@ -13,15 +13,141 @@ const eventListContainer = document.getElementById('event-list-container');
 const collageViewport = document.getElementById('collage-viewport');
 
 // Store layout instances (Node Element -> Layout Manager Instance)
-// *** EXPORT this map ***
 export const layoutInstances = new Map();
 
-// ... (rest of the file: formatEventDateForDisplay, createEventPanel, makeDraggableNode, getCurrentZoomScale, createNodeElement, renderAllEventsList, renderGroupEvents, renderCalendar, createContextMenuElement, handleContextAction, showContextMenu, CRUD actions, getActiveGroupId, getRelativeCoordsToContainer, createEvent) ...
+const MAX_CELL_EVENT_PREVIEWS = 3; // Number of event titles to show directly in cell
+
+// --- Day Events Modal Elements ---
+let dayEventsModalEl = null;
+let dayEventsModalTitleEl = null;
+let dayEventsModalListEl = null;
+let dayEventsModalCloseBtn = null;
+
+// --- Helper: Format Date for Day Events Modal (Time only or "All Day") ---
+function formatEventTimeForDayModal(date) {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return "Time TBD";
+    // Check if time is midnight (could indicate an all-day event or just unspecified time)
+    if (date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0) {
+        // Could be more sophisticated if an 'all_day' flag exists on event
+        return "All Day"; 
+    }
+    return date.toLocaleTimeString(undefined, {
+        hour: 'numeric', minute: '2-digit', hour12: true
+    });
+}
+
+
+// --- Create and Setup Day Events Modal ---
+function setupDayEventsModal() {
+    if (dayEventsModalEl) return; // Already initialized
+
+    dayEventsModalEl = document.createElement('div');
+    dayEventsModalEl.className = 'day-events-modal'; // Use the new class
+    dayEventsModalEl.id = 'day-events-modal';
+    dayEventsModalEl.innerHTML = `
+        <div class="modal-content">
+            <button class="modal-close-btn" id="day-events-modal-close-btn" aria-label="Close day events list">×</button>
+            <h3 id="day-events-modal-title">Events for Date</h3>
+            <ul class="day-event-list" id="day-events-modal-list">
+                <!-- Event items will be populated here -->
+            </ul>
+        </div>
+    `;
+    document.body.appendChild(dayEventsModalEl);
+
+    dayEventsModalTitleEl = dayEventsModalEl.querySelector('#day-events-modal-title');
+    dayEventsModalListEl = dayEventsModalEl.querySelector('#day-events-modal-list');
+    dayEventsModalCloseBtn = dayEventsModalEl.querySelector('#day-events-modal-close-btn');
+
+    dayEventsModalCloseBtn.addEventListener('click', closeDayEventsModal);
+    dayEventsModalEl.addEventListener('click', (event) => {
+        if (event.target === dayEventsModalEl) {
+            closeDayEventsModal();
+        }
+    });
+}
+
+export function openDayEventsModal(dateString, eventsForDay) {
+    if (!dayEventsModalEl) setupDayEventsModal(); // Ensure modal is created
+
+    const dateObj = new Date(dateString + 'T00:00:00'); // Ensure correct date parsing
+    dayEventsModalTitleEl.textContent = `Events on ${dateObj.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+    
+    dayEventsModalListEl.innerHTML = ''; // Clear previous events
+
+    if (!eventsForDay || eventsForDay.length === 0) {
+        dayEventsModalListEl.innerHTML = '<li>No events scheduled for this day.</li>';
+    } else {
+        eventsForDay.forEach(event => {
+            const li = document.createElement('li');
+            li.className = 'day-event-item';
+            li.dataset.eventId = event.id; // Store event ID
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'day-event-title';
+            titleSpan.textContent = event.title || 'Untitled Event';
+
+            const groupSpan = document.createElement('span');
+            groupSpan.className = 'day-event-group';
+            groupSpan.textContent = event.group_name || 'Personal';
+            
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'day-event-time';
+            // eventsByDate stores the full date object, which might not be readily available here.
+            // We need to ensure eventsForDay items have the date object or parse it.
+            // For now, assuming event.date is the full date object from allEventsData processing
+            let eventDateForTime = null;
+            const fullEventData = allEventsData.find(e => e.id === event.id);
+            if (fullEventData && fullEventData.date instanceof Date) {
+                eventDateForTime = fullEventData.date;
+            }
+            timeSpan.textContent = formatEventTimeForDayModal(eventDateForTime);
+
+
+            li.appendChild(titleSpan);
+            li.appendChild(groupSpan);
+            li.appendChild(timeSpan);
+
+            li.addEventListener('click', () => {
+                // Find the full event data from allEventsData to pass to the main modal
+                const fullEvent = allEventsData.find(e => e.id === event.id);
+                if (fullEvent) {
+                    document.dispatchEvent(new CustomEvent('openEventModalRequest', {
+                        detail: { eventData: fullEvent },
+                        bubbles: true, composed: true
+                    }));
+                    closeDayEventsModal(); // Close this small modal after requesting main one
+                } else {
+                    console.warn(`Full event data not found for ID ${event.id} to open main modal.`);
+                }
+            });
+            dayEventsModalListEl.appendChild(li);
+        });
+    }
+
+    dayEventsModalEl.classList.add('visible');
+}
+
+function closeDayEventsModal() {
+    if (dayEventsModalEl) {
+        dayEventsModalEl.classList.remove('visible');
+    }
+}
+
+// --- Initialize Day Events Modal when eventRenderer is loaded ---
+// (or call setupDayEventsModal() from main.js after DOMContentLoaded)
+// For simplicity, calling it here.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupDayEventsModal);
+} else {
+    setupDayEventsModal();
+}
+
 
 // --- Helper: Format Date ---
 // Keep consistent formatting logic
 function formatEventDateForDisplay(date) {
-    if (!date || !(date instanceof Date) || isNaN(date)) return 'No Date';
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 'No Date'; // ensure date is valid
     try {
         return date.toLocaleString(undefined, {
             weekday: 'short', month: 'short', day: 'numeric',
@@ -344,15 +470,24 @@ export function renderCalendar(year, month) {
     const firstDayWeekday = firstDayOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
     const numDays = lastDayOfCurrentMonth.getDate();
     const prevMonthDays = lastDayOfPrevMonth.getDate();
-    const today = new Date(); today.setHours(0, 0, 0, 0); 
+    const today = new Date(); today.setHours(0, 0, 0, 0);
 
     calendarMonthYearEl.textContent = `${monthNames[month]} ${year}`;
-    let gridHtml = '';
+    calendarGridEl.innerHTML = ''; // Clear previous grid content
+
+    // Helper to create a basic cell structure (used for other months)
+    const createOtherMonthCellElement = (dayNum) => {
+        const cell = document.createElement('div');
+        cell.className = "calendar-cell other-month";
+        // Add day number and an empty preview list for consistent DOM structure
+        cell.innerHTML = `<span class="day-number">${dayNum}</span><div class="calendar-events-preview-list"></div>`;
+        return cell;
+    };
 
     // Previous month's trailing days
     for (let i = 0; i < firstDayWeekday; i++) {
         const dayNum = prevMonthDays - firstDayWeekday + 1 + i;
-        gridHtml += `<div class="calendar-cell other-month"><span class="day-number">${dayNum}</span><div class="event-markers"></div></div>`;
+        calendarGridEl.appendChild(createOtherMonthCellElement(dayNum));
     }
 
     // Current month's days
@@ -360,53 +495,90 @@ export function renderCalendar(year, month) {
         const currentDate = new Date(year, month, i); currentDate.setHours(0,0,0,0);
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         const isToday = currentDate.getTime() === today.getTime();
-        
         const eventsOnThisDay = eventsByDate[dateStr] || [];
         
-        let cellClasses = "calendar-cell";
-        if (isToday) cellClasses += " today";
-        if (eventsOnThisDay.length > 0) cellClasses += " has-events";
+        const cell = document.createElement('div');
+        cell.className = "calendar-cell";
+        if (isToday) cell.classList.add("today");
+        if (eventsOnThisDay.length > 0) cell.classList.add("has-events");
+        cell.dataset.date = dateStr;
 
-        gridHtml += `<div class="${cellClasses}" data-date="${dateStr}">`;
-        gridHtml += `<span class="day-number">${i}</span>`;
-        gridHtml += `<div class="event-markers">`;
+        // Day Number
+        const dayNumberEl = document.createElement('span');
+        dayNumberEl.className = 'day-number';
+        dayNumberEl.textContent = i;
+        cell.appendChild(dayNumberEl);
+
+        // Event Previews List Container
+        const previewListContainer = document.createElement('div');
+        previewListContainer.className = 'calendar-events-preview-list';
+
+        const numEventsToDisplayInCell = Math.min(eventsOnThisDay.length, MAX_CELL_EVENT_PREVIEWS);
+
+        for (let j = 0; j < numEventsToDisplayInCell; j++) {
+            const event = eventsOnThisDay[j];
+            const eventItemEl = document.createElement('div');
+            eventItemEl.className = 'calendar-event-item-preview';
+
+            const eventDot = document.createElement('span');
+            eventDot.className = 'event-dot';
+            // Cycle through 6 pastel color classes (color-1 to color-6)
+            eventDot.classList.add(`color-${(j % 6) + 1}`);
+            // Example: if event object had a specific color:
+            // if (event.color) eventDot.style.backgroundColor = event.color;
+
+            const eventTitlePreview = document.createElement('span');
+            eventTitlePreview.className = 'event-title-preview';
+            eventTitlePreview.textContent = event.title || 'Untitled Event';
+            
+            eventItemEl.appendChild(eventDot);
+            eventItemEl.appendChild(eventTitlePreview);
+            eventItemEl.title = `${event.title || 'Untitled Event'} (${event.group_name || 'Personal'})`; // Tooltip
+
+            // If this is the last item being shown AND there are more hidden events,
+            // apply the special "is-fading-out" class for the glazed effect.
+            if (j === numEventsToDisplayInCell - 1 && eventsOnThisDay.length > MAX_CELL_EVENT_PREVIEWS) {
+                eventItemEl.classList.add('is-fading-out');
+            }
+            previewListContainer.appendChild(eventItemEl);
+        }
+        cell.appendChild(previewListContainer);
+
+        // "More Events" Indicator
+        if (eventsOnThisDay.length > MAX_CELL_EVENT_PREVIEWS) {
+            const remainingCount = eventsOnThisDay.length - MAX_CELL_EVENT_PREVIEWS;
+            const moreIndicator = document.createElement('div');
+            moreIndicator.className = 'more-events-indicator';
+            moreIndicator.textContent = `+${remainingCount} more`;
+            cell.appendChild(moreIndicator);
+            
+            // Add class to preview list container to enable its general bottom fade
+            previewListContainer.classList.add('has-overflow');
+        }
         
-        // Display up to 3 distinct event markers (e.g., colored dots or small icons)
-        // For simplicity, just showing generic markers based on count for now
-        eventsOnThisDay.slice(0, 3).forEach(() => { 
-            gridHtml += `<div class="event-marker"></div>`; 
-        });
-        if (eventsOnThisDay.length > 3) {
-            gridHtml += `<div class="event-marker more-events">+</div>`;
-        }
-        gridHtml += `</div>`; // Close event-markers
-
-        // Add a list of event titles (tooltip or expandable on click)
+        // Click listener for the cell to open day events modal
         if (eventsOnThisDay.length > 0) {
-            gridHtml += `<div class="calendar-event-titles-tooltip">`;
-            eventsOnThisDay.forEach(event => {
-                // Make sure event.title and event.group_name exist
-                const title = event.title || 'Untitled Event';
-                const groupName = event.group_name || 'No Group';
-                gridHtml += `<p><strong>${title}</strong> (${groupName})</p>`;
+            cell.addEventListener('click', () => {
+                openDayEventsModal(dateStr, eventsOnThisDay);
             });
-            gridHtml += `</div>`;
         }
-        gridHtml += `</div>`; // Close calendar-cell
+        calendarGridEl.appendChild(cell);
     }
 
     // Next month's leading days
     const totalCellsRendered = firstDayWeekday + numDays;
     const remainingCells = totalCellsRendered % 7 === 0 ? 0 : 7 - (totalCellsRendered % 7);
     for (let i = 1; i <= remainingCells; i++) {
-        gridHtml += `<div class="calendar-cell other-month"><span class="day-number">${i}</span><div class="event-markers"></div></div>`;
+        calendarGridEl.appendChild(createOtherMonthCellElement(i));
     }
 
-    calendarGridEl.innerHTML = gridHtml;
+    // Dynamically set grid rows for proper filling of space
     const totalCellsInGrid = firstDayWeekday + numDays + remainingCells;
-    const numRows = Math.ceil(totalCellsInGrid / 7); // Use Math.ceil for safety
-    calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, minmax(80px, 1fr))`; // minmax for responsive height
+    const numRows = Math.ceil(totalCellsInGrid / 7); 
+    // minmax ensures rows have a minimum height but can grow to fill available space (1fr)
+    calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, minmax(90px, 1fr))`;
 }
+
 
 // --- Context Menu Logic ---
 function createContextMenuElement() {
@@ -434,7 +606,7 @@ async function handleContextAction(label, x, y, id, elementType) {
             case 'Rename Event': if (elementType !== 'event-panel') return; await renameEvent(id); break;
             case 'Delete Event': if (elementType !== 'event-panel') return; if(confirm('Are you sure you want to delete this event?')) await deleteEvent(id); break;
             case 'Rename Node': if (elementType !== 'event-node') return; await renameNode(id); break;
-            case 'Delete Node': if (elementType !== 'event-node') return; if(confirm('Are you sure you want to delete this node? Events will be unassigned.')) await deleteNode(id); break; // MODIFIED confirm message
+            case 'Delete Node': if (elementType !== 'event-node') return; if(confirm('Are you sure you want to delete this node? Associated events will be unassigned.')) await deleteNode(id); break; 
             default: console.warn("Unknown context menu action:", label);
         }
     } catch (error) {
@@ -453,7 +625,7 @@ export function showContextMenu({ x, y, type, id }) {
     const optionsMap = {
         'event-panel': ['Rename Event', 'Delete Event'],
         'event-node': ['Create Event on Node', 'Rename Node', 'Delete Node'],
-        'canvas': ['Create Node'] // Target canvas via event.target check in main listener
+        'canvas': ['Create Node'] 
     };
     const options = optionsMap[type] || [];
     if (options.length === 0) { menu.style.display = 'none'; return; }
@@ -471,7 +643,7 @@ export function showContextMenu({ x, y, type, id }) {
 }
 
 // --- CRUD Actions (Called by Context Menu Handler) ---
-async function renameEvent(eventId) { /* ... logic ... */
+async function renameEvent(eventId) { 
     const panel = document.querySelector(`.event-panel[data-event-id="${eventId}"]`);
     const currentData = panel?._eventData;
     if (!panel || !currentData) return;
@@ -493,14 +665,14 @@ async function renameEvent(eventId) { /* ... logic ... */
         const updatedEvent = await response.json();
         const originalTitleEl = panel.querySelector('.orbit-element-original-content .event-panel-title');
         if (originalTitleEl) originalTitleEl.textContent = updatedEvent.title;
-        currentData.title = updatedEvent.title; // Update local data
-        panel._eventData.title = updatedEvent.title; // Ensure main _eventData is also updated
+        currentData.title = updatedEvent.title; 
+        panel._eventData.title = updatedEvent.title; 
         const expandedTitle = panel.querySelector('.orbit-element-expanded-content .title-scroll');
         if(expandedTitle) expandedTitle.textContent = updatedEvent.title;
         if (document.getElementById('event-list-container')?.offsetParent !== null) renderAllEventsList();
     } catch (error) { console.error("Error renaming event:", error); alert(`Rename failed: ${error.message}`); }
 }
-async function deleteEvent(eventId) { /* ... logic ... */
+async function deleteEvent(eventId) { 
     const panel = document.querySelector(`.event-panel[data-event-id="${eventId}"]`);
     if (!panel) return;
 
@@ -532,7 +704,7 @@ async function deleteEvent(eventId) { /* ... logic ... */
         } else { throw new Error(data.message || "Server reported delete failed."); }
     } catch (error) { console.error("Error deleting event:", error); alert(`Delete failed: ${error.message}`); }
 }
-async function renameNode(nodeId) { /* ... logic ... */
+async function renameNode(nodeId) { 
     const nodeEl = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
     if (!nodeEl) return;
     const currentLabel = nodeEl.textContent || '';
@@ -557,7 +729,7 @@ async function renameNode(nodeId) { /* ... logic ... */
         if (instance?.nodeInfo) instance.nodeInfo.label = data.label;
     } catch (error) { console.error("Error renaming node:", error); alert(`Rename failed: ${error.message}`); }
 }
-async function deleteNode(nodeId) { /* ... logic ... */
+async function deleteNode(nodeId) { 
     const nodeEl = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
     if (!nodeEl) return;
 
@@ -578,20 +750,19 @@ async function deleteNode(nodeId) { /* ... logic ... */
         }
         const data = await response.json();
         if (data.success) {
-            // Events are unassigned by backend if node is deleted. Refresh current group view.
             const instance = layoutInstances.get(nodeEl);
             if (instance) { instance.destroy(); layoutInstances.delete(nodeEl); }
             nodeEl.remove();
 
             const activeGroupId = getActiveGroupId();
             if (activeGroupId) {
-                renderGroupEvents(activeGroupId); // Refresh to show unassigned events if any
+                renderGroupEvents(activeGroupId); 
             }
             if (document.getElementById('event-list-container')?.offsetParent !== null) renderAllEventsList();
         } else { throw new Error(data.message || "Server reported node delete failed."); }
     } catch(error) { console.error("Error deleting node:", error); alert(`Delete failed: ${error.message}`); }
 }
-async function createNodeAt(x, y, groupId) { /* ... logic ... */
+async function createNodeAt(x, y, groupId) { 
     if (!groupId) throw new Error("Cannot create node without active group ID.");
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -614,13 +785,13 @@ async function createNodeAt(x, y, groupId) { /* ... logic ... */
 }
 
 // Get active group ID (helper)
-function getActiveGroupId() { /* ... logic ... */
+function getActiveGroupId() { 
     const activeLi = document.querySelector('.group-list-area ul .group-item.active');
     return activeLi?.dataset.groupId;
 }
 
 // Get coordinates relative to the pannable container
-function getRelativeCoordsToContainer(pageX, pageY) { /* ... logic ... */
+function getRelativeCoordsToContainer(pageX, pageY) { 
     if (!eventPanelsContainer) return { x: 0, y: 0 };
     const rect = eventPanelsContainer.getBoundingClientRect();
     let transformState = { panX: 0, panY: 0, scale: 1 };
@@ -634,7 +805,7 @@ function getRelativeCoordsToContainer(pageX, pageY) { /* ... logic ... */
     return { x: relX, y: relY };
 }
 
-async function createEvent(groupId, nodeId = null) { /* ... logic ... */
+async function createEvent(groupId, nodeId = null) { 
     if (!groupId) throw new Error("Cannot create event without active group ID.");
     if (!nodeId) { alert("Please right-click on a Node to create an event attached to it."); return; }
     const eventData = { title: "New Event", date: new Date(Date.now() + 3600000).toISOString(), location: "TBD", description: "", node_id: nodeId };
@@ -653,7 +824,7 @@ async function createEvent(groupId, nodeId = null) { /* ... logic ... */
         if (!response.ok) { const errorData = await response.json().catch(() => ({ detail: 'Unknown error' })); throw new Error(`Event creation failed: ${errorData.detail || response.statusText}`); }
         const event = await response.json();
         event.date = event.date ? new Date(event.date) : null;
-        event.current_user_rsvp_status = null; // New events don't have RSVP status yet for current user
+        event.current_user_rsvp_status = null; 
         const newPanel = createEventPanel(event);
         if (!newPanel) throw new Error("Failed to create event panel element.");
         if (!eventPanelsContainer) throw new Error("Event container not found");
@@ -673,43 +844,29 @@ async function createEvent(groupId, nodeId = null) { /* ... logic ... */
 let isOutsideClickListenerActive = false;
 
 function handleOutsideClick(event) {
-    // Check if the click was inside *any* panel or node managed by any instance
-    // Also ignore clicks on context menu
     const clickedPanel = event.target.closest('.event-panel');
     const clickedNode = event.target.closest('.event-node');
-    const clickedContextMenu = event.target.closest('.context-menu'); // Check for context menu
+    const clickedContextMenu = event.target.closest('.context-menu'); 
 
     if (!clickedPanel && !clickedNode && !clickedContextMenu) {
-        // console.log("Outside click detected."); // Debug
         let panelUnclicked = false;
-        // Iterate through all active layout instances
         layoutInstances.forEach(instance => {
-            // Ask the instance to unclick its active panel, if any
             if (instance.unclickActivePanel()) {
                 panelUnclicked = true;
             }
         });
-        // if (panelUnclicked) { // Dragging is enabled within unclickActivePanel
-        //     console.log("An expanded panel was collapsed."); // Debug
-        // }
     }
 }
 
 function addOutsideClickListener() {
     if (!isOutsideClickListenerActive && collageViewport) {
-        // Use the viewport as the listener target for better focus
-        // Use 'pointerdown' instead of 'click' to potentially catch drag starts earlier
-        // and ensure it fires before the panel's 'click' if bubbling isn't stopped.
-        // Or stick with 'click' and rely on the panel's stopPropagation. 'click' is safer.
-        // console.log("Adding outside click listener to document."); // Debug
-        document.addEventListener('click', handleOutsideClick, { capture: false }); // Use non-capture phase
+        document.addEventListener('click', handleOutsideClick, { capture: false }); 
         isOutsideClickListenerActive = true;
     }
 }
 
 function removeOutsideClickListener() {
     if (isOutsideClickListenerActive) {
-        // console.log("Removing outside click listener from document."); // Debug
         document.removeEventListener('click', handleOutsideClick, { capture: false });
         isOutsideClickListenerActive = false;
     }
