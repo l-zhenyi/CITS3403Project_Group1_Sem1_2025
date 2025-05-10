@@ -1,7 +1,5 @@
 # --- START OF FILE routes.py ---
 
-# --- START OF FILE routes.py ---
-
 from flask import render_template, redirect, url_for, flash, request, session, jsonify, abort
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm, FriendRequestForm
@@ -365,10 +363,18 @@ def user(username):
 def create_group():
     form = CreateGroupForm()
     if form.validate_on_submit():
-        group = Group(name=form.name.data, about=form.about.data)
+        group = Group(
+            name=form.name.data, 
+            about=form.about.data,
+            owner_id=current_user.id # Set owner on creation
+        )
         db.session.add(group)
         db.session.flush()
-        membership = GroupMember(user_id=current_user.id, group_id=group.id)
+        membership = GroupMember(
+            user_id=current_user.id, 
+            group_id=group.id,
+            is_owner=True # Mark creator as owner in GroupMember
+        )
         db.session.add(membership)
         db.session.commit()
         flash("Group created successfully!", "success")
@@ -413,8 +419,12 @@ def add_members(group_id):
     group = db.session.get(Group, group_id)
     if not group:
         abort(404)
+    
+    # Permission check: Only owner should be able to add members via this route
+    if group.owner_id != current_user.id:
+        flash("Only the group owner can add members.", "warning")
+        return redirect(url_for('view_group', group_id=group_id))
 
-    # Get all the current user's friends
     friends_list = current_user.friends.all()
     
     if request.method == 'POST':
@@ -429,28 +439,23 @@ def add_members(group_id):
             flash(f'User "{username_to_add}" not found.')
             return redirect(url_for('add_members', group_id=group_id))
 
-        # Check if user is already a member
         existing_member = is_group_member(user_to_add.id, group_id)
         if existing_member:
             flash(f'{user_to_add.username} is already a group member.')
             return redirect(url_for('add_members', group_id=group_id))
 
-        # Check for mutual follow
-        is_friends_check = current_user.is_friend(user_to_add)
-        if not is_friends_check:
-            flash(f"You need to be friends with {user_to_add.username} before adding them to the group.")
-            return redirect(url_for('add_members', group_id=group_id))
+        # is_friends_check = current_user.is_friend(user_to_add) # This might be too restrictive if owner can add anyone
+        # if not is_friends_check:
+        #     flash(f"You need to be friends with {user_to_add.username} before adding them to the group.")
+        #     return redirect(url_for('add_members', group_id=group_id))
 
-        # Add the user to the group
-        new_membership = GroupMember(user_id=user_to_add.id, group_id=group_id)
+        new_membership = GroupMember(user_id=user_to_add.id, group_id=group_id, is_owner=False) # New members are not owners
         db.session.add(new_membership)
         db.session.commit()
 
         flash(f'{user_to_add.username} has been added to the group!')
         return redirect(url_for('view_group', group_id=group_id))
 
-    # For GET request, render template with friends list
-    # Filter to only show friends who aren't already in the group and have mutual follow
     eligible_friends = []
     for friend_item in friends_list:
         if not is_group_member(friend_item.id, group_id):
@@ -489,9 +494,6 @@ def messages():
         .order_by(Message.timestamp.desc())
     pagination = db.paginate(messages_query, page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
     
-    # The joinedload should handle eager loading, so explicit execute before render might not be needed for sender.
-    # db.session.execute(messages_query.options(joinedload(Message.sender))) # This line might be redundant if pagination executes query
-
     return render_template('messages.html', messages=pagination.items,
                            next_url=url_for('messages', page=pagination.next_num) if pagination.has_next else None,
                            prev_url=url_for('messages', page=pagination.prev_num) if pagination.has_prev else None)
@@ -524,71 +526,198 @@ def get_my_friends():
 @login_required
 def get_groups():
     # Correctly fetch groups the user is a member of
-    groups_query = db.select(Group).join(GroupMember).filter(GroupMember.user_id == current_user.id)
-    user_groups = db.session.scalars(groups_query).all()
-    group_data = [g.to_dict(include_nodes=False) for g in user_groups]
+    groups_query = db.select(Group).join(GroupMember).filter(GroupMember.user_id == current_user.id)\
+        .options(joinedload(Group.owner)) # Eager load owner for to_dict efficiency if needed elsewhere
+    # If Group.members relationship is lazy='dynamic', you might need joinedload(Group.members).joinedload(GroupMember.user)
+    # if to_dict directly accesses member user details without another query.
+    # Given Group.members is lazy="joined" in model, this should be fine.
+
+    user_groups = db.session.scalars(groups_query).unique().all() # +++ ADDED .unique() +++
+    group_data = [g.to_dict(include_nodes=False, include_members=False) for g in user_groups] # Default no members for list view
     return jsonify(group_data)
 
-# MODIFIED API Endpoint for creating a group
+
 @app.route("/api/groups", methods=["POST"])
 @login_required
 def create_group_api():
     data = request.get_json() or {}
     name = data.get("name")
-    description = data.get("description", "") 
-    avatar_url = data.get("avatar_url") 
+    description = data.get("description", "")
+    avatar_url = data.get("avatar_url")
     member_ids_to_add_str = data.get("member_ids", [])
 
     if not name or not isinstance(name, str) or len(name.strip()) == 0:
         return jsonify({"error": "Group name is required and cannot be empty"}), 400
 
-    # For avatar, if not provided by frontend, consider a default generation strategy
-    # e.g., using the first letter of the group name as in addGroup JS function
     final_avatar_url = avatar_url
     if not final_avatar_url and name.strip():
-        # Example: https://via.placeholder.com/40/cccccc/FFFFFF?text=G
         final_avatar_url = f"https://via.placeholder.com/40/cccccc/FFFFFF?text={name.strip()[0].upper()}"
-
 
     group = Group(name=name.strip(),
                   avatar_url=final_avatar_url,
-                  about=description.strip()) # 'about' field for description
+                  about=description.strip(),
+                  owner_id=current_user.id)
     db.session.add(group)
-    db.session.flush() # Get group.id
+    # Flush to get group.id for GroupMember instances
+    db.session.flush()
 
-    # Add current user as member
-    current_user_membership = GroupMember(group_id=group.id, user_id=current_user.id)
+    current_user_membership = GroupMember(
+        group_id=group.id,
+        user_id=current_user.id,
+        is_owner=True
+    )
     db.session.add(current_user_membership)
 
-    # Add selected friends as members
-    processed_member_ids = set() # To avoid duplicate processing if IDs repeat
+    processed_member_ids = set()
     if member_ids_to_add_str:
         for member_id_str in member_ids_to_add_str:
             try:
                 member_id = int(member_id_str)
                 if member_id == current_user.id or member_id in processed_member_ids:
-                    continue # Skip current user or already processed
-                
-                # Optional: Stronger check - is this user actually a friend?
-                # friend_to_add = User.query.get(member_id)
-                # if not friend_to_add or not current_user.is_friend(friend_to_add):
-                #     app.logger.warning(f"User {current_user.id} tried to add non-friend {member_id} to group {group.id}")
+                    continue
+
+                # Optional: Check if user_to_add exists and is friend (if desired)
+                # user_to_add_obj = db.session.get(User, member_id)
+                # if not user_to_add_obj:
+                #     app.logger.warning(f"Attempt to add non-existent user {member_id} to new group.")
+                #     continue
+                # if not current_user.is_friend(user_to_add_obj): # If you want to restrict to friends
+                #     app.logger.warning(f"User {current_user.username} tried to add non-friend {user_to_add_obj.username} to new group.")
                 #     continue
 
-                # Check if they are not already a member (e.g. if API is called multiple times with same friend)
-                # Though for a new group, this is less likely unless current user is in member_ids
-                existing_member = db.session.scalar(
+                existing_member_check = db.session.scalar(
                     db.select(GroupMember.id).filter_by(group_id=group.id, user_id=member_id)
                 )
-                if not existing_member:
-                    new_member = GroupMember(group_id=group.id, user_id=member_id)
+                if not existing_member_check: # Should always be true for new members during group creation
+                    new_member = GroupMember(group_id=group.id, user_id=member_id, is_owner=False)
                     db.session.add(new_member)
                     processed_member_ids.add(member_id)
             except ValueError:
                 app.logger.warning(f"Invalid member_id '{member_id_str}' provided during group creation.")
-    
+
     db.session.commit()
-    return jsonify(group.to_dict(include_nodes=False)), 201
+
+    # Re-fetch the group with all necessary relationships loaded for the response
+    # This ensures 'members' and 'owner' are correctly populated for to_dict
+    group_for_response = db.session.query(Group).options(
+        joinedload(Group.owner),
+        joinedload(Group.members).joinedload(GroupMember.user) # Eagerly load members and their user details
+    ).filter_by(id=group.id).one_or_none()
+
+    if not group_for_response:
+         app.logger.error(f"Failed to re-fetch group {group.id} after creation.")
+         return jsonify({"error": "Group created but could not retrieve details for response."}), 500
+
+    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True)), 201
+
+
+# +++ MODIFIED GROUP DETAIL ENDPOINT (GET /api/groups/<id>) +++
+@app.route("/api/groups/<int:group_id>", methods=["GET"])
+@login_required
+@require_group_member 
+def get_group_detail(group_id):
+    include_members = request.args.get('include_members', 'false').lower() == 'true'
+
+    query_options = [joinedload(Group.owner)]
+    if include_members:
+        query_options.append(joinedload(Group.members).joinedload(GroupMember.user))
+
+    group_query = db.select(Group).where(Group.id == group_id).options(*query_options)
+    group = db.session.scalar(group_query)
+
+    if not group:
+        return jsonify({"error": "Group not found"}), 404
+
+    return jsonify(group.to_dict(include_nodes=False, include_members=include_members))
+
+
+# +++ NEW: GROUP UPDATE ENDPOINT (PATCH /api/groups/<id>) +++
+@app.route("/api/groups/<int:group_id>", methods=["PATCH"])
+@login_required
+@require_group_member 
+def update_group_details(group_id):
+    group = db.session.get(Group, group_id)
+    if not group:
+        return jsonify({"error": "Group not found"}), 404
+
+    # Authorization check (e.g., owner)
+    if group.owner_id != current_user.id:
+        return jsonify({"error": "Only the group owner can modify group settings."}), 403
+
+    data = request.get_json() or {}
+    updated_fields_count = 0
+
+    if "name" in data:
+        # ... (name update logic) ...
+        new_name = data["name"].strip()
+        if not new_name:
+            return jsonify({"error": "Group name cannot be empty"}), 400
+        if new_name != group.name:
+            group.name = new_name
+            updated_fields_count += 1
+
+    if "description" in data:
+        # ... (description update logic) ...
+        new_description = data["description"].strip()
+        if new_description != group.about:
+            group.about = new_description
+            updated_fields_count += 1
+    
+    # Logic for adding members
+    if "add_member_ids" in data and isinstance(data["add_member_ids"], list):
+        member_ids_to_add = [int(mid) for mid in data["add_member_ids"] if isinstance(mid, (int, str)) and str(mid).isdigit()]
+        
+        # Fetch current member IDs more efficiently if group.members is already loaded or by query
+        # If group.members is lazy="joined", it should be loaded.
+        # Otherwise, query:
+        # existing_member_ids_in_group_q = db.session.scalars(
+        #     db.select(GroupMember.user_id).filter_by(group_id=group.id)
+        # ).all()
+        # existing_member_ids_in_group = set(existing_member_ids_in_group_q)
+
+        existing_member_ids_in_group = {gm.user_id for gm in group.members}
+
+
+        for user_id_to_add in member_ids_to_add:
+            if user_id_to_add == current_user.id or user_id_to_add in existing_member_ids_in_group:
+                continue
+            
+            user_to_add_obj = db.session.get(User, user_id_to_add)
+            if not user_to_add_obj:
+                app.logger.warning(f"Attempt to add non-existent user {user_id_to_add} to group {group_id}")
+                continue
+            
+            # Optional: Check if friends, etc.
+            # if not current_user.is_friend(user_to_add_obj):
+            #     app.logger.warning(f"User {current_user.id} tried to add non-friend {user_id_to_add_obj.username} to group {group_id}")
+            #     continue
+
+            new_member = GroupMember(group_id=group.id, user_id=user_id_to_add, is_owner=False)
+            db.session.add(new_member) # Add to session, will be part of the commit
+            updated_fields_count += 1
+            app.logger.info(f"User {user_id_to_add} queued for addition to group {group_id} by {current_user.username}")
+
+
+    if updated_fields_count > 0:
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error updating group {group_id}: {e}")
+            return jsonify({"error": "Failed to save group changes."}), 500
+    
+    # Re-fetch for the response to ensure all changes (especially new members) are reflected
+    group_for_response = db.session.query(Group).options(
+        joinedload(Group.owner),
+        joinedload(Group.members).joinedload(GroupMember.user)
+    ).filter_by(id=group_id).one_or_none()
+
+    if not group_for_response:
+         app.logger.error(f"Failed to re-fetch group {group_id} after update.")
+         # group might have been deleted by another request, or other rare conditions
+         return jsonify({"error": "Group details could not be retrieved after update."}), 500
+         
+    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True))
 
 
 @app.route("/api/groups/<int:group_id>/nodes", methods=["GET"])
@@ -600,22 +729,21 @@ def get_group_nodes(group_id):
         abort(404, description="Group not found")
 
     include_events_flag = request.args.get('include') == 'events'
+    # Modify query to use options() for eager loading on the select() statement
     query = db.select(Node).where(Node.group_id == group_id)
 
     if include_events_flag:
-        # Eagerly load events, their attendees (RSVPs), and the users for those RSVPs.
-        # Also load the group associated with the node for each event.
         query = query.options(
             joinedload(Node.events)
                 .joinedload(Event.attendees)
                 .joinedload(EventRSVP.user),
-            joinedload(Node.group) # Eager load group for node for group_name in event.to_dict()
+            joinedload(Node.group) 
         )
 
-    nodes = db.session.scalars(query).unique().all() # .unique() if joinedload might cause duplicates
+    nodes = db.session.scalars(query).unique().all() 
 
     nodes_data = []
-    for node_item in nodes: # Renamed to avoid conflict
+    for node_item in nodes: 
         node_dict = {
             "id": node_item.id,
             "label": node_item.label,
@@ -624,7 +752,7 @@ def get_group_nodes(group_id):
             "group_id": node_item.group_id,
             "events": []
         }
-        if include_events_flag and node_item.events:
+        if include_events_flag and node_item.events: # events are already loaded due to options()
             node_dict["events"] = [
                 event.to_dict(current_user_id=current_user.id) for event in node_item.events
             ]
@@ -636,14 +764,13 @@ def get_group_nodes(group_id):
 @login_required
 @require_group_member
 def get_group_events_flat(group_id):
-    # Eagerly load related data for to_dict() efficiency
     events_query = db.select(Event).join(Node).filter(Node.group_id == group_id)\
         .options(
-            joinedload(Event.node).joinedload(Node.group), # For group_name, group_id
-            joinedload(Event.attendees).joinedload(EventRSVP.user) # For RSVP status
+            joinedload(Event.node).joinedload(Node.group), 
+            joinedload(Event.attendees).joinedload(EventRSVP.user) 
         )\
         .order_by(Event.date.desc())
-    events_list = db.session.scalars(events_query).unique().all()  # Added .unique()
+    events_list = db.session.scalars(events_query).unique().all()
     events_data = [event.to_dict(current_user_id=current_user.id) for event in events_list]
     return jsonify(events_data)
 
@@ -677,12 +804,11 @@ def create_event_api(group_id):
     cost_value = None
     try:
         cost_input = data.get("cost_value")
-        if cost_input is not None and str(cost_input).strip() != "": # Check for non-empty string too
+        if cost_input is not None and str(cost_input).strip() != "": 
             cost_value = float(cost_input)
     except (ValueError, TypeError):
-        cost_value = None # Explicitly set to None if conversion fails
+        cost_value = None 
     
-    # Ensure location_coordinates and location_key are handled
     location_coordinates = data.get("location_coordinates")
 
 
@@ -698,9 +824,15 @@ def create_event_api(group_id):
         location_coordinates=location_coordinates
     )
     db.session.add(event)
-    db.session.flush() # to get event.id for to_dict if it relies on it before commit
+    # It's often better to commit here if to_dict relies on committed state or related objects that get IDs on commit.
+    # However, for simple cases flush() might be enough. If issues, move commit before to_dict.
+    db.session.flush() 
 
-    # Eager load node and group for to_dict
+    # Eager load necessary relationships for to_dict before commit can sometimes be tricky
+    # For event.to_dict, it needs event.node and event.node.group.
+    # If these are not loaded before commit and accessed in to_dict, they might be None or cause issues.
+    # A safer pattern is to commit, then re-fetch or refresh for the response.
+    # However, let's try with flush and explicit refresh if needed.
     db.session.refresh(event, attribute_names=['node'])
     if event.node:
         db.session.refresh(event.node, attribute_names=['group'])
@@ -719,12 +851,12 @@ def create_node_api(group_id):
         return jsonify({"error": "Node label cannot be empty"}), 400
 
     try:
-        x_coord = float(data.get("x", 0)) # Renamed
-        y_coord = float(data.get("y", 0)) # Renamed
+        x_coord = float(data.get("x", 0)) 
+        y_coord = float(data.get("y", 0)) 
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid coordinates for node"}), 400
 
-    node_obj = Node( # Renamed
+    node_obj = Node( 
         label=label,
         x=x_coord,
         y=y_coord,
@@ -738,11 +870,10 @@ def create_node_api(group_id):
 @app.route("/api/events/<int:event_id>", methods=["GET", "PATCH", "DELETE"])
 @login_required
 def manage_event(event_id):
-    # Eager load for to_dict and authorization checks consistently
     event_obj_loaded = db.session.query(Event).options(
         joinedload(Event.node).joinedload(Node.group),
-        joinedload(Event.attendees).joinedload(EventRSVP.user) # This is a collection, .unique() will be needed later
-    ).filter(Event.id == event_id).first() # .first() is fine here, we expect one event or None
+        joinedload(Event.attendees).joinedload(EventRSVP.user) 
+    ).filter(Event.id == event_id).first() 
     
     if not event_obj_loaded:
         return jsonify({"error": "Event not found"}), 404
@@ -750,7 +881,7 @@ def manage_event(event_id):
 
 
     group_id_for_event = None
-    authorized_for_modification = False # Stricter check for PATCH/DELETE
+    authorized_for_modification = False 
     
     if event_obj.node_id and event_obj.node and event_obj.node.group_id: 
         group_id_for_event = event_obj.node.group_id
@@ -763,7 +894,6 @@ def manage_event(event_id):
              return jsonify({"error": msg_get}), status_get
         return jsonify(event_obj.to_dict(current_user_id=current_user.id))
 
-    # For PATCH/DELETE, must be a group member of the event's group
     if not authorized_for_modification:
         return jsonify({"error": "Unauthorized action. Must be a member of the event's group to modify or delete."}), 403
 
@@ -863,11 +993,10 @@ def manage_event(event_id):
                     if not target_node:
                         return jsonify({"error": "Target node not found."}), 400
                     
-                    # The event's current group context is group_id_for_event (from its original/current node)
                     if group_id_for_event and target_node.group_id != group_id_for_event:
                         return jsonify({"error": "Cannot move event to a node in a different group."}), 400
                     
-                    if not is_group_member(current_user.id, target_node.group_id): # User must be member of target node's group
+                    if not is_group_member(current_user.id, target_node.group_id): 
                         return jsonify({"error": "Cannot assign event to a node in a group you are not a member of."}), 403
 
                     event_obj.node_id = new_node_id_int
@@ -881,11 +1010,7 @@ def manage_event(event_id):
             try:
                 db.session.commit()
                 app.logger.info(f"Event {event_id} updated fields: {', '.join(updated_fields)}")
-                # Re-fetch with eager loads for consistent response (already done at start of function)
-                # db.session.refresh(event_obj, attribute_names=['node', 'attendees']) # Refresh specific attrs
-                # if event_obj.node: db.session.refresh(event_obj.node, attribute_names=['group'])
-
-                # Re-query to ensure all relationships are fresh for to_dict
+                
                 event_obj_refreshed = db.session.query(Event).options(
                     joinedload(Event.node).joinedload(Node.group),
                     joinedload(Event.attendees).joinedload(EventRSVP.user)
@@ -920,15 +1045,16 @@ def manage_node(node_id):
 
     if request.method == "GET":
         include_events = request.args.get('include') == 'events'
-        # Eager load events if requested, along with their nested relationships
+        
         if include_events:
+            # This ensures that when node_obj.to_dict is called, its events are already loaded
             node_obj_loaded = db.session.query(Node).options(
-                joinedload(Node.events)
-                    .joinedload(Event.attendees)
-                    .joinedload(EventRSVP.user),
-                joinedload(Node.group) # for event.to_dict() if it needs group from node
-            ).filter(Node.id == node_id).unique().first() # .unique() here due to event collections
-            if node_obj_loaded: node_obj = node_obj_loaded
+                joinedload(Node.events) # Load events
+                    .joinedload(Event.attendees) # Then load attendees for each event
+                    .joinedload(EventRSVP.user), # Then load user for each attendee
+                joinedload(Node.group) 
+            ).filter(Node.id == node_id).unique().first()
+            if node_obj_loaded: node_obj = node_obj_loaded # Use the eagerly loaded object
 
         return jsonify(node_obj.to_dict(include_events=include_events, current_user_id=current_user.id))
 
@@ -948,17 +1074,14 @@ def manage_node(node_id):
 
         if updated:
             db.session.commit()
-        return jsonify(node_obj.to_dict(include_events=False)) # No need for current_user_id if include_events is false
+        return jsonify(node_obj.to_dict(include_events=False, current_user_id=current_user.id))
 
     if request.method == "DELETE":
-        # Check if there are events associated with this node
         events_on_node = db.session.scalars(db.select(Event.id).filter_by(node_id=node_id).limit(1)).first()
         if events_on_node:
-            # Unassign events from this node before deleting the node
             db.session.execute(
                 db.update(Event).where(Event.node_id == node_id).values(node_id=None)
             )
-            # flash message or log that events were unassigned might be useful for user feedback
             app.logger.info(f"Events previously on node {node_id} have been unassigned.")
 
 
@@ -1005,7 +1128,7 @@ def get_event_attendees(event_id):
                            .filter(EventRSVP.status.isnot(None))\
                            .order_by(EventRSVP.timestamp.desc())
 
-    rsvps = db.session.scalars(rsvps_query).all() # .unique() not strictly needed if EventRSVP is unique per user/event
+    rsvps = db.session.scalars(rsvps_query).unique().all() # Added .unique() here too
 
     attendees = []
     for rsvp in rsvps:

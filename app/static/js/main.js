@@ -7,6 +7,9 @@ import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupLi
 import { hookEventFilterBar } from './eventActions.js';
 import { setupModal as setupEventDetailsModal, openEventModal } from './modalManager.js';
 import { setupCreateGroupModal } from './groupModalManager.js';
+// --- MINIMAL ADDITION: Import for settings modal ---
+import { setupGroupSettingsModal, openGroupSettingsModal } from './groupSettingsModalManager.js';
+// --- END ADDITION ---
 import { setupViewportInteractions, getTransformState, setTransformState, debounce } from './viewportManager.js';
 import { setupSearchWidget } from './search.js';
 import { initInsightsManager } from './insightsManager.js';
@@ -16,7 +19,10 @@ window.draggingAllowed = true;
 const groupViewStates = new Map();
 
 let activeGroupNameEl, activeGroupAvatarEl, plannerPane, backButton, groupListUL,
-    collageViewport, eventPanelsContainer, calendarGridEl, eventListFilterBar;
+    collageViewport, eventPanelsContainer, calendarGridEl, eventListFilterBar,
+    // --- MINIMAL ADDITION: Variable for settings button ---
+    activeGroupSettingsButton;
+    // --- END ADDITION ---
 
 // --- Global Setup for All Views ---
 function setupGlobalUI() {
@@ -52,6 +58,9 @@ async function setupPlannerView() {
 
     activeGroupNameEl = document.getElementById('active-group-name');
     activeGroupAvatarEl = document.getElementById('active-group-avatar');
+    // --- MINIMAL ADDITION: Get settings button element ---
+    activeGroupSettingsButton = document.getElementById('active-group-settings-button');
+    // --- END ADDITION ---
     plannerPane = document.getElementById('planner-pane');
     backButton = document.querySelector('.back-button');
     groupListUL = document.querySelector('.group-list-area ul');
@@ -70,12 +79,18 @@ async function setupPlannerView() {
      if (!eventPanelsContainer) console.warn("Event panels container missing.");
      if (!activeGroupNameEl) console.warn("Active group name element missing.");
      if (!activeGroupAvatarEl) console.warn("Active group avatar element missing.");
+     // --- MINIMAL ADDITION: Check settings button element ---
+     if (!activeGroupSettingsButton) console.warn("Active group settings button missing.");
+     // --- END ADDITION ---
      if (!calendarGridEl) console.warn("Calendar grid element missing.");
      if (!eventListFilterBar) console.warn("Event list filter bar missing.");
 
 
     setupEventDetailsModal();
     setupCreateGroupModal();
+    // --- MINIMAL ADDITION: Setup settings modal ---
+    setupGroupSettingsModal();
+    // --- END ADDITION ---
     if (collageViewport && eventPanelsContainer) {
         setupViewportInteractions(collageViewport, eventPanelsContainer);
     }
@@ -107,7 +122,7 @@ async function setupPlannerView() {
         if (groupListUL && initialGroupId) {
             const li = groupListUL.querySelector(`.group-item[data-group-id="${initialGroupId}"]`);
             if (li) {
-                 activated = await activateGroup(li, initialGroupId);
+                 activated = await activateGroup(li, initialGroupId); // activateGroup will handle settings button visibility
             }
         }
 
@@ -116,7 +131,7 @@ async function setupPlannerView() {
             const firstLi = groupListUL.querySelector(".group-item:not(.add-new-group-item)");
             if (firstLi) {
                 const firstGroupId = firstLi.dataset.groupId;
-                activated = await activateGroup(firstLi, firstGroupId);
+                activated = await activateGroup(firstLi, firstGroupId); // activateGroup will handle settings button visibility
             }
         }
 
@@ -124,7 +139,11 @@ async function setupPlannerView() {
              if(eventPanelsContainer) eventPanelsContainer.innerHTML = '<p class="info-message">No groups available or selected.</p>';
              if(activeGroupNameEl) activeGroupNameEl.textContent = 'No Group Selected';
              if(activeGroupAvatarEl) activeGroupAvatarEl.src = '/static/img/default-group-avatar.png';
+             // --- MINIMAL ADDITION: Hide settings button if no group active ---
+             if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'none';
+             // --- END ADDITION ---
         }
+        // If 'activated' is true, activateGroup already handled showing the settings button.
         switchView("groups");
     }
 
@@ -144,6 +163,17 @@ async function setupPlannerView() {
 
     backButton?.addEventListener('click', goBackToGroupList);
 
+    // --- MINIMAL ADDITION: Event listener for settings button ---
+    activeGroupSettingsButton?.addEventListener('click', () => {
+        const activeLi = groupListUL?.querySelector('.group-item.active:not(.add-new-group-item)');
+        if (activeLi && activeLi.dataset.groupId) {
+            openGroupSettingsModal(activeLi.dataset.groupId);
+        } else {
+            alert("Please select an active group first to change its settings.");
+        }
+    });
+    // --- END ADDITION ---
+
     let isCurrentlyMobile = window.innerWidth <= 768;
     window.addEventListener('resize', debounce(() => {
         const wasMobile = isCurrentlyMobile;
@@ -162,11 +192,14 @@ async function setupPlannerView() {
                 if (currentLogicalView === 'groups') {
                      const activeLi = groupListUL?.querySelector('.group-item.active:not(.add-new-group-item)') || groupListUL?.querySelector('.group-item:not(.add-new-group-item)');
                      if (activeLi) {
-                         activateGroup(activeLi, activeLi.dataset.groupId);
+                         activateGroup(activeLi, activeLi.dataset.groupId); // activateGroup handles settings button
                      } else {
                          if(eventPanelsContainer) eventPanelsContainer.innerHTML = '<p class="info-message">No groups available.</p>';
                           if(activeGroupNameEl) activeGroupNameEl.textContent = 'No Group Selected';
                           if(activeGroupAvatarEl) activeGroupAvatarEl.src = '/static/img/default-group-avatar.png';
+                          // --- MINIMAL ADDITION: Hide settings button on resize if no group active ---
+                          if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'none';
+                          // --- END ADDITION ---
                      }
                 }
             }
@@ -182,6 +215,10 @@ async function setupPlannerView() {
         }
     });
 
+    // ========================================================================
+    // THIS IS YOUR WORKING eventDataUpdated LISTENER - UNCHANGED CORE LOGIC
+    // Only made async because activateGroup (called within) is async.
+    // ========================================================================
     document.addEventListener('eventDataUpdated', (event) => {
         const { eventId, updatedEvent } = event.detail;
 
@@ -272,6 +309,9 @@ async function setupPlannerView() {
         }
         console.log("[MainJS] UI refresh logic executed after eventDataUpdated.");
     });
+    // ========================================================================
+    // END OF YOUR WORKING eventDataUpdated LISTENER
+    // ========================================================================
 
 
     console.log("Planner setup complete.");
@@ -285,14 +325,19 @@ async function activateGroup(groupListItem, groupId) {
     if (groupListItem.classList.contains('add-new-group-item')) {
         return false;
     }
-     if (!groupListUL || !activeGroupNameEl || !activeGroupAvatarEl || !plannerPane || !eventPanelsContainer) {
+     // --- MINIMAL ADDITION: Check settings button ---
+     if (!groupListUL || !activeGroupNameEl || !activeGroupAvatarEl || !plannerPane || !eventPanelsContainer || !activeGroupSettingsButton) {
          console.error("Cannot activate group: Required UI elements missing.");
          return false;
      }
+     // --- END ADDITION ---
 
     const group = groupsData.find(g => String(g.id) === String(groupId));
     if (!group) {
         console.warn(`Group with ID ${groupId} not found in groupsData.`);
+        // --- MINIMAL ADDITION: Hide settings button if group not found ---
+        if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'none';
+        // --- END ADDITION ---
         return false;
     }
 
@@ -329,26 +374,26 @@ async function activateGroup(groupListItem, groupId) {
     groupListItem.classList.add('active');
     activeGroupNameEl.textContent = group.name || 'Group Events';
     activeGroupAvatarEl.src = group.avatar_url || '/static/img/default-group-avatar.png';
+    // --- MINIMAL ADDITION: Show settings button when group is active ---
+    if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'inline-flex';
+    // --- END ADDITION ---
 
-    await renderGroupEvents(groupId); // This will render the events for the new group
+    await renderGroupEvents(groupId); 
 
     if (isMobile) {
         plannerPane.classList.add('mobile-event-view-active');
-        const collageArea = document.getElementById('event-collage-area'); // Corrected ID
+        const collageArea = document.getElementById('event-collage-area'); 
         if (collageArea) {
             collageArea.style.display = 'block';
             collageArea.scrollTop = 0;
         }
          if (groupListUL.parentElement) groupListUL.parentElement.style.display = 'none';
 
-    } else { // Desktop
-        // If another view (calendar/events/insights) was active, switch to 'groups' view.
-        // switchView will handle showing the correct elements (group list + collage).
+    } else { 
         if (plannerPane.classList.contains('calendar-view-active') ||
             plannerPane.classList.contains('events-view-active') ||
             plannerPane.classList.contains('insights-view-active')) {
-            switchView('groups'); // This makes sure the "Groups" tab is active and layout is correct.
-                                 // renderGroupEvents was already called above.
+            switchView('groups'); 
         }
     }
     updateHash('groups', groupId);

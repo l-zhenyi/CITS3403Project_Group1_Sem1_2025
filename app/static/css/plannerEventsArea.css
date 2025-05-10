@@ -1,4 +1,13 @@
 /* ==========================================================================
+   Global Box Sizing (Highly Recommended)
+   ========================================================================== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* ==========================================================================
    Events View Styles
    ========================================================================== */
 
@@ -20,38 +29,27 @@
     /* Match parent rounding */
     position: relative;
     /* For potential sticky filter bar */
-    padding: 15px;
     padding-top: 5px;
-    /* ADDED/ADJUSTED - Initial space at the top */
 }
 
 .event-filter-bar {
     /* Positioning & Box Model */
     display: flex;
-    /* justify-content: center; */
-    /* REMOVED - defaults to flex-start (left) */
     align-items: center;
     gap: 8px;
     /* Space between pills */
     padding: 8px 12px;
     margin-bottom: 20px;
     border-radius: 999px;
-    /* CHANGED - Pill shape with semi-circle ends */
+    /* Pill shape with semi-circle ends */
     flex-shrink: 0;
     position: sticky;
-    /* top: -15px; */
-    /* REMOVED - adjust below */
     top: 5px;
-    /* CHANGED - Stick slightly below the top edge */
+    /* Stick slightly below the top edge */
     z-index: 5;
     width: fit-content;
-    /* ADDED - Size to content */
-    /* Glassy style applied in HTML */
+    /* Size to content */
     background: rgba(140, 140, 145, 0.85);
-    /* Slightly stronger/more opaque background */
-    /* Add a left margin if you want it slightly indented from the edge */
-    /* margin-left: 5px; */
-    /* Optional */
 }
 
 .filter-pill {
@@ -86,34 +84,34 @@
 }
 
 .event-list-container {
-    /* padding-top: 5px; */
-    /* REMOVED or adjust if needed */
-    /* display: flex; */
-    /* REMOVED */
-    /* flex-direction: column; */
-    /* REMOVED */
+    --min: 270px; /* Minimum width of a column */
+    --max: 340px; /* Maximum width of a column */
+
     display: grid;
-    /* ADDED */
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    /* ADDED - Responsive Grid */
     gap: 15px;
-    /* Space between tiles (rows and columns) */
-    /* Add padding to the top to avoid content hiding under sticky filter */
     padding-top: 10px;
-    /* ADDED - Adjust as needed based on filter bar height */
+    
+    /* Grid that flexes each track between min and max, capped by 1fr */
+    grid-template-columns: repeat(auto-fill, minmax(var(--min), min(var(--max), 1fr)));
+
+    /* Ensures tiles don’t all bunch to the left when there's spare room */
+    justify-content: center;
+
+    /* Align items top-to-bottom to avoid tallest tile affecting others */
+    align-items: start;
 }
 
 .event-tile {
-    /* Box Model */
     display: block;
-    /* Simple vertical stacking */
     padding: 18px;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.25);
+    
+    /* These keep the tile constrained within the grid cell */
+    width: 100%;
+    max-width: var(--max);
 
-    /* Visual */
     background: rgba(140, 140, 145, 0.7);
-    /* Glassy tile */
     backdrop-filter: blur(25px) saturate(140%);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -121,7 +119,6 @@
 }
 
 .event-tile:hover {
-    /* Optional hover effect */
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
@@ -132,6 +129,9 @@
     font-weight: 600;
     color: #fff;
     margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .event-tile .tile-detail {
@@ -139,7 +139,6 @@
     color: #e5e5ea;
     margin-bottom: 4px;
     display: flex;
-    /* Align icon and text */
     align-items: center;
     gap: 6px;
 }
@@ -151,88 +150,60 @@
 /* Simple icons (can replace with actual icons later) */
 .tile-detail .icon {
     font-size: 0.9em;
-    /* Slightly smaller */
     opacity: 0.8;
 }
 
 
-
-
-
-
-
 /* ==========================================================================
-     Mobile Responsiveness (max-width: 768px)
+     Media Queries for Mobile Responsiveness
      ========================================================================== */
-
 
 @media (max-width: 768px) {
 
-    /* Event Panels Container - no major changes needed */
+    /* Event Panels Container - not directly relevant to .event-tile styling here */
     .event-panels-container {
-        /* Ensure content starts below sticky header */
-        /* This is implicitly handled by the header's presence and margin-bottom */
         min-height: auto;
-        /* Not strictly needed */
     }
 
-    /* Event Panel adjustments for mobile list view */
+    /* Event Panel adjustments (primarily for collage view, not event tiles in this list) */
     .event-panel {
         position: relative;
-        /* Change from absolute to relative */
         width: auto;
-        /* Let it fill available width */
         left: auto !important;
-        /* Override inline styles if any */
         top: auto !important;
-        /* Override inline styles if any */
         transform: none !important;
-        /* Remove transforms */
         margin-bottom: 15px;
-        /* Space between panels */
         min-height: unset;
-        /* Remove min-height */
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-        /* Simpler shadow */
         padding: 15px;
-        /* Adjust padding */
         background: rgba(170, 170, 175, 0.9);
-        /* Slightly less transparent maybe */
         backdrop-filter: blur(25px) saturate(120%);
         transform-style: flat;
-        /* Disable 3D context */
     }
 
     .event-panel:hover {
-        /* Disable hover transform effects on mobile */
         transform: none !important;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-        /* Keep shadow consistent */
     }
 
-    .event-image {
+    .event-image { /* Applies to event panels in collage, not event tiles here */
         height: 120px;
-        /* Slightly taller image on mobile */
     }
 
 
     .event-filter-bar {
-        /* ... existing mobile filter bar styles ... */
         top: 0;
-        /* Adjust sticky position for less padding */
         margin-bottom: 15px;
-        /* width: fit-content; is inherited */
-        /* border-radius: 999px; is inherited */
     }
 
-    /* ... */
     .event-list-container {
         gap: 12px;
-        /* Explicitly set 1 column for mobile */
-        grid-template-columns: 1fr;
-        /* CHANGED */
+        /* Single column on mobile, taking full width */
+        grid-template-columns: 1fr; /* Override desktop columns */
         padding-top: 5px;
-        /* Adjust top padding */
+        /* align-items: start; from desktop rules still applies, which is fine. */
+        /* If tiles could be narrower than screen and you want them centered: */
+        /* justify-items: center; */
     }
 
     .filter-pill {
@@ -243,6 +214,10 @@
     .event-tile {
         padding: 15px;
         border-radius: 12px;
+        /* On mobile, in a 1fr column, tile takes full width.
+           If you wanted to cap it (e.g. max-width: 340px) and container
+           had justify-items: center, it would center.
+           With current setup, it will be full width of the 1fr column. */
     }
 
     .event-tile h4 {
@@ -256,7 +231,8 @@
     /* Ensure mobile view classes don't conflict when Events view is active */
     .planner-pane.events-view-active.mobile-event-view-active .group-list-area,
     .planner-pane.events-view-active.mobile-event-view-active .event-collage-area,
-    .planner-pane.events-view-active.mobile-event-view-active .calendar-view {
+    .planner-pane.events-view-active.mobile-event-view-active .calendar-view,
+    .planner-pane.events-view-active.mobile-event-view-active .insights-view {
         display: none !important;
         flex: 0 0 0 !important;
         opacity: 0 !important;
@@ -265,10 +241,8 @@
 
     .planner-pane.events-view-active.mobile-event-view-active .events-view {
         display: flex !important;
-        /* Ensure events view stays visible */
         flex: 1 1 auto !important;
         opacity: 1 !important;
         pointer-events: auto !important;
     }
-
 }

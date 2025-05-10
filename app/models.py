@@ -9,6 +9,7 @@ from sqlalchemy.types import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Float, text, Text # Added Text type
 from typing import Annotated, Optional, List
+from flask import url_for # +++ IMPORT url_for
 
 friends = db.Table(
     'friends',
@@ -152,10 +153,10 @@ class Group(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
     avatar_url: Mapped[str] = mapped_column(String(255), nullable=True)
-    about: Mapped[str] = mapped_column(String(255), nullable=True)
+    about: Mapped[str] = mapped_column(String(255), nullable=True) # This is your description field
 
     members: Mapped[List["GroupMember"]] = relationship(
-        back_populates="group", cascade="all, delete-orphan"
+        back_populates="group", cascade="all, delete-orphan", lazy="joined" # Added lazy="joined" for auto-load
     )
 
     posts: Mapped[List["Post"]] = relationship(
@@ -166,25 +167,48 @@ class Group(db.Model):
         back_populates="group", cascade="all, delete-orphan"
     )
 
-    @property
-    def avatar(self, size=128):
-        if self.avatar_url:
-            return self.avatar_url
-        # fallback: generate based on group name hash
-        digest = md5(str(self.id).lower().encode('utf-8')).hexdigest()
-        return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
+    # +++ NEW: Define owner_id for clearer ownership +++
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user.id"), nullable=True)
+    owner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id])
 
-    def to_dict(self, include_nodes=True):
+
+    @property
+    def avatar(self, size=128): # This property should likely just return self.avatar_url or default
+        return self.avatar_url if self.avatar_url else f'https://www.gravatar.com/avatar/{md5(str(self.id).lower().encode("utf-8")).hexdigest()}?d=identicon&s={size}'
+
+
+    # +++ MODIFIED to_dict METHOD +++
+    def to_dict(self, include_nodes=True, include_members=False): # Added include_members
         data = {
             "id": self.id,
             "name": self.name,
-            "avatar_url": self.avatar,
-            "about": self.about
+            "avatar_url": self.avatar_url or url_for('static', filename='img/default-group-avatar.png'), # Use direct or default
+            "description": self.about, # Changed 'about' to 'description' for frontend consistency
+            "owner_id": self.owner_id # Include owner_id
         }
 
         if include_nodes:
-            data["event_nodes"] = [node.to_dict() for node in self.nodes]
+            data["nodes"] = [node.to_dict(include_events=False) for node in self.nodes] # Typically don't need events here
 
+        if include_members:
+            data['members'] = []
+            # Ensure members are loaded if lazy='dynamic'. If lazy='joined' or default, they are likely already loaded.
+            # If self.members is a query, use .all()
+            members_list = self.members if not hasattr(self.members, 'all') else self.members.all()
+            for member_assoc in members_list:
+                member_user = member_assoc.user
+                if member_user:
+                    is_owner_flag = (self.owner_id == member_user.id) if self.owner_id else False
+                    # A simpler owner check if you made the first member the owner during creation:
+                    # if not self.owner_id and self.members and self.members[0].user_id == member_user.id:
+                    #    is_owner_flag = True
+
+                    data['members'].append({
+                        'user_id': member_user.id, # Changed from 'id' to 'user_id' for clarity
+                        'username': member_user.username,
+                        'avatar_url': member_user.avatar(40),
+                        'is_owner': is_owner_flag
+                    })
         return data
 
 class Node(db.Model):
@@ -202,7 +226,7 @@ class Node(db.Model):
         back_populates="node", cascade="all, delete-orphan"
     )
 
-    def to_dict(self, include_events: bool = False):
+    def to_dict(self, include_events: bool = False, current_user_id=None): # Added current_user_id
         data = {
             "id": self.id,
             "label": self.label,
@@ -212,7 +236,8 @@ class Node(db.Model):
         }
 
         if include_events:
-            data["events"] = [event.to_dict() for event in self.events]
+            # Pass current_user_id to event.to_dict if it needs it
+            data["events"] = [event.to_dict(current_user_id=current_user_id) for event in self.events]
 
         return data
 
@@ -281,6 +306,9 @@ class GroupMember(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"))
+    # +++ NEW: is_owner flag +++
+    is_owner: Mapped[bool] = mapped_column(default=False, nullable=False)
+
 
     user: Mapped["User"] = relationship(back_populates="groups")
     group: Mapped["Group"] = relationship(back_populates="members")
