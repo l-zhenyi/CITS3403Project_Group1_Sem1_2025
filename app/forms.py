@@ -59,3 +59,9 @@ class MessageForm(FlaskForm):
     message = TextAreaField(('Message'), validators=[ 
         DataRequired(), Length(min=0, max=140)]) 
     submit = SubmitField('Submit')
+
+# FriendRequestForm for sending friend requests
+from wtforms import HiddenField
+
+class FriendRequestForm(FlaskForm):
+    receiver_username = HiddenField()

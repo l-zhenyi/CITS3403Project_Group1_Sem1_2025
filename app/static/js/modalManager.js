@@ -38,7 +38,6 @@ function parseAndFormatCost(inputText) {
 }
 
 // --- Location Options & Map Configuration ---
-// AVAILABLE_LOCATIONS is now primarily for matching saved keys or initial display, not for quick jumps in this version.
 const AVAILABLE_LOCATIONS_DATA = [
     { key: "online", text: "Online Event", mapQuery: null },
     { key: "main_hall", text: "Main Hall", mapQuery: "Main Hall, 123 Event Street, Anytown, USA" },
@@ -49,7 +48,7 @@ const AVAILABLE_LOCATIONS_DATA = [
 ];
 const NOMINATIM_REVERSE_GEOCODE_URL = "https://nominatim.openstreetmap.org/reverse?format=jsonv2";
 const NOMINATIM_FORWARD_GEOCODE_URL = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1";
-const DEFAULT_MAP_CENTER = [20, 0];
+const DEFAULT_MAP_CENTER = [20, 0]; // Latitude, Longitude
 const DEFAULT_MAP_ZOOM = 2;
 const FOCUSED_MAP_ZOOM = 13;
 
@@ -62,12 +61,12 @@ let modalElement, modalContent, closeButton, modalEventImage, modalEventTitle,
     attendeeListMessage, attendeeLoadingIndicator;
 
 let currentEventId = null;
-let isInitialized = false;
+let isInitialized = false; // <<<<------ THIS IS WHERE IT'S DEFINED
 let activeEditField = null;
 let geocodeTimeout = null;
 
 
-function _initializeModalElements() { /* ... (same) ... */
+function _initializeModalElements() {
     modalElement = document.getElementById('event-details-modal');
     if (!modalElement) { console.error("Modal element (#event-details-modal) not found!"); return false; }
     modalContent = modalElement.querySelector('.modal-content');
@@ -89,33 +88,56 @@ function _initializeModalElements() { /* ... (same) ... */
     attendeeListContainer = modalElement.querySelector('.attendee-list-container');
     attendeeListMessage = modalElement.querySelector('#attendee-list-message');
     attendeeLoadingIndicator = modalElement.querySelector('#attendee-loading-indicator');
-    if (!modalContent || !closeButton || !modalEventTitle || !modalDescriptionWrapper || !modalEventDescription) {
+
+    if (!modalContent || !closeButton || !modalEventTitle || !modalDescriptionWrapper || !modalEventDescription || !modalRsvpControls || !modalAttendeeList) {
         console.error("One or more essential modal sub-elements not found!"); return false;
     }
-    isInitialized = true;
+    isInitialized = true; // Set to true once elements are found
     return true;
 }
 
-function _resetModal() { /* ... (same) ... */
+function _resetModal() {
     if (!isInitialized) return;
     if (activeEditField && activeEditField.cancelChanges) activeEditField.cancelChanges(true);
     activeEditField = null;
+
     const editableFields = modalElement.querySelectorAll('.editable-field');
     editableFields.forEach(field => {
         const contentDisplayElId = field.dataset.contentDisplayElementId;
         const contentDisplayEl = contentDisplayElId ? document.getElementById(contentDisplayElId) : field;
         const originalContent = field.dataset.originalContentForReset || '';
         const isHTML = field.dataset.originalDisplayIsHtml === 'true';
-        if (isHTML) { contentDisplayEl.innerHTML = originalContent; }
-        else { contentDisplayEl.textContent = originalContent; }
-        if (field !== contentDisplayEl && !field.contains(contentDisplayEl)) { field.innerHTML = ''; field.appendChild(contentDisplayEl); }
+
+        if (contentDisplayEl) {
+            if (isHTML) { contentDisplayEl.innerHTML = originalContent; }
+            else { contentDisplayEl.textContent = originalContent; }
+            if (field !== contentDisplayEl && !field.contains(contentDisplayEl)) {
+                 field.innerHTML = '';
+                 field.appendChild(contentDisplayEl);
+            }
+        } else if (field) {
+            if (isHTML) { field.innerHTML = originalContent; }
+            else { field.textContent = originalContent; }
+        }
+
         field.classList.remove('is-editing-field', 'editable-field');
-        if (field.clickHandler) { field.removeEventListener('click', field.clickHandler); delete field.clickHandler; }
-        delete field.dataset.isEditing; delete field.dataset.editMode; delete field.dataset.originalContentForReset;
-        delete field.dataset.originalDisplayIsHtml; delete field.dataset.inputType; delete field.dataset.contentDisplayElementId;
-        delete field.dataset.currentDisplayValue; delete field.dataset.currentNumericValue; delete field.dataset.currentDataValue;
-        delete field.dataset.currentCoordinates; delete field.dataset.currentPredefinedKey;
+        if (field.clickHandler) {
+            field.removeEventListener('click', field.clickHandler);
+            delete field.clickHandler;
+        }
+        delete field.dataset.isEditing;
+        delete field.dataset.editMode;
+        delete field.dataset.originalContentForReset;
+        delete field.dataset.originalDisplayIsHtml;
+        delete field.dataset.inputType;
+        delete field.dataset.contentDisplayElementId;
+        delete field.dataset.currentDisplayValue;
+        delete field.dataset.currentNumericValue;
+        delete field.dataset.currentDataValue;
+        delete field.dataset.currentCoordinates;
+        delete field.dataset.currentPredefinedKey;
     });
+
     if (modalEventImage) modalEventImage.src = '/static/img/default-event-logo.png';
     if (modalEventTitle) modalEventTitle.textContent = 'Loading...';
     if (modalGroupName) modalGroupName.textContent = 'Loading...';
@@ -133,10 +155,11 @@ function _resetModal() { /* ... (same) ... */
     currentEventId = null;
 }
 
-function _populateAttendeeList(attendees = []) { /* ... (same) ... */
+function _populateAttendeeList(attendees = []) {
     if (!isInitialized || !modalAttendeeList || !attendeeListContainer || !attendeeListMessage || !modalAttendeeCount) return;
     modalAttendeeList.innerHTML = '';
     modalAttendeeCount.textContent = attendees.length;
+
     if (attendees.length === 0) {
         attendeeListMessage.textContent = 'No one has RSVP\'d yet.';
         attendeeListMessage.style.display = 'block';
@@ -158,10 +181,11 @@ function _populateAttendeeList(attendees = []) { /* ... (same) ... */
     }
 }
 
-function _updateRSVPButtonState(status) { /* ... (same) ... */
+function _updateRSVPButtonState(status) {
     if (!isInitialized || !rsvpButtons || rsvpButtons.length === 0) return;
     const normalizedStatus = status?.toLowerCase();
     rsvpButtons.forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+
     if (normalizedStatus && ['attending', 'maybe', 'declined'].includes(normalizedStatus)) {
         const activeButton = modalRsvpControls?.querySelector(`.rsvp-btn[data-status="${normalizedStatus}"]`);
         if (activeButton) activeButton.setAttribute('aria-pressed', 'true');
@@ -170,25 +194,29 @@ function _updateRSVPButtonState(status) { /* ... (same) ... */
         if (clearRsvpButton) clearRsvpButton.style.display = 'none';
     }
 }
-async function _fetchEventDetails(eventId) { /* ... (same) ... */
+async function _fetchEventDetails(eventId) {
     if (!isInitialized || !attendeeLoadingIndicator || !attendeeListMessage || !attendeeListContainer || !modalRsvpControls) return;
     attendeeLoadingIndicator.style.display = 'block';
     attendeeListMessage.style.display = 'none';
     attendeeListContainer.style.display = 'none';
     modalRsvpControls.style.pointerEvents = 'none';
     modalRsvpControls.style.opacity = '0.6';
+
     try {
         const [attendeesRes, myRsvpRes] = await Promise.all([
-            fetch(`/api/events/${eventId}/attendees`), // GET, no CSRF needed
-            fetch(`/api/events/${eventId}/my-rsvp`)   // GET, no CSRF needed
+            fetch(`/api/events/${eventId}/attendees`),
+            fetch(`/api/events/${eventId}/my-rsvp`)
         ]);
+
         if (!attendeesRes.ok || !myRsvpRes.ok) {
              throw new Error(`Failed to fetch details (${attendeesRes.status}/${myRsvpRes.status})`);
         }
         const attendees = await attendeesRes.json();
         const myRsvp = await myRsvpRes.json();
+
         _populateAttendeeList(attendees);
         _updateRSVPButtonState(myRsvp.status);
+
     } catch (error) {
         console.error("Error fetching event details:", error);
         if (attendeeListMessage) {
@@ -245,7 +273,9 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
         if (e.target.closest('.edit-action-button') || e.target.closest('.cost-interpretation-helper') || e.target.closest('.location-map-floating-panel')) return;
 
         if (activeEditField && activeEditField.target !== targetElement) {
-            if (!activeEditField.cancelChanges(true)) { return; }
+            if (!activeEditField.cancelChanges(true)) {
+                return;
+            }
         }
 
         targetElement.classList.add('is-editing-field');
@@ -256,17 +286,16 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
 
         let currentEditMode = targetElement.dataset.editMode;
         let costInterpretationHelper = null;
-        let locationMapFloatingPanel = null; // The floating div for the map
-        let locationMapController = null;    // Holds map logic
-        let inputElementForDirtyCheckAndSave; // The primary input for the field
-        
-        const inputWrapper = document.createElement('div'); // General wrapper for input and actions
+        let locationMapFloatingPanel = null;
+        let locationMapController = null;
+        let inputElementForDirtyCheckAndSave;
+
+        const inputWrapper = document.createElement('div');
         inputWrapper.className = 'editable-input-wrapper';
 
         if (currentEditMode === 'cost') {
             initialInputFieldValue = targetElement.dataset.currentDisplayValue;
             costInterpretationHelper = document.createElement('div');
-            /* ... cost helper setup ... */
             costInterpretationHelper.id = 'cost-interpretation-helper-dynamic';
             costInterpretationHelper.className = 'cost-interpretation-helper';
             document.body.appendChild(costInterpretationHelper);
@@ -275,76 +304,71 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             costInput.type = 'text';
             costInput.className = 'editable-input editable-cost-input';
             costInput.value = initialInputFieldValue;
-            inputWrapper.appendChild(costInput); // costInput is inside inputWrapper
+            inputWrapper.appendChild(costInput);
             inputElementForDirtyCheckAndSave = costInput;
-            
-            targetElement.innerHTML = ''; // Clear static text from targetElement
-            targetElement.appendChild(inputWrapper); // Put inputWrapper (with input) into targetElement
 
-            if (costInterpretationHelper) { /* ... (cost interpreter logic) ... */
-                const updateCostInterpretation = () => {
-                    const parsed = parseAndFormatCost(costInput.value);
-                    let numericValDisplay = parsed.cost_value === null || parsed.cost_value === undefined ? '<em>Not set</em>' : String(parsed.cost_value);
-                    if (typeof parsed.cost_value === 'number') numericValDisplay = `<strong>${parsed.cost_value.toFixed(2)}</strong>`;
-                    costInterpretationHelper.innerHTML = `Interpreted: Display as "<strong>${parsed.cost_display_standardized}</strong>", Value as ${numericValDisplay}`;
-                    const targetRect = targetElement.getBoundingClientRect();
-                    costInterpretationHelper.style.position = 'absolute'; costInterpretationHelper.style.boxSizing = 'border-box';
-                    costInterpretationHelper.style.left = `${targetRect.left + window.pageXOffset}px`;
-                    costInterpretationHelper.style.top = `${targetRect.bottom + window.pageYOffset + 20}px`; // Increased gap
-                    costInterpretationHelper.style.width = `${targetRect.width}px`;
-                    costInterpretationHelper.classList.add('visible');
-                };
-                costInput.addEventListener('input', updateCostInterpretation); costInput.addEventListener('focus', updateCostInterpretation);
-                requestAnimationFrame(updateCostInterpretation);
-            }
+            targetElement.innerHTML = '';
+            targetElement.appendChild(inputWrapper);
+
+            const updateCostInterpretation = () => {
+                const parsed = parseAndFormatCost(costInput.value);
+                let numericValDisplay = parsed.cost_value === null || parsed.cost_value === undefined ? '<em>Not set</em>' : String(parsed.cost_value);
+                if (typeof parsed.cost_value === 'number') numericValDisplay = `<strong>${parsed.cost_value.toFixed(2)}</strong>`;
+                costInterpretationHelper.innerHTML = `Interpreted: Display as "<strong>${parsed.cost_display_standardized}</strong>", Value as ${numericValDisplay}`;
+                const targetRect = targetElement.getBoundingClientRect();
+                costInterpretationHelper.style.position = 'fixed';
+                costInterpretationHelper.style.boxSizing = 'border-box';
+                costInterpretationHelper.style.left = `${targetRect.left}px`;
+                costInterpretationHelper.style.top = `${targetRect.bottom + 5}px`;
+                costInterpretationHelper.style.width = `${targetRect.width}px`;
+                costInterpretationHelper.style.zIndex = '1060';
+                costInterpretationHelper.classList.add('visible');
+            };
+            costInput.addEventListener('input', updateCostInterpretation);
+            costInput.addEventListener('focus', updateCostInterpretation);
+            requestAnimationFrame(updateCostInterpretation);
+
         } else if (currentEditMode === 'location') {
-            // `targetElement` itself will get the text input
-            targetElement.innerHTML = ''; // Clear static text
+            initialInputFieldValue = targetElement.dataset.originalContentForReset;
+            targetElement.innerHTML = '';
             const locationTextInput = document.createElement('input');
             locationTextInput.type = 'text';
-            locationTextInput.className = 'editable-input location-text-input-main'; // Class for styling
-            locationTextInput.value = initialInputFieldValue; // From originalContentForReset
-            inputWrapper.appendChild(locationTextInput); // Text input is inside inputWrapper
-            targetElement.appendChild(inputWrapper); // inputWrapper (with text input) goes into targetElement
+            locationTextInput.className = 'editable-input location-text-input-main';
+            locationTextInput.value = initialInputFieldValue;
+            inputWrapper.appendChild(locationTextInput);
+            targetElement.appendChild(inputWrapper);
             inputElementForDirtyCheckAndSave = locationTextInput;
 
-            // Create the separate floating panel for the map
             locationMapFloatingPanel = document.createElement('div');
-            locationMapFloatingPanel.className = 'location-map-floating-panel'; // For styling
-
+            locationMapFloatingPanel.className = 'location-map-floating-panel';
             const mapContainer = document.createElement('div');
             mapContainer.id = `leaflet-map-container-${Date.now()}`;
             mapContainer.style.height = '250px'; mapContainer.style.width = '100%';
             locationMapFloatingPanel.appendChild(mapContainer);
-
             const mapStatusElement = document.createElement('small');
             mapStatusElement.className = 'map-status-text';
             mapStatusElement.innerHTML = 'Initializing map... <span style="float:right;">© OpenStreetMap contributors</span>';
             locationMapFloatingPanel.appendChild(mapStatusElement);
-
-            document.body.appendChild(locationMapFloatingPanel); // Add floating panel to body
+            document.body.appendChild(locationMapFloatingPanel);
 
             locationMapController = {
                 mapContainer, statusElement: mapStatusElement, map: null, marker: null,
-                // currentText, currentCoords, currentKey will be managed by interaction with locationTextInput and map
-                currentCoords: targetElement.dataset.currentCoordinates || null, // Initial coords for map
-                currentKey: targetElement.dataset.currentPredefinedKey || null,    // Initial key
-                // locationTextInput is inputElementForDirtyCheckAndSave
+                currentCoords: targetElement.dataset.currentCoordinates || null,
+                currentKey: targetElement.dataset.currentPredefinedKey || null,
             };
-            
-            // Style and position the floating map panel
-            locationMapFloatingPanel.style.position = 'absolute';
-            locationMapFloatingPanel.style.zIndex = '1050'; // Below cost helper if both open
+
+            const textInputRect = locationTextInput.getBoundingClientRect();
+            locationMapFloatingPanel.style.position = 'fixed';
+            locationMapFloatingPanel.style.zIndex = '1055';
             locationMapFloatingPanel.style.backgroundColor = '#fff';
             locationMapFloatingPanel.style.border = '1px solid #ccc';
             locationMapFloatingPanel.style.padding = '10px';
             locationMapFloatingPanel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-            const textInputRect = locationTextInput.getBoundingClientRect(); // Position below the text input
-            locationMapFloatingPanel.style.left = `${textInputRect.left + window.pageXOffset}px`;
-            locationMapFloatingPanel.style.top = `${textInputRect.bottom + window.pageYOffset + 20}px`; // Increased gap
-            locationMapFloatingPanel.style.width = `${Math.max(textInputRect.width, 350)}px`; // Min width
+            locationMapFloatingPanel.style.left = `${textInputRect.left}px`;
+            locationMapFloatingPanel.style.top = `${textInputRect.bottom + 5}px`;
+            locationMapFloatingPanel.style.width = `${Math.max(textInputRect.width, 350)}px`;
 
-            setTimeout(() => { // Initialize Leaflet Map
+            setTimeout(() => {
                 try {
                     let initialLat = DEFAULT_MAP_CENTER[0], initialLon = DEFAULT_MAP_CENTER[1], initialZoom = DEFAULT_MAP_ZOOM;
                     if (locationMapController.currentCoords) {
@@ -354,14 +378,13 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                     locationMapController.map = L.map(locationMapController.mapContainer.id).setView([initialLat, initialLon], initialZoom);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(locationMapController.map);
                     locationMapController.marker = L.marker([initialLat, initialLon], { draggable: true }).addTo(locationMapController.map);
-                    locationMapController.statusElement.innerHTML = 'Map ready. Type in field above, click map, or drag marker. <span style="float:right;">© OSM</span>';
-                    
+                    locationMapController.statusElement.innerHTML = 'Map ready. Type or click map. <span style="float:right;">© OSM</span>';
+
                     const updateLocationFromMapInteraction = async (latlng) => {
                         locationMapController.marker.setLatLng(latlng);
                         locationMapController.map.panTo(latlng);
                         locationMapController.statusElement.innerHTML = `Fetching address... <span style="float:right;">© OSM</span>`;
-                        locationMapController.currentKey = null; // Custom interaction
-
+                        locationMapController.currentKey = null;
                         clearTimeout(geocodeTimeout);
                         geocodeTimeout = setTimeout(async () => {
                             try {
@@ -369,12 +392,11 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                                 if (!response.ok) throw new Error(`Nominatim error: ${response.status}`);
                                 const data = await response.json();
                                 const displayName = data.display_name || `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
-                                
-                                inputElementForDirtyCheckAndSave.value = displayName; // Update the text input
+                                inputElementForDirtyCheckAndSave.value = displayName;
                                 locationMapController.currentCoords = `${latlng.lat},${latlng.lng}`;
                                 locationMapController.statusElement.innerHTML = `Selected: ${displayName.substring(0, 50)}... <span style="float:right;">© OSM</span>`;
                             } catch (err) { console.error("Reverse geocoding error:", err); locationMapController.statusElement.innerHTML = `Error fetching address. <span style="float:right;">© OSM</span>`; }
-                        }, 1000);
+                        }, 800);
                     };
                     locationMapController.map.on('click', (e) => updateLocationFromMapInteraction(e.latlng));
                     locationMapController.marker.on('dragend', (e) => updateLocationFromMapInteraction(e.target.getLatLng()));
@@ -382,8 +404,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                     const searchLocationOnMapFromTextInput = async (query) => {
                         if (!query || !query.trim()) return;
                         locationMapController.statusElement.innerHTML = `Searching for "${query}"... <span style="float:right;">© OSM</span>`;
-                        locationMapController.currentKey = null; // Manual search clears predefined key
-
+                        locationMapController.currentKey = null;
                         clearTimeout(geocodeTimeout);
                         geocodeTimeout = setTimeout(async () => {
                             try {
@@ -396,36 +417,32 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                                     locationMapController.map.setView(newLatLng, FOCUSED_MAP_ZOOM);
                                     locationMapController.marker.setLatLng(newLatLng);
                                     locationMapController.currentCoords = `${newLatLng.lat},${newLatLng.lng}`;
-                                    // DO NOT update inputElementForDirtyCheckAndSave.value here, as user is typing.
-                                    // Let user confirm by saving, or map click updates it.
-                                    locationMapController.statusElement.innerHTML = `Map centered on: ${display_name.substring(0,50)}... <span style="float:right;">© OSM</span>`;
+                                    locationMapController.statusElement.innerHTML = `Map centered: ${display_name.substring(0,50)}... <span style="float:right;">© OSM</span>`;
                                 } else {
                                     locationMapController.statusElement.innerHTML = `No map results for "${query}". <span style="float:right;">© OSM</span>`;
                                 }
                             } catch (err) { console.error("Forward geocoding error:", err); locationMapController.statusElement.innerHTML = `Error searching. <span style="float:right;">© OSM</span>`; }
-                        }, 1000);
+                        }, 800);
                     };
                     inputElementForDirtyCheckAndSave.addEventListener('input', () => {
                         searchLocationOnMapFromTextInput(inputElementForDirtyCheckAndSave.value);
                     });
 
-                    // Initial map centering based on existing data (if any, beyond default coords)
                     if (locationMapController.currentKey && !locationMapController.currentCoords) {
                         const pDef = AVAILABLE_LOCATIONS_DATA.find(l => l.key === locationMapController.currentKey);
-                        if (pDef && pDef.mapQuery) {
-                           searchLocationOnMapFromTextInput(pDef.mapQuery);
-                        }
+                        if (pDef && pDef.mapQuery) searchLocationOnMapFromTextInput(pDef.mapQuery);
                     } else if (!locationMapController.currentCoords && inputElementForDirtyCheckAndSave.value.trim() !== '' && inputElementForDirtyCheckAndSave.value !== 'Not specified') {
                         searchLocationOnMapFromTextInput(inputElementForDirtyCheckAndSave.value);
                     }
-
                 } catch (mapError) { console.error("Leaflet map init error:", mapError); if(locationMapController) locationMapController.statusElement.innerHTML = `Error initializing map. <span style="float:right;">© OSM</span>`; }
             }, 0);
-        } else { // For other input types like 'text' (title), 'textarea', 'datetime-local'
+
+        } else {
             let genericInput;
             if (inputType === 'textarea') {
                 genericInput = document.createElement('textarea');
-                genericInput.value = initialInputFieldValue;
+                genericInput.value = targetElement.dataset.currentDataValue;
+                initialInputFieldValue = genericInput.value;
             } else if (inputType === 'datetime-local') {
                 genericInput = document.createElement('input');
                 genericInput.type = 'datetime-local';
@@ -437,68 +454,61 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             } else {
                 genericInput = document.createElement('input');
                 genericInput.type = 'text';
-                genericInput.value = initialInputFieldValue;
+                genericInput.value = targetElement.dataset.currentDataValue;
+                initialInputFieldValue = genericInput.value;
             }
             genericInput.classList.add('editable-input');
-            inputWrapper.appendChild(genericInput); // input is inside inputWrapper
+            inputWrapper.appendChild(genericInput);
             inputElementForDirtyCheckAndSave = genericInput;
-            
-            targetElement.innerHTML = ''; // Clear static text from targetElement
-            targetElement.appendChild(inputWrapper); // Put inputWrapper (with input) into targetElement
+            targetElement.innerHTML = '';
+            targetElement.appendChild(inputWrapper);
         }
 
-        // Action buttons (Save/Cancel) are appended to inputWrapper
         const actionsContainer = document.createElement('div');
         actionsContainer.className = 'editable-actions-container';
         const saveBtn = document.createElement('button');
         saveBtn.innerHTML = '✔'; saveBtn.className = 'edit-action-button edit-save-btn'; saveBtn.title = 'Save';
         const cancelBtn = document.createElement('button');
-        cancelBtn.innerHTML = '✖'; cancelBtn.className = 'edit-action-button edit-cancel-btn'; cancelBtn.title = 'Cancel (no prompt for this field)';
+        cancelBtn.innerHTML = '✖'; cancelBtn.className = 'edit-action-button edit-cancel-btn'; cancelBtn.title = 'Cancel';
         actionsContainer.appendChild(saveBtn); actionsContainer.appendChild(cancelBtn);
         inputWrapper.appendChild(actionsContainer);
-        
+
         if (inputElementForDirtyCheckAndSave) {
             inputElementForDirtyCheckAndSave.focus();
             if (inputElementForDirtyCheckAndSave.setSelectionRange && inputElementForDirtyCheckAndSave.type !== 'datetime-local') {
-                // For location, the input is directly in target, no need to select all.
-                // For others, this is fine.
-                if (currentEditMode !== 'location') {
-                    inputElementForDirtyCheckAndSave.setSelectionRange(inputElementForDirtyCheckAndSave.value.length, inputElementForDirtyCheckAndSave.value.length);
-                }
+                 inputElementForDirtyCheckAndSave.setSelectionRange(inputElementForDirtyCheckAndSave.value.length, inputElementForDirtyCheckAndSave.value.length);
             }
         }
 
         const handleDocumentClick = (event) => {
-            const clickedInsideEditorItself = targetElement.contains(event.target); // Check if click is in the original target field (which now holds the input)
+            const clickedInsideEditorItself = targetElement.contains(event.target);
             const clickedInsideFloatingMap = locationMapFloatingPanel && locationMapFloatingPanel.contains(event.target);
             const clickedInsideCostHelper = costInterpretationHelper && costInterpretationHelper.contains(event.target);
-
             if (!clickedInsideEditorItself && !clickedInsideFloatingMap && !clickedInsideCostHelper) {
-                cancelChanges(true);
+                cancelChanges(false);
             }
         };
 
         const exitEditMode = (savedDataFromServer) => {
             document.removeEventListener('click', handleDocumentClick, true);
             if (costInterpretationHelper) costInterpretationHelper.remove();
-            if (locationMapFloatingPanel) { // This is the floating map panel
+            if (locationMapFloatingPanel) {
                 if (locationMapController && locationMapController.map) locationMapController.map.remove();
                 locationMapFloatingPanel.remove();
             }
-            
-            // For all fields, clear the targetElement (which contained the inputWrapper or was the input itself for location)
             targetElement.innerHTML = '';
-
-            const isHTML = targetElement.dataset.originalDisplayIsHtml === 'true';
+            const isHTMLOutput = targetElement.dataset.originalDisplayIsHtml === 'true';
             let finalDisplayToShow;
 
             if (savedDataFromServer) {
-                if (currentEditMode === 'cost') { /* ... (same data update logic) ... */
+                if (currentEditMode === 'cost') {
                     finalDisplayToShow = savedDataFromServer.cost_display || '';
+                    targetElement.dataset.originalContentForReset = finalDisplayToShow;
                     targetElement.dataset.currentDisplayValue = savedDataFromServer.original_input_text || inputElementForDirtyCheckAndSave.value;
                     targetElement.dataset.currentNumericValue = savedDataFromServer.cost_value === null || savedDataFromServer.cost_value === undefined ? '' : String(savedDataFromServer.cost_value);
-                } else if (currentEditMode === 'date') { /* ... (same) ... */
+                } else if (currentEditMode === 'date') {
                     finalDisplayToShow = formatEventDateForDisplay(new Date(savedDataFromServer.date));
+                    targetElement.dataset.originalContentForReset = finalDisplayToShow;
                     targetElement.dataset.currentDataValue = savedDataFromServer.date;
                 } else if (currentEditMode === 'location') {
                     finalDisplayToShow = savedDataFromServer.location || 'Not specified';
@@ -507,28 +517,20 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                     else delete targetElement.dataset.currentCoordinates;
                     if (savedDataFromServer.location_key) targetElement.dataset.currentPredefinedKey = savedDataFromServer.location_key;
                     else delete targetElement.dataset.currentPredefinedKey;
-                } else if (currentEditMode === 'description') { /* ... (same) ... */
-                    finalDisplayToShow = savedDataFromServer.description || '';
-                } else { /* ... (title, etc. - same) ... */
+                } else {
                     finalDisplayToShow = savedDataFromServer[currentEditMode] || '';
+                    targetElement.dataset.originalContentForReset = finalDisplayToShow;
                     targetElement.dataset.currentDataValue = finalDisplayToShow;
                 }
-                // Update originalContentForReset for all fields based on what was saved
-                targetElement.dataset.originalContentForReset = finalDisplayToShow;
-            } else { // Edit was cancelled
+            } else {
                 finalDisplayToShow = originalStaticDisplayForCancel;
             }
-
-            // Restore static display IN the original targetElement (or its designated contentDisplayElement if different)
-            if (isHTML || currentEditMode === 'description') contentDisplayElement.innerHTML = finalDisplayToShow;
-            else contentDisplayElement.textContent = finalDisplayToShow;
-            
-            // If contentDisplayElement was a sub-element and targetElement was just a wrapper, re-add it.
-            // However, in this new setup, targetElement is usually the direct display or becomes the input.
-            if (targetElement !== contentDisplayElement && !targetElement.contains(contentDisplayElement)) {
-                 targetElement.appendChild(contentDisplayElement);
+            const displayTarget = contentDisplayElement || targetElement;
+            if (isHTMLOutput || currentEditMode === 'description') displayTarget.innerHTML = finalDisplayToShow;
+            else displayTarget.textContent = finalDisplayToShow;
+            if (targetElement !== displayTarget && !targetElement.contains(displayTarget)) {
+                 targetElement.appendChild(displayTarget);
             }
-
             targetElement.classList.remove('is-editing-field');
             delete targetElement.dataset.isEditing;
             activeEditField = null;
@@ -536,7 +538,12 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
 
         const cancelChanges = (force = false) => {
             const currentInputValue = inputElementForDirtyCheckAndSave.value;
-            const isDirty = currentInputValue !== initialInputFieldValue;
+            let isDirty = currentInputValue !== initialInputFieldValue;
+            if (currentEditMode === 'location') {
+                const originalCoords = targetElement.dataset.currentCoordinates;
+                const currentMapCoords = locationMapController?.currentCoords;
+                if (originalCoords !== currentMapCoords) isDirty = true;
+            }
             if (!force && isDirty) {
                 if (!window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
                     if(inputElementForDirtyCheckAndSave) inputElementForDirtyCheckAndSave.focus();
@@ -552,21 +559,21 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
 
         saveBtn.onclick = async () => {
             let payload = {};
-            if (currentEditMode === 'cost') { /* ... (payload from inputElementForDirtyCheckAndSave) ... */
+            if (currentEditMode === 'cost') {
                 const parsedForSave = parseAndFormatCost(inputElementForDirtyCheckAndSave.value);
-                payload.cost_display = parsedForSave.cost_display_standardized; // Use this for the model's cost_display field
+                payload.cost_display = parsedForSave.cost_display_standardized;
                 payload.cost_value = parsedForSave.cost_value;
-                payload.original_input_text = inputElementForDirtyCheckAndSave.value; // Send this for the model's cost_display for max fidelity
-            } else if (currentEditMode === 'date') { /* ... (payload from inputElementForDirtyCheckAndSave) ... */
+                payload.original_input_text = inputElementForDirtyCheckAndSave.value;
+            } else if (currentEditMode === 'date') {
                 if (!inputElementForDirtyCheckAndSave.value) { payload.date = null; }
-                else { try { payload.date = new Date(inputElementForDirtyCheckAndSave.value).toISOString(); }
+                else {
+                    try { payload.date = new Date(inputElementForDirtyCheckAndSave.value).toISOString(); }
                     catch (err) { inputElementForDirtyCheckAndSave.classList.add('input-error-glow'); setTimeout(() => inputElementForDirtyCheckAndSave.classList.remove('input-error-glow'), 2000); return; }
                 }
             } else if (currentEditMode === 'location') {
-                payload.location = inputElementForDirtyCheckAndSave.value; // Text from the main input field
-                payload.location_coordinates = locationMapController.currentCoords; // Coords from map interaction
-
-            } else { /* ... (payload from inputElementForDirtyCheckAndSave) ... */
+                payload.location = inputElementForDirtyCheckAndSave.value;
+                payload.location_coordinates = locationMapController.currentCoords;
+            } else {
                 payload[currentEditMode] = inputElementForDirtyCheckAndSave.value;
             }
             saveBtn.classList.add('is-loading'); saveBtn.innerHTML = ''; saveBtn.disabled = true; cancelBtn.disabled = true;
@@ -581,74 +588,95 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                 } else {
                      console.warn('CSRF token meta tag not found. PATCH request might fail.');
                 }
-
                 const response = await fetch(`/api/events/${currentEventId}`, {
                     method: 'PATCH',
-                    headers: requestHeaders, 
+                    headers: requestHeaders,
                     body: JSON.stringify(payload)
                 });
                 if (!response.ok) { const errData = await response.json().catch(()=>({})); throw new Error(errData.detail || errData.error || `Update failed (${response.status})`);}
                 const updatedEventDataFromServer = await response.json();
                 exitEditMode(updatedEventDataFromServer);
-                document.dispatchEvent(new CustomEvent('eventDataUpdated', { detail: { eventId: currentEventId, field: currentEditMode, value: updatedEventDataFromServer[currentEditMode], fullEvent: updatedEventDataFromServer }, bubbles: true, composed: true }));
+                document.dispatchEvent(new CustomEvent('eventDataUpdated', {
+                    detail: {
+                        eventId: updatedEventDataFromServer.id,
+                        updatedEvent: updatedEventDataFromServer
+                    },
+                    bubbles: true,
+                    composed: true
+                }));
             } catch (error) {
                 console.error(`Error updating ${currentEditMode}:`, error);
-                const errorWrapperForMsg = (currentEditMode === 'location') ? locationMapFloatingPanel : inputWrapper;
-                const errorMsgElement = errorWrapperForMsg.querySelector('.edit-error-message') || document.createElement('span');
-                errorMsgElement.className = 'edit-error-message'; errorMsgElement.textContent = `Error: ${error.message}`;
-                if(!errorWrapperForMsg.querySelector('.edit-error-message')) errorWrapperForMsg.appendChild(errorMsgElement);
-                setTimeout(() => errorMsgElement.remove(), 3000);
+                const errorWrapperForMsg = (currentEditMode === 'location' && locationMapFloatingPanel) ? locationMapFloatingPanel : inputWrapper;
+                let errorMsgElement = errorWrapperForMsg.querySelector('.edit-error-message');
+                if (!errorMsgElement) {
+                    errorMsgElement = document.createElement('span');
+                    errorMsgElement.className = 'edit-error-message';
+                    if (actionsContainer) actionsContainer.insertAdjacentElement('afterend', errorMsgElement);
+                    else errorWrapperForMsg.appendChild(errorMsgElement);
+                }
+                errorMsgElement.textContent = `Error: ${error.message}`;
+                errorMsgElement.style.display = 'block';
+                setTimeout(() => { errorMsgElement.remove(); }, 3000);
             } finally {
                 saveBtn.classList.remove('is-loading'); saveBtn.innerHTML = '✔'; saveBtn.disabled = false; cancelBtn.disabled = false;
             }
         };
-        cancelBtn.onclick = () => cancelChanges(true);
-
-        if (inputElementForDirtyCheckAndSave) { /* ... (keydown handler) ... */
+        cancelBtn.onclick = () => cancelChanges(false);
+        if (inputElementForDirtyCheckAndSave) {
             inputElementForDirtyCheckAndSave.onkeydown = (ev) => {
-                const isTextarea = (inputElementForDirtyCheckAndSave && inputElementForDirtyCheckAndSave.tagName === 'TEXTAREA');
-                const nonTextareaEnter = !isTextarea && !(currentEditMode ==='cost' && ev.shiftKey); // Allow shift+enter in cost
-                if (ev.key === 'Enter' && nonTextareaEnter) { 
+                const isTextarea = (inputElementForDirtyCheckAndSave.tagName === 'TEXTAREA');
+                const nonTextareaEnter = !isTextarea && !(currentEditMode ==='cost' && ev.shiftKey);
+                if (ev.key === 'Enter' && nonTextareaEnter) {
                     ev.preventDefault(); saveBtn.click();
-                } else if (ev.key === 'Escape') { cancelChanges(true); }
+                } else if (ev.key === 'Escape') { cancelChanges(false); }
             };
         }
     };
-
     if (targetElement.clickHandler) targetElement.removeEventListener('click', targetElement.clickHandler);
     targetElement.clickHandler = handleClickToEdit;
     targetElement.addEventListener('click', targetElement.clickHandler);
 }
-// --- End EDITABLE FIELD LOGIC ---
 
-function _closeEventModal() { /* ... (same) ... */
+function _closeEventModal() {
     if (!isInitialized || !modalElement || !modalElement.classList.contains('visible')) return;
     if (activeEditField && activeEditField.cancelChanges) {
-        if (!activeEditField.cancelChanges(false)) return; // Pass false to allow prompt if dirty
+        if (!activeEditField.cancelChanges(false)) return;
     }
     modalElement.classList.remove('visible'); const transitionDuration = 300;
     const handleTransitionEnd = (event) => {
         if (event.target === modalElement && event.propertyName === 'opacity') {
-            modalElement.style.display = 'none'; modalElement.removeEventListener('transitionend', handleTransitionEnd); _resetModal();
+            modalElement.style.display = 'none';
+            modalElement.removeEventListener('transitionend', handleTransitionEnd);
+            _resetModal();
         }
     };
     modalElement.addEventListener('transitionend', handleTransitionEnd);
-    setTimeout(() => { if (modalElement.style.display !== 'none') { modalElement.style.display = 'none'; modalElement.removeEventListener('transitionend', handleTransitionEnd); _resetModal();}}, transitionDuration + 50);
+    setTimeout(() => {
+        if (modalElement.style.display !== 'none') {
+            modalElement.style.display = 'none';
+            modalElement.removeEventListener('transitionend', handleTransitionEnd);
+            _resetModal();
+        }
+    }, transitionDuration + 50);
 }
 
-function _setupInternalModalEventListeners() { /* ... (same, RSVP verified) ... */
-    if (!isInitialized) return;
+function _setupInternalModalEventListeners() {
+    if (!isInitialized) return; // Guard against running if elements not found
     if (closeButton) closeButton.addEventListener('click', _closeEventModal);
     modalElement.addEventListener('click', (event) => {
         if (event.target === modalElement) { _closeEventModal(); }
     });
+
     if (modalRsvpControls) {
         modalRsvpControls.addEventListener('click', async (event) => {
             const button = event.target.closest('.rsvp-btn'); if (!button) return;
             const eventId = modalRsvpControls.dataset.eventId; const buttonStatus = button.dataset.status;
-            const apiStatus = buttonStatus === 'none' ? null : buttonStatus; if (!eventId) return;
+            const apiStatus = buttonStatus === 'none' ? null : buttonStatus;
+            if (!eventId) return;
+
             if (rsvpConfirmationMessage) { rsvpConfirmationMessage.textContent = "Updating RSVP..."; rsvpConfirmationMessage.style.color = ''; rsvpConfirmationMessage.style.display = 'block';}
             modalRsvpControls.style.pointerEvents = 'none'; modalRsvpControls.style.opacity = '0.6';
+
             try {
                 const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
                 const requestHeaders = {
@@ -663,61 +691,118 @@ function _setupInternalModalEventListeners() { /* ... (same, RSVP verified) ... 
 
                 const response = await fetch(`/api/events/${eventId}/rsvp`, {
                     method: 'POST',
-                    headers: requestHeaders, 
+                    headers: requestHeaders,
                     body: JSON.stringify({ status: apiStatus })
                 });
+
                 if (!response.ok) { const errorData = await response.json().catch(()=>({ detail: `RSVP Update failed (${response.status})` })); throw new Error(errorData.detail || errorData.error);}
-                const result = await response.json();
-                _updateRSVPButtonState(result.status);
-                if (rsvpConfirmationMessage) { const friendlyStatus = result.status ? result.status.charAt(0).toUpperCase() + result.status.slice(1) : 'cleared'; rsvpConfirmationMessage.textContent = result.status ? `Your RSVP is set to ${friendlyStatus}!` : "Your RSVP has been cleared."; setTimeout(() => { if(rsvpConfirmationMessage) rsvpConfirmationMessage.style.display = 'none'; }, 3000);}
-                document.dispatchEvent(new CustomEvent('rsvpUpdated', { detail: { eventId: parseInt(eventId, 10), newStatus: result.status }, bubbles: true, composed: true }));
+                const rsvpResult = await response.json();
+
+                const eventResponse = await fetch(`/api/events/${eventId}`);
+                if (!eventResponse.ok) throw new Error(`Failed to fetch updated event data after RSVP: ${eventResponse.status}`);
+                const fullUpdatedEventFromServer = await eventResponse.json();
+
+                _updateRSVPButtonState(rsvpResult.status);
+                if (rsvpConfirmationMessage) { const friendlyStatus = rsvpResult.status ? rsvpResult.status.charAt(0).toUpperCase() + rsvpResult.status.slice(1) : 'cleared'; rsvpConfirmationMessage.textContent = rsvpResult.status ? `Your RSVP is set to ${friendlyStatus}!` : "Your RSVP has been cleared."; setTimeout(() => { if(rsvpConfirmationMessage) rsvpConfirmationMessage.style.display = 'none'; }, 3000);}
+
+                document.dispatchEvent(new CustomEvent('eventDataUpdated', {
+                    detail: {
+                        eventId: parseInt(eventId, 10),
+                        updatedEvent: fullUpdatedEventFromServer
+                    },
+                    bubbles: true,
+                    composed: true
+                }));
+
                 _populateAttendeeList(await fetch(`/api/events/${eventId}/attendees`).then(res => res.json()));
+
             } catch (error) {
                 console.error("Error updating RSVP:", error);
                 if (rsvpConfirmationMessage) { rsvpConfirmationMessage.textContent = `Error: ${error.message || 'Could not update.'}`; rsvpConfirmationMessage.style.color = 'red';}
-                await _fetchEventDetails(eventId); // Re-fetch details on error to ensure UI consistency
-            } finally { if (modalRsvpControls) { modalRsvpControls.style.pointerEvents = 'auto'; modalRsvpControls.style.opacity = '1';} }
+                await _fetchEventDetails(eventId);
+            } finally {
+                if (modalRsvpControls) { modalRsvpControls.style.pointerEvents = 'auto'; modalRsvpControls.style.opacity = '1';}
+            }
         });
     }
 }
 
-export function setupModal() { /* ... (same) ... */
-    if (isInitialized) { console.warn("Modal already initialized."); return; }
-    if (_initializeModalElements()) { _setupInternalModalEventListeners(); console.log("Modal setup complete."); }
-    else { console.error("Modal setup failed: elements not initialized."); }
+export function setupModal() {
+    if (isInitialized) { // Prevent re-initialization
+        console.warn("Modal already initialized.");
+        return;
+    }
+    if (_initializeModalElements()) { // This sets isInitialized = true on success
+        _setupInternalModalEventListeners();
+        console.log("Modal setup complete.");
+    }
+    else {
+        console.error("Modal setup failed: elements not initialized. Modal will not function.");
+    }
 }
 
-export async function openEventModal(eventData) { /* ... (same) ... */
-    if (!isInitialized) { alert("Error: Modal not ready."); return; }
-    if (!eventData || !eventData.id) { alert("Error: Invalid event data."); return; }
-    _resetModal(); currentEventId = eventData.id;
+export async function openEventModal(eventData) {
+    if (!isInitialized) { // Check if modal elements are ready
+        alert("Error: Event details modal is not ready. Please try again shortly.");
+        console.error("openEventModal called before modal was initialized.");
+        return;
+    }
+    if (!eventData || !eventData.id) {
+        alert("Error: Invalid event data provided for modal.");
+        console.error("openEventModal called with invalid eventData:", eventData);
+        return;
+    }
+
+    _resetModal();
+    currentEventId = eventData.id;
+
     if (modalEventImage) modalEventImage.src = eventData.image_url || '/static/img/default-event-logo.png';
-    if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group'; // Use group_name from eventData
-    if (modalEventTitle) { modalEventTitle.textContent = eventData.title || 'Untitled Event'; _makeFieldEditable(modalEventTitle, 'title', eventData.title); }
-    if (modalEventDate) { const d = eventData.date ? new Date(eventData.date) : null; modalEventDate.textContent = formatEventDateForDisplay(d); _makeFieldEditable(modalEventDate, 'date', d ? d.toISOString() : null, { inputType: 'datetime-local' }); }
+    if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group';
+
+    if (modalEventTitle) {
+        modalEventTitle.textContent = eventData.title || 'Untitled Event';
+        _makeFieldEditable(modalEventTitle, 'title', eventData.title);
+    }
+    if (modalEventDate) {
+        const d = eventData.date; // Should be a Date object from allEventsData
+        modalEventDate.textContent = formatEventDateForDisplay(d);
+        _makeFieldEditable(modalEventDate, 'date', d ? d.toISOString() : null, { inputType: 'datetime-local' });
+    }
     if (modalEventLocation) {
         const initialLocationData = {
             text: eventData.location || 'Not specified',
             coordinates: eventData.location_coordinates || null,
-            predefinedKey: eventData.location_key || null
+            predefinedKey: null
         };
         modalEventLocation.textContent = initialLocationData.text;
         _makeFieldEditable(modalEventLocation, 'location', initialLocationData, { inputType: 'custom-location-map' });
     }
     if (modalEventCost) {
-        const initialRawCostInput = eventData.cost_display || 'Not specified'; // Use cost_display from eventData
+        const initialRawCostInput = eventData.original_input_text || eventData.cost_display || 'Not specified';
         const parsedInitialCost = parseAndFormatCost(initialRawCostInput);
         modalEventCost.textContent = parsedInitialCost.cost_display_standardized;
-        _makeFieldEditable(modalEventCost, 'cost', { raw_input_for_field: initialRawCostInput, standardized_display: parsedInitialCost.cost_display_standardized, value: parsedInitialCost.cost_value });
+        _makeFieldEditable(modalEventCost, 'cost', {
+            raw_input_for_field: initialRawCostInput,
+            standardized_display: parsedInitialCost.cost_display_standardized,
+            value: parsedInitialCost.cost_value
+        });
     }
     if (modalDescriptionWrapper && modalEventDescription) {
         const descContent = eventData.description || 'No description provided.';
-        modalEventDescription.innerHTML = descContent; //innerHTML for potential HTML content
+        modalEventDescription.innerHTML = descContent;
         _makeFieldEditable(modalDescriptionWrapper, 'description', descContent, { inputType: 'textarea', isHTML: true, contentDisplayElementId: 'modal-event-description' });
     }
-    if (modalRsvpControls) { modalRsvpControls.dataset.eventId = eventData.id; modalRsvpControls.style.display = 'flex'; modalRsvpControls.style.pointerEvents = 'none'; modalRsvpControls.style.opacity = '0.6'; }
+
+    if (modalRsvpControls) {
+        modalRsvpControls.dataset.eventId = eventData.id;
+        modalRsvpControls.style.display = 'flex';
+        modalRsvpControls.style.pointerEvents = 'none';
+        modalRsvpControls.style.opacity = '0.6';
+    }
+
     modalElement.style.display = 'flex';
     requestAnimationFrame(() => modalElement.classList.add('visible'));
+
     await _fetchEventDetails(eventData.id);
 }
 // --- END OF FILE modalManager.js ---
