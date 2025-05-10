@@ -23,6 +23,41 @@ let dayEventsModalTitleEl = null;
 let dayEventsModalListEl = null;
 let dayEventsModalCloseBtn = null;
 
+// --- Helper: Format Event Time for Day Modal ---
+/**
+ * Formats the time portion of a Date object for display in the Day Events Modal.
+ * If the date's time is midnight (00:00:00 local time), it's displayed as "All Day".
+ *
+ * @param {Date | null} date - The Date object representing the event's date and time, or null.
+ * @returns {string} A formatted time string (e.g., "10:30 AM", "All Day", "Time TBD").
+ */
+function formatEventTimeForDayModal(date) {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+        return 'Time TBD'; // Or "No Time Specified"
+    }
+
+    // Check if the time is exactly midnight (00:00:00.000) in the local timezone.
+    // This is a common convention for events where only a date is specified (parsed as local midnight)
+    // or for events explicitly marked as all-day starting at midnight.
+    if (date.getHours() === 0 &&
+        date.getMinutes() === 0 &&
+        date.getSeconds() === 0 &&
+        date.getMilliseconds() === 0) {
+        return 'All Day';
+    }
+
+    // If there's a specific time other than midnight, format it.
+    try {
+        return date.toLocaleTimeString(undefined, {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    } catch (e) {
+        console.error("Error formatting time for day modal:", date, e);
+        return 'Invalid Time'; // Fallback for unexpected errors
+    }
+}
 
 function setupDayEventsModal() {
     // Try to find the modal elements that should now be in the HTML
