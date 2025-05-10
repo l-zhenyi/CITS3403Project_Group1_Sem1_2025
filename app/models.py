@@ -240,7 +240,7 @@ class Event(db.Model):
     # --- MODIFIED to_dict ---
     def to_dict(self, current_user_id=None):
         """Serializes the Event object to a dictionary, optionally including the
-           RSVP status for the specified user."""
+           RSVP status for the specified user and group information."""
         data = {
             "id": self.id,
             "title": self.title,
@@ -250,13 +250,16 @@ class Event(db.Model):
             "description": self.description,
             "image_url": self.image_url,
             "cost_display": self.cost_display,
-            "cost_value": self.cost_value, # Include numeric cost
+            "cost_value": self.cost_value,
             "node_id": self.node_id,
-            "current_user_rsvp_status": None
+            "current_user_rsvp_status": None,
+            "group_id": None,       # Initialize group_id
+            "group_name": None      # Initialize group_name
         }
 
         if current_user_id is not None:
-            from app.models import EventRSVP
+            # No need to import EventRSVP here if it's already defined in the same file
+            # from app.models import EventRSVP # This is fine if EventRSVP is in app.models
             my_rsvp = db.session.execute(
                 db.select(EventRSVP).filter_by(event_id=self.id, user_id=current_user_id)
             ).scalar_one_or_none()
@@ -264,8 +267,14 @@ class Event(db.Model):
             if my_rsvp:
                 data['current_user_rsvp_status'] = my_rsvp.status
 
-        return data
+        # Add group information if the event is associated with a node and group
+        if self.node and self.node.group:
+            data['group_id'] = self.node.group.id
+            data['group_name'] = self.node.group.name
+        # If self.node is None, group_id and group_name will remain None
 
+        return data
+    
 class GroupMember(db.Model):
     __tablename__ = "group_member"
 
