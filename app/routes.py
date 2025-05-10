@@ -392,7 +392,7 @@ def view_group(group_id):
         return redirect(url_for('view_group', group_id=group_id))
 
     page = request.args.get('page', 1, type=int)
-    posts_query = db.select(Post).where(Post.group_id == group_id).order_by(Post.timestamp.desc())
+    posts_query = db.select(Post).where(Post.group_id == group_id).order_by(Post.timestamp.asc())
     pagination = db.paginate(posts_query, page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
     posts = pagination.items
 
