@@ -4,7 +4,7 @@
 
 from flask import render_template, redirect, url_for, flash, request, session, jsonify, abort
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm, FriendRequestForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest, InsightPanel
 from urllib.parse import urlparse
@@ -143,7 +143,9 @@ def friends():
     # Get pending friend requests (assuming a FriendRequest model exists)
     friend_requests = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
 
-    return render_template('friends.html', friends=friends_list, friend_requests=friend_requests)
+    # Prepare a forms dictionary mapping usernames to FriendRequestForm instances
+    forms = {user.username: FriendRequestForm(receiver_username=user.username) for user in friends_list}
+    return render_template('friends.html', friends=friends_list, friend_requests=friend_requests, forms=forms)
 
 
 @app.route('/search_friends', methods=['GET'])
@@ -176,6 +178,8 @@ def search_friends():
     # Also get the pending friend requests
     friend_requests_list = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
 
+    forms = {user.username: FriendRequestForm(receiver_username=user.username) for user in search_results}
+
     # Render the friends page with search results, sent requests, and friend requests
     friends_list = current_user.friends.all()
     return render_template('friends.html', 
@@ -183,7 +187,7 @@ def search_friends():
                           search_results=search_results, 
                           sent_requests=sent_requests_set,
                           received_requests=received_requests_map,
-                          friend_requests=friend_requests_list)
+                          friend_requests=friend_requests_list, forms=forms)
 
 @app.route('/handle_friend_request', methods=['POST'])
 @login_required
@@ -337,7 +341,8 @@ def user(username):
     posts_query = db.select(Post).where(Post.user_id == user_obj.id).order_by(Post.timestamp.desc())
     posts_pagination = db.paginate(posts_query, page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
 
-    form = EmptyForm()
+    form = FriendRequestForm()
+    form.receiver_username.data = user_obj.username
 
     shared_groups = []
     if user_obj != current_user:
