@@ -10,6 +10,7 @@
       {% endif %}
       <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" type="text/css">
       <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+      <meta name="csrf-token" content="{{ csrf_token() }}">
       {% block head %}{% endblock %}
 </head>
 <body>

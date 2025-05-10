@@ -1,25 +1,60 @@
 /* ==========================================================================
+  Global Variables & Base Styles
+  ========================================================================== */
+:root {
+    /* Event Dot Colors (Your revised colors) */
+    --color-deep-blue: #4A90E2;
+    --color-terracotta: #C06C58;
+    --color-olive-gold: #B3A54A;
+    --color-forest-green: #5E8D62;
+    --color-muted-purple: #8A6BAA;
+    --color-cranberry: #B84B66;
+
+    /* Calendar UI Colors - Glassy Cells (Your revised colors) */
+    --calendar-cell-base-rgb: 255, 255, 255;
+    --calendar-cell-bg-opacity: 0.06;
+    --calendar-cell-bg-hover-opacity: 0.12;
+    --calendar-cell-bg-today-opacity: 0.15;
+    --calendar-cell-other-month-bg-opacity: 0.04;
+
+    --calendar-cell-bg: rgba(var(--calendar-cell-base-rgb), var(--calendar-cell-bg-opacity));
+    --calendar-cell-bg-hover: rgba(var(--calendar-cell-base-rgb), var(--calendar-cell-bg-hover-opacity));
+    --calendar-cell-bg-today: rgba(var(--calendar-cell-base-rgb), var(--calendar-cell-bg-today-opacity));
+    --calendar-cell-other-month-bg: rgba(var(--calendar-cell-base-rgb), var(--calendar-cell-other-month-bg-opacity));
+
+    /* "More Events" Pill (Your revised colors & shadow) */
+    --calendar-more-indicator-bg: rgba(70, 72, 90, 0.2);
+    --calendar-more-indicator-border: rgba(255, 255, 255, 0.15);
+    --calendar-more-indicator-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+
+    /* Text Colors (Your revised colors) */
+    --text-color-primary: #e0e0e5;
+    --text-color-secondary: #bccfe2;
+    --text-color-muted: #98a0a8;
+    --text-color-headings: #ffffff;
+    --text-color-on-dark-box: #f0f0f5;
+
+    /* Modal Colors */
+    --modal-backdrop-bg: rgba(30, 30, 35, 0.65);
+    --modal-content-bg-glass: rgba(50, 52, 60, 0.8);
+    --modal-border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
   Calendar View Styles
   ========================================================================== */
-
 .calendar-view {
-    /* Positioning & Box Model */
     display: none;
-    /* Hidden by default, shown via JS/class */
     flex-direction: column;
     flex-grow: 1;
     width: 100%;
     height: 100%;
-    min-height: 0;
-    /* Allow shrinking in flex context */
+    min-height: 0; /* Critical for flex children to shrink */
     padding: 20px;
     border-radius: inherit;
-    /* Match parent rounding */
     overflow-y: auto;
-    /* Scroll if content exceeds height */
     overflow-x: hidden;
-    color: #e0e0e5;
-    /* Default text color */
+    color: var(--text-color-primary);
 }
 
 .calendar-header {
@@ -27,47 +62,38 @@
     justify-content: space-between;
     align-items: center;
     padding: 0 5px 15px 5px;
-    /* Bottom padding */
     flex-shrink: 0;
-    /* Prevent shrinking */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
     margin-bottom: 15px;
 }
 
 .calendar-month-year {
     font-size: 1.3rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-color-headings);
     text-align: center;
     flex-grow: 1;
-    text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 .calendar-nav {
     background: rgba(255, 255, 255, 0.1);
     border: none;
     border-radius: 50%;
-    color: #fff;
+    color: var(--text-color-headings);
     font-size: 1.4rem;
     font-weight: bold;
     cursor: pointer;
     width: 36px;
     height: 36px;
     line-height: 36px;
-    /* Center icon vertically */
     text-align: center;
     flex-shrink: 0;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
-
-.calendar-nav:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.calendar-nav:active {
-    transform: scale(0.95);
-}
-
+.calendar-nav:hover { background: rgba(255, 255, 255, 0.18); }
+.calendar-nav:active { transform: scale(0.95); }
 
 .calendar-days-header {
     display: grid;
@@ -75,165 +101,241 @@
     text-align: center;
     font-size: 0.85rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.75);
     padding-bottom: 10px;
-    flex-shrink: 0; /* Important: Don't let this shrink */
+    flex-shrink: 0;
 }
 
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
+    /* grid-template-rows set by JS, e.g., repeat(5, minmax(90px, 1fr)) */
     gap: 5px;
-    flex-grow: 1; /* <<< KEY: Allow grid to take remaining vertical space */
+    flex-grow: 1;
     width: 100%;
-    /* REMOVE min-height: 300px; <<< Remove fixed min-height */
-    /* The height will be determined by flex-grow and the fr units below */
-    /* grid-template-rows will be set dynamically by JS */
+    min-height: 0; /* Critical for grid children to shrink if calendar-view is flex parent */
 }
 
+/* ==========================================================================
+  Calendar Cell Styles
+  ========================================================================== */
 .calendar-cell {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--calendar-cell-bg);
     border-radius: 8px;
-    padding: 8px; /* Keep some padding */
-    /* REMOVE min-height: 80px; <<< Remove fixed min-height */
-    /* ADD a smaller base min-height if desired, but 1fr should handle it */
-    /* Optional: min-height: 40px; */
+    padding: 8px; /* Overall cell padding */
     display: flex;
     flex-direction: column;
     position: relative;
     border: 1px solid transparent;
     transition: background-color 0.2s ease;
-    overflow: hidden; /* Hide potential overflow if cells get very small */
+    overflow: hidden;
 }
-
-.calendar-cell:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
+.calendar-cell:hover { background: var(--calendar-cell-bg-hover); }
+.calendar-cell.has-events { cursor: pointer; }
 
 .calendar-cell .day-number {
     font-size: 0.9rem;
     font-weight: 500;
-    margin-bottom: 4px;
+    margin-bottom: 2px; /* <<< REDUCED: Closer to event list */
     text-align: right;
-    flex-shrink: 0; /* Don't shrink the day number */
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+    color: var(--text-color-primary);
+    padding-right: 2px; /* Slight padding if number is too close to edge */
 }
 
-/* Container for markers to allow potential scrolling if needed */
-.calendar-cell .event-markers {
-   flex-grow: 1; /* Allow marker area to take remaining space */
-   display: flex;
-   flex-direction: column; /* Stack markers */
-   align-items: center; /* Center markers horizontally */
-   overflow-y: auto; /* Add scroll if many markers and cell is small */
-   padding-top: 2px; /* Small space above markers */
+.calendar-cell .calendar-events-preview-list {
+    flex-grow: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px; /* <<< REDUCED: Tighter spacing between event items */
+    z-index: 1;
+    /* padding-bottom controls how much space is left at the bottom before mask fully applies */
+    padding-bottom: 3px; /* <<< REDUCED: Less space needed if items are tighter */
 }
 
-
-.calendar-cell.other-month .day-number {
-    opacity: 0.4;
+.calendar-cell .calendar-events-preview-list.has-overflow {
+    /* Fade height is now 20px, adjust if needed */
+    mask-image: linear-gradient(to bottom,
+        black 0%,
+        black calc(100% - 20px), /* Opaque until 20px from bottom of this container */
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(to bottom,
+        black 0%,
+        black calc(100% - 20px),
+        transparent 100%
+    );
 }
-.calendar-cell.other-month .event-markers {
-    opacity: 0.4; /* Also dim markers in other months */
+
+.calendar-cell .calendar-event-item-preview {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* <<< REDUCED: Tighter gap between dot and text */
+    font-size: 0.75em; /* <<< SLIGHTLY REDUCED: To fit more */
+    line-height: 1.25; /* <<< REDUCED: Tighter line height */
+    color: var(--text-color-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    padding: 1px 0; /* Reduced vertical padding */
 }
 
+.calendar-cell .event-dot {
+    width: 6px; /* <<< SLIGHTLY REDUCED */
+    height: 6px; /* <<< SLIGHTLY REDUCED */
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 1px; /* Align better with tighter text */
+}
+.event-dot.color-1 { background-color: var(--color-deep-blue); }
+.event-dot.color-2 { background-color: var(--color-terracotta); }
+.event-dot.color-3 { background-color: var(--color-olive-gold); }
+.event-dot.color-4 { background-color: var(--color-forest-green); }
+.event-dot.color-5 { background-color: var(--color-muted-purple); }
+.event-dot.color-6 { background-color: var(--color-cranberry); }
+
+.calendar-cell .event-title-preview {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar-cell .more-events-indicator {
+    position: absolute;
+    bottom: 6px; /* <<< ADJUSTED: Position relative to new tighter layout */
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 10px; /* <<< SLIGHTLY REDUCED PADDING */
+    font-size: 0.65em; /* <<< SLIGHTLY REDUCED FONT SIZE */
+    font-weight: 500;
+    text-align: center;
+    background-color: var(--calendar-more-indicator-bg);
+    color: var(--text-color-on-dark-box);
+    border: 1px solid var(--calendar-more-indicator-border);
+    border-radius: 50px;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    box-shadow: var(--calendar-more-indicator-shadow);
+    pointer-events: none;
+}
+
+.calendar-cell.other-month { background: var(--calendar-cell-other-month-bg); }
+.calendar-cell.other-month .day-number,
+.calendar-cell.other-month .calendar-events-preview-list,
+.calendar-cell.other-month .more-events-indicator { opacity: 0.55; }
+.calendar-cell.other-month .event-dot { opacity: 0.65; }
 
 .calendar-cell.today {
-    border-color: rgba(255, 255, 255, 0.4);
-    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.45);
+    background: var(--calendar-cell-bg-today);
 }
-
 .calendar-cell.today .day-number {
     font-weight: 700;
-    color: #fff;
+    color: var(--text-color-headings);
 }
 
-/* Simple event marker placeholder */
-.calendar-cell .event-marker {
-    width: 6px;
-    height: 6px;
-    background-color: #38BDF8; /* Light blue dot */
-    border-radius: 50%;
-    margin-top: 4px;
-    flex-shrink: 0; /* Prevent marker shrinking */
-    /* align-self: center; no longer needed with flex parent */
+/* ==========================================================================
+  Day Events Modal Styles
+  ========================================================================== */
+.day-events-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: var(--modal-backdrop-bg);
+    backdrop-filter: blur(15px) saturate(150%); -webkit-backdrop-filter: blur(15px) saturate(150%);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1055; opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    padding: 20px;
 }
+.day-events-modal.visible { opacity: 1; visibility: visible; transition-delay: 0s; }
+.day-events-modal .modal-content {
+    background: var(--modal-content-bg-glass);
+    backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid var(--modal-border-color); border-radius: 16px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    padding: 20px 25px; width: 90%; max-width: 500px; max-height: 70vh; overflow-y: auto;
+    position: relative; color: var(--text-color-primary);
+    transform: scale(0.95); transition: transform 0.3s ease;
+}
+.day-events-modal.visible .modal-content { transform: scale(1); }
+.day-events-modal .modal-close-btn {
+    position: absolute; top: 12px; right: 15px; background: none; border: none; font-size: 2rem;
+    color: rgba(255, 255, 255, 0.6); cursor: pointer; padding: 0; line-height: 1;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+.day-events-modal .modal-close-btn:hover { color: var(--text-color-headings); transform: scale(1.1); }
+.day-events-modal h3 {
+    margin-top: 0; margin-bottom: 18px; font-size: 1.4rem; color: var(--text-color-headings);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15); padding-bottom: 12px;
+}
+.day-events-modal .day-event-list { list-style: none; padding: 0; margin: 0; }
+.day-events-modal .day-event-item {
+    padding: 10px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    cursor: pointer; transition: background-color 0.2s ease; border-radius: 6px;
+}
+.day-events-modal .day-event-item:hover { background-color: rgba(255, 255, 255, 0.07); }
+.day-events-modal .day-event-item:last-child { border-bottom: none; }
+.day-events-modal .day-event-title { flex-grow: 1; font-weight: 500; color: var(--text-color-primary); font-size: 0.95rem; }
+.day-events-modal .day-event-group { font-size: 0.8em; color: var(--text-color-secondary); flex-shrink: 0; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-events-modal .day-event-time { font-size: 0.8em; color: var(--text-color-secondary); flex-shrink: 0; }
+.day-events-modal .modal-content::-webkit-scrollbar { width: 8px; }
+.day-events-modal .modal-content::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+.day-events-modal .modal-content::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.25); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
 
+/* ==========================================================================
+  Media Queries & Mobile Adjustments
+  ========================================================================== */
 @media (max-width: 768px) {
-    .calendar-view {
-        padding: 10px;
-        /* Less padding */
+    .calendar-view { padding: 10px; }
+    .calendar-header { padding: 0 0 10px 0; margin-bottom: 10px; }
+    .calendar-month-year { font-size: 1.1rem; }
+    .calendar-nav { width: 32px; height: 32px; line-height: 32px; font-size: 1.2rem; }
+    .calendar-days-header { font-size: 0.75rem; padding-bottom: 5px; }
+    .calendar-grid { gap: 4px; }
+
+    .calendar-cell { padding: 6px; border-radius: 6px; }
+    .calendar-cell .day-number { font-size: 0.8rem; margin-bottom: 2px; }
+    .calendar-cell .calendar-events-preview-list {
+        gap: 2px;
+        padding-bottom: 2px;
+    }
+    .calendar-cell .calendar-events-preview-list.has-overflow {
+        mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 18px), transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 18px), transparent 100%);
+    }
+    .calendar-cell .event-dot { width: 5px; height: 5px; }
+    .calendar-cell .calendar-event-item-preview {
+        font-size: 0.68em; /* Even smaller for mobile */
+        line-height: 1.2;
+        gap: 4px;
     }
 
-    .calendar-header {
-        padding: 0 0px 10px 0px;
-        margin-bottom: 10px;
+    .calendar-cell .more-events-indicator {
+        bottom: 5px;
+        font-size: 0.6em;
+        padding: 2px 8px;
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.25);
     }
 
-    .calendar-month-year {
-        font-size: 1.1rem;
-    }
-
-    .calendar-nav {
-        width: 32px;
-        height: 32px;
-        line-height: 32px;
-        font-size: 1.2rem;
-    }
-
-    .calendar-days-header {
-        font-size: 0.75rem;
-        padding-bottom: 5px;
-    }
-
-    .calendar-grid {
-        gap: 3px;
-    }
-
-    .calendar-cell {
-        padding: 5px;
-        /* Smaller cells */
-        border-radius: 6px;
-    }
-
-    .calendar-cell .day-number {
-        font-size: 0.8rem;
-    }
-
-    .calendar-cell .event-marker {
-        width: 5px;
-        height: 5px;
-        margin-top: 2px;
-    }
-
-    /* Important: Ensure the mobile event view class doesn't interfere */
-    /* when calendar view is active */
+    /* Planner pane specific overrides ... */
     .planner-pane.calendar-view-active.mobile-event-view-active .group-list-area,
-    .planner-pane.calendar-view-active.mobile-event-view-active .event-collage-area {
-        display: none;
-        flex: 0 0 0 !important;
-        opacity: 0;
-        pointer-events: none;
-    }
+    .planner-pane.calendar-view-active.mobile-event-view-active .event-collage-area { display: none !important; flex: 0 0 0 !important; opacity: 0; pointer-events: none; }
+    .planner-pane.calendar-view-active.mobile-event-view-active .calendar-view { display: flex !important; flex: 1 1 auto !important; opacity: 1; pointer-events: auto; }
+    .planner-pane.calendar-view-active .event-panel { position: relative; transform: none !important; }
 
-    .planner-pane.calendar-view-active.mobile-event-view-active .calendar-view {
-        display: flex;
-        /* Ensure calendar stays visible */
-        flex: 1 1 auto !important;
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    /* Reset event panel styles when calendar is active (might not be strictly needed, but safe) */
-    .planner-pane.calendar-view-active .event-panel {
-        position: relative;
-        /* Override absolute */
-        transform: none !important;
-        /* Override transforms */
-        /* etc. */
-    }
-
-    .events-view {
-        padding: 10px;
-        /* Keep reduced padding */
-    }
+    /* Day Events Modal on Mobile ... */
+    .day-events-modal .modal-content { padding: 15px 20px; max-height: 80vh; width: 95%; }
+    .day-events-modal h3 { font-size: 1.25rem; margin-bottom: 15px; padding-bottom: 10px; }
+    .day-events-modal .day-event-item { padding: 8px 5px; gap: 8px; }
+    .day-events-modal .day-event-title { font-size: 0.9rem; }
+    .day-events-modal .day-event-group,
+    .day-events-modal .day-event-time { font-size: 0.75em; }
 }

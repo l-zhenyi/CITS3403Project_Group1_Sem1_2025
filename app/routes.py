@@ -1,5 +1,7 @@
 # --- START OF FILE routes.py ---
 
+# --- START OF FILE routes.py ---
+
 from flask import render_template, redirect, url_for, flash, request, session, jsonify, abort
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm
@@ -136,12 +138,12 @@ def explore():
 @login_required
 def friends():
     # Get the current user's friends
-    friends = current_user.friends.all()  # Use `.all()` if the relationship is lazy="dynamic"
+    friends_list = current_user.friends.all()  # Use `.all()` if the relationship is lazy="dynamic"
 
     # Get pending friend requests (assuming a FriendRequest model exists)
     friend_requests = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
 
-    return render_template('friends.html', friends=friends, friend_requests=friend_requests)
+    return render_template('friends.html', friends=friends_list, friend_requests=friend_requests)
 
 
 @app.route('/search_friends', methods=['GET'])
@@ -166,22 +168,22 @@ def search_friends():
     search_results = [user for user in search_results if not current_user.is_friend(user)]
 
     # Get a list of users to whom the current user has already sent friend requests
-    sent_requests = {req.receiver_id for req in FriendRequest.query.filter_by(sender_id=current_user.id).all()}
+    sent_requests_set = {req.receiver_id for req in FriendRequest.query.filter_by(sender_id=current_user.id).all()}
 
     # Get users who have sent friend requests to the current user
-    received_requests = {req.sender_id: req.id for req in FriendRequest.query.filter_by(receiver_id=current_user.id).all()}
+    received_requests_map = {req.sender_id: req.id for req in FriendRequest.query.filter_by(receiver_id=current_user.id).all()}
 
     # Also get the pending friend requests
-    friend_requests = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
+    friend_requests_list = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
 
     # Render the friends page with search results, sent requests, and friend requests
-    friends = current_user.friends.all()
+    friends_list = current_user.friends.all()
     return render_template('friends.html', 
-                          friends=friends, 
+                          friends=friends_list, 
                           search_results=search_results, 
-                          sent_requests=sent_requests,
-                          received_requests=received_requests,
-                          friend_requests=friend_requests)
+                          sent_requests=sent_requests_set,
+                          received_requests=received_requests_map,
+                          friend_requests=friend_requests_list)
 
 @app.route('/handle_friend_request', methods=['POST'])
 @login_required
@@ -190,20 +192,20 @@ def handle_friend_request():
     action = request.form.get('action')
 
     # Fetch the friend request
-    friend_request = FriendRequest.query.get(request_id)
-    if not friend_request or friend_request.receiver_id != current_user.id:
+    friend_request_obj = FriendRequest.query.get(request_id)
+    if not friend_request_obj or friend_request_obj.receiver_id != current_user.id:
         flash('Invalid friend request.', 'danger')
         return redirect(url_for('friends'))
 
     if action == 'accept':
         # Add the sender as a friend
-        current_user.add_friend(friend_request.sender)
-        db.session.delete(friend_request)  # Remove the friend request
+        current_user.add_friend(friend_request_obj.sender)
+        db.session.delete(friend_request_obj)  # Remove the friend request
         db.session.commit()
-        flash(f'You are now friends with {friend_request.sender.username}!', 'success')
+        flash(f'You are now friends with {friend_request_obj.sender.username}!', 'success')
     elif action == 'reject':
         # Reject the friend request
-        db.session.delete(friend_request)
+        db.session.delete(friend_request_obj)
         db.session.commit()
         flash('Friend request rejected.', 'info')
 
@@ -218,18 +220,18 @@ def add_friend():
         return redirect(url_for('friends'))
 
     # Find the user by ID
-    friend = User.query.get(friend_id)
-    if not friend:
+    friend_user = User.query.get(friend_id)
+    if not friend_user:
         flash('User not found.', 'danger')
         return redirect(url_for('friends'))
 
     # Add the friend
-    if current_user.is_friend(friend):
-        flash(f'{friend.username} is already your friend.', 'info')
+    if current_user.is_friend(friend_user):
+        flash(f'{friend_user.username} is already your friend.', 'info')
     else:
-        current_user.add_friend(friend)
+        current_user.add_friend(friend_user)
         db.session.commit()
-        flash(f'{friend.username} has been added to your friends list!', 'success')
+        flash(f'{friend_user.username} has been added to your friends list!', 'success')
 
     return redirect(url_for('friends'))
 
@@ -242,18 +244,18 @@ def remove_friend():
         return redirect(url_for('friends'))
 
     # Find the user by ID
-    friend = User.query.get(friend_id)
-    if not friend:
+    friend_user = User.query.get(friend_id)
+    if not friend_user:
         flash('User not found.', 'danger')
         return redirect(url_for('friends'))
 
     # Remove the friend
-    if current_user.is_friend(friend):
-        current_user.remove_friend(friend)
+    if current_user.is_friend(friend_user):
+        current_user.remove_friend(friend_user)
         db.session.commit()
-        flash(f'{friend.username} has been removed from your friends list.', 'success')
+        flash(f'{friend_user.username} has been removed from your friends list.', 'success')
     else:
-        flash(f'{friend.username} is not in your friends list.', 'info')
+        flash(f'{friend_user.username} is not in your friends list.', 'info')
 
     return redirect(url_for('friends'))
 
@@ -265,20 +267,20 @@ def send_friend_request():
         flash('Please provide a username.', 'danger')
         return redirect(url_for('friends'))
 
-    receiver = User.query.filter_by(username=receiver_username).first()
-    if not receiver:
+    receiver_user = User.query.filter_by(username=receiver_username).first()
+    if not receiver_user:
         flash('User not found.', 'danger')
         return redirect(url_for('friends'))
 
-    if current_user.is_friend(receiver):
-        flash(f'{receiver.username} is already your friend.', 'info')
-    elif FriendRequest.query.filter_by(sender_id=current_user.id, receiver_id=receiver.id).first():
-        flash(f'You have already sent a friend request to {receiver.username}.', 'info')
+    if current_user.is_friend(receiver_user):
+        flash(f'{receiver_user.username} is already your friend.', 'info')
+    elif FriendRequest.query.filter_by(sender_id=current_user.id, receiver_id=receiver_user.id).first():
+        flash(f'You have already sent a friend request to {receiver_user.username}.', 'info')
     else:
-        friend_request = FriendRequest(sender=current_user, receiver=receiver)
-        db.session.add(friend_request)
+        friend_request_obj = FriendRequest(sender=current_user, receiver=receiver_user)
+        db.session.add(friend_request_obj)
         db.session.commit()
-        flash(f'Friend request sent to {receiver.username}!', 'success')
+        flash(f'Friend request sent to {receiver_user.username}!', 'success')
 
     return redirect(url_for('friends'))
 
@@ -408,7 +410,7 @@ def add_members(group_id):
         abort(404)
 
     # Get all the current user's friends
-    friends = current_user.friends.all()
+    friends_list = current_user.friends.all()
     
     if request.method == 'POST':
         username_to_add = request.form.get('username')
@@ -429,8 +431,8 @@ def add_members(group_id):
             return redirect(url_for('add_members', group_id=group_id))
 
         # Check for mutual follow
-        is_friends = current_user.is_friend(user_to_add)
-        if not is_friends:
+        is_friends_check = current_user.is_friend(user_to_add)
+        if not is_friends_check:
             flash(f"You need to be friends with {user_to_add.username} before adding them to the group.")
             return redirect(url_for('add_members', group_id=group_id))
 
@@ -445,9 +447,9 @@ def add_members(group_id):
     # For GET request, render template with friends list
     # Filter to only show friends who aren't already in the group and have mutual follow
     eligible_friends = []
-    for friend in friends:
-        if not is_group_member(friend.id, group_id):
-            eligible_friends.append(friend)
+    for friend_item in friends_list:
+        if not is_group_member(friend_item.id, group_id):
+            eligible_friends.append(friend_item)
 
     return render_template('add_members.html', 
                           title='Add Members', 
@@ -501,6 +503,18 @@ def search_users():
     return render_template('search_users.html', title='Search Users', users=users_list, query=search_query) # Use users_list
 
 
+# NEW API Endpoint for fetching current user's friends
+@app.route("/api/me/friends", methods=["GET"])
+@login_required
+def get_my_friends():
+    friends_list = current_user.friends.all() # Assuming 'friends' is the relationship name
+    friends_data = [
+        {"id": friend.id, "username": friend.username, "avatar_url": friend.avatar(40)}
+        for friend in friends_list
+    ]
+    return jsonify(friends_data)
+
+
 @app.route("/api/groups", methods=["GET"])
 @login_required
 def get_groups():
@@ -510,24 +524,67 @@ def get_groups():
     group_data = [g.to_dict(include_nodes=False) for g in user_groups]
     return jsonify(group_data)
 
+# MODIFIED API Endpoint for creating a group
 @app.route("/api/groups", methods=["POST"])
 @login_required
 def create_group_api():
     data = request.get_json() or {}
     name = data.get("name")
+    description = data.get("description", "") 
+    avatar_url = data.get("avatar_url") 
+    member_ids_to_add_str = data.get("member_ids", [])
+
     if not name or not isinstance(name, str) or len(name.strip()) == 0:
         return jsonify({"error": "Group name is required and cannot be empty"}), 400
 
-    group = Group(name=name.strip(),
-                  avatar_url=data.get("avatar_url"),
-                  about=data.get("about", ""))
-    db.session.add(group)
-    db.session.flush()
+    # For avatar, if not provided by frontend, consider a default generation strategy
+    # e.g., using the first letter of the group name as in addGroup JS function
+    final_avatar_url = avatar_url
+    if not final_avatar_url and name.strip():
+        # Example: https://via.placeholder.com/40/cccccc/FFFFFF?text=G
+        final_avatar_url = f"https://via.placeholder.com/40/cccccc/FFFFFF?text={name.strip()[0].upper()}"
 
-    membership = GroupMember(group_id=group.id, user_id=current_user.id)
-    db.session.add(membership)
+
+    group = Group(name=name.strip(),
+                  avatar_url=final_avatar_url,
+                  about=description.strip()) # 'about' field for description
+    db.session.add(group)
+    db.session.flush() # Get group.id
+
+    # Add current user as member
+    current_user_membership = GroupMember(group_id=group.id, user_id=current_user.id)
+    db.session.add(current_user_membership)
+
+    # Add selected friends as members
+    processed_member_ids = set() # To avoid duplicate processing if IDs repeat
+    if member_ids_to_add_str:
+        for member_id_str in member_ids_to_add_str:
+            try:
+                member_id = int(member_id_str)
+                if member_id == current_user.id or member_id in processed_member_ids:
+                    continue # Skip current user or already processed
+                
+                # Optional: Stronger check - is this user actually a friend?
+                # friend_to_add = User.query.get(member_id)
+                # if not friend_to_add or not current_user.is_friend(friend_to_add):
+                #     app.logger.warning(f"User {current_user.id} tried to add non-friend {member_id} to group {group.id}")
+                #     continue
+
+                # Check if they are not already a member (e.g. if API is called multiple times with same friend)
+                # Though for a new group, this is less likely unless current user is in member_ids
+                existing_member = db.session.scalar(
+                    db.select(GroupMember.id).filter_by(group_id=group.id, user_id=member_id)
+                )
+                if not existing_member:
+                    new_member = GroupMember(group_id=group.id, user_id=member_id)
+                    db.session.add(new_member)
+                    processed_member_ids.add(member_id)
+            except ValueError:
+                app.logger.warning(f"Invalid member_id '{member_id_str}' provided during group creation.")
+    
     db.session.commit()
     return jsonify(group.to_dict(include_nodes=False)), 201
+
 
 @app.route("/api/groups/<int:group_id>/nodes", methods=["GET"])
 @login_required
@@ -541,7 +598,14 @@ def get_group_nodes(group_id):
     query = db.select(Node).where(Node.group_id == group_id)
 
     if include_events_flag:
-        query = query.options(joinedload(Node.events).joinedload(Event.attendees).joinedload(EventRSVP.user)) # Example of deeper load
+        # Eagerly load events, their attendees (RSVPs), and the users for those RSVPs.
+        # Also load the group associated with the node for each event.
+        query = query.options(
+            joinedload(Node.events)
+                .joinedload(Event.attendees)
+                .joinedload(EventRSVP.user),
+            joinedload(Node.group) # Eager load group for node for group_name in event.to_dict()
+        )
 
     nodes = db.session.scalars(query).unique().all() # .unique() if joinedload might cause duplicates
 
@@ -567,8 +631,14 @@ def get_group_nodes(group_id):
 @login_required
 @require_group_member
 def get_group_events_flat(group_id):
-    events_query = db.select(Event).join(Node).filter(Node.group_id == group_id).order_by(Event.date.desc())
-    events_list = db.session.scalars(events_query).all() # Renamed
+    # Eagerly load related data for to_dict() efficiency
+    events_query = db.select(Event).join(Node).filter(Node.group_id == group_id)\
+        .options(
+            joinedload(Event.node).joinedload(Node.group), # For group_name, group_id
+            joinedload(Event.attendees).joinedload(EventRSVP.user) # For RSVP status
+        )\
+        .order_by(Event.date.desc())
+    events_list = db.session.scalars(events_query).unique().all()  # Added .unique()
     events_data = [event.to_dict(current_user_id=current_user.id) for event in events_list]
     return jsonify(events_data)
 
@@ -606,6 +676,10 @@ def create_event_api(group_id):
             cost_value = float(cost_input)
     except (ValueError, TypeError):
         cost_value = None # Explicitly set to None if conversion fails
+    
+    # Ensure location_coordinates and location_key are handled
+    location_coordinates = data.get("location_coordinates")
+
 
     event = Event(
         title=title,
@@ -615,9 +689,17 @@ def create_event_api(group_id):
         image_url=data.get("image_url"),
         cost_display=cost_display,
         cost_value=cost_value,
-        node_id=node_id
+        node_id=node_id,
+        location_coordinates=location_coordinates
     )
     db.session.add(event)
+    db.session.flush() # to get event.id for to_dict if it relies on it before commit
+
+    # Eager load node and group for to_dict
+    db.session.refresh(event, attribute_names=['node'])
+    if event.node:
+        db.session.refresh(event.node, attribute_names=['group'])
+
     db.session.commit()
     return jsonify(event.to_dict(current_user_id=current_user.id)), 201
 
@@ -651,70 +733,170 @@ def create_node_api(group_id):
 @app.route("/api/events/<int:event_id>", methods=["GET", "PATCH", "DELETE"])
 @login_required
 def manage_event(event_id):
-    event_obj = db.session.get(Event, event_id) # Renamed
-    if not event_obj:
-        return jsonify({"error": "Event not found"}), 404
-
-    authorized = False
-    group_id_for_event = None
-    if event_obj.node_id:
-        node_of_event = db.session.get(Node, event_obj.node_id) # Renamed
-        if node_of_event and node_of_event.group_id:
-            group_id_for_event = node_of_event.group_id
-            if is_group_member(current_user.id, group_id_for_event):
-                authorized = True
+    # Eager load for to_dict and authorization checks consistently
+    event_obj_loaded = db.session.query(Event).options(
+        joinedload(Event.node).joinedload(Node.group),
+        joinedload(Event.attendees).joinedload(EventRSVP.user) # This is a collection, .unique() will be needed later
+    ).filter(Event.id == event_id).first() # .first() is fine here, we expect one event or None
     
-    if not authorized and request.method != "GET":
-        return jsonify({"error": "Unauthorized action. Must be a member of the event's group."}), 403
+    if not event_obj_loaded:
+        return jsonify({"error": "Event not found"}), 404
+    event_obj = event_obj_loaded
 
+
+    group_id_for_event = None
+    authorized_for_modification = False # Stricter check for PATCH/DELETE
+    
+    if event_obj.node_id and event_obj.node and event_obj.node.group_id: 
+        group_id_for_event = event_obj.node.group_id
+        if is_group_member(current_user.id, group_id_for_event):
+            authorized_for_modification = True
+    
     if request.method == "GET":
-        # For GET, broader authorization might be needed (e.g. invited guest)
-        # For now, assume only group members can GET if they are authorized for other methods.
-        # If you need _check_event_authorization here, uncomment and use it.
-        # authorized_get, _, _ = _check_event_authorization(event_id, current_user.id)
-        # if not authorized_get:
-        #    return jsonify({"error": "Unauthorized to view this event."}), 403
-        if not authorized: # Stricter GET for now, align with PATCH/DELETE
-             return jsonify({"error": "Unauthorized to view this event. Must be group member."}), 403
+        is_authorized_get, msg_get, status_get = _check_event_authorization(event_id, current_user.id)
+        if not is_authorized_get:
+             return jsonify({"error": msg_get}), status_get
         return jsonify(event_obj.to_dict(current_user_id=current_user.id))
+
+    # For PATCH/DELETE, must be a group member of the event's group
+    if not authorized_for_modification:
+        return jsonify({"error": "Unauthorized action. Must be a member of the event's group to modify or delete."}), 403
 
     if request.method == "PATCH":
-        if not authorized:
-            return jsonify({"error": "Unauthorized action. Must be a member of the event's group."}), 403
         data = request.get_json() or {}
-        updated = False
-        if "title" in data and data["title"].strip():
-            event_obj.title = data["title"].strip(); updated = True
-        if "location" in data:
-            event_obj.location = data["location"].strip(); updated = True
-        if "description" in data:
-            event_obj.description = data["description"].strip(); updated = True
-        if "date" in data:
-            try:
-                new_date = isoparse(data["date"])
-                if new_date.tzinfo is None: new_date = new_date.replace(tzinfo=timezone.utc)
-                event_obj.date = new_date; updated = True
-            except (ValueError, TypeError): pass
-        if "cost_display" in data:
-            event_obj.cost_display = data["cost_display"]; updated = True
-        if "cost_value" in data:
-             try:
-                 event_obj.cost_value = float(data["cost_value"]) if data["cost_value"] is not None and str(data["cost_value"]).strip() != "" else None; updated = True
-             except (ValueError, TypeError): pass # Keep old value if conversion fails
-        if "node_id" in data and data["node_id"] != event_obj.node_id:
-             new_node_id = data["node_id"]
-             if new_node_id is None or node_belongs_to_group(new_node_id, group_id_for_event):
-                  event_obj.node_id = new_node_id; updated = True
-             else:
-                  return jsonify({"error": "Cannot assign event to a node in a different group."}), 400
+        updated_fields = [] 
 
-        if updated:
-            db.session.commit()
-        return jsonify(event_obj.to_dict(current_user_id=current_user.id))
+        if "title" in data:
+            new_title = data["title"]
+            if isinstance(new_title, str): 
+                event_obj.title = new_title.strip()
+                updated_fields.append("title")
+
+        if "location" in data:
+            new_location = data["location"]
+            if isinstance(new_location, str):
+                event_obj.location = new_location.strip()
+                updated_fields.append("location")
+            elif new_location is None: 
+                event_obj.location = ""
+                updated_fields.append("location")
+        
+        if "location_coordinates" in data: 
+            new_coords = data["location_coordinates"]
+            if isinstance(new_coords, str) and new_coords.strip():
+                event_obj.location_coordinates = new_coords.strip()
+            else: 
+                event_obj.location_coordinates = None
+            updated_fields.append("location_coordinates")
+
+        if "location_key" in data: 
+            new_key = data["location_key"]
+            if isinstance(new_key, str) and new_key.strip():
+                event_obj.location_key = new_key.strip()
+            else: 
+                event_obj.location_key = None
+            updated_fields.append("location_key")
+
+        if "description" in data:
+            new_description = data["description"]
+            if isinstance(new_description, str):
+                event_obj.description = new_description.strip() 
+                updated_fields.append("description")
+            elif new_description is None: 
+                event_obj.description = None
+                updated_fields.append("description")
+
+        if "date" in data:
+            new_date_str = data["date"]
+            if new_date_str is None: 
+                event_obj.date = None
+                updated_fields.append("date")
+            elif isinstance(new_date_str, str):
+                try:
+                    parsed_date = isoparse(new_date_str)
+                    if parsed_date.tzinfo is None:
+                        parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+                    event_obj.date = parsed_date
+                    updated_fields.append("date")
+                except (ValueError, TypeError):
+                    app.logger.warning(f"Invalid date format for event {event_id}: {new_date_str}")
+                    pass 
+
+        if "original_input_text" in data: 
+            original_input = data["original_input_text"]
+            if original_input is not None: 
+                 event_obj.cost_display = str(original_input)
+                 updated_fields.append("cost_display")
+        elif "cost_display" in data: 
+            cost_display_val = data.get("cost_display")
+            if cost_display_val is not None:
+                 event_obj.cost_display = str(cost_display_val)
+                 updated_fields.append("cost_display")
+
+        if "cost_value" in data: 
+            cost_val_input = data["cost_value"]
+            if cost_val_input is None: 
+                event_obj.cost_value = None
+                updated_fields.append("cost_value")
+            else:
+                try:
+                    event_obj.cost_value = float(cost_val_input)
+                    updated_fields.append("cost_value")
+                except (ValueError, TypeError):
+                    app.logger.warning(f"Invalid cost_value for event {event_id}: {cost_val_input}")
+                    pass
+        
+        if "node_id" in data and data["node_id"] != event_obj.node_id:
+             new_node_id_val = data["node_id"] 
+             if new_node_id_val is None: 
+                  event_obj.node_id = None
+                  updated_fields.append("node_id")
+             else:
+                try:
+                    new_node_id_int = int(new_node_id_val)
+                    target_node = db.session.get(Node, new_node_id_int)
+                    if not target_node:
+                        return jsonify({"error": "Target node not found."}), 400
+                    
+                    # The event's current group context is group_id_for_event (from its original/current node)
+                    if group_id_for_event and target_node.group_id != group_id_for_event:
+                        return jsonify({"error": "Cannot move event to a node in a different group."}), 400
+                    
+                    if not is_group_member(current_user.id, target_node.group_id): # User must be member of target node's group
+                        return jsonify({"error": "Cannot assign event to a node in a group you are not a member of."}), 403
+
+                    event_obj.node_id = new_node_id_int
+                    updated_fields.append("node_id")
+
+                except (ValueError, TypeError):
+                    return jsonify({"error": "Invalid node_id format."}), 400
+
+
+        if updated_fields:
+            try:
+                db.session.commit()
+                app.logger.info(f"Event {event_id} updated fields: {', '.join(updated_fields)}")
+                # Re-fetch with eager loads for consistent response (already done at start of function)
+                # db.session.refresh(event_obj, attribute_names=['node', 'attendees']) # Refresh specific attrs
+                # if event_obj.node: db.session.refresh(event_obj.node, attribute_names=['group'])
+
+                # Re-query to ensure all relationships are fresh for to_dict
+                event_obj_refreshed = db.session.query(Event).options(
+                    joinedload(Event.node).joinedload(Node.group),
+                    joinedload(Event.attendees).joinedload(EventRSVP.user)
+                ).filter(Event.id == event_id).first()
+                return jsonify(event_obj_refreshed.to_dict(current_user_id=current_user.id))
+
+
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Error committing updates for event {event_id}: {e}")
+                return jsonify({"error": "Could not save changes to the event."}), 500
+        
+        return jsonify(event_obj.to_dict(current_user_id=current_user.id)) 
+
 
     if request.method == "DELETE":
-        if not authorized:
-             return jsonify({"error": "Unauthorized action. Must be a member of the event's group."}), 403
         db.session.delete(event_obj)
         db.session.commit()
         return jsonify({"success": True, "message": "Event deleted successfully."})
@@ -724,7 +906,7 @@ def manage_event(event_id):
 @app.route("/api/nodes/<int:node_id>", methods=["GET", "PATCH", "DELETE"])
 @login_required
 def manage_node(node_id):
-    node_obj = db.session.get(Node, node_id) # Renamed
+    node_obj = db.session.get(Node, node_id) 
     if not node_obj:
         return jsonify({"error": "Node not found"}), 404
 
@@ -733,7 +915,18 @@ def manage_node(node_id):
 
     if request.method == "GET":
         include_events = request.args.get('include') == 'events'
-        return jsonify(node_obj.to_dict(include_events=include_events))
+        # Eager load events if requested, along with their nested relationships
+        if include_events:
+            node_obj_loaded = db.session.query(Node).options(
+                joinedload(Node.events)
+                    .joinedload(Event.attendees)
+                    .joinedload(EventRSVP.user),
+                joinedload(Node.group) # for event.to_dict() if it needs group from node
+            ).filter(Node.id == node_id).unique().first() # .unique() here due to event collections
+            if node_obj_loaded: node_obj = node_obj_loaded
+
+        return jsonify(node_obj.to_dict(include_events=include_events, current_user_id=current_user.id))
+
 
     if request.method == "PATCH":
         data = request.get_json() or {}
@@ -750,31 +943,41 @@ def manage_node(node_id):
 
         if updated:
             db.session.commit()
-        return jsonify(node_obj.to_dict(include_events=False))
+        return jsonify(node_obj.to_dict(include_events=False)) # No need for current_user_id if include_events is false
 
     if request.method == "DELETE":
-        event_count = db.session.scalar(db.select(func.count(Event.id)).where(Event.node_id == node_id))
-        if event_count > 0:
-            return jsonify({"error": "Cannot delete node with associated events. Please reassign or delete events first."}), 400
+        # Check if there are events associated with this node
+        events_on_node = db.session.scalars(db.select(Event.id).filter_by(node_id=node_id).limit(1)).first()
+        if events_on_node:
+            # Unassign events from this node before deleting the node
+            db.session.execute(
+                db.update(Event).where(Event.node_id == node_id).values(node_id=None)
+            )
+            # flash message or log that events were unassigned might be useful for user feedback
+            app.logger.info(f"Events previously on node {node_id} have been unassigned.")
+
 
         db.session.delete(node_obj)
         db.session.commit()
-        return jsonify({"success": True, "message": "Node deleted successfully."})
+        return jsonify({"success": True, "message": "Node deleted successfully. Associated events (if any) are now unassigned."})
+
 
     return jsonify({"error": "Method not allowed"}), 405
 
-def _check_event_authorization(event_id, user_id_to_check): # Renamed parameter
-    event_to_check = db.session.get(Event, event_id) # Renamed
+def _check_event_authorization(event_id, user_id_to_check): 
+    event_to_check = db.session.query(Event).options(
+        joinedload(Event.node).joinedload(Node.group)
+    ).filter(Event.id == event_id).first()
+    
     if not event_to_check:
         return False, "Event not found", 404
 
-    user_checking = db.session.get(User, user_id_to_check) # Renamed
+    user_checking = db.session.get(User, user_id_to_check) 
     if not user_checking:
-        return False, "User performing check not found", 404
+        return False, "User performing check not found", 404 
 
-    if event_to_check.node_id:
-        node_of_event = db.session.get(Node, event_to_check.node_id) # Renamed
-        if node_of_event and node_of_event.group_id and is_group_member(user_id_to_check, node_of_event.group_id):
+    if event_to_check.node_id and event_to_check.node and event_to_check.node.group_id:
+        if is_group_member(user_id_to_check, event_to_check.node.group_id):
             return True, "Authorized as group member", 200
 
     is_invited = db.session.scalar(
@@ -797,11 +1000,11 @@ def get_event_attendees(event_id):
                            .filter(EventRSVP.status.isnot(None))\
                            .order_by(EventRSVP.timestamp.desc())
 
-    rsvps = db.session.scalars(rsvps_query).all()
+    rsvps = db.session.scalars(rsvps_query).all() # .unique() not strictly needed if EventRSVP is unique per user/event
 
     attendees = []
     for rsvp in rsvps:
-        if rsvp.user: # Ensure user exists
+        if rsvp.user: 
             attendees.append({
                 'user_id': rsvp.user.id,
                 'username': rsvp.user.username,
@@ -837,9 +1040,8 @@ def update_my_rsvp(event_id):
         return jsonify({"error": "Missing 'status' in request body"}), 400
 
     new_status = data['status']
-    allowed_statuses = ['attending', 'maybe', 'declined', None] # None will clear RSVP
+    allowed_statuses = ['attending', 'maybe', 'declined', None] 
     
-    # Normalize 'none' string to None type
     if isinstance(new_status, str) and new_status.lower() == 'none':
         new_status = None
         
@@ -850,23 +1052,23 @@ def update_my_rsvp(event_id):
         db.select(EventRSVP).filter_by(event_id=event_id, user_id=current_user.id)
     )
 
-    if new_status is None: # Clear RSVP
+    if new_status is None: 
         if rsvp:
             db.session.delete(rsvp)
             db.session.commit()
             return jsonify({"message": "RSVP cleared successfully.", "status": None})
         else:
-            return jsonify({"message": "No existing RSVP to clear.", "status": None}) # Not an error
-    else: # Set or update RSVP
+            return jsonify({"message": "No existing RSVP to clear.", "status": None}) 
+    else: 
         if rsvp:
             if rsvp.status != new_status:
                 rsvp.status = new_status
                 rsvp.timestamp = datetime.now(timezone.utc)
                 db.session.commit()
                 return jsonify({"message": f"RSVP updated to '{new_status}'.", "status": new_status})
-            else: # No change
+            else: 
                  return jsonify({"message": f"RSVP already set to '{new_status}'.", "status": new_status})
-        else: # New RSVP
+        else: 
             new_rsvp = EventRSVP(
                 event_id=event_id,
                 user_id=current_user.id,
@@ -880,7 +1082,7 @@ def update_my_rsvp(event_id):
 @app.route('/api/search/users', methods=['GET'])
 @login_required
 def api_search_users():
-    query_param = request.args.get('q', '').strip() # Renamed
+    query_param = request.args.get('q', '').strip() 
     limit = request.args.get('limit', 10, type=int)
 
     if not query_param:
@@ -888,13 +1090,13 @@ def api_search_users():
 
     users_query = db.select(User).filter(
             User.username.ilike(f'%{query_param}%'),
-            User.id != current_user.id # Exclude current user from results
+            User.id != current_user.id 
         ).limit(limit)
 
-    found_users = db.session.scalars(users_query).all() # Renamed
+    found_users = db.session.scalars(users_query).all() 
 
     results = [{
-        'id': u.id, # Renamed loop var
+        'id': u.id, 
         'username': u.username,
         'avatar_url': u.avatar(40)
     } for u in found_users]
@@ -925,12 +1127,11 @@ def add_insight_panel():
     if not details:
         return jsonify({"error": f"Invalid analysis type: {analysis_type}"}), 400
 
-    max_order_val = db.session.scalar( # Renamed
+    max_order_val = db.session.scalar( 
         db.select(func.max(InsightPanel.display_order)).where(InsightPanel.user_id == current_user.id)
     )
     next_order = (max_order_val + 1) if max_order_val is not None else 0
     
-    # Configuration: Start with default, then override with any provided in request
     panel_config = details.get('default_config', {}).copy()
     if 'configuration' in data and isinstance(data['configuration'], dict):
         panel_config.update(data['configuration'])
@@ -939,10 +1140,10 @@ def add_insight_panel():
     new_panel = InsightPanel(
         user_id=current_user.id,
         analysis_type=analysis_type,
-        title=details['title'], # This is the generic title; actual data might have a more specific one
+        title=details['title'], 
         description=details['description'],
         display_order=next_order,
-        configuration=panel_config # Use merged config
+        configuration=panel_config 
     )
     db.session.add(new_panel)
     db.session.commit()
@@ -958,8 +1159,7 @@ def update_panel_order():
 
     panel_ids_ordered = data['panel_ids']
     
-    # Fetch all user's panels to update them in one go
-    user_panels_list = db.session.scalars( # Renamed
+    user_panels_list = db.session.scalars( 
         db.select(InsightPanel).where(InsightPanel.user_id == current_user.id)
     ).all()
     user_panels_map = {panel.id: panel for panel in user_panels_list}
@@ -982,7 +1182,6 @@ def update_panel_order():
     if updated_count > 0:
         db.session.commit()
 
-    # Return the freshly ordered list
     ordered_panels_query = db.select(InsightPanel)\
         .where(InsightPanel.user_id == current_user.id)\
         .order_by(InsightPanel.display_order)
@@ -1006,20 +1205,14 @@ def delete_insight_panel(panel_id):
     return jsonify({"success": True, "message": "Panel deleted successfully."})
 
 # --- Analysis Data Endpoint (Example: Spending) ---
-# MODIFIED to handle group filtering and use SQLAlchemy 2.0 style
-# In routes.py
-
-# ... (other imports and existing code up to get_analysis_data) ...
-
 @app.route('/api/analysis/data/<analysis_type>', methods=['GET'])
 @login_required
 def get_analysis_data(analysis_type):
     panel_id = request.args.get('panel_id', type=int)
     panel = None
     config = {}
-    user = current_user # For clarity
+    user = current_user 
 
-    # ... (config handling for panel_id, analysis_type, time_period, group_id_filter - same as before) ...
     if panel_id:
         panel = db.session.get(InsightPanel, panel_id)
 
@@ -1033,54 +1226,41 @@ def get_analysis_data(analysis_type):
         time_period = config.get('time_period', 'all_time')
         raw_group_id_filter = config.get('group_id', 'all')
         
-        group_id_to_filter = 'all' # This will be an integer group ID or the string 'all'
+        group_id_to_filter = 'all' 
         specific_group_name_for_title = None
 
         if raw_group_id_filter != 'all':
             try:
                 gid_int = int(raw_group_id_filter)
                 group_for_filter = db.session.get(Group, gid_int)
-                # User must be a member of the group they want to filter by
                 if group_for_filter and is_group_member(user.id, gid_int):
                     group_id_to_filter = gid_int
                     specific_group_name_for_title = group_for_filter.name
                 else:
                     app.logger.warning(f"User {user.id} tried to filter spending by group {gid_int} they are not a member of. Defaulting to 'all'.")
-                    # Keep group_id_to_filter as 'all'
             except ValueError:
                 app.logger.warning(f"Invalid group_id '{raw_group_id_filter}' in spending config. Defaulting to 'all'.")
-                # Keep group_id_to_filter as 'all'
-
 
         start_date = None
         if time_period == 'last_month':
             start_date = datetime.now(timezone.utc) - timedelta(days=30)
         elif time_period == 'last_year':
             start_date = datetime.now(timezone.utc) - timedelta(days=365)
-
-        # --- START: Determine IDs of events current user is attending AND has access to ---
         
-        # 1. Event IDs user has RSVP'd "attending" to
         rsvpd_attending_event_ids_stmt = db.select(EventRSVP.event_id)\
             .where(EventRSVP.user_id == user.id)\
             .where(EventRSVP.status == 'attending')
         rsvpd_attending_event_ids = db.session.scalars(rsvpd_attending_event_ids_stmt).all()
 
         if not rsvpd_attending_event_ids:
-            # No events attended, so spending is zero for all categories
             response_data = {
                 "analysis_type": analysis_type,
                 "title": f"Attended Event Spending by Category (No events attended)",
-                "data": [], # Empty data
+                "data": [], 
                 "config_used": config
             }
             return jsonify(response_data)
-
-        # 2. Filter these by accessibility (group OR invitation)
-        #    AND by the optional group_id_to_filter for the panel
         
-        # Subquery for events accessible via group membership
-        # If group_id_to_filter is a specific group, only consider that group
         group_accessible_stmt = db.select(Event.id).distinct()\
             .join(Node, Event.node_id == Node.id)\
             .join(Group, Node.group_id == Group.id)\
@@ -1088,30 +1268,23 @@ def get_analysis_data(analysis_type):
             .where(GroupMember.user_id == user.id)\
             .where(Event.id.in_(rsvpd_attending_event_ids))
         
-        if group_id_to_filter != 'all': # If a specific group is chosen for the panel
+        if group_id_to_filter != 'all': 
             group_accessible_stmt = group_accessible_stmt.where(Group.id == group_id_to_filter)
         
         group_accessible_event_ids_sq = group_accessible_stmt.subquery()
 
-        # Subquery for events accessible via direct invitation
-        # If group_id_to_filter is active, invited events are only included IF they ALSO belong to that filtered group.
-        # This makes sense for "spending by category within a group".
-        # If group_id_to_filter is 'all', then invited events are included regardless of their group (if any).
         invited_accessible_stmt = db.select(Event.id).distinct()\
             .join(InvitedGuest, Event.id == InvitedGuest.event_id)\
             .where(InvitedGuest.email == user.email)\
             .where(Event.id.in_(rsvpd_attending_event_ids))
 
         if group_id_to_filter != 'all':
-            # If filtering by a specific group, an invited event must ALSO belong to that group
-            # (via its Node) to be included in this panel's aggregation.
             invited_accessible_stmt = invited_accessible_stmt\
                 .join(Node, Event.node_id == Node.id) \
                 .where(Node.group_id == group_id_to_filter)
                 
         invited_event_ids_sq = invited_accessible_stmt.subquery()
 
-        # Get the final list of event IDs to aggregate costs for
         final_event_ids_to_sum_stmt = db.select(Event.id).distinct()\
             .where(
                 or_(
@@ -1120,23 +1293,17 @@ def get_analysis_data(analysis_type):
                 )
             )
         final_event_ids_to_sum = db.session.scalars(final_event_ids_to_sum_stmt).all()
-
-        print(f"Final event IDs to sum: {final_event_ids_to_sum}") # Debugging line
         
         if not final_event_ids_to_sum:
-            # No events meet all criteria (attended, accessible, and panel's group filter)
             title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else "(All Accessible Groups)"
             response_data = {
                 "analysis_type": analysis_type,
                 "title": f"Attended Event Spending by Category {title_group_part} (No matching events)",
-                "data": [], # Empty data
+                "data": [], 
                 "config_used": config
             }
             return jsonify(response_data)
-        # --- END: Determine IDs of events ---
 
-
-        # --- AGGREGATION QUERY using the final_event_ids_to_sum ---
         stmt = db.select(
                 Node.label.label('category'),
                 func.sum(Event.cost_value).label('total_cost')
@@ -1149,16 +1316,9 @@ def get_analysis_data(analysis_type):
         if start_date:
             stmt = stmt.where(Event.date >= start_date)
         
-        # The panel's group_id_to_filter was already applied when determining final_event_ids_to_sum.
-        # Node.group_id might be needed if an event in final_event_ids_to_sum could belong to multiple nodes/categories
-        # but for "spending by category", each event usually has one node.
-        # If group_id_to_filter != 'all':
-        #    stmt = stmt.where(Node.group_id == group_id_to_filter) # This is already handled above
-
         stmt = stmt.group_by(Node.label).order_by(func.sum(Event.cost_value).desc())
         
         results = db.session.execute(stmt).all()
-        # --- END OF AGGREGATION QUERY ---
 
         analysis_data = [
             {"category": row.category, "amount": round(row.total_cost or 0, 2)}
@@ -1180,5 +1340,46 @@ def get_analysis_data(analysis_type):
     else:
         return jsonify({"error": f"Analysis type '{analysis_type}' not implemented or not configured correctly."}), 404
 
+
+# --- Endpoint for All User Events (Calendar/List View) ---
+@app.route('/api/me/all_events', methods=['GET'])
+@login_required
+def get_all_my_events():
+    user_id = current_user.id
+    user_email = current_user.email
+
+    # Events from groups user is a member of
+    group_events_stmt = db.select(Event).distinct() \
+        .join(Node, Event.node_id == Node.id) \
+        .join(Group, Node.group_id == Group.id) \
+        .join(GroupMember, Group.id == GroupMember.group_id) \
+        .where(GroupMember.user_id == user_id) \
+        .options(
+            joinedload(Event.node).joinedload(Node.group), 
+            joinedload(Event.attendees).joinedload(EventRSVP.user) 
+        )
+    
+    # Events user is directly invited to
+    invited_events_stmt = db.select(Event).distinct() \
+        .join(InvitedGuest, Event.id == InvitedGuest.event_id) \
+        .where(InvitedGuest.email == user_email) \
+        .options(
+            joinedload(Event.node).joinedload(Node.group),
+            joinedload(Event.attendees).joinedload(EventRSVP.user)
+        )
+
+    # Use .unique() when calling scalars() if joinedload involves collections
+    group_events = db.session.scalars(group_events_stmt).unique().all()
+    invited_events = db.session.scalars(invited_events_stmt).unique().all()
+
+    all_user_events_map = {event.id: event for event in group_events}
+    for event in invited_events:
+        if event.id not in all_user_events_map:
+            all_user_events_map[event.id] = event
+    
+    sorted_events = sorted(list(all_user_events_map.values()), key=lambda e: (e.date is None, e.date), reverse=True)
+
+    events_data = [event.to_dict(current_user_id=user_id) for event in sorted_events]
+    return jsonify(events_data)
 
 # --- END OF FILE routes.py ---

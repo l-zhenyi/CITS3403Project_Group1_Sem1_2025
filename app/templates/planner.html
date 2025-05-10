@@ -9,13 +9,21 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerGroupsArea.css') }}" type="text/css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerInsightsArea.css') }}" type="text/css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}" type="text/css">
+{# Ensure your plannerCalendarArea.css or modal.css contains the Day Events Modal styles #}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
 {% endblock %}
 
 {% block title %}{{ title | default('Planner') }}{% endblock %}
 
 {% block content %}
 <main class="planner-interface">
+    {# ... (planner-header, view-selector, etc. - no changes) ... #}
     <div class="planner-header">
         <h1 class="planner-title">Planner</h1>
         <nav class="view-selector glassy">
@@ -27,11 +35,11 @@
     </div>
 
     <div class="planner-pane" id="planner-pane">
-
-        {# Left Side: Group List (No Functional Changes) #}
+        {# ... (group-list-area, event-collage-area, calendar-view, events-view, insights-view - no changes) ... #}
+        {# Left Side: Group List #}
         <aside class="group-list-area">
             <div class="mobile-list-header"></div>
-            <ul>
+            <ul class="groups-ul"> {# Added a class to the UL for easier selection #}
                 {# Check if groups exist before looping #}
                 {% if groups %}
                 {% for group in groups %}
@@ -54,6 +62,11 @@
                 </li>
                 {% endif %}
             </ul>
+            {# MOVED THE NEW GROUP BUTTON HERE - CHANGED TO <button> #}
+            <button class="add-new-group-button-fixed" id="add-new-group-button">
+                <span class="add-new-group-icon">+</span>
+                <span class="add-new-group-text">Create New Group</span>
+            </button>
         </aside>
 
         {# Right Side: Event Collage Area (No Functional Changes) #}
@@ -197,11 +210,11 @@
             </div>
         </section>
         <!-- ================== END Insights View Area ================== -->
-
     </div> <!-- End of planner-pane -->
 
-    <!-- Event Details Modal (No Functional Changes Needed Here) -->
+    <!-- Event Details Modal -->
     <div id="event-details-modal" class="modal-backdrop" style="display: none;">
+        {# ... (event details modal content - no changes) ... #}
         <div class="modal-content glassy">
             <button class="modal-close-btn" aria-label="Close event details">×</button>
             <div class="modal-header">
@@ -262,7 +275,63 @@
             {# Optional Footer #}
             {# <div class="modal-footer"> ... </div> #}
         </div>
-    </div> <!-- End of Modal Backdrop -->
+    </div> <!-- End of Event Details Modal -->
+
+    <!-- Create Group Modal -->
+    <div id="create-group-modal" class="modal-backdrop" style="display: none;">
+        {# ... (create group modal content - no changes) ... #}
+        <div class="modal-content glassy create-group-modal-content">
+            <button class="modal-close-btn" id="create-group-modal-close-btn-x" aria-label="Close create group dialog">×</button>
+            <div class="modal-header">
+                <h2 id="create-group-modal-title">Create New Group</h2>
+            </div>
+            <form id="create-group-form">
+                <div class="modal-body">
+                    {# MODIFIED LAYOUT: Each main input on its own line #}
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-group-name">Group Name*</label>
+                            <input type="text" id="new-group-name" name="name" required class="modal-input">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-group-description">Description (Optional)</label>
+                            <textarea id="new-group-description" name="description" rows="3" class="modal-textarea"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-group">
+                            <h4>Add Friends to Group (Optional)</h4>
+                            <input type="text" id="modal-friend-search" placeholder="Search friends..." class="modal-input friend-search-input">
+                            <div id="modal-friends-list-container" class="friends-list-scroll-container">
+                                <p class="loading-friends-message">Loading friends...</p>
+                                {# Friends list populated by JS #}
+                            </div>
+                        </div>
+                    </div>
+                    <div id="create-group-error-message" class="modal-error-message" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="button secondary" id="create-group-cancel-btn">Cancel</button>
+                    <button type="submit" class="button primary" id="create-group-save-btn">Create Group</button>
+                </div>
+            </form>
+        </div>
+    </div> <!-- End of Create Group Modal -->
+
+    <!-- Day Events Modal (Added here, will be styled to be hidden by default) -->
+    <div class="day-events-modal" id="day-events-modal">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="day-events-modal-close-btn" aria-label="Close day events list">×</button>
+            <h3 id="day-events-modal-title">Events for Date</h3>
+            <ul class="day-event-list" id="day-events-modal-list">
+                <!-- Event items will be populated here by JS -->
+            </ul>
+        </div>
+    </div>
+    <!-- End of Day Events Modal -->
 
 </main>
 {# Optional: Context menu container if still used #}

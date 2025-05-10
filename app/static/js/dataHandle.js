@@ -58,13 +58,16 @@ export async function loadGroups() {
         groupsData.length = 0; // Clear existing
         groupsData.push(...groups);
 
-        const groupList = document.querySelector('.group-list-area ul');
-        if (!groupList) {
-            console.warn("Group list UL element not found.");
+        const groupListUL = document.querySelector('.group-list-area .groups-ul'); // Target specific UL
+        if (!groupListUL) {
+            console.warn("Group list UL element (.groups-ul) not found.");
             return; // Cannot populate list
         }
 
-        groupList.innerHTML = ''; // Clear previous items
+        // REMOVED: Logic for detaching/re-attaching the "Add New Group" button
+        // as it's now outside this UL.
+
+        groupListUL.innerHTML = ''; // Clear previous dynamic items
 
         groups.forEach(group => {
             const li = document.createElement('li');
@@ -76,19 +79,13 @@ export async function loadGroups() {
             li.innerHTML = `
                 <img src="${group.avatar_url || '/static/img/default-group-avatar.png'}" alt="${group.name || 'Group'} Avatar" class="group-avatar">
                 <span class="group-name">${group.name || 'Unnamed Group'}</span>`;
-            groupList.appendChild(li);
+            groupListUL.appendChild(li);
         });
 
         // Call handler attachment AFTER list is populated
         // NOTE: Click handling is now primarily done in main.js for better state management.
-        // attachGroupClickHandlers(); // REMOVE this if main.js handles the clicks on the UL
-
-        // Process events only if needed immediately (might be redundant if renderGroupEvents does it)
-        // processAllEvents(); // Consider calling this only when switching to 'events' or 'calendar' view
 
         console.log("Groups loaded:", groupsData.length);
-
-        // Don't automatically click firstLi here, let main.js handle initial activation logic
 
     } catch (error) {
         console.error("Error loading groups:", error);
@@ -98,89 +95,61 @@ export async function loadGroups() {
 
 
 /**
- * Flattens all group events into allEventsData and maps them by date for the calendar view.
- * NOTE: This relies on `groupsData` having nested `events`. This is inefficient.
- * It's better to have a dedicated `/api/events` endpoint for the 'all events' list
- * and `/api/calendar-events` for calendar-specific data.
- * Keeping this structure as per the original file for now.
+ * Fetches all events accessible to the user and processes them for various views.
  */
-export function processAllEvents() {
-    console.warn("processAllEvents relies on groupsData containing nested events, which might be inefficient or outdated. Consider dedicated API endpoints.");
+export async function loadAllUserEventsAndProcess() {
+    console.log("Loading all user events...");
     allEventsData = [];
     eventsByDate = {};
 
-    groupsData.forEach(group => {
-        // This assumes the /api/groups response INCLUDES all events nested within each group.
-        // This is generally NOT how it's structured with the /nodes?include=events approach.
-        // The data for 'all events' list and 'calendar' likely needs separate fetching.
-        const eventsToProcess = group.events || []; // Use events if available
-
-        eventsToProcess.forEach(event => {
-            // Ensure date is a Date object
-            const eventDate = event.date instanceof Date ? event.date : (event.date ? new Date(event.date) : null);
-            if (!eventDate || isNaN(eventDate)) return; // Skip if date is invalid
-
-            allEventsData.push({
-                ...event,
-                group_id: group.id,
-                group_name: group.name,
-                date: eventDate // Store as Date object
-            });
-
-            const dateKey = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
-            if (!eventsByDate[dateKey]) eventsByDate[dateKey] = [];
-            eventsByDate[dateKey].push({
-                title: event.title,
-                group: group.name,
-                id: event.id // Include ID if needed for clicking calendar event
-            });
-        });
-    });
-
-    console.log(`Processed ${allEventsData.length} events for calendar/list based on groupsData.`);
-}
-
-
-// --- Redundant Click Handler (Keep ONLY if main.js doesn't handle it) ---
-// It's generally better to have a single point of handling in main.js using event delegation.
-/*
-export function attachGroupClickHandlers() {
-    const groupListUL = document.querySelector('.group-list-area ul');
-    if (!groupListUL) return;
-
-    // Remove previous listener if any (simple approach)
-    // A more robust way involves storing the listener function reference
-    // groupListUL.removeEventListener('click', handleGroupItemClick); // Needs named function
-
-    const handleGroupItemClick = (e) => {
-        const li = e.target.closest('.group-item');
-        if (!li || li.classList.contains('active')) return; // Ignore if not on item or already active
-
-        // Remove active from others
-        document.querySelectorAll('.group-item.active').forEach(item => item.classList.remove('active'));
-        // Add active to clicked
-        li.classList.add('active');
-
-        // Update header (example, adjust selectors/logic as needed)
-        const name = li.dataset.groupName || 'Group Events';
-        const avatar = li.dataset.groupAvatar || '/static/img/default-group-avatar.png';
-        const activeGroupNameEl = document.getElementById('active-group-name');
-        const activeGroupAvatarEl = document.getElementById('active-group-avatar');
-        if (activeGroupNameEl) activeGroupNameEl.textContent = name;
-        if (activeGroupAvatarEl) activeGroupAvatarEl.src = avatar;
-
-
-        const groupId = li.dataset.groupId;
-        console.log(`Group item clicked (dataHandle): ID ${groupId}`);
-        if (groupId) {
-            // Call renderGroupEvents from eventRenderer.js
-            renderGroupEvents(groupId);
-            // Update hash
-            updateHash('groups', groupId);
+    try {
+        const response = await fetch('/api/me/all_events'); // GET request, CSRF not strictly needed here
+        if (!response.ok) {
+            throw new Error(`Failed to fetch all user events: ${response.status} ${response.statusText}`);
         }
-    };
+        const events = await response.json();
 
-    groupListUL.addEventListener('click', handleGroupItemClick);
+        events.forEach(event => {
+            const eventDate = event.date ? new Date(event.date) : null;
+            if (eventDate && isNaN(eventDate.getTime())) {
+                 console.warn(`Invalid date for event ID ${event.id}: ${event.date}. Skipping this event for calendar/list.`);
+                 return; // Skip if date is invalid
+            }
+
+            // Ensure group_name and group_id are directly on the event object for easy access
+            const processedEvent = {
+                ...event,
+                date: eventDate, // Store as Date object
+                // group_id and group_name should be part of event.to_dict()
+                // If not, fallback might be needed or error logged
+                group_id: event.group_id,
+                group_name: event.group_name || 'Direct Invite/Other',
+            };
+            allEventsData.push(processedEvent);
+
+            if (eventDate) { // Only add to calendar if there's a valid date
+                const dateKey = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                if (!eventsByDate[dateKey]) eventsByDate[dateKey] = [];
+                eventsByDate[dateKey].push({
+                    title: event.title,
+                    group_name: processedEvent.group_name, // Use consistent name
+                    id: event.id,
+                    // Add any other minimal info needed for calendar popups/tooltips
+                    status: event.current_user_rsvp_status 
+                });
+            }
+        });
+        console.log(`Processed ${allEventsData.length} total events. Events by date keys: ${Object.keys(eventsByDate).length}`);
+
+    } catch (error) {
+        console.error("Error loading or processing all user events:", error);
+        // Potentially update UI to show error
+        const eventListContainer = document.getElementById('event-list-container');
+        if (eventListContainer) eventListContainer.innerHTML = '<p class="error-message">Could not load events.</p>';
+        const calendarGridEl = document.getElementById('calendar-grid');
+        if (calendarGridEl) calendarGridEl.innerHTML = '<p class="error-message" style="text-align:center; grid-column: 1/-1;">Could not load calendar events.</p>';
+    }
 }
-*/
+
+
 // --- END OF FILE dataHandle.js ---
