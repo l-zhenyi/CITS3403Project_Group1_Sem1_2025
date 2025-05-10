@@ -117,6 +117,7 @@
     backdrop-filter: blur(25px) saturate(140%);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
 }
 
 .event-tile:hover {

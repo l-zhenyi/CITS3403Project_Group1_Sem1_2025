@@ -107,9 +107,9 @@ export function openDayEventsModal(dateString, eventsForDay) {
         }
     }
 
-    const dateObj = new Date(dateString + 'T00:00:00');
+    const dateObj = new Date(dateString + 'T00:00:00'); // Ensure local interpretation of date string for display
     dayEventsModalTitleEl.textContent = `Events on ${dateObj.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
-    
+
     dayEventsModalListEl.innerHTML = ''; // Clear previous events
 
     if (!eventsForDay || eventsForDay.length === 0) {
@@ -126,12 +126,13 @@ export function openDayEventsModal(dateString, eventsForDay) {
 
             const groupSpan = document.createElement('span');
             groupSpan.className = 'day-event-group';
-            groupSpan.textContent = event.group_name || 'Personal';
-            
+            groupSpan.textContent = event.group_name || 'Personal'; // Will use 'Direct Invite/Other' if applicable
+
             const timeSpan = document.createElement('span');
             timeSpan.className = 'day-event-time';
             let eventDateForTime = null;
-            const fullEventData = allEventsData.find(e => e.id === event.id);
+            // Find the full event data from allEventsData because eventsForDay might be minimal
+            const fullEventData = allEventsData.find(e => String(e.id) === String(event.id));
             if (fullEventData && fullEventData.date instanceof Date) {
                 eventDateForTime = fullEventData.date;
             }
@@ -142,7 +143,7 @@ export function openDayEventsModal(dateString, eventsForDay) {
             li.appendChild(timeSpan);
 
             li.addEventListener('click', () => {
-                const fullEvent = allEventsData.find(e => e.id === event.id);
+                const fullEvent = allEventsData.find(e => String(e.id) === String(event.id));
                 if (fullEvent) {
                     document.dispatchEvent(new CustomEvent('openEventModalRequest', {
                         detail: { eventData: fullEvent },
@@ -167,19 +168,17 @@ function closeDayEventsModal() {
 }
 
 // --- Initialize Day Events Modal when eventRenderer is loaded ---
-// This will now primarily attach listeners if the modal HTML is present.
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupDayEventsModal);
 } else {
-    setupDayEventsModal(); // Potentially run setup if DOM is already ready
+    setupDayEventsModal();
 }
 
 
 
 // --- Helper: Format Date ---
-// Keep consistent formatting logic
 function formatEventDateForDisplay(date) {
-    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 'No Date'; // ensure date is valid
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 'No Date';
     try {
         return date.toLocaleString(undefined, {
             weekday: 'short', month: 'short', day: 'numeric',
@@ -191,33 +190,29 @@ function formatEventDateForDisplay(date) {
     }
 }
 
-// --- Create Event Panel DOM Element (REVISED for hover structure) ---
+// --- Create Event Panel DOM Element ---
 function createEventPanel(event) {
     if (!event || typeof event.id === 'undefined') {
         console.error("createEventPanel called with invalid event data:", event);
-        return null; // Return null if event data is bad
+        return null;
     }
     const panel = document.createElement('div');
     panel.className = 'event-panel';
-    panel.id = `event-panel-${event.id}`; // Add specific ID
+    panel.id = `event-panel-${event.id}`;
     panel.dataset.eventId = event.id;
 
-    // Set node linkage if available
     if (event.node_id !== null && event.node_id !== undefined && String(event.node_id).trim() !== '') {
         panel.dataset.snappedToNode = String(event.node_id);
     }
 
-    // --- CRITICAL: Attach full event data ---
-    panel._eventData = event;
+    panel._eventData = event; // Attach full event data (CRITICAL)
 
-    // --- Build Inner HTML for the *original* content view ---
     const dateText = formatEventDateForDisplay(event.date); // event.date is now a Date object
     const imageUrl = event.image_url || '/static/img/default-event-logo.png';
 
     const originalContentWrapper = document.createElement('div');
     originalContentWrapper.className = 'orbit-element-original-content';
 
-    // *** UPDATED STRUCTURE for hover effect ***
     originalContentWrapper.innerHTML = `
         <img src="${imageUrl}" alt="${event.title || 'Event'}" class="event-image">
         <div class="event-info-overlay">
@@ -227,7 +222,7 @@ function createEventPanel(event) {
     `;
     panel.appendChild(originalContentWrapper);
 
-    // Expanded content created by OrbitLayoutManager._ensureExpandedContentDiv
+    // Expanded content is created by OrbitLayoutManager._ensureExpandedContentDiv when layout occurs
 
     panel.style.position = 'absolute';
     if (!panel.dataset.snappedToNode) {
@@ -246,7 +241,7 @@ function makeDraggableNode(element) {
 
     function onPointerDown(e) {
         if (e.target !== element || e.button !== 0 || !window.draggingAllowed) return;
-        e.stopPropagation(); // Prevent viewport drag
+        e.stopPropagation();
         isDragging = true;
         element.classList.add('dragging');
         element.style.zIndex = 1000;
@@ -271,7 +266,7 @@ function makeDraggableNode(element) {
         element.style.top = `${newY}px`;
         const instance = layoutInstances.get(element);
         if (instance) {
-            instance.updateLayout(); // Let instance recalc positions based on node move
+            instance.updateLayout();
         }
     }
 
@@ -287,7 +282,7 @@ function makeDraggableNode(element) {
 
         const instance = layoutInstances.get(element);
         if (instance) {
-            instance.updateLayout(); // Final update
+            instance.updateLayout();
         }
 
         const nodeId = element.dataset.nodeId;
@@ -296,7 +291,7 @@ function makeDraggableNode(element) {
             const y = parseFloat(element.style.top) || 0;
 
             const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-            const headers = { 
+            const headers = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             };
@@ -322,9 +317,9 @@ function makeDraggableNode(element) {
 function getCurrentZoomScale() {
     if (!eventPanelsContainer) return 1;
     try {
-        const { scale } = getTransformState();
-        if (scale) return scale;
-    } catch (e) { /* ignore */ }
+        const { scale: viewportScale } = getTransformState(); // Renamed to avoid conflict
+        if (viewportScale) return viewportScale;
+    } catch (e) { /* ignore if getTransformState not available */ }
     const transform = eventPanelsContainer.style.transform;
     const match = transform?.match(/scale\(([\d.]+)\)/);
     return match ? parseFloat(match[1]) : 1;
@@ -351,7 +346,10 @@ export function createNodeElement(node) {
 
 // --- Render List of All Events ---
 export function renderAllEventsList(filter = 'upcoming') {
-    if (!eventListContainer) return;
+    if (!eventListContainer) {
+        console.warn("Event list container not found for renderAllEventsList.");
+        return;
+    }
     const now = new Date();
     let filtered = [];
 
@@ -364,13 +362,11 @@ export function renderAllEventsList(filter = 'upcoming') {
 
     try {
         filtered = eventsWithValidDates.filter(event => {
-            // event.date is already a Date object here or null (filtered out by .filter above)
             if (filter === 'upcoming') return event.date >= now;
             if (filter === 'past') return event.date < now;
             return true; // 'all'
         });
         filtered.sort((a, b) => {
-            // No need for .getTime() if they are Date objects
             return filter === 'past' ? b.date - a.date : a.date - b.date;
         });
     } catch (error) {
@@ -383,7 +379,7 @@ export function renderAllEventsList(filter = 'upcoming') {
         eventListContainer.innerHTML = `<p class="no-events-message">No ${filter} events found.</p>`;
     } else {
         eventListContainer.innerHTML = filtered.map(event => {
-            const dateDisplay = formatEventDateForDisplay(event.date); // event.date is a Date object
+            const dateDisplay = formatEventDateForDisplay(event.date);
             let rsvpText = 'Not RSVP\'d';
             if (event.current_user_rsvp_status === 'attending') rsvpText = 'Attending';
             else if (event.current_user_rsvp_status === 'maybe') rsvpText = 'Maybe';
@@ -397,13 +393,34 @@ export function renderAllEventsList(filter = 'upcoming') {
                 <p class="tile-detail">✔️ ${rsvpText}</p>
             </div>`;
         }).join('');
+
+        if (!eventListContainer._eventTileClickListenerAttached) {
+            eventListContainer.addEventListener('click', (e) => {
+                const tile = e.target.closest('.event-tile');
+                if (tile) {
+                    const eventId = tile.dataset.eventId;
+                    if (eventId) {
+                        const fullEvent = allEventsData.find(evt => String(evt.id) === String(eventId));
+                        if (fullEvent) {
+                            document.dispatchEvent(new CustomEvent('openEventModalRequest', {
+                                detail: { eventData: fullEvent },
+                                bubbles: true, composed: true
+                            }));
+                        } else {
+                            console.warn(`Event data not found for ID ${eventId} in allEventsData when clicking event tile.`);
+                        }
+                    }
+                }
+            });
+            eventListContainer._eventTileClickListenerAttached = true;
+        }
     }
 }
 
 
 // --- Render Group Events (Collage/Orbit View) ---
 export async function renderGroupEvents(groupId) {
-    if (!eventPanelsContainer || !collageViewport) { // Added check for viewport
+    if (!eventPanelsContainer || !collageViewport) {
         console.error("Cannot render group events: Event panels container or viewport not found.");
         return;
     }
@@ -412,57 +429,70 @@ export async function renderGroupEvents(groupId) {
         eventPanelsContainer.innerHTML = '<p class="info-message">Select a group to view events.</p>';
         layoutInstances.forEach(instance => instance.destroy());
         layoutInstances.clear();
-        // Remove outside click listener if no group selected
         removeOutsideClickListener();
         return;
     }
 
-    // console.log(`[renderGroupEvents] Rendering events for Group ID: ${groupId}`); // Less verbose
     eventPanelsContainer.innerHTML = '<div class="loading-indicator">Loading events...</div>';
 
     try {
-        const res = await fetch(`/api/groups/${groupId}/nodes?include=events`); // GET, no CSRF needed
+        // Fetch nodes and their associated events for the group
+        const res = await fetch(`/api/groups/${groupId}/nodes?include=events`);
         if (!res.ok) throw new Error(`Failed to fetch group nodes/events: ${res.status} ${res.statusText}`);
-        const nodes = await res.json();
+        const groupNodesData = await res.json(); // This is an array of node objects, each potentially with an 'events' array
 
-        // --- Destroy Old Layout Instances FIRST ---
         layoutInstances.forEach((instance, nodeEl) => {
             try { instance.destroy(); }
             catch(e) { console.error(`Error destroying layout instance for node ${nodeEl.id}:`, e); }
         });
         layoutInstances.clear();
-        // --- End Cleanup ---
-
         eventPanelsContainer.innerHTML = ''; // Clear loading
 
         const renderedNodes = {};
-        if (nodes.length === 0) { /* console.log(`[renderGroupEvents] No nodes...`); */ }
-        nodes.forEach(node => {
-            const nodeEl = createNodeElement(node);
+        if (groupNodesData.length === 0) {
+            // console.log(`[renderGroupEvents] No nodes for group ${groupId}.`);
+        }
+        groupNodesData.forEach(nodeData => {
+            const nodeEl = createNodeElement(nodeData);
             if (nodeEl) {
                 eventPanelsContainer.appendChild(nodeEl);
-                renderedNodes[node.id] = nodeEl;
+                renderedNodes[nodeData.id] = nodeEl;
             }
         });
 
-        const events = nodes.flatMap(node => node.events || []);
-        if (events.length === 0 && nodes.length === 0) {
+        const allGroupEvents = groupNodesData.flatMap(node => node.events || []);
+
+        if (allGroupEvents.length === 0 && groupNodesData.length === 0) {
             eventPanelsContainer.innerHTML = '<p class="info-message">This group has no nodes or events yet.</p>';
         }
 
-        events.forEach(event => {
-            event.date = event.date ? new Date(event.date) : null;
-            if (event.date && isNaN(event.date.getTime())) { // Check for invalid Date object
-                console.warn(`[renderGroupEvents] Invalid date format for event ID ${event.id}:`, event.date);
-                event.date = null; // Set to null if invalid
+        allGroupEvents.forEach(eventDataFromNode => {
+            // Find the corresponding full event data from allEventsData to ensure consistency
+            // (especially for RSVP status and any other global properties not in node.events payload)
+            let eventToRender = allEventsData.find(e => String(e.id) === String(eventDataFromNode.id));
+
+            if (eventToRender) {
+                // Ensure date is a Date object
+                eventToRender.date = eventToRender.date instanceof Date ? eventToRender.date : (eventToRender.date ? new Date(eventToRender.date) : null);
+            } else {
+                // Fallback if not found in allEventsData (should be rare if loadAllUserEventsAndProcess ran)
+                console.warn(`[renderGroupEvents] Event ID ${eventDataFromNode.id} from group nodes not found in allEventsData. Using node data as fallback.`);
+                eventToRender = {
+                    ...eventDataFromNode,
+                    date: eventDataFromNode.date ? new Date(eventDataFromNode.date) : null,
+                };
             }
-            const panel = createEventPanel(event);
+
+            if (eventToRender.date && isNaN(eventToRender.date.getTime())) {
+                console.warn(`[renderGroupEvents] Invalid date format for event ID ${eventToRender.id}:`, eventToRender.date);
+                eventToRender.date = null;
+            }
+            const panel = createEventPanel(eventToRender);
             if (panel) {
                 eventPanelsContainer.appendChild(panel);
             }
         });
 
-        // --- Initialize Layout Instances ---
         Object.entries(renderedNodes).forEach(([nodeId, nodeEl]) => {
             const panelsForNode = Array.from(
                 eventPanelsContainer.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`)
@@ -477,7 +507,6 @@ export async function renderGroupEvents(groupId) {
             }
         });
 
-        // *** ADD the outside click listener AFTER rendering ***
         addOutsideClickListener();
 
     } catch (error) {
@@ -485,7 +514,7 @@ export async function renderGroupEvents(groupId) {
         eventPanelsContainer.innerHTML = `<p class="error-message">Could not load events. ${error.message}</p>`;
         layoutInstances.forEach(instance => instance.destroy());
         layoutInstances.clear();
-        removeOutsideClickListener(); // Clean up listener on error
+        removeOutsideClickListener();
     }
 }
 
@@ -499,34 +528,31 @@ export function renderCalendar(year, month) {
     const firstDayOfMonth = new Date(year, month, 1);
     const lastDayOfPrevMonth = new Date(year, month, 0);
     const lastDayOfCurrentMonth = new Date(year, month + 1, 0);
-    const firstDayWeekday = firstDayOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
+    const firstDayWeekday = firstDayOfMonth.getDay();
     const numDays = lastDayOfCurrentMonth.getDate();
     const prevMonthDays = lastDayOfPrevMonth.getDate();
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
     calendarMonthYearEl.textContent = `${monthNames[month]} ${year}`;
-    calendarGridEl.innerHTML = ''; // Clear previous grid content
+    calendarGridEl.innerHTML = '';
 
-    // Helper to create a basic cell structure (used for other months)
     const createOtherMonthCellElement = (dayNum) => {
         const cell = document.createElement('div');
         cell.className = "calendar-cell other-month";
-        cell.innerHTML = `<span class="day-number">${dayNum}</span><div class="calendar-events-preview-list"></div>`; // Include empty list
+        cell.innerHTML = `<span class="day-number">${dayNum}</span><div class="calendar-events-preview-list"></div>`;
         return cell;
     };
 
-    // Previous month's trailing days
     for (let i = 0; i < firstDayWeekday; i++) {
         const dayNum = prevMonthDays - firstDayWeekday + 1 + i;
         calendarGridEl.appendChild(createOtherMonthCellElement(dayNum));
     }
 
-    // Current month's days
     for (let i = 1; i <= numDays; i++) {
         const currentDate = new Date(year, month, i); currentDate.setHours(0,0,0,0);
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         const isToday = currentDate.getTime() === today.getTime();
-        const eventsOnThisDay = eventsByDate[dateStr] || [];
+        const eventsOnThisDay = eventsByDate[dateStr] || []; // Use globally managed eventsByDate
 
         const cell = document.createElement('div');
         cell.className = "calendar-cell";
@@ -534,26 +560,21 @@ export function renderCalendar(year, month) {
         if (eventsOnThisDay.length > 0) cell.classList.add("has-events");
         cell.dataset.date = dateStr;
 
-        // Day Number
         const dayNumberEl = document.createElement('span');
         dayNumberEl.className = 'day-number';
         dayNumberEl.textContent = i;
         cell.appendChild(dayNumberEl);
 
-        // Event Previews List Container
         const previewListContainer = document.createElement('div');
         previewListContainer.className = 'calendar-events-preview-list';
 
-        // Render *all* events for the day into the preview list container
-        eventsOnThisDay.forEach(event => { // REMOVED .slice()
+        eventsOnThisDay.forEach((event, j) => { // event here is minimal {title, group_name, id, status}
             const eventItemEl = document.createElement('div');
             eventItemEl.className = 'calendar-event-item-preview';
 
             const eventDot = document.createElement('span');
             eventDot.className = 'event-dot';
-            // Cycle through 6 color classes
-            eventDot.classList.add(`color-${(event.id % 6) + 1}`); // Use event ID for potentially consistent color per event type? Or just index j above. Index j might be better as it cycles evenly. Let's use a stable property like event ID if available, or just index for variety. Using index of this loop `eventsOnThisDay.forEach((event, j) => ... eventDot.classList.add(`color-${(j % 6) + 1}`))` is simpler. Let's stick with index:
-            // To use index: change forEach to: `eventsOnThisDay.forEach((event, j) => { ... eventDot.classList.add(`color-${(j % 6) + 1}`); ... });`
+            eventDot.classList.add(`color-${(j % 6) + 1}`); // Cycle colors based on index in day's list
 
             const eventTitlePreview = document.createElement('span');
             eventTitlePreview.className = 'event-title-preview';
@@ -561,51 +582,39 @@ export function renderCalendar(year, month) {
 
             eventItemEl.appendChild(eventDot);
             eventItemEl.appendChild(eventTitlePreview);
-            eventItemEl.title = `${event.title || 'Untitled Event'} (${event.group_name || 'Personal'})`; // Tooltip
-
-            // REMOVED: is-fading-out class logic here
+            eventItemEl.title = `${event.title || 'Untitled Event'} (${event.group_name || 'Personal'})`;
 
             previewListContainer.appendChild(eventItemEl);
         });
         cell.appendChild(previewListContainer);
 
-        // "More Events" Indicator and .has-overflow class
-        // Apply these if the total number of events exceeds a threshold
-        if (eventsOnThisDay.length > OVERFLOW_THRESHOLD) { // Check total count
-            const remainingCount = eventsOnThisDay.length - OVERFLOW_THRESHOLD; // This count is less relevant now, the pill just means "more exist"
+        if (eventsOnThisDay.length > OVERFLOW_THRESHOLD) {
             const moreIndicator = document.createElement('div');
             moreIndicator.className = 'more-events-indicator';
-            moreIndicator.textContent = `+${eventsOnThisDay.length - OVERFLOW_THRESHOLD} more`; // Show actual count
-
+            moreIndicator.textContent = `+${eventsOnThisDay.length - OVERFLOW_THRESHOLD} more`;
             cell.appendChild(moreIndicator);
-
-            // Add class to preview list container to enable its mask
             previewListContainer.classList.add('has-overflow');
         }
 
-        // Click listener for the cell to open day events modal
         if (eventsOnThisDay.length > 0) {
             cell.addEventListener('click', () => {
+                // Pass the minimal eventsOnThisDay from eventsByDate; openDayEventsModal will
+                // use allEventsData to find full details if a specific event is clicked from the modal.
                 openDayEventsModal(dateStr, eventsOnThisDay);
             });
         }
         calendarGridEl.appendChild(cell);
     }
 
-    // Next month's leading days
     const totalCellsRendered = firstDayWeekday + numDays;
     const remainingCells = totalCellsRendered % 7 === 0 ? 0 : 7 - (totalCellsRendered % 7);
     for (let i = 1; i <= remainingCells; i++) {
         calendarGridEl.appendChild(createOtherMonthCellElement(i));
     }
 
-    // Dynamically set grid rows for proper filling of space
     const totalCellsInGrid = firstDayWeekday + numDays + remainingCells;
     const numRows = Math.ceil(totalCellsInGrid / 7);
-    // Now, minmax height is more about the grid structure itself, not pushed by content
-    // The content (event list) is constrained by its max-height
-    // Keeping 1fr still ensures rows distribute remaining space evenly
-    calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, minmax(90px, 1fr))`; // Keep base min-height
+    calendarGridEl.style.gridTemplateRows = `repeat(${numRows}, minmax(90px, 1fr))`;
 }
 
 
@@ -635,7 +644,7 @@ async function handleContextAction(label, x, y, id, elementType) {
             case 'Rename Event': if (elementType !== 'event-panel') return; await renameEvent(id); break;
             case 'Delete Event': if (elementType !== 'event-panel') return; if(confirm('Are you sure you want to delete this event?')) await deleteEvent(id); break;
             case 'Rename Node': if (elementType !== 'event-node') return; await renameNode(id); break;
-            case 'Delete Node': if (elementType !== 'event-node') return; if(confirm('Are you sure you want to delete this node? Associated events will be unassigned.')) await deleteNode(id); break; 
+            case 'Delete Node': if (elementType !== 'event-node') return; if(confirm('Are you sure you want to delete this node? Associated events will be unassigned.')) await deleteNode(id); break;
             default: console.warn("Unknown context menu action:", label);
         }
     } catch (error) {
@@ -643,8 +652,21 @@ async function handleContextAction(label, x, y, id, elementType) {
         alert(`Action failed: ${error.message}`);
     }
 
-    if (groupId && ['Create Node', 'Delete Node', 'Create Event on Node', 'Delete Event'].includes(label)) {
-        renderGroupEvents(groupId); // Refresh the view
+    // After CRUD that affects the collage, always re-render group events if a group is active
+    const activeGroupId = getActiveGroupId();
+    if (activeGroupId && ['Create Node', 'Delete Node', 'Create Event on Node', 'Delete Event', 'Rename Event', 'Rename Node'].includes(label)) {
+        // Re-fetch and re-render all user events to update caches, then render group events
+        // This ensures that if an event was deleted/renamed, allEventsData is fresh
+        // before renderGroupEvents tries to use it.
+        // await loadAllUserEventsAndProcess(); // This is handled by main.js's 'eventDataUpdated' listener for most cases
+        // For node creation/deletion, a direct refresh of group events is good.
+        // For event creation/deletion/rename, the 'eventDataUpdated' listener in main.js should handle UI updates.
+        // However, to be absolutely sure for node changes or if main.js listener doesn't cover a specific case:
+        if (['Create Node', 'Delete Node', 'Rename Node'].includes(label)){
+             renderGroupEvents(activeGroupId);
+        }
+        // For event changes, main.js's listener should trigger appropriate renders.
+        // If an event that was part of a node is deleted, renderGroupEvents will be called by main.js.
     }
 }
 
@@ -654,7 +676,7 @@ export function showContextMenu({ x, y, type, id }) {
     const optionsMap = {
         'event-panel': ['Rename Event', 'Delete Event'],
         'event-node': ['Create Event on Node', 'Rename Node', 'Delete Node'],
-        'canvas': ['Create Node'] 
+        'canvas': ['Create Node']
     };
     const options = optionsMap[type] || [];
     if (options.length === 0) { menu.style.display = 'none'; return; }
@@ -672,7 +694,7 @@ export function showContextMenu({ x, y, type, id }) {
 }
 
 // --- CRUD Actions (Called by Context Menu Handler) ---
-async function renameEvent(eventId) { 
+async function renameEvent(eventId) {
     const panel = document.querySelector(`.event-panel[data-event-id="${eventId}"]`);
     const currentData = panel?._eventData;
     if (!panel || !currentData) return;
@@ -680,7 +702,7 @@ async function renameEvent(eventId) {
     if (newName === null || newName.trim() === '' || newName === currentData.title) return;
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = { 
+    const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
@@ -691,22 +713,26 @@ async function renameEvent(eventId) {
     try {
         const response = await fetch(`/api/events/${eventId}`, { method: 'PATCH', headers: headers, body: JSON.stringify({ title: newName }) });
         if (!response.ok) throw new Error(`Failed to rename event (${response.status})`);
-        const updatedEvent = await response.json();
-        const originalTitleEl = panel.querySelector('.orbit-element-original-content .event-panel-title');
-        if (originalTitleEl) originalTitleEl.textContent = updatedEvent.title;
-        currentData.title = updatedEvent.title; 
-        panel._eventData.title = updatedEvent.title; 
-        const expandedTitle = panel.querySelector('.orbit-element-expanded-content .title-scroll');
-        if(expandedTitle) expandedTitle.textContent = updatedEvent.title;
-        if (document.getElementById('event-list-container')?.offsetParent !== null) renderAllEventsList();
+        const updatedEventFromServer = await response.json();
+
+        // Dispatch eventDataUpdated for global state update
+        document.dispatchEvent(new CustomEvent('eventDataUpdated', {
+            detail: { eventId: updatedEventFromServer.id, updatedEvent: updatedEventFromServer },
+            bubbles: true, composed: true
+        }));
+        // Note: UI update for this specific panel (title text) will be handled by main.js re-rendering
+        // or if OrbitLayoutManager has a mechanism to update its individual panels upon this event.
+        // For now, relying on main.js to refresh views.
+
     } catch (error) { console.error("Error renaming event:", error); alert(`Rename failed: ${error.message}`); }
 }
-async function deleteEvent(eventId) { 
+async function deleteEvent(eventId) {
     const panel = document.querySelector(`.event-panel[data-event-id="${eventId}"]`);
     if (!panel) return;
+    const eventDataToDelete = panel._eventData; // Get data before removing
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = { 
+    const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
@@ -719,21 +745,17 @@ async function deleteEvent(eventId) {
         if (!response.ok) throw new Error(`Failed to delete event (${response.status})`);
         const data = await response.json();
         if (data.success) {
-            const nodeId = panel.dataset.snappedToNode;
-            panel.remove();
-            if (nodeId) {
-                const nodeEl = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
-                const instance = nodeEl ? layoutInstances.get(nodeEl) : null;
-                if (instance) {
-                    const remainingPanels = Array.from(eventPanelsContainer.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`));
-                    instance.updateLayout(remainingPanels);
-                }
-            }
-            if (document.getElementById('event-list-container')?.offsetParent !== null) renderAllEventsList();
+            // Dispatch eventDataUpdated with a "deleted" flag or handle differently in main.js
+            // For simplicity, we can use the existing updatedEvent structure, but mark it conceptually.
+            // Or, main.js could just remove it from its caches.
+            document.dispatchEvent(new CustomEvent('eventDataUpdated', {
+                detail: { eventId: parseInt(eventId, 10), updatedEvent: { ...eventDataToDelete, _deleted: true } }, // Mark as deleted
+                bubbles: true, composed: true
+            }));
         } else { throw new Error(data.message || "Server reported delete failed."); }
     } catch (error) { console.error("Error deleting event:", error); alert(`Delete failed: ${error.message}`); }
 }
-async function renameNode(nodeId) { 
+async function renameNode(nodeId) {
     const nodeEl = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
     if (!nodeEl) return;
     const currentLabel = nodeEl.textContent || '';
@@ -741,7 +763,7 @@ async function renameNode(nodeId) {
     if (newLabel === null || newLabel.trim() === '' || newLabel === currentLabel) return;
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = { 
+    const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
@@ -752,18 +774,18 @@ async function renameNode(nodeId) {
     try {
         const response = await fetch(`/api/nodes/${nodeId}`, { method: 'PATCH', headers: headers, body: JSON.stringify({ label: newLabel }) });
         if (!response.ok) throw new Error(`Failed to rename node (${response.status})`);
-        const data = await response.json();
-        nodeEl.textContent = data.label;
-        const instance = layoutInstances.get(nodeEl);
-        if (instance?.nodeInfo) instance.nodeInfo.label = data.label;
+        // const data = await response.json(); // data is the updated node
+        // Node label itself is updated via renderGroupEvents called by handleContextAction.
+        // No need to dispatch eventDataUpdated for node rename as it doesn't change event properties directly.
+        // The handleContextAction will call renderGroupEvents if group is active.
     } catch (error) { console.error("Error renaming node:", error); alert(`Rename failed: ${error.message}`); }
 }
-async function deleteNode(nodeId) { 
+async function deleteNode(nodeId) {
     const nodeEl = document.querySelector(`.event-node[data-node-id="${nodeId}"]`);
     if (!nodeEl) return;
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = { 
+    const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
@@ -779,53 +801,50 @@ async function deleteNode(nodeId) {
         }
         const data = await response.json();
         if (data.success) {
-            const instance = layoutInstances.get(nodeEl);
-            if (instance) { instance.destroy(); layoutInstances.delete(nodeEl); }
-            nodeEl.remove();
-
-            const activeGroupId = getActiveGroupId();
-            if (activeGroupId) {
-                renderGroupEvents(activeGroupId); 
-            }
-            if (document.getElementById('event-list-container')?.offsetParent !== null) renderAllEventsList();
+            // Deleting a node might unassign events.
+            // The handleContextAction will call renderGroupEvents.
+            // We also need to ensure allEventsData and eventsByDate are updated for any events
+            // that were associated with this node and are now unassigned (node_id becomes null).
+            // The safest is to reload all user events after node deletion.
+            // This will be handled by the renderGroupEvents in handleContextAction if it refetches.
+            // Or, dispatch a generic "dataChanged" event that main.js uses to reload all.
+            // For now, rely on handleContextAction's renderGroupEvents.
         } else { throw new Error(data.message || "Server reported node delete failed."); }
     } catch(error) { console.error("Error deleting node:", error); alert(`Delete failed: ${error.message}`); }
 }
-async function createNodeAt(x, y, groupId) { 
+async function createNodeAt(x, y, groupId) {
     if (!groupId) throw new Error("Cannot create node without active group ID.");
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = { 
+    const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
     if (csrfTokenMeta) {
         headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
     }
-    
+
     try {
         const response = await fetch(`/api/groups/${groupId}/nodes`, { method: 'POST', headers: headers, body: JSON.stringify({ label: "New Node", x: x, y: y }) });
         if (!response.ok) throw new Error(`Node creation failed (${response.status})`);
-        const node = await response.json();
-        const el = createNodeElement(node);
-        if (el && eventPanelsContainer) { eventPanelsContainer.appendChild(el); }
-        else { console.error("Failed to create node element or container not found."); }
+        // const node = await response.json();
+        // Node element is added via renderGroupEvents called by handleContextAction.
     } catch (error) { console.error("Error creating node:", error); alert(`Node creation failed: ${error.message}`); }
 }
 
 // Get active group ID (helper)
-function getActiveGroupId() { 
+function getActiveGroupId() {
     const activeLi = document.querySelector('.group-list-area ul .group-item.active');
     return activeLi?.dataset.groupId;
 }
 
 // Get coordinates relative to the pannable container
-function getRelativeCoordsToContainer(pageX, pageY) { 
+function getRelativeCoordsToContainer(pageX, pageY) {
     if (!eventPanelsContainer) return { x: 0, y: 0 };
     const rect = eventPanelsContainer.getBoundingClientRect();
     let transformState = { panX: 0, panY: 0, scale: 1 };
     try { transformState = getTransformState(); }
-    catch(e) { console.warn("getTransformState not available, using fallback."); const style = window.getComputedStyle(eventPanelsContainer); try { const matrix = new DOMMatrixReadOnly(style.transform); transformState = { panX: matrix.m41, panY: matrix.m42, scale: matrix.a }; } catch { /* fallback failed */ } }
+    catch(e) { const style = window.getComputedStyle(eventPanelsContainer); try { const matrix = new DOMMatrixReadOnly(style.transform); transformState = { panX: matrix.m41, panY: matrix.m42, scale: matrix.a }; } catch { /* fallback */ } }
     const { panX, panY, scale } = transformState;
     const mouseX_rel_viewport = pageX - rect.left;
     const mouseY_rel_viewport = pageY - rect.top;
@@ -834,7 +853,7 @@ function getRelativeCoordsToContainer(pageX, pageY) {
     return { x: relX, y: relY };
 }
 
-async function createEvent(groupId, nodeId = null) { // Removed coords parameter as it's not used for default null
+async function createEvent(groupId, nodeId = null) {
     if (!groupId) throw new Error("Cannot create event without active group ID.");
     if (!nodeId) {
         alert("Please right-click on a Node to create an event attached to it.");
@@ -844,7 +863,7 @@ async function createEvent(groupId, nodeId = null) { // Removed coords parameter
     const eventData = {
         title: "New Event",
         date: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
-        location: "TBD", // Human-readable location name
+        location: "TBD",
         description: "",
         node_id: nodeId,
         location_coordinates: "TBD",
@@ -874,54 +893,14 @@ async function createEvent(groupId, nodeId = null) { // Removed coords parameter
             throw new Error(`Event creation failed: ${errorData.detail || response.statusText}`);
         }
 
-        const event = await response.json(); // Assuming backend returns the created event
-        // Process the newly created event (e.g., add to UI)
-        event.date = event.date ? new Date(event.date) : null; // Ensure date is a Date object
-        event.current_user_rsvp_status = null; // New events won't have RSVP status from current user yet
+        const newEventFromServer = await response.json();
 
-        // Add to allEventsData and eventsByDate (if your dataHandle.js exports functions for this)
-        // Example: addEventToCache(event); or similar to update local data stores.
-        // This part depends on how your dataHandle.js is structured.
-        // For now, we'll assume renderGroupEvents and renderAllEventsList will refetch or update.
-        allEventsData.push(event); // Simplistic update, might need more robust cache handling
-        const dateStr = event.date.toISOString().split('T')[0];
-        if (!eventsByDate[dateStr]) {
-            eventsByDate[dateStr] = [];
-        }
-        eventsByDate[dateStr].push(event);
-
-
-        const newPanel = createEventPanel(event);
-        if (!newPanel) {
-            console.warn("Failed to create event panel element for new event.");
-        } else if (eventPanelsContainer) {
-            eventPanelsContainer.appendChild(newPanel);
-            const nodeEl = eventPanelsContainer.querySelector(`.event-node[data-node-id="${nodeId}"]`);
-            if (nodeEl) {
-                const instance = layoutInstances.get(nodeEl);
-                const updatedPanelsArray = Array.from(eventPanelsContainer.querySelectorAll(`.event-panel[data-snapped-to-node="${nodeId}"]`));
-                if (instance) {
-                    instance.updateLayout(updatedPanelsArray);
-                } else {
-                    const newInstance = new OrbitLayoutManager(nodeEl, updatedPanelsArray);
-                    layoutInstances.set(nodeEl, newInstance);
-                }
-            } else {
-                console.warn(`Node element ${nodeId} not found for layout update after event creation.`);
-            }
-        } else {
-            console.warn("Event panels container not found for new event panel.");
-        }
-
-        // Optionally refresh lists/calendar if they don't auto-update from cache changes
-        if (document.getElementById('event-list-container')?.offsetParent !== null) {
-            renderAllEventsList(); // This will re-filter and re-render based on allEventsData
-        }
-        if (document.getElementById('calendar-grid')?.offsetParent !== null) {
-            const currentCalDate = new Date(calendarMonthYearEl.textContent); // Basic way to get current view
-            renderCalendar(currentCalDate.getFullYear(), currentCalDate.getMonth());
-        }
-
+        // Dispatch eventDataUpdated for global state update
+        document.dispatchEvent(new CustomEvent('eventDataUpdated', {
+            detail: { eventId: newEventFromServer.id, updatedEvent: newEventFromServer }, // updatedEvent is the new event
+            bubbles: true, composed: true
+        }));
+        // UI update (adding panel) will be handled by main.js re-rendering views.
 
     } catch (error) {
         console.error("Error creating event:", error);
@@ -935,7 +914,7 @@ let isOutsideClickListenerActive = false;
 function handleOutsideClick(event) {
     const clickedPanel = event.target.closest('.event-panel');
     const clickedNode = event.target.closest('.event-node');
-    const clickedContextMenu = event.target.closest('.context-menu'); 
+    const clickedContextMenu = event.target.closest('.context-menu');
 
     if (!clickedPanel && !clickedNode && !clickedContextMenu) {
         let panelUnclicked = false;
@@ -949,7 +928,7 @@ function handleOutsideClick(event) {
 
 function addOutsideClickListener() {
     if (!isOutsideClickListenerActive && collageViewport) {
-        document.addEventListener('click', handleOutsideClick, { capture: false }); 
+        document.addEventListener('click', handleOutsideClick, { capture: false });
         isOutsideClickListenerActive = true;
     }
 }
