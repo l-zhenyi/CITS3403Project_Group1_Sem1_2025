@@ -35,12 +35,13 @@ async function fetchApi(url, options = {}) {
 async function addPanelToServer(analysisType, config = {}) { return await fetchApi(`${API_BASE}/insights/panels`, { method: 'POST', body: { analysis_type: analysisType, configuration: config } }); }
 async function removePanelFromServer(panelIdInt) { return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'DELETE' }); }
 async function updatePanelOrderOnServer(panelIdInts) { return await fetchApi(`${API_BASE}/insights/panels/order`, { method: 'PUT', body: { panel_ids: panelIdInts } }); }
-async function updatePanelConfigurationOnServer(panelIdInt, newConfig) { return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'PATCH', body: { configuration: newConfig } }); }
+async function updatePanelConfigurationOnServer(panelIdInt, newConfig) { console.log(`[Insights V32.13] Panel ${panelIdInt} (updatePanelConfigurationOnServer): Sending newConfig:`, JSON.parse(JSON.stringify(newConfig))); return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'PATCH', body: { configuration: newConfig } }); }
 async function fetchAnalysisData(analysisType, panelIdInt = null) {
     let url = `${API_BASE}/analysis/data/${analysisType}`;
     if (panelIdInt !== null && typeof panelIdInt === 'number' && !isNaN(panelIdInt)) {
         url += `?panel_id=${panelIdInt}`;
     }
+    // console.log(`[Insights V32.13] (fetchAnalysisData) For ${analysisType}, panelId ${panelIdInt}. URL: ${url}`);
     return await fetchApi(url);
 }
 async function fetchUserGroups() { if (userGroupsCache.length > 0) return userGroupsCache; try { const groups = await fetchApi('/api/groups'); userGroupsCache = groups || []; return userGroupsCache; } catch (error) { console.error("Failed to fetch user groups:", error); return []; } }
@@ -52,11 +53,18 @@ function createInsightPanelElement(panelData, isForPaletteDragClone = false) {
     panel.className = 'insight-panel glassy';
     panel.dataset.panelId = panelIdStr;
     panel.dataset.analysisType = panelData.analysis_type;
-    if(panelData.title) panel.dataset.title = panelData.title;
-    panel.dataset.configuration = JSON.stringify(panelData.configuration || {});
-
+    
     const analysisDetails = getAnalysisDetails(panelData.analysis_type);
-    const panelTitleText = panelData.title || analysisDetails?.title || 'Analysis';
+    const panelMainTitleText = panelData.title || analysisDetails?.title || 'Analysis';
+    // Store the static title directly in a data attribute for easy access
+    panel.dataset.staticTitle = panelMainTitleText; 
+
+    const configToStore = typeof panelData.configuration === 'object' && panelData.configuration !== null 
+                          ? panelData.configuration 
+                          : (analysisDetails?.default_config || {});
+    panel.dataset.configuration = JSON.stringify(configToStore);
+
+
     const placeholderHtml = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`;
 
     const showControls = !isForPaletteDragClone;
@@ -70,14 +78,11 @@ function createInsightPanelElement(panelData, isForPaletteDragClone = false) {
             </div>
         </div>` : '';
     const shareButtonHtml = showControls ? `<button class="panel-action-btn panel-share-btn" aria-label="Share Panel" title="Share Panel"><i class="fas fa-share-alt"></i></button>` : '';
-    // Config summary for palette drag clone will be set by _updatePanelConfigSummary after its (default) config is known.
-    // For other temp panels (like the grid placeholder itself, though it's not an insight-panel), "Drop to add panel" is fine.
-    // For real panels, "Loading configuration..." is the initial state.
-    const configSummaryText = isForPaletteDragClone ? "Loading default view..." : (panelIdStr.startsWith('temp-') ? 'Drop to add panel' : 'Loading configuration...');
+    const configSummaryText = isForPaletteDragClone ? "Default View" : (panelIdStr.startsWith('temp-') ? 'Drop to add panel' : 'Loading filters...');
 
     panel.innerHTML = `
         ${controlsHtml}
-        <div class="panel-main-content-wrapper"><h3 class="panel-dynamic-title">${panelTitleText}</h3><div class="panel-config-summary">${configSummaryText}</div><div class="panel-content"><div class="placeholder-chart">${placeholderHtml}</div></div></div>
+        <div class="panel-main-content-wrapper"><h3 class="panel-dynamic-title">${panelMainTitleText}</h3><div class="panel-config-summary">${configSummaryText}</div><div class="panel-content"><div class="placeholder-chart">${placeholderHtml}</div></div></div>
         ${shareButtonHtml}`;
 
     if (showControls) {
@@ -86,57 +91,62 @@ function createInsightPanelElement(panelData, isForPaletteDragClone = false) {
     return panel;
 }
 
-function _updatePanelConfigSummary(panelElement) {
-    if (!panelElement) return; const summaryElement = panelElement.querySelector('.panel-config-summary'); if (!summaryElement) return;
+function _updatePanelConfigSummary(panelElement, backendGeneratedTitle) {
+    if (!panelElement) return;
+    const summaryElement = panelElement.querySelector('.panel-config-summary');
+    if (!summaryElement) return;
     const panelIdStr = panelElement.dataset.panelId;
 
-    if (panelIdStr.startsWith('temp-live-')) { // Palette drag clone
-        const panelConfig = JSON.parse(panelElement.dataset.configuration || '{}'); // Should be default config
-        const analysisDetails = getAnalysisDetails(panelElement.dataset.analysisType);
-        const defaultConfig = analysisDetails?.default_config || {};
-        const effectiveConfig = { ...defaultConfig, ...panelConfig };
-
-        let groupDisplay = "All Groups";
-        if (effectiveConfig.group_id && effectiveConfig.group_id !== "all") {
-            const group = userGroupsCache.find(g => String(g.id) === String(effectiveConfig.group_id));
-            groupDisplay = group ? group.name : `Group ID: ${effectiveConfig.group_id}`;
-        } else { groupDisplay = "All Groups"; } // Explicitly default
-
-        let dateRangeDisplay = "All Time";
-        if (effectiveConfig.time_period !== 'all_time' && effectiveConfig.startDate && effectiveConfig.endDate) {
-            const startDate = new Date(effectiveConfig.startDate + 'T00:00:00Z');
-            const endDate = new Date(effectiveConfig.endDate + 'T00:00:00Z');
+    if (backendGeneratedTitle) {
+        const staticTitle = panelElement.dataset.staticTitle || ""; // Get stored static title
+        let summaryText = backendGeneratedTitle;
+        
+        // Attempt to make the summary more concise by removing the static part if present
+        // Case-insensitive comparison for robustness
+        if (staticTitle && summaryText.toLowerCase().startsWith(staticTitle.toLowerCase())) {
+            summaryText = summaryText.substring(staticTitle.length).trim();
+            // Remove leading hyphen or similar separators if they exist after stripping
+            if (summaryText.startsWith("-") || summaryText.startsWith("–") || summaryText.startsWith("—")) {
+                 summaryText = summaryText.substring(1).trim();
+            }
+        }
+        summaryElement.textContent = summaryText || "Current filters"; // Fallback if stripping makes it empty
+        // console.log(`[Insights V32.13] Panel ${panelIdStr} (_updatePanelConfigSummary): Set summary from backend: "${summaryElement.textContent}" (Orig backend: "${backendGeneratedTitle}")`);
+    } else {
+        // Fallback if backend title is missing - try to use local config
+        // This is more of a safety net, ideal case is backend title is always available
+        const panelConfig = JSON.parse(panelElement.dataset.configuration || '{}');
+        let groupDisplay = "All Groups"; 
+        if (panelConfig.group_id && String(panelConfig.group_id) !== "all") {
+            const group = userGroupsCache.find(g => String(g.id) === String(panelConfig.group_id));
+            groupDisplay = group ? group.name : `Group ID: ${panelConfig.group_id}`;
+        }
+        let dateRangeDisplay = "All Time"; 
+        if (panelConfig.startDate && panelConfig.endDate) {
+            const startDate = new Date(panelConfig.startDate + 'T00:00:00Z');
+            const endDate = new Date(panelConfig.endDate + 'T00:00:00Z');
             const options = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
             if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
                 dateRangeDisplay = `${startDate.toLocaleDateString(undefined, options)} - ${endDate.toLocaleDateString(undefined, options)}`;
             } else { dateRangeDisplay = "Invalid Dates"; }
-        } else { dateRangeDisplay = "All Time"; }  // Explicitly default for all_time or missing dates
+        }
         summaryElement.textContent = `${groupDisplay} | ${dateRangeDisplay}`;
-        return;
+        console.warn(`[Insights V32.13] Panel ${panelIdStr} (_updatePanelConfigSummary): backendGeneratedTitle missing. Used local config for summary: "${summaryElement.textContent}"`);
     }
-
-    if (panelIdStr.startsWith('temp-') && !panelIdStr.startsWith('temp-live-')) {
-        summaryElement.textContent = 'Drop to add panel'; // For placeholder in grid, etc.
-        return;
-    }
-
-    // Persisted panels logic (same as V32.5)
-    const panelConfig = JSON.parse(panelElement.dataset.configuration || '{}');
-    const groupSelect = panelElement.querySelector(`#group-select-${panelIdStr}`); let groupDisplay = "All Groups";
-    if (panelConfig.group_id && panelConfig.group_id !== "all") { if (groupSelect && groupSelect.value !== "all") { const selectedOption = groupSelect.options[groupSelect.selectedIndex]; groupDisplay = selectedOption ? selectedOption.text : `Group ID: ${panelConfig.group_id}`; } else if (userGroupsCache.length > 0) { const group = userGroupsCache.find(g => String(g.id) === String(panelConfig.group_id)); groupDisplay = group ? group.name : `Group ID: ${panelConfig.group_id}`; } else { groupDisplay = `Group ID: ${panelConfig.group_id}`; }} else if (groupSelect && groupSelect.value !== "all") { const selectedOption = groupSelect.options[groupSelect.selectedIndex]; groupDisplay = selectedOption ? selectedOption.text : "Selected Group"; }
-    let dateRangeDisplay = "All Time";
-    if (panelConfig.time_period !== 'all_time' && panelConfig.startDate && panelConfig.endDate) { const startDate = new Date(panelConfig.startDate + 'T00:00:00Z'); const endDate = new Date(panelConfig.endDate + 'T00:00:00Z'); const options = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }; if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) { dateRangeDisplay = `${startDate.toLocaleDateString(undefined, options)} - ${endDate.toLocaleDateString(undefined, options)}`; } else { dateRangeDisplay = "Invalid Config Dates"; }} else { const sliderElement = panelElement.querySelector(`#time-slider-${panelIdStr}`); if (sliderElement && sliderElement.noUiSlider && sliderElement.noUiSlider.options) { try { const [s, e] = sliderElement.noUiSlider.get(); const sliderOpts = sliderElement.noUiSlider.options; if (s === new Date(sliderOpts.range.min).toISOString().split('T')[0] && e === new Date(sliderOpts.range.max).toISOString().split('T')[0]) { dateRangeDisplay = "All Time"; } else if (s !== "ERR_NaN" && e !== "ERR_NaN") { const sd = new Date(s + 'T00:00:00Z'), ed = new Date(e + 'T00:00:00Z'); const opts = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }; dateRangeDisplay = (isNaN(sd.getTime()) || isNaN(ed.getTime())) ? "Invalid Range" : `${sd.toLocaleDateString(undefined, opts)} - ${ed.toLocaleDateString(undefined, opts)}`; } else { dateRangeDisplay = "Invalid Range"; }} catch (err) { dateRangeDisplay = "Error reading range";}}}
-    summaryElement.textContent = `${groupDisplay} | ${dateRangeDisplay}`;
 }
+
 
 function _initializePanelConfigurationControls(panelElement, panelDataForControls) {
     const panelIdStr = String(panelDataForControls.id);
-    if (panelIdStr.startsWith('temp-')) return; // No controls for temp elements, including palette drag clones
+    if (panelIdStr.startsWith('temp-')) return; 
 
-    const analysisType = panelDataForControls.analysis_type; const analysisDetails = getAnalysisDetails(analysisType);
-    const defaultConfig = analysisDetails?.default_config || {};
-    const currentConfig = { ...defaultConfig, ...(panelDataForControls.configuration || {}) };
-    panelElement.dataset.configuration = JSON.stringify(currentConfig);
+    const analysisType = panelDataForControls.analysis_type;
+    // panelDataForControls.configuration should already be a valid object (parsed or defaulted in setupEventListeners)
+    const currentConfig = panelDataForControls.configuration; 
+    
+    // The dataset.configuration was already set correctly by the caller (setupEventListeners or createInsightPanelElement)
+    // So, no need to set it again here, just use currentConfig.
+    console.log(`[Insights V32.13] Panel ${panelIdStr} (_initializePanelConfigurationControls): Initializing controls with currentConfig:`, JSON.parse(JSON.stringify(currentConfig)));
 
     const groupSelect = panelElement.querySelector(`#group-select-${panelIdStr}`);
     if (groupSelect) {
@@ -151,22 +161,56 @@ function _initializePanelConfigurationControls(panelElement, panelDataForControl
     const sliderDisplayElement = panelElement.querySelector(`#time-slider-display-${panelIdStr}`);
     if (sliderElement && sliderDisplayElement && typeof noUiSlider !== 'undefined') {
         if (sliderElement.noUiSlider) sliderElement.noUiSlider.destroy();
+        
         const todayDate = new Date();
         let maxTimestamp = Date.UTC(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
         const twoYearsAgoDate = new Date(todayDate); twoYearsAgoDate.setFullYear(todayDate.getFullYear() - 2);
         let minTimestamp = Date.UTC(twoYearsAgoDate.getFullYear(), twoYearsAgoDate.getMonth(), twoYearsAgoDate.getDate());
-        if (isNaN(minTimestamp) || isNaN(maxTimestamp) || minTimestamp >= maxTimestamp) { maxTimestamp = new Date().getTime(); minTimestamp = maxTimestamp - (2 * 365 * DAY_IN_MILLISECONDS); }
-        let initialStart = minTimestamp, initialEnd = maxTimestamp;
-        if (currentConfig.time_period === 'all_time' || (!currentConfig.startDate && !currentConfig.endDate && currentConfig.time_period !== 'custom')) {}
-        else if (currentConfig.startDate && currentConfig.endDate) { let pS = new Date(currentConfig.startDate + 'T00:00:00Z').getTime(); let pE = new Date(currentConfig.endDate + 'T00:00:00Z').getTime(); if (!isNaN(pS) && !isNaN(pE) && pS <= pE) { initialStart = Math.max(minTimestamp, pS); initialEnd = Math.min(maxTimestamp, pE); if (initialStart > initialEnd) { initialStart = minTimestamp; initialEnd = maxTimestamp; }}}
-        if (initialStart >= initialEnd) { initialEnd = initialStart + DAY_IN_MILLISECONDS; initialEnd = Math.min(initialEnd, maxTimestamp); if (initialStart >= initialEnd) initialStart = initialEnd - DAY_IN_MILLISECONDS; }
+        if (isNaN(minTimestamp) || isNaN(maxTimestamp) || minTimestamp >= maxTimestamp) {
+             maxTimestamp = new Date().getTime(); minTimestamp = maxTimestamp - (2 * 365 * DAY_IN_MILLISECONDS);
+        }
+        
+        let initialStart = minTimestamp; 
+        let initialEnd = maxTimestamp;   
+
+        if (currentConfig.startDate && currentConfig.endDate) {
+            const parsedStartDate = new Date(currentConfig.startDate + 'T00:00:00Z').getTime();
+            const parsedEndDate = new Date(currentConfig.endDate + 'T00:00:00Z').getTime();
+
+            if (!isNaN(parsedStartDate) && !isNaN(parsedEndDate) && parsedStartDate <= parsedEndDate) {
+                initialStart = Math.max(minTimestamp, parsedStartDate); 
+                initialEnd = Math.min(maxTimestamp, parsedEndDate);     
+                if (initialStart > initialEnd) { 
+                    initialStart = minTimestamp; initialEnd = maxTimestamp;
+                }
+            }
+        }
+        if (initialStart === initialEnd) {
+             initialEnd = Math.min(initialStart + DAY_IN_MILLISECONDS, maxTimestamp); 
+             if (initialStart === initialEnd) { 
+                 initialStart = Math.max(initialEnd - DAY_IN_MILLISECONDS, minTimestamp); 
+             }
+        }
+        if (initialStart > initialEnd) { 
+            [initialStart, initialEnd] = [initialEnd, initialStart]; 
+        }
+
+        console.log(`[Insights V32.13] Panel ${panelIdStr} (_initializePanelConfigurationControls): Slider INITIALIZING with values: start=${new Date(initialStart).toISOString()}, end=${new Date(initialEnd).toISOString()}`);
+
         try {
-            noUiSlider.create(sliderElement, { start: [initialStart, initialEnd], connect: true, range: { 'min': minTimestamp, 'max': maxTimestamp }, step: DAY_IN_MILLISECONDS, format: { to: v=>new Date(Math.round(parseFloat(v)/DAY_IN_MILLISECONDS)*DAY_IN_MILLISECONDS).toISOString().split('T')[0], from: s=>new Date(s+'T00:00:00Z').getTime()||minTimestamp }, behaviour: 'tap-drag', pips: {mode:'positions',values:[0,25,50,75,100],density:4,format:{to:v=>new Date(Math.round(parseFloat(v)/DAY_IN_MILLISECONDS)*DAY_IN_MILLISECONDS).toLocaleDateString(undefined,{month:'short',year:'2-digit',timeZone:'UTC'})}} });
-            const updateSliderDisplay = (values) => { const sD = new Date(values[0]+'T00:00:00Z'), eD = new Date(values[1]+'T00:00:00Z'); sliderDisplayElement.textContent = `${sD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})} - ${eD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}`;};
-            sliderElement.noUiSlider.on('update', (values)=>{updateSliderDisplay(values); _updatePanelConfigSummary(panelElement);});
-            sliderElement.noUiSlider.on('set', _configChangeHandler);
-            updateSliderDisplay(sliderElement.noUiSlider.get());
-        } catch(err) { console.error("Slider Error for panel " + panelIdStr + ":", err); sliderDisplayElement.textContent = "Slider Error"; }
+            noUiSlider.create(sliderElement, { 
+                start: [initialStart, initialEnd], connect: true, range: { 'min': minTimestamp, 'max': maxTimestamp }, step: DAY_IN_MILLISECONDS, 
+                format: { to: v => new Date(Math.round(parseFloat(v)/DAY_IN_MILLISECONDS)*DAY_IN_MILLISECONDS).toISOString().split('T')[0], from: s => new Date(s+'T00:00:00Z').getTime() || minTimestamp }, 
+                behaviour: 'tap-drag', pips: {mode:'positions',values:[0,25,50,75,100],density:4,format:{to:v=>new Date(Math.round(parseFloat(v)/DAY_IN_MILLISECONDS)*DAY_IN_MILLISECONDS).toLocaleDateString(undefined,{month:'short',year:'2-digit',timeZone:'UTC'})}} 
+            });
+            const updateSliderDisplay = (values) => { 
+                const sD = new Date(values[0]+'T00:00:00Z'), eD = new Date(values[1]+'T00:00:00Z'); 
+                sliderDisplayElement.textContent = `${sD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})} - ${eD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}`;
+            };
+            sliderElement.noUiSlider.on('update', (values) => { updateSliderDisplay(values); }); 
+            sliderElement.noUiSlider.on('set', _configChangeHandler); 
+            updateSliderDisplay(sliderElement.noUiSlider.get()); 
+        } catch(err) { console.error(`[Insights V32.13] Slider Error for panel ${panelIdStr}:`, err); sliderDisplayElement.textContent = "Slider Error"; }
     }
 
     const configToggleBtn = panelElement.querySelector('.panel-config-toggle-btn');
@@ -179,20 +223,57 @@ function _initializePanelConfigurationControls(panelElement, panelDataForControl
         });
         configToggleBtn.setAttribute('listener-attached-init', 'true');
     }
-    _updatePanelConfigSummary(panelElement);
+    // Initial summary display will be handled by loadPanelContent
 }
 
-function _configChangeHandler(event) { const panelElement = event.target.closest('.insight-panel'); if (panelElement) _handleConfigChange(panelElement); }
-async function _handleConfigChange(panelElement) {
+function _configChangeHandler(event) { const panelElement = event.target.closest('.insight-panel'); if (panelElement) _handleConfigChange(panelElement, event); }
+
+async function _handleConfigChange(panelElement, event = null) {
     const panelIdStr = panelElement.dataset.panelId; const analysisType = panelElement.dataset.analysisType;
     if (!panelIdStr || !analysisType || panelIdStr.startsWith('temp-')) { return; }
+
+    console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): START. Triggered by:`, event?.target?.id || event?.target?.classList[0] || event?.target?.tagName || 'programmatic call');
+
     const panelIdInt = parseInt(panelIdStr); if (isNaN(panelIdInt)) { alert("Config error: Invalid panel ID."); return; }
-    const analysisDetails = getAnalysisDetails(analysisType); let newConfig = JSON.parse(panelElement.dataset.configuration || JSON.stringify(analysisDetails?.default_config || {}));
-    const groupSelect = panelElement.querySelector(`#group-select-${panelIdStr}`); if (groupSelect) newConfig.group_id = groupSelect.value;
+    
+    let newConfig = JSON.parse(panelElement.dataset.configuration || '{}');
+
+    const groupSelect = panelElement.querySelector(`#group-select-${panelIdStr}`);
+    if (groupSelect) { newConfig.group_id = groupSelect.value; }
+    
     const sliderElement = panelElement.querySelector(`#time-slider-${panelIdStr}`);
-    if (sliderElement && sliderElement.noUiSlider) { try { const [sS, eS] = sliderElement.noUiSlider.get(); if (sS === "ERR_NaN" || eS === "ERR_NaN") throw new Error("Invalid date from slider"); newConfig.startDate = sS; newConfig.endDate = eS; newConfig.time_period = 'custom'; const sO = sliderElement.noUiSlider.options; const sMinD = new Date(sO.range.min).toISOString().split('T')[0]; const sMaxD = new Date(sO.range.max).toISOString().split('T')[0]; if (sS === sMinD && eS === sMaxD) { newConfig.time_period = 'all_time'; newConfig.startDate = null; newConfig.endDate = null; }} catch (e) { alert("Error reading date range."); return; }} else if (!newConfig.startDate && !newConfig.endDate) { newConfig.time_period = 'all_time'; }
+    if (sliderElement && sliderElement.noUiSlider) {
+        try {
+            const [sS, eS] = sliderElement.noUiSlider.get(); 
+            if (sS === "ERR_NaN" || eS === "ERR_NaN") throw new Error("Invalid date from slider get()");
+            newConfig.startDate = sS; newConfig.endDate = eS; newConfig.time_period = 'custom'; 
+            const sliderOptions = sliderElement.noUiSlider.options;
+            const sliderMinDateStr = new Date(sliderOptions.range.min).toISOString().split('T')[0];
+            const sliderMaxDateStr = new Date(sliderOptions.range.max).toISOString().split('T')[0];
+            if (sS === sliderMinDateStr && eS === sliderMaxDateStr) {
+                newConfig.time_period = 'all_time'; newConfig.startDate = null; newConfig.endDate = null;
+            }
+            // console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): Slider values read: ${sS} - ${eS}. New time_period: ${newConfig.time_period}`);
+        } catch (e) {
+            console.error(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): Error reading date range from slider: ${e.message}.`);
+        }
+    } else { 
+        if (!newConfig.startDate && !newConfig.endDate) { newConfig.time_period = 'all_time';}
+    }
+    
     panelElement.dataset.configuration = JSON.stringify(newConfig);
-    try { await updatePanelConfigurationOnServer(panelIdInt, newConfig); await loadPanelContent(panelElement); } catch (error) { alert(`Failed to update panel settings: ${error.message}`); }
+    // Summary will be updated by loadPanelContent after data fetch.
+    
+    console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): newConfig constructed:`, JSON.parse(JSON.stringify(newConfig)));
+    console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): Sending to server for update...`);
+    try {
+        await updatePanelConfigurationOnServer(panelIdInt, newConfig);
+        console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): Server update successful. Calling loadPanelContent.`);
+        await loadPanelContent(panelElement);
+    } catch (error) {
+        alert(`Failed to update panel settings: ${error.message}`);
+        console.error(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): API error:`, error);
+    }
 }
 
 async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
@@ -205,11 +286,11 @@ async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
     let panelIdForDataFetch = null;
     if (!panelIdStr.startsWith('temp-')) {
         const parsedId = parseInt(panelIdStr);
-        if (!isNaN(parsedId)) { panelIdForDataFetch = parsedId; }
+        if (!isNaN(parsedId)) { panelIdForDataFetch = parsedId; } 
         else { console.error(`loadPanelContent - Invalid ID for non-temp: ${panelIdStr}.`); contentContainer.innerHTML = `<p style='color:red'>Config Error.</p>`; return; }
     }
 
-    const isPaletteDragClone = panelIdStr.startsWith('temp-live-'); // Used for palette drag visual element
+    const isPaletteDragClone = panelIdStr.startsWith('temp-live-'); 
     let chartInstanceToDestroy = null;
     if (!isPaletteDragClone && activeChartInstances[panelIdStr]) {
         chartInstanceToDestroy = activeChartInstances[panelIdStr];
@@ -219,20 +300,31 @@ async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
 
     if (chartInstanceToDestroy) {
         try { chartInstanceToDestroy.destroy(); } catch (e) {}
-        if (!isPaletteDragClone && !panelIdStr.startsWith('temp-')) delete activeChartInstances[panelIdStr]; // For actual panels in grid
-        else if (isPaletteDragClone) chartInDraggedElement = null; // For palette drag clone
+        if (!isPaletteDragClone && !panelIdStr.startsWith('temp-')) delete activeChartInstances[panelIdStr]; 
+        else if (isPaletteDragClone) chartInDraggedElement = null; 
     }
 
     const analysisDetails = getAnalysisDetails(analysisType);
     contentContainer.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`;
+    
+    if (isPaletteDragClone) {
+        const summaryEl = panelElement.querySelector('.panel-config-summary');
+        if(summaryEl) summaryEl.textContent = "Default View";
+    }
+    // For real panels, summary is updated after fetch using analysisResult.title
 
     try {
         if (typeof Chart === 'undefined') throw new Error("Chart.js library not loaded.");
-        const analysisResult = await fetchAnalysisData(analysisType, panelIdForDataFetch);
-
-        // Update summary for non-temp panels AND for palette drag clones (which now show default summary)
-        if (isPaletteDragClone || !panelIdStr.startsWith('temp-')) {
-            _updatePanelConfigSummary(panelElement);
+        const analysisResult = await fetchAnalysisData(analysisType, panelIdForDataFetch); 
+        
+        if (!isPaletteDragClone && analysisResult?.title) {
+            _updatePanelConfigSummary(panelElement, analysisResult.title);
+        } else if (!isPaletteDragClone) {
+             _updatePanelConfigSummary(panelElement, null); // Fallback: will use local config to build summary
+        }
+        
+        if (analysisResult?.config_used && !panelIdStr.startsWith('temp-')) {
+             console.log(`[Insights V32.13] Panel ${panelIdStr} (loadPanelContent): Config used by server:`, analysisResult.config_used);
         }
 
         if (analysisType === 'spending-by-category' && analysisResult?.data) {
@@ -243,14 +335,15 @@ async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
                 const chartOptions = { responsive: true, maintainAspectRatio: false, animation: { duration: isForDragCloneVisuals ? 0 : CHART_ANIMATION_DURATION }, plugins: { legend: { display: !isForDragCloneVisuals, position: 'bottom', labels: { color: '#ddd', padding: 15, boxWidth: 12, usePointStyle: true } }, tooltip: { enabled: !isForDragCloneVisuals, backgroundColor: 'rgba(20,20,30,0.85)', titleColor: '#eee', bodyColor: '#ddd', callbacks: { label: chartCtx => `${chartCtx.label || ''}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(chartCtx.parsed)} (${(chartCtx.parsed / chartCtx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0) * 100).toFixed(1)}%)` } } } };
                 if(isForDragCloneVisuals) { chartOptions.elements = { arc: { borderWidth: 1 }}; }
                 const newChart = new Chart(ctx, { type: 'pie', data: { labels, datasets: [{ label: 'Spending', data: amounts, backgroundColor: bgColors, hoverBackgroundColor: bgColors.map(c => c.replace(/60%\)$/, '70%)')), borderColor: '#333', borderWidth: 1, hoverOffset: isForDragCloneVisuals ? 0: 8 }] }, options: chartOptions });
-                if(isPaletteDragClone) chartInDraggedElement = newChart; // Store chart for palette drag clone
-                else if (!panelIdStr.startsWith('temp-')) activeChartInstances[panelIdStr] = newChart; // Store for real panels
-            } else { contentContainer.innerHTML = `<p style="text-align:center;color:#bbb;padding:15px 5px;">No data found ${panelIdStr.startsWith('temp-') ? 'for this analysis type' : 'for current filters'}.</p>`; }
+                if(isPaletteDragClone) chartInDraggedElement = newChart; 
+                else if (!panelIdStr.startsWith('temp-')) activeChartInstances[panelIdStr] = newChart; 
+            } else { contentContainer.innerHTML = `<p style="text-align:center;color:#bbb;padding:15px 5px;">No data found for current filters.</p>`; }
         } else if (analysisType !== 'spending-by-category') { contentContainer.innerHTML = `<p style='text-align:center;color:orange;padding:15px 5px;'>Display not implemented for: ${analysisType}</p>`; }
         else { contentContainer.innerHTML = `<p style="text-align:center;color:#bbb;padding:15px 5px;">No data or unexpected format.</p>`;}
     } catch (error) {
-        console.error(`loadPanelContent - ERROR CAUGHT - PanelID: ${panelIdStr}, Type: ${analysisType}:`, error);
+        console.error(`[Insights V32.13] loadPanelContent - ERROR CAUGHT - PanelID: ${panelIdStr}, Type: ${analysisType}:`, error);
         contentContainer.innerHTML = `<p style='color:red;text-align:center;padding:15px 5px;'>Error loading data.<br><small>${error.message}</small></p>`;
+        if (!isPaletteDragClone) _updatePanelConfigSummary(panelElement, "Error loading filter details");
     }
 }
 
@@ -307,13 +400,13 @@ function initiateDrag(event, element, type) {
         if (draggedElement.parentElement === insightsGrid && sourceIndex !== -1) { insightsGrid.insertBefore(placeholderElement, draggedElement); draggedElement.remove(); }
         else { console.error("Error: Dragged grid panel not found correctly."); isDragging = false; return; }
         currentTargetIndex = sourceIndex;
-    } else { // dragType === 'palette'
+    } else { 
         originalSourceElementForGridDrag = null; const sourcePaletteItem = element;
         const { analysisType } = sourcePaletteItem.dataset; if (!analysisType) { isDragging = false; return; }
         const analysisDetails = getAnalysisDetails(analysisType); const defaultConfig = analysisDetails?.default_config || {};
         const tempPanelData = { id: generateUniqueId('temp-live'), analysis_type:analysisType, title: sourcePaletteItem.dataset.title || analysisDetails?.title || 'Analysis', configuration:defaultConfig };
         
-        draggedElement = createInsightPanelElement(tempPanelData, true); // true for isForPaletteDragClone
+        draggedElement = createInsightPanelElement(tempPanelData, true); 
         loadPanelContent(draggedElement, true).catch(err => { console.error("Error loading data into palette drag clone:", err); const phc = draggedElement.querySelector('.placeholder-chart'); if(phc) phc.innerHTML = "<p style='color:red;text-align:center;'>Error loading data</p>"; });
         
         let cloneWidth = gridCellLayout.length > 0 ? gridCellLayout[0].contentWidth : 250; let cloneHeight = gridCellLayout.length > 0 ? gridCellLayout[0].contentHeight : 200;
@@ -342,7 +435,7 @@ function onPointerMove(event) {
         if (isOverPalette) {
             palette.classList.add('drag-over-delete');
             if (placeholderElement.parentElement) placeholderElement.remove();
-            currentTargetIndex = -2; // Special index for palette drop
+            currentTargetIndex = -2; 
         } else {
             palette.classList.remove('drag-over-delete');
             const pointerXInGridCont = currentX - gridRect.left, pointerYInGridCont = currentY - gridRect.top;
@@ -352,8 +445,8 @@ function onPointerMove(event) {
             if (isOverGrid && nearestIdx !== -1) { if (nearestIdx !== currentTargetIndex || !placeholderElement.parentElement) { insertElementAtIndex(placeholderElement, nearestIdx); currentTargetIndex = nearestIdx; } }
             else { if (placeholderElement.parentElement) placeholderElement.remove(); currentTargetIndex = -1; }
         }
-        if (dragType === 'grid' && !isOverPalette) handleGridScroll(currentY, gridRect); // Only scroll grid if not over palette for delete
-        else if (dragType === 'palette') handleGridScroll(currentY, gridRect); // Palette drags can scroll grid
+        if (dragType === 'grid' && !isOverPalette) handleGridScroll(currentY, gridRect); 
+        else if (dragType === 'palette') handleGridScroll(currentY, gridRect); 
     });
 }
 function handleGridScroll(clientY, gridContainerRect) { let scrollDelta = 0; const speed = SCROLL_THRESHOLD * SCROLL_SPEED_MULTIPLIER * 0.5; if (clientY < gridContainerRect.top + SCROLL_THRESHOLD) { scrollDelta = -speed * (1 - (clientY - gridContainerRect.top) / SCROLL_THRESHOLD); } else if (clientY > gridContainerRect.bottom - SCROLL_THRESHOLD) { scrollDelta = speed * (1 - (gridContainerRect.bottom - clientY) / SCROLL_THRESHOLD); } if (scrollDelta !== 0) insightsGridContainer.scrollTop += scrollDelta; }
@@ -378,8 +471,7 @@ async function onPointerUp() {
 
             if (activeChartInstances[panelIdStr]) { try { activeChartInstances[panelIdStr].destroy(); } catch(e){} delete activeChartInstances[panelIdStr]; }
             const sliderEl = panelToRemove.querySelector(`#time-slider-${panelIdStr}`); if (sliderEl?.noUiSlider) sliderEl.noUiSlider.destroy();
-            if (placeholderElement?.parentElement) placeholderElement.remove(); // Remove grid placeholder if it was shown
-            // Panel is already visually gone (was draggedElement)
+            if (placeholderElement?.parentElement) placeholderElement.remove(); 
             if (!isNaN(panelIdInt)) { await removePanelFromServer(panelIdInt); }
             else { console.error("Cannot remove panel by dragging to palette: Invalid ID", panelIdStr); }
         } else if (droppedInsideGrid) {
@@ -387,35 +479,47 @@ async function onPointerUp() {
                 const analysisType = draggedElement.dataset.analysisType; const analysisDetails = getAnalysisDetails(analysisType);
                 const initialConfig = JSON.parse(draggedElement.dataset.configuration) || analysisDetails?.default_config || {};
                 const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig); if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed on server.");
-                const panelDataForCreation = { id: String(newPanelDataFromServer.id), analysis_type: newPanelDataFromServer.analysis_type || analysisType, title: newPanelDataFromServer.title || draggedElement.dataset.title || analysisDetails?.title || 'Analysis', configuration: newPanelDataFromServer.configuration || initialConfig };
-                finalPanelToFocus = createInsightPanelElement(panelDataForCreation, false); // Not a palette drag clone
+                const panelDataForCreation = { 
+                    id: String(newPanelDataFromServer.id), 
+                    analysis_type: newPanelDataFromServer.analysis_type || analysisType, 
+                    title: newPanelDataFromServer.title || draggedElement.dataset.staticTitle || analysisDetails?.title || 'Analysis', 
+                    configuration: newPanelDataFromServer.configuration || initialConfig 
+                };
+                finalPanelToFocus = createInsightPanelElement(panelDataForCreation, false); 
                 placeholderElement.replaceWith(finalPanelToFocus);
-                _initializePanelConfigurationControls(finalPanelToFocus, panelDataForCreation); await loadPanelContent(finalPanelToFocus);
+                _initializePanelConfigurationControls(finalPanelToFocus, panelDataForCreation); 
+                await loadPanelContent(finalPanelToFocus);
             } else if (dragType === 'grid' && originalSourceElementForGridDrag) {
                 finalPanelToFocus = originalSourceElementForGridDrag; placeholderElement.replaceWith(finalPanelToFocus);
                 const chartInstance = activeChartInstances[finalPanelToFocus.dataset.panelId]; if (chartInstance?.resize) { setTimeout(() => { try { chartInstance.resize(); } catch(e){} }, 50); }
-                _updatePanelConfigSummary(finalPanelToFocus);
+                // Summary is updated by loadPanelContent if its config changed, or if it was re-added to DOM
+                // It's safer to just call loadPanelContent to ensure everything is fresh
+                await loadPanelContent(finalPanelToFocus);
             }
-        } else { // Dropped outside grid and not on palette
+        } else { 
             if (dragType === 'grid' && originalSourceElementForGridDrag) {
-                finalPanelToFocus = originalSourceElementForGridDrag; if (placeholderElement?.parentElement) placeholderElement.remove(); insertElementAtIndex(finalPanelToFocus, sourceIndex);
-                const chartInstance = activeChartInstances[finalPanelToFocus.dataset.panelId]; if (chartInstance?.resize) { setTimeout(() => { try { chartInstance.resize(); } catch(e){} }, 50); }
-                _updatePanelConfigSummary(finalPanelToFocus);
+                finalPanelToFocus = originalSourceElementForGridDrag; 
+                if (placeholderElement?.parentElement) placeholderElement.remove(); 
+                insertElementAtIndex(finalPanelToFocus, sourceIndex);
+                const chartInstance = activeChartInstances[finalPanelToFocus.dataset.panelId]; 
+                if (chartInstance?.resize) { setTimeout(() => { try { chartInstance.resize(); } catch(e){} }, 50); }
+                // Reload content to ensure summary is correct after being re-inserted
+                await loadPanelContent(finalPanelToFocus);
+
             } else if (dragType === 'palette') { if (placeholderElement?.parentElement) placeholderElement.remove(); }
         }
 
         if (droppedInsideGrid || droppedOnPalette) {
              const panelElementsInGrid = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
              const persistentPanelIds = panelElementsInGrid.filter(p => p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id));
-            // Update order if list changed or became empty
             if (persistentPanelIds.length > 0 || ( (droppedInsideGrid || droppedOnPalette) && panelElementsInGrid.length === 0) ) {
                 await updatePanelOrderOnServer(persistentPanelIds);
             }
         }
     } catch (apiError) {
-        alert(`Error saving changes: ${apiError.message}`); console.error("[Insights] onPointerUp - API Error:", apiError);
-        if (droppedOnPalette && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); _updatePanelConfigSummary(originalSourceElementForGridDrag); }
-        else if (dragType === 'grid' && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { if (placeholderElement?.parentElement) placeholderElement.remove(); insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); _updatePanelConfigSummary(originalSourceElementForGridDrag); }
+        alert(`Error saving changes: ${apiError.message}`); console.error("[Insights V32.13] onPointerUp - API Error:", apiError);
+        if (droppedOnPalette && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); /* Re-render summary if needed */ }
+        else if (dragType === 'grid' && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { if (placeholderElement?.parentElement) placeholderElement.remove(); insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); /* Re-render summary */ }
         else if (dragType === 'palette' && placeholderElement?.parentElement) { placeholderElement.remove(); }
     } finally {
         if(placeholderElement?.parentElement) placeholderElement.remove(); placeholderElement = null;
@@ -474,8 +578,14 @@ async function setupEventListeners() {
                     addBtn.disabled=true; addBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';
                     try {
                         const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig); if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed.");
-                        const panelDataForCreation = { id: String(newPanelDataFromServer.id), analysis_type: newPanelDataFromServer.analysis_type || analysisType, title: item.dataset.title || newPanelDataFromServer.title || analysisDetails?.title || 'Analysis', configuration: newPanelDataFromServer.configuration || initialConfig };
-                        const newEl = createInsightPanelElement(panelDataForCreation, false); // Not a palette drag clone
+                        const panelTitleForCreation = newPanelDataFromServer.title || item.dataset.title || analysisDetails?.title || 'Analysis';
+                        const panelDataForCreation = { 
+                            id: String(newPanelDataFromServer.id), 
+                            analysis_type: newPanelDataFromServer.analysis_type || analysisType, 
+                            title: panelTitleForCreation, 
+                            configuration: newPanelDataFromServer.configuration || initialConfig 
+                        };
+                        const newEl = createInsightPanelElement(panelDataForCreation, false); 
                         insertElementAtIndex(newEl, insightsGrid.children.length - (emptyMessage.parentElement === insightsGrid ? 1 : 0) );
                         _initializePanelConfigurationControls(newEl, panelDataForCreation);
                         await loadPanelContent(newEl);
@@ -497,16 +607,56 @@ async function setupEventListeners() {
         insightsGrid.addEventListener('click', handleGridAction);
         const existingPanels = insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)');
         for (const panel of existingPanels) {
-            const panelIdStr = panel.dataset.panelId; const analysisType = panel.dataset.analysisType;
+            const panelIdStr = panel.dataset.panelId; 
+            const analysisType = panel.dataset.analysisType;
+            const analysisDetails = getAnalysisDetails(analysisType); // For default_config
+
             if (!panelIdStr || !analysisType || panelIdStr.startsWith('temp-')) { continue; }
-            if (isNaN(parseInt(panelIdStr))) { const contentDiv = panel.querySelector('.placeholder-chart') || panel.querySelector('.panel-content'); if (contentDiv) contentDiv.innerHTML = `<p style='color:red;'><b>Error:</b>Invalid ID ('${panelIdStr}')</p>`; const titleH3 = panel.querySelector('.panel-dynamic-title'); if (titleH3) titleH3.textContent = "Config Error"; continue; }
-            makePanelDraggable(panel); const analysisDetails = getAnalysisDetails(analysisType);
-            const titleEl = panel.querySelector('.panel-dynamic-title'); let panelTitleText = panel.dataset.title || (analysisDetails?.title || 'Analysis');
-            if (titleEl) titleEl.textContent = panelTitleText; else { console.warn(`Panel ${panelIdStr} missing .panel-dynamic-title`); }
-            const placeholderChartDiv = panel.querySelector('.placeholder-chart'); if (placeholderChartDiv) { placeholderChartDiv.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`; } else { console.warn(`Panel ${panelIdStr} missing .placeholder-chart`); }
-            let configObject; try { configObject = JSON.parse(panel.dataset.configuration || '{}'); } catch (e) { console.error(`Error parsing config for ${panelIdStr}:`, panel.dataset.configuration, e); configObject = analysisDetails?.default_config || {}; }
-            const panelDataForInit = { id: panelIdStr, analysis_type: analysisType, title: panelTitleText, configuration: configObject };
-            _initializePanelConfigurationControls(panel, panelDataForInit); await loadPanelContent(panel);
+            if (isNaN(parseInt(panelIdStr))) { 
+                const contentDiv = panel.querySelector('.placeholder-chart') || panel.querySelector('.panel-content'); 
+                if (contentDiv) contentDiv.innerHTML = `<p style='color:red;'><b>Error:</b>Invalid ID ('${panelIdStr}')</p>`; 
+                const titleH3 = panel.querySelector('.panel-dynamic-title'); 
+                if (titleH3) titleH3.textContent = "Config Error"; 
+                continue; 
+            }
+            
+            makePanelDraggable(panel); 
+            
+            const panelStaticTitleText = panel.dataset.staticTitle || analysisDetails?.title || 'Analysis'; 
+            const titleEl = panel.querySelector('.panel-dynamic-title'); 
+            if (titleEl) { titleEl.textContent = panelStaticTitleText; }
+             else { console.warn(`Panel ${panelIdStr} missing .panel-dynamic-title`); }
+            
+            const placeholderChartDiv = panel.querySelector('.placeholder-chart'); 
+            if (placeholderChartDiv) { placeholderChartDiv.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`; } 
+            else { console.warn(`Panel ${panelIdStr} missing .placeholder-chart`); }
+            
+            // Robustly parse or default the configuration from the HTML dataset
+            let configObject;
+            const rawConfigString = panel.dataset.configuration; 
+            if (!rawConfigString || rawConfigString.trim() === "") {
+                console.warn(`[Insights V32.13] Panel ${panelIdStr} (setupEventListeners): data-configuration attribute is missing or empty. Using default_config.`);
+                configObject = analysisDetails?.default_config || {};
+                panel.dataset.configuration = JSON.stringify(configObject); // Ensure dataset is populated with valid JSON
+            } else {
+                try {
+                    configObject = JSON.parse(rawConfigString);
+                } catch (e) {
+                    console.error(`[Insights V32.13] Panel ${panelIdStr} (setupEventListeners): Error parsing panel.dataset.configuration: "${rawConfigString}". Error: ${e.message}. Falling back to default_config.`);
+                    configObject = analysisDetails?.default_config || {};
+                    panel.dataset.configuration = JSON.stringify(configObject); // Correct dataset with valid default
+                }
+            }
+            
+            const panelDataForInit = { 
+                id: panelIdStr, 
+                analysis_type: analysisType, 
+                title: panelStaticTitleText, // Pass the static title
+                configuration: configObject 
+            };
+
+            _initializePanelConfigurationControls(panel, panelDataForInit); 
+            await loadPanelContent(panel); 
         }
         const initialPanelElements = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
         const initialPersistentPanelIds = initialPanelElements.filter(p => p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id));
@@ -517,7 +667,7 @@ async function setupEventListeners() {
 }
 
 export async function initInsightsManager() {
-    console.log("%c[Insights] initInsightsManager - START (V32.6 - Palette Drag Full & Delete)", "background-color: yellow; color: black; font-weight:bold;");
+    console.log("%c[Insights] initInsightsManager - START (V32.13 - Robust JSON Parse & Summary)", "background-color: yellow; color: black; font-weight:bold;");
     insightsView = document.getElementById('insights-view');
     insightsGridContainer = document.getElementById('insights-grid-container');
     insightsGrid = document.getElementById('insights-grid');
@@ -529,7 +679,7 @@ export async function initInsightsManager() {
     palettePreviewContainer = document.getElementById('palette-preview-container');
 
     if (!insightsView || !insightsGridContainer || !insightsGrid || !palette ||
-        !paletteHeader || !paletteToggleBtn || !paletteScrollContainer || // Added missing checks
+        !paletteHeader || !paletteToggleBtn || !paletteScrollContainer || 
         !emptyMessage || !palettePreviewContainer) {
         console.error("Insights Manager init failed: Critical DOM elements not found. Check HTML IDs.");
         return;
@@ -537,13 +687,13 @@ export async function initInsightsManager() {
     if (typeof Chart === 'undefined') console.error("Chart.js library not found."); if (typeof noUiSlider === 'undefined') console.warn("noUiSlider library not found.");
     await fetchUserGroups();
     calculateGridCellLayout();
-    await setupEventListeners();
+    await setupEventListeners(); // This now has the robust parsing
     checkGridEmpty();
     isDragging = false; if(draggedElement) draggedElement.remove(); draggedElement = null;
     document.querySelectorAll('.dragging-placeholder.drop-slot-indicator').forEach(el => el.remove());
     document.removeEventListener('pointermove', onPointerMove); document.removeEventListener('pointerup', onPointerUp); document.removeEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
     hidePalettePreview(); if (palette) { insightsView.classList.toggle('palette-collapsed', palette.classList.contains('collapsed')); } updateToggleButtonIcon();
-    console.log("%c[Insights] initInsightsManager - Initialized Successfully (V32.6)", "background-color: lightgreen; color: black; font-weight:bold;");
+    console.log("%c[Insights] initInsightsManager - Initialized Successfully (V32.13)", "background-color: lightgreen; color: black; font-weight:bold;");
 }
 
 function getAnalysisDetails(analysisTypeId) { const localAvailableAnalyses = { "spending-by-category": { id: "spending-by-category", title: "💸 Spending by Category", description: "Total event costs by node. Filter by group & time.", preview_title: "Spending Example", preview_image_filename: "img/placeholder-bar-chart.png", preview_description: "Shows total costs for events linked to different nodes.", placeholder_html: `<div class='loading-placeholder' style='text-align: center; padding: 20px; color: #aaa;'><i class='fas fa-spinner fa-spin fa-2x'></i><p style='margin-top: 10px;'>Loading spending data...</p></div>`, default_config: { time_period: "all_time", group_id: "all", startDate: null, endDate: null } } }; return localAvailableAnalyses[analysisTypeId]; }
