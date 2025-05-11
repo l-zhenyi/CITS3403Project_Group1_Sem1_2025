@@ -12,62 +12,96 @@ function formatEventDateForDisplay(date) {
     } catch (e) { console.error("Error formatting date:", date, e); return 'Error displaying date'; }
 }
 
-// --- Cost Parsing and Formatting Helper ---
+// --- Cost Parsing and Formatting Helper (REVISED) ---
 export function parseAndFormatCost(inputText) {
     const text = String(inputText || '').trim();
-    let original_input_text = text;
-    let cost_display_standardized = text;
+    const original_input_text_for_field = text; 
+    let cost_display_standardized = text; 
     let cost_value = null;
-    let is_split_cost = false; // NEW flag
+    let is_split_cost = false;
 
     const lowerText = text.toLowerCase();
-    const freeKeywords = ['free', 'free entry', 'no cost', '0', '0.0', '0.00'];
-    const donationKeywords = ['donation', 'by donation', 'donations welcome', 'pay what you can', 'pwyc'];
-    const otherSpecialKeywords = { 'varies': 'Varies', 'tbd': 'TBD', 'contact for price': 'Contact for Price', 'see description': 'See Description' };
 
-    // Regex to detect split costs, e.g., "split $20", "$50 total split", "100 to split"
-    // It captures the amount if present.
-    const splitRegex = /(?:split\s*\$?(\d+(?:\.\d{1,2})?)|(?:\$?(\d+(?:\.\d{1,2})?)\s*(?:total\s*)?split))/i;
-    const splitMatch = lowerText.match(splitRegex);
+    const explicitSplitRegex = /(?:split\s*\$?(\d+(?:\.\d{1,2})?)|(?:\$?(\d+(?:\.\d{1,2})?)\s*(?:total\s*)?split))/i;
+    const explicitSplitMatch = lowerText.match(explicitSplitRegex);
 
-    if (splitMatch) {
+    if (explicitSplitMatch) {
         is_split_cost = true;
-        const amountInSplit = splitMatch[1] || splitMatch[2]; // Get the captured amount
+        const amountInSplit = explicitSplitMatch[1] || explicitSplitMatch[2];
         if (amountInSplit) {
             const numericAmount = parseFloat(amountInSplit);
             if (!isNaN(numericAmount)) {
                 cost_value = numericAmount;
-                cost_display_standardized = `$${cost_value.toFixed(2)} (Split)`;
-            } else {
-                // If "split" is mentioned but amount is not parseable, treat as "Split Cost (TBD)"
-                cost_display_standardized = "Split Cost (Amount TBD)";
-                cost_value = null;
             }
-        } else {
-            // If "split" is mentioned without a clear amount
-            cost_display_standardized = "Split Cost";
-            cost_value = null;
         }
-    } else if (freeKeywords.includes(lowerText)) {
-        cost_display_standardized = 'Free'; cost_value = 0.0;
-    } else if (donationKeywords.includes(lowerText)) {
-        cost_display_standardized = 'By Donation'; cost_value = null;
-    } else if (otherSpecialKeywords[lowerText]) {
-        cost_display_standardized = otherSpecialKeywords[lowerText]; cost_value = null;
     } else {
-        let numericString = lowerText.replace(/(usd|eur|gbp|jpy|aud|cad)/gi, '').replace(/\s*(per person|pp)\s*/gi, '').replace(/[$,€£¥₹]/g, '');
-        const centsMatch = numericString.match(/^(\d+)\s*(c|cent|cents)$/);
-        let potentialNumber;
-        if (centsMatch) { const cents = parseInt(centsMatch[1], 10); if (!isNaN(cents)) potentialNumber = cents / 100.0; }
-        else { potentialNumber = parseFloat(numericString.replace(/,/g, '')); }
-        if (!isNaN(potentialNumber) && potentialNumber !== null) {
-            cost_value = potentialNumber;
-            cost_display_standardized = cost_value === 0 ? 'Free' : `$${cost_value.toFixed(2)}`;
+        if (lowerText.includes('(split)')) {
+            is_split_cost = true;
+        }
+        let textForNumericParse = lowerText;
+        if (is_split_cost && textForNumericParse.includes('(split)')) {
+            textForNumericParse = textForNumericParse.replace(/\(split\)/gi, '').trim();
+        }
+
+        const freeKeywords = ['free', 'free entry', 'no cost', '0', '0.0', '0.00'];
+        const donationKeywords = ['donation', 'by donation', 'donations welcome', 'pay what you can', 'pwyc'];
+        if (freeKeywords.some(kw => lowerText.startsWith(kw) && (lowerText.length === kw.length || !/\w/.test(lowerText[kw.length])) ) ) {
+            cost_value = 0.0;
+            is_split_cost = false; 
+        } else if (donationKeywords.some(kw => lowerText.startsWith(kw))) {
+            cost_value = null;
         } else {
-            cost_display_standardized = original_input_text; cost_value = null;
+            let numericString = textForNumericParse.replace(/(usd|eur|gbp|jpy|aud|cad)/gi, '').replace(/\s*(per person|pp)\s*/gi, '').replace(/[$,€£¥₹]/g, '');
+            const centsMatch = numericString.match(/^(\d+)\s*(c|cent|cents)$/);
+            let potentialNumber;
+
+            if (centsMatch) {
+                const cents = parseInt(centsMatch[1], 10);
+                if (!isNaN(cents)) potentialNumber = cents / 100.0;
+            } else {
+                potentialNumber = parseFloat(numericString.replace(/,/g, ''));
+            }
+
+            if (!isNaN(potentialNumber) && potentialNumber !== null) {
+                cost_value = potentialNumber;
+            }
         }
     }
-    return { original_input_text, cost_display_standardized, cost_value, is_split_cost }; // Return new flag
+
+    const otherSpecialKeywords = { 'varies': 'Varies', 'tbd': 'TBD', 'contact for price': 'Contact for Price', 'see description': 'See Description' };
+
+    if (cost_value === 0.0) {
+        cost_display_standardized = 'Free';
+    } else if (cost_value !== null) {
+        cost_display_standardized = `$${cost_value.toFixed(2)}`;
+        if (is_split_cost) {
+            cost_display_standardized += " (Split)";
+        }
+    } else { 
+        const freeKeywords = ['free', 'free entry', 'no cost', '0', '0.0', '0.00']; 
+        const donationKeywords = ['donation', 'by donation', 'donations welcome', 'pay what you can', 'pwyc']; 
+
+        if (is_split_cost) {
+             if (freeKeywords.some(kw => original_input_text_for_field.toLowerCase().includes(kw))) {
+                 cost_display_standardized = 'Free'; is_split_cost = false; cost_value = 0.0;
+             } else if (donationKeywords.some(kw => original_input_text_for_field.toLowerCase().includes(kw))) {
+                 cost_display_standardized = 'By Donation';
+             } else {
+                 cost_display_standardized = "Split Cost";
+             }
+        } else {
+            if (freeKeywords.includes(original_input_text_for_field.toLowerCase())) {
+                cost_display_standardized = 'Free'; cost_value = 0.0;
+            } else if (donationKeywords.includes(original_input_text_for_field.toLowerCase())) {
+                cost_display_standardized = 'By Donation';
+            } else if (otherSpecialKeywords[original_input_text_for_field.toLowerCase()]) {
+                cost_display_standardized = otherSpecialKeywords[original_input_text_for_field.toLowerCase()];
+            } else {
+                 cost_display_standardized = original_input_text_for_field || 'Not specified';
+            }
+        }
+    }
+    return { original_input_text: original_input_text_for_field, cost_display_standardized, cost_value, is_split_cost };
 }
 
 
@@ -93,7 +127,6 @@ let modalElement, modalContent, closeButton, modalEventImage, modalEventTitle,
     modalRsvpControls, rsvpButtons = [], rsvpConfirmationMessage,
     clearRsvpButton, modalAttendeeList, modalAttendeeCount, attendeeListContainer,
     attendeeListMessage, attendeeLoadingIndicator,
-    // NEW: Event Permission Elements
     eventPermissionsSection, eventAllowOthersEditTitleCheckbox, eventAllowOthersEditDetailsCheckbox;
 
 
@@ -101,7 +134,8 @@ let currentEventId = null;
 let isInitialized = false; 
 let activeEditField = null;
 let geocodeTimeout = null;
-let currentEventDataForModal = null; // Store full event data for permission checks
+let currentEventDataForModal = null; 
+let costInputBlurTimeout = null; 
 
 
 function _initializeModalElements() {
@@ -127,7 +161,6 @@ function _initializeModalElements() {
     attendeeListMessage = modalElement.querySelector('#attendee-list-message');
     attendeeLoadingIndicator = modalElement.querySelector('#attendee-loading-indicator');
 
-    // Initialize Event Permission Elements
     eventPermissionsSection = modalElement.querySelector('#event-permissions-section');
     eventAllowOthersEditTitleCheckbox = modalElement.querySelector('#event-allow-others-edit-title');
     eventAllowOthersEditDetailsCheckbox = modalElement.querySelector('#event-allow-others-edit-details');
@@ -142,9 +175,10 @@ function _initializeModalElements() {
 
 function _resetModal() {
     if (!isInitialized) return;
-    if (activeEditField && activeEditField.cancelChanges) activeEditField.cancelChanges(true);
+    if (activeEditField && activeEditField.cancelChanges) activeEditField.cancelChanges(true); 
     activeEditField = null;
     currentEventDataForModal = null;
+    clearTimeout(costInputBlurTimeout); 
 
     const editableFields = modalElement.querySelectorAll('.editable-field');
     editableFields.forEach(field => {
@@ -166,7 +200,7 @@ function _resetModal() {
         }
 
         field.classList.remove('is-editing-field', 'editable-field');
-        field.classList.remove('field-disabled-for-user'); // NEW: remove disabled visual
+        field.classList.remove('field-disabled-for-user'); 
         if (field.clickHandler) {
             field.removeEventListener('click', field.clickHandler);
             delete field.clickHandler;
@@ -198,7 +232,6 @@ function _resetModal() {
     if (attendeeLoadingIndicator) attendeeLoadingIndicator.style.display = 'none';
     if (rsvpConfirmationMessage) { rsvpConfirmationMessage.style.display = 'none'; rsvpConfirmationMessage.textContent = ''; rsvpConfirmationMessage.style.color = ''; }
     
-    // Reset event permission checkboxes
     if (eventPermissionsSection) eventPermissionsSection.style.display = 'none';
     if (eventAllowOthersEditTitleCheckbox) { eventAllowOthersEditTitleCheckbox.checked = false; eventAllowOthersEditTitleCheckbox.disabled = true;}
     if (eventAllowOthersEditDetailsCheckbox) { eventAllowOthersEditDetailsCheckbox.checked = false; eventAllowOthersEditDetailsCheckbox.disabled = true;}
@@ -207,6 +240,45 @@ function _resetModal() {
     _updateRSVPButtonState(null);
     currentEventId = null;
 }
+
+// --- Helper to update displayed cost with per-person calculation (REVISED) ---
+function _updateDisplayedCost(eventDataToDisplay) {
+    if (!modalEventCost || !eventDataToDisplay) return;
+
+    let displayCostText = eventDataToDisplay.cost_display || 'Not specified';
+
+    if (eventDataToDisplay.is_cost_split && typeof eventDataToDisplay.cost_value === 'number' && eventDataToDisplay.cost_value > 0) {
+        const rsvps = currentEventDataForModal?.attendees || []; 
+        const attendingCount = rsvps.filter(rsvp => rsvp.status && rsvp.status.toLowerCase() === 'attending').length;
+
+        if (attendingCount > 0) {
+            const perPersonCost = eventDataToDisplay.cost_value / attendingCount;
+             if (!displayCostText.toLowerCase().includes("split") && typeof eventDataToDisplay.cost_value === 'number') {
+                displayCostText = `$${eventDataToDisplay.cost_value.toFixed(2)} (Split / $${perPersonCost.toFixed(2)} pp)`;
+            } else if (displayCostText.toLowerCase().includes("(split)")) {
+                 displayCostText = displayCostText.replace(/\(Split\)/i, `(Split / $${perPersonCost.toFixed(2)} pp)`);
+            } else if (displayCostText.toLowerCase() === "split cost") { 
+                 displayCostText = `Split Cost ($${perPersonCost.toFixed(2)} pp)`;
+            } else { 
+                 displayCostText += ` ($${perPersonCost.toFixed(2)} pp)`;
+            }
+        } else { 
+            if (!displayCostText.toLowerCase().includes("split")) {
+                 if (typeof eventDataToDisplay.cost_value === 'number') {
+                    displayCostText = `$${eventDataToDisplay.cost_value.toFixed(2)} (Split)`;
+                } else {
+                    displayCostText = "Split Cost";
+                }
+            }
+        }
+    }
+    modalEventCost.textContent = displayCostText;
+
+    if (modalEventCost.classList.contains('editable-field')) {
+        modalEventCost.dataset.originalContentForReset = displayCostText;
+    }
+}
+
 
 function _populateAttendeeList(attendees = []) {
     if (!isInitialized || !modalAttendeeList || !attendeeListContainer || !attendeeListMessage || !modalAttendeeCount) return;
@@ -266,9 +338,18 @@ async function _fetchEventDetails(eventId) {
         }
         const attendees = await attendeesRes.json();
         const myRsvp = await myRsvpRes.json();
+        
+        if (currentEventDataForModal && String(currentEventDataForModal.id) === String(eventId)) {
+            currentEventDataForModal.attendees = attendees;
+            currentEventDataForModal.current_user_rsvp_status = myRsvp.status;
+        }
 
         _populateAttendeeList(attendees);
         _updateRSVPButtonState(myRsvp.status);
+        if (currentEventDataForModal) {
+             _updateDisplayedCost(currentEventDataForModal);
+        }
+
 
     } catch (error) {
         console.error("Error fetching event details:", error);
@@ -287,23 +368,19 @@ async function _fetchEventDetails(eventId) {
 }
 
 // --- EDITABLE FIELD LOGIC ---
-// Config now includes 'canEditField' boolean, determined by caller
 function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, config = {}, canEditField = true) {
     if (!targetElement) return;
-    if (targetElement.dataset.isEditing === 'true') return; // Already editing this one
+    if (targetElement.dataset.isEditing === 'true') return; 
 
-    // If field cannot be edited by current user, apply disabled style and prevent making it editable
     if (!canEditField) {
         targetElement.classList.add('field-disabled-for-user');
         targetElement.style.cursor = 'default';
-        // Remove any pre-existing click handler to prevent edit mode
         if (targetElement.clickHandler) {
             targetElement.removeEventListener('click', targetElement.clickHandler);
             delete targetElement.clickHandler;
         }
-        return; // Do not proceed to make it editable
+        return; 
     }
-    // If it *can* be edited, ensure disabled style is removed
     targetElement.classList.remove('field-disabled-for-user');
     targetElement.style.cursor = 'pointer';
 
@@ -325,10 +402,10 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
     }
 
     if (apiFieldNameOrMode === 'cost') {
-        targetElement.dataset.originalContentForReset = initialData.standardized_display || '';
-        targetElement.dataset.currentDisplayValue = initialData.raw_input_for_field || '';
+        targetElement.dataset.originalContentForReset = contentDisplayElement.textContent; 
+        targetElement.dataset.currentDisplayValue = initialData.raw_input_for_field || ''; 
         targetElement.dataset.currentNumericValue = initialData.value === null || initialData.value === undefined ? '' : String(initialData.value);
-        targetElement.dataset.isSplitCost = initialData.is_split_cost ? 'true' : 'false'; // Store is_split_cost
+        targetElement.dataset.isSplitCost = initialData.is_split_cost ? 'true' : 'false';
     } else if (apiFieldNameOrMode === 'location') {
         targetElement.dataset.originalContentForReset = initialData.text || 'Not specified';
         if (initialData.coordinates) targetElement.dataset.currentCoordinates = initialData.coordinates;
@@ -345,7 +422,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
         if (e.target.closest('.edit-action-button') || e.target.closest('.cost-interpretation-helper') || e.target.closest('.location-map-floating-panel')) return;
 
         if (activeEditField && activeEditField.target !== targetElement) {
-            if (!activeEditField.cancelChanges(true)) {
+            if (!activeEditField.cancelChanges(true)) { 
                 return;
             }
         }
@@ -354,32 +431,49 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
         targetElement.dataset.isEditing = 'true';
 
         const originalStaticDisplayForCancel = targetElement.dataset.originalContentForReset;
-        let initialInputFieldValue = originalStaticDisplayForCancel;
+        let initialInputFieldValue; 
 
         let currentEditMode = targetElement.dataset.editMode;
         let costInterpretationHelper = null;
         let locationMapFloatingPanel = null;
         let locationMapController = null;
         let inputElementForDirtyCheckAndSave;
+        let isBlurDueToAction = false; 
 
         const inputWrapper = document.createElement('div');
         inputWrapper.className = 'editable-input-wrapper';
 
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'editable-actions-container';
+        const saveBtn = document.createElement('button');
+        saveBtn.innerHTML = '✔'; saveBtn.className = 'edit-action-button edit-save-btn'; saveBtn.title = 'Save';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.innerHTML = '✖'; cancelBtn.className = 'edit-action-button edit-cancel-btn'; cancelBtn.title = 'Cancel';
+        
+        const onActionMousedown = () => { isBlurDueToAction = true; };
+        saveBtn.addEventListener('mousedown', onActionMousedown);
+        cancelBtn.addEventListener('mousedown', onActionMousedown);
+
+        actionsContainer.appendChild(saveBtn); actionsContainer.appendChild(cancelBtn);
+
         if (currentEditMode === 'cost') {
-            initialInputFieldValue = targetElement.dataset.currentDisplayValue;
+            initialInputFieldValue = targetElement.dataset.currentDisplayValue; 
             costInterpretationHelper = document.createElement('div');
             costInterpretationHelper.id = 'cost-interpretation-helper-dynamic';
             costInterpretationHelper.className = 'cost-interpretation-helper';
             document.body.appendChild(costInterpretationHelper);
+            costInterpretationHelper.addEventListener('mousedown', (event) => event.stopPropagation());
+
 
             const costInput = document.createElement('input');
             costInput.type = 'text';
             costInput.className = 'editable-input editable-cost-input';
             costInput.value = initialInputFieldValue;
+            costInput.placeholder = "e.g., Free, 10, 50 split, Donation"; 
             inputWrapper.appendChild(costInput);
             inputElementForDirtyCheckAndSave = costInput;
 
-            targetElement.innerHTML = '';
+            targetElement.innerHTML = ''; 
             targetElement.appendChild(inputWrapper);
 
             const updateCostInterpretation = () => {
@@ -400,6 +494,23 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             costInput.addEventListener('input', updateCostInterpretation);
             costInput.addEventListener('focus', updateCostInterpretation);
             requestAnimationFrame(updateCostInterpretation);
+            
+            costInput.addEventListener('blur', () => {
+                clearTimeout(costInputBlurTimeout);
+                costInputBlurTimeout = setTimeout(() => {
+                    if (isBlurDueToAction) {
+                        isBlurDueToAction = false; 
+                        return; 
+                    }
+                    if (costInput.value !== initialInputFieldValue) {
+                        console.log("Cost field blurred (not to action button) and value changed, attempting auto-save.");
+                        if (!saveBtn.disabled) { 
+                             saveBtn.click(); 
+                        }
+                    }
+                }, 50); // A small delay to allow mousedown to set the flag
+            });
+
 
         } else if (currentEditMode === 'location') {
             initialInputFieldValue = targetElement.dataset.originalContentForReset;
@@ -414,6 +525,8 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
 
             locationMapFloatingPanel = document.createElement('div');
             locationMapFloatingPanel.className = 'location-map-floating-panel';
+            locationMapFloatingPanel.addEventListener('mousedown', (event) => event.stopPropagation()); 
+
             const mapContainer = document.createElement('div');
             mapContainer.id = `leaflet-map-container-${Date.now()}`;
             mapContainer.style.height = '250px'; mapContainer.style.width = '100%';
@@ -510,25 +623,24 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                 } catch (mapError) { console.error("Leaflet map init error:", mapError); if(locationMapController) locationMapController.statusElement.innerHTML = `Error initializing map. <span style="float:right;">© OSM</span>`; }
             }, 0);
 
-        } else {
+        } else { 
             let genericInput;
+            initialInputFieldValue = targetElement.dataset.currentDataValue;
             if (inputType === 'textarea') {
                 genericInput = document.createElement('textarea');
-                genericInput.value = targetElement.dataset.currentDataValue;
-                initialInputFieldValue = genericInput.value;
+                genericInput.value = initialInputFieldValue;
             } else if (inputType === 'datetime-local') {
                 genericInput = document.createElement('input');
                 genericInput.type = 'datetime-local';
-                const dateVal = targetElement.dataset.currentDataValue;
+                const dateVal = initialInputFieldValue; 
                 genericInput.value = (dateVal && !isNaN(new Date(dateVal).getTime()))
                     ? new Date(new Date(dateVal).getTime() - new Date(dateVal).getTimezoneOffset() * 60000).toISOString().slice(0,16)
                     : '';
-                initialInputFieldValue = genericInput.value;
-            } else {
+                initialInputFieldValue = genericInput.value; 
+            } else { 
                 genericInput = document.createElement('input');
                 genericInput.type = 'text';
-                genericInput.value = targetElement.dataset.currentDataValue;
-                initialInputFieldValue = genericInput.value;
+                genericInput.value = initialInputFieldValue;
             }
             genericInput.classList.add('editable-input');
             inputWrapper.appendChild(genericInput);
@@ -536,15 +648,8 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             targetElement.innerHTML = '';
             targetElement.appendChild(inputWrapper);
         }
-
-        const actionsContainer = document.createElement('div');
-        actionsContainer.className = 'editable-actions-container';
-        const saveBtn = document.createElement('button');
-        saveBtn.innerHTML = '✔'; saveBtn.className = 'edit-action-button edit-save-btn'; saveBtn.title = 'Save';
-        const cancelBtn = document.createElement('button');
-        cancelBtn.innerHTML = '✖'; cancelBtn.className = 'edit-action-button edit-cancel-btn'; cancelBtn.title = 'Cancel';
-        actionsContainer.appendChild(saveBtn); actionsContainer.appendChild(cancelBtn);
-        inputWrapper.appendChild(actionsContainer);
+        
+        inputWrapper.appendChild(actionsContainer); 
 
         if (inputElementForDirtyCheckAndSave) {
             inputElementForDirtyCheckAndSave.focus();
@@ -554,29 +659,36 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
         }
 
         const handleDocumentClick = (event) => {
-            const clickedInsideEditorItself = targetElement.contains(event.target);
-            const clickedInsideFloatingMap = locationMapFloatingPanel && locationMapFloatingPanel.contains(event.target);
-            const clickedInsideCostHelper = costInterpretationHelper && costInterpretationHelper.contains(event.target);
-            if (!clickedInsideEditorItself && !clickedInsideFloatingMap && !clickedInsideCostHelper) {
-                cancelChanges(false);
+             const isClickInsideThisEditor = targetElement.contains(event.target) ||
+                                           (costInterpretationHelper && costInterpretationHelper.contains(event.target)) ||
+                                           (locationMapFloatingPanel && locationMapFloatingPanel.contains(event.target));
+
+            if (!isClickInsideThisEditor) {
+                cancelChanges(false); 
             }
         };
 
         const exitEditMode = (savedDataFromServer) => {
             document.removeEventListener('click', handleDocumentClick, true);
+            saveBtn.removeEventListener('mousedown', onActionMousedown); 
+            cancelBtn.removeEventListener('mousedown', onActionMousedown);
+            clearTimeout(costInputBlurTimeout); // Clear any pending blur action
+
             if (costInterpretationHelper) costInterpretationHelper.remove();
             if (locationMapFloatingPanel) {
                 if (locationMapController && locationMapController.map) locationMapController.map.remove();
                 locationMapFloatingPanel.remove();
             }
-            targetElement.innerHTML = '';
+            targetElement.innerHTML = ''; 
             const isHTMLOutput = targetElement.dataset.originalDisplayIsHtml === 'true';
             let finalDisplayToShow;
 
             if (savedDataFromServer) {
-                currentEventDataForModal = savedDataFromServer; // Update the modal's copy of event data
+                currentEventDataForModal = savedDataFromServer; 
+                
                 if (currentEditMode === 'cost') {
-                    finalDisplayToShow = savedDataFromServer.cost_display || '';
+                    _updateDisplayedCost(savedDataFromServer); 
+                    finalDisplayToShow = modalEventCost.textContent; 
                     targetElement.dataset.originalContentForReset = finalDisplayToShow;
                     targetElement.dataset.currentDisplayValue = savedDataFromServer.original_input_text || inputElementForDirtyCheckAndSave.value;
                     targetElement.dataset.currentNumericValue = savedDataFromServer.cost_value === null || savedDataFromServer.cost_value === undefined ? '' : String(savedDataFromServer.cost_value);
@@ -592,17 +704,18 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                     else delete targetElement.dataset.currentCoordinates;
                     if (savedDataFromServer.location_key) targetElement.dataset.currentPredefinedKey = savedDataFromServer.location_key;
                     else delete targetElement.dataset.currentPredefinedKey;
-                } else { // title, description
+                } else { 
                     finalDisplayToShow = savedDataFromServer[currentEditMode] || '';
                     targetElement.dataset.originalContentForReset = finalDisplayToShow;
                     targetElement.dataset.currentDataValue = finalDisplayToShow;
                 }
-            } else {
+            } else { 
                 finalDisplayToShow = originalStaticDisplayForCancel;
             }
             const displayTarget = contentDisplayElement || targetElement;
             if (isHTMLOutput || currentEditMode === 'description') displayTarget.innerHTML = finalDisplayToShow;
             else displayTarget.textContent = finalDisplayToShow;
+
             if (targetElement !== displayTarget && !targetElement.contains(displayTarget)) {
                  targetElement.appendChild(displayTarget);
             }
@@ -611,34 +724,36 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             activeEditField = null;
         };
 
-        const cancelChanges = (force = false) => {
+        const cancelChanges = (force = false) => { 
             const currentInputValue = inputElementForDirtyCheckAndSave.value;
-            let isDirty = currentInputValue !== initialInputFieldValue;
+            let isDirty = currentInputValue !== initialInputFieldValue; 
             if (currentEditMode === 'location') {
-                const originalCoords = targetElement.dataset.currentCoordinates;
+                const originalCoords = targetElement.dataset.currentCoordinates; 
                 const currentMapCoords = locationMapController?.currentCoords;
                 if (originalCoords !== currentMapCoords) isDirty = true;
             }
-            if (!force && isDirty) {
+            if (!force && isDirty) { 
                 if (!window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
                     if(inputElementForDirtyCheckAndSave) inputElementForDirtyCheckAndSave.focus();
-                    return false;
+                    return false; 
                 }
             }
-            exitEditMode(null);
-            return true;
+            exitEditMode(null); 
+            return true; 
         };
 
         activeEditField = { target: targetElement, cancelChanges, inputElement: inputElementForDirtyCheckAndSave, costInterpretationHelper, locationMapFloatingPanel, locationMapController };
         setTimeout(() => document.addEventListener('click', handleDocumentClick, true), 0);
 
         saveBtn.onclick = async () => {
+            isBlurDueToAction = false; 
             let payload = {};
             if (currentEditMode === 'cost') {
                 const parsedForSave = parseAndFormatCost(inputElementForDirtyCheckAndSave.value);
                 payload.cost_display = parsedForSave.cost_display_standardized;
                 payload.cost_value = parsedForSave.cost_value;
-                payload.is_cost_split = parsedForSave.is_split_cost; // Send is_split_cost
+                payload.is_cost_split = parsedForSave.is_split_cost;
+                payload.original_input_text = parsedForSave.original_input_text; 
             } else if (currentEditMode === 'date') {
                 if (!inputElementForDirtyCheckAndSave.value) { payload.date = null; }
                 else {
@@ -648,11 +763,10 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             } else if (currentEditMode === 'location') {
                 payload.location = inputElementForDirtyCheckAndSave.value;
                 payload.location_coordinates = locationMapController.currentCoords;
-            } else { // title, description
+            } else { 
                 payload[currentEditMode] = inputElementForDirtyCheckAndSave.value;
             }
 
-            // Add event permission flags to payload if they were changed by owner/creator
             if (currentEventDataForModal && (currentEventDataForModal.is_current_user_creator || currentEventDataForModal.is_current_user_group_owner)) {
                 if (eventAllowOthersEditTitleCheckbox && eventAllowOthersEditTitleCheckbox.checked !== currentEventDataForModal.allow_others_edit_title) {
                     payload.allow_others_edit_title = eventAllowOthersEditTitleCheckbox.checked;
@@ -682,7 +796,10 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                 });
                 if (!response.ok) { const errData = await response.json().catch(()=>({})); throw new Error(errData.detail || errData.error || `Update failed (${response.status})`);}
                 const updatedEventDataFromServer = await response.json();
-                exitEditMode(updatedEventDataFromServer); // This also updates currentEventDataForModal
+                
+                currentEventDataForModal = updatedEventDataFromServer; 
+                
+                exitEditMode(updatedEventDataFromServer); 
                 document.dispatchEvent(new CustomEvent('eventDataUpdated', {
                     detail: {
                         eventId: updatedEventDataFromServer.id,
@@ -708,14 +825,21 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                 saveBtn.classList.remove('is-loading'); saveBtn.innerHTML = '✔'; saveBtn.disabled = false; cancelBtn.disabled = false;
             }
         };
-        cancelBtn.onclick = () => cancelChanges(false);
+        cancelBtn.onclick = () => {
+            isBlurDueToAction = false; 
+            cancelChanges(true); 
+        }; 
+
         if (inputElementForDirtyCheckAndSave) {
             inputElementForDirtyCheckAndSave.onkeydown = (ev) => {
                 const isTextarea = (inputElementForDirtyCheckAndSave.tagName === 'TEXTAREA');
-                const nonTextareaEnter = !isTextarea && !(currentEditMode ==='cost' && ev.shiftKey);
+                const nonTextareaEnter = !isTextarea && !(currentEditMode ==='cost' && ev.shiftKey); 
                 if (ev.key === 'Enter' && nonTextareaEnter) {
-                    ev.preventDefault(); saveBtn.click();
-                } else if (ev.key === 'Escape') { cancelChanges(false); }
+                    ev.preventDefault(); 
+                    if (!saveBtn.disabled) saveBtn.click();
+                } else if (ev.key === 'Escape') { 
+                    cancelChanges(true); 
+                }
             };
         }
     };
@@ -724,10 +848,10 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
     targetElement.addEventListener('click', targetElement.clickHandler);
 }
 
-function _closeEventModal() {
+export function _closeEventModal() { 
     if (!isInitialized || !modalElement || !modalElement.classList.contains('visible')) return;
     if (activeEditField && activeEditField.cancelChanges) {
-        if (!activeEditField.cancelChanges(false)) return;
+        if (!activeEditField.cancelChanges(true)) return; 
     }
     modalElement.classList.remove('visible'); const transitionDuration = 300;
     const handleTransitionEnd = (event) => {
@@ -785,10 +909,10 @@ function _setupInternalModalEventListeners() {
                 if (!response.ok) { const errorData = await response.json().catch(()=>({ detail: `RSVP Update failed (${response.status})` })); throw new Error(errorData.detail || errorData.error);}
                 const rsvpResult = await response.json();
 
-                const eventResponse = await fetch(`/api/events/${eventId}`);
+                const eventResponse = await fetch(`/api/events/${eventId}`); 
                 if (!eventResponse.ok) throw new Error(`Failed to fetch updated event data after RSVP: ${eventResponse.status}`);
                 const fullUpdatedEventFromServer = await eventResponse.json();
-                currentEventDataForModal = fullUpdatedEventFromServer; // Update local copy for permissions
+                currentEventDataForModal = fullUpdatedEventFromServer; 
 
                 _updateRSVPButtonState(rsvpResult.status);
                 if (rsvpConfirmationMessage) { const friendlyStatus = rsvpResult.status ? rsvpResult.status.charAt(0).toUpperCase() + rsvpResult.status.slice(1) : 'cleared'; rsvpConfirmationMessage.textContent = rsvpResult.status ? `Your RSVP is set to ${friendlyStatus}!` : "Your RSVP has been cleared."; setTimeout(() => { if(rsvpConfirmationMessage) rsvpConfirmationMessage.style.display = 'none'; }, 3000);}
@@ -796,34 +920,31 @@ function _setupInternalModalEventListeners() {
                 document.dispatchEvent(new CustomEvent('eventDataUpdated', {
                     detail: {
                         eventId: parseInt(eventId, 10),
-                        updatedEvent: fullUpdatedEventFromServer
+                        updatedEvent: fullUpdatedEventFromServer 
                     },
                     bubbles: true,
                     composed: true
                 }));
-
-                _populateAttendeeList(await fetch(`/api/events/${eventId}/attendees`).then(res => res.json()));
+                await _fetchEventDetails(eventId); 
 
             } catch (error) {
                 console.error("Error updating RSVP:", error);
                 if (rsvpConfirmationMessage) { rsvpConfirmationMessage.textContent = `Error: ${error.message || 'Could not update.'}`; rsvpConfirmationMessage.style.color = 'red';}
-                await _fetchEventDetails(eventId);
+                await _fetchEventDetails(eventId); 
             } finally {
                 if (modalRsvpControls) { modalRsvpControls.style.pointerEvents = 'auto'; modalRsvpControls.style.opacity = '1';}
             }
         });
     }
 
-    // Event listener for event permission checkboxes
     const setupPermissionCheckboxListener = (checkbox, permissionField) => {
         if (checkbox) {
             checkbox.addEventListener('change', async () => {
                 if (!currentEventDataForModal || !(currentEventDataForModal.is_current_user_creator || currentEventDataForModal.is_current_user_group_owner)) {
-                    return; // Should not happen if checkboxes are disabled correctly
+                    return; 
                 }
                 const payload = { [permissionField]: checkbox.checked };
                 try {
-                    // (Similar fetch logic as in saveBtn.onclick for PATCHing event)
                      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
                      const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
                      if (csrfTokenMeta) headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
@@ -832,8 +953,7 @@ function _setupInternalModalEventListeners() {
                      });
                     if (!response.ok) throw new Error('Failed to update event permission.');
                     const updatedEvent = await response.json();
-                    currentEventDataForModal = updatedEvent; // Update local state
-                    // Dispatch event so other parts of UI can react if necessary
+                    currentEventDataForModal = updatedEvent; 
                     document.dispatchEvent(new CustomEvent('eventDataUpdated', {
                         detail: { eventId: currentEventId, updatedEvent: updatedEvent },
                         bubbles: true, composed: true
@@ -841,7 +961,7 @@ function _setupInternalModalEventListeners() {
 
                 } catch (err) {
                     console.error("Error updating event permission:", err);
-                    checkbox.checked = !checkbox.checked; // Revert UI on error
+                    checkbox.checked = !checkbox.checked; 
                     alert("Failed to update permission. Please try again.");
                 }
             });
@@ -879,11 +999,10 @@ export async function openEventModal(eventData) {
         return;
     }
 
-    _resetModal();
+    _resetModal(); 
     currentEventId = eventData.id;
-    currentEventDataForModal = eventData; // Store the full event data
+    currentEventDataForModal = eventData; 
 
-    // Determine if current user can manage event permissions
     const canManageEventPermissions = eventData.is_current_user_creator || eventData.is_current_user_group_owner;
 
     if (eventPermissionsSection) {
@@ -902,16 +1021,16 @@ export async function openEventModal(eventData) {
     if (modalEventImage) modalEventImage.src = eventData.image_url || '/static/img/default-event-logo.png';
     if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group';
 
-    // Determine editability for each field
-    const canEditTitle = eventData.is_current_user_creator || eventData.is_current_user_group_owner || (eventData.allow_others_edit_title && is_group_member(current_user.id, eventData.group_id)); // You'll need is_group_member logic accessible or assume true if group member
-    const canEditDetails = eventData.is_current_user_creator || eventData.is_current_user_group_owner || (eventData.allow_others_edit_details && is_group_member(current_user.id, eventData.group_id)); // Similar logic for group membership
+    const isMember = eventData.group_id ? true : false; 
+    const canEditTitle = eventData.is_current_user_creator || eventData.is_current_user_group_owner || (eventData.allow_others_edit_title && isMember); 
+    const canEditDetails = eventData.is_current_user_creator || eventData.is_current_user_group_owner || (eventData.allow_others_edit_details && isMember);
 
     if (modalEventTitle) {
         modalEventTitle.textContent = eventData.title || 'Untitled Event';
         _makeFieldEditable(modalEventTitle, 'title', eventData.title, {}, canEditTitle);
     }
     if (modalEventDate) {
-        const d = eventData.date; 
+        const d = eventData.date ? new Date(eventData.date) : null; 
         modalEventDate.textContent = formatEventDateForDisplay(d);
         _makeFieldEditable(modalEventDate, 'date', d ? d.toISOString() : null, { inputType: 'datetime-local' }, canEditDetails);
     }
@@ -919,22 +1038,23 @@ export async function openEventModal(eventData) {
         const initialLocationData = {
             text: eventData.location || 'Not specified',
             coordinates: eventData.location_coordinates || null,
-            predefinedKey: null
+            predefinedKey: null 
         };
         modalEventLocation.textContent = initialLocationData.text;
         _makeFieldEditable(modalEventLocation, 'location', initialLocationData, { inputType: 'custom-location-map' }, canEditDetails);
     }
+    
     if (modalEventCost) {
-        const initialRawCostInput = eventData.original_input_text || eventData.cost_display || 'Not specified';
-        const parsedInitialCost = parseAndFormatCost(initialRawCostInput);
-        modalEventCost.textContent = parsedInitialCost.cost_display_standardized;
+        _updateDisplayedCost(eventData); 
+
         _makeFieldEditable(modalEventCost, 'cost', {
-            raw_input_for_field: initialRawCostInput,
-            standardized_display: parsedInitialCost.cost_display_standardized,
-            value: parsedInitialCost.cost_value,
-            is_split_cost: eventData.is_cost_split // Pass this from eventData
+            raw_input_for_field: eventData.original_input_text || eventData.cost_display || '',
+            standardized_display: eventData.cost_display, 
+            value: eventData.cost_value,
+            is_split_cost: eventData.is_cost_split 
         }, canEditDetails);
     }
+
     if (modalDescriptionWrapper && modalEventDescription) {
         const descContent = eventData.description || 'No description provided.';
         modalEventDescription.innerHTML = descContent;
@@ -952,6 +1072,10 @@ export async function openEventModal(eventData) {
     modalElement.style.display = 'flex';
     requestAnimationFrame(() => modalElement.classList.add('visible'));
 
-    await _fetchEventDetails(eventData.id);
+    await _fetchEventDetails(eventData.id); 
+}
+
+export function getCurrentModalEventId() {
+    return currentEventId;
 }
 // --- END OF FILE static/js/modalManager.js ---
