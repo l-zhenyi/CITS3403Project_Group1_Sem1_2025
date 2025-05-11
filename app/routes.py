@@ -7,7 +7,7 @@ from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest, InsightPanel
 from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta
-from dateutil.parser import isoparse
+from dateutil.parser import isoparse # Make sure this is imported
 from functools import wraps
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy import func, text, or_
@@ -39,7 +39,7 @@ AVAILABLE_ANALYSES = {
     "spending-by-category": {
         "id": "spending-by-category",
         "title": "💸 Spending by Category",
-        "description": "Total event costs grouped by the event's node (category). Can be filtered by group.", # MODIFIED description
+        "description": "Total event costs grouped by the event's node (category). Filter by group and time period.", # MODIFIED description
         "preview_title": "Spending Example",
         "preview_image_filename": "img/placeholder-bar-chart.png",
         "preview_description": "Shows total costs for events linked to different nodes. Helps track budget allocation.",
@@ -49,7 +49,12 @@ AVAILABLE_ANALYSES = {
                 <p style='margin-top: 10px;'>Loading spending data...</p>
             </div>
         """,
-        "default_config": {"time_period": "all_time", "group_id": "all"} # ADDED group_id: "all"
+        "default_config": {
+            "time_period": "all_time", # Retain for backward compatibility or simple selections
+            "group_id": "all",
+            "startDate": None, # NEW: For custom range
+            "endDate": None    # NEW: For custom range
+        }
     },
     # ... (other analysis types if any) ...
 }
@@ -1293,6 +1298,7 @@ def add_insight_panel():
     next_order = (max_order_val + 1) if max_order_val is not None else 0
     
     panel_config = details.get('default_config', {}).copy()
+    # User can override default config on creation (e.g., if palette item offers choices)
     if 'configuration' in data and isinstance(data['configuration'], dict):
         panel_config.update(data['configuration'])
 
@@ -1300,7 +1306,7 @@ def add_insight_panel():
     new_panel = InsightPanel(
         user_id=current_user.id,
         analysis_type=analysis_type,
-        title=details['title'], 
+        title=details['title'], # Initial title from definition
         description=details['description'],
         display_order=next_order,
         configuration=panel_config 
@@ -1308,6 +1314,35 @@ def add_insight_panel():
     db.session.add(new_panel)
     db.session.commit()
     return jsonify(new_panel.to_dict()), 201
+
+
+@app.route('/api/insights/panels/<int:panel_id>', methods=['PATCH']) # New endpoint for updating panel config
+@login_required
+def update_insight_panel_config(panel_id):
+    panel = db.session.get(InsightPanel, panel_id)
+    if not panel:
+        return jsonify({"error": "Panel not found"}), 404
+    if panel.user_id != current_user.id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json()
+    if 'configuration' not in data or not isinstance(data['configuration'], dict):
+        return jsonify({"error": "Missing or invalid 'configuration' in request body"}), 400
+
+    # Preserve existing config keys not being updated, merge new ones
+    # This allows partial updates to configuration
+    if panel.configuration is None:
+        panel.configuration = {}
+    
+    current_config = panel.configuration.copy() # Make a mutable copy if it's immutable
+    current_config.update(data['configuration'])
+    panel.configuration = current_config
+    
+    # Optionally, update title if a standard title format depends on config
+    # For now, title is updated by the analysis data endpoint itself
+
+    db.session.commit()
+    return jsonify(panel.to_dict())
 
 
 @app.route('/api/insights/panels/order', methods=['PUT'])
@@ -1381,9 +1416,17 @@ def get_analysis_data(analysis_type):
     else:
         analysis_details = get_analysis_details(analysis_type)
         config = analysis_details.get('default_config', {}).copy() if analysis_details else {}
+        # If panel_id was provided but panel not found or mismatched, log warning.
+        if panel_id and (not panel or panel.user_id != user.id or panel.analysis_type != analysis_type):
+            app.logger.warning(f"Panel ID {panel_id} provided for analysis {analysis_type} "
+                               f"but panel not found, mismatched, or not owned by user {user.id}. Using default config.")
+
 
     if analysis_type == 'spending-by-category':
-        time_period = config.get('time_period', 'all_time')
+        time_period_str = config.get('time_period', 'all_time') # from simple dropdown
+        start_date_str = config.get('startDate') # from range slider
+        end_date_str = config.get('endDate')     # from range slider
+        
         raw_group_id_filter = config.get('group_id', 'all')
         
         group_id_to_filter = 'all' 
@@ -1401,11 +1444,31 @@ def get_analysis_data(analysis_type):
             except ValueError:
                 app.logger.warning(f"Invalid group_id '{raw_group_id_filter}' in spending config. Defaulting to 'all'.")
 
-        start_date = None
-        if time_period == 'last_month':
-            start_date = datetime.now(timezone.utc) - timedelta(days=30)
-        elif time_period == 'last_year':
-            start_date = datetime.now(timezone.utc) - timedelta(days=365)
+        # --- Date Range Logic ---
+        final_start_date = None
+        final_end_date = None
+        date_filter_title_part = "All Time"
+
+        if start_date_str and end_date_str:
+            try:
+                final_start_date = isoparse(start_date_str).replace(tzinfo=timezone.utc)
+                # For end_date, make it inclusive of the whole day
+                final_end_date = (isoparse(end_date_str) + timedelta(days=1) - timedelta(microseconds=1)).replace(tzinfo=timezone.utc)
+                date_filter_title_part = f"{final_start_date.strftime('%b %d, %Y')} - {isoparse(end_date_str).strftime('%b %d, %Y')}"
+            except (ValueError, TypeError) as e:
+                app.logger.warning(f"Invalid custom date range: {start_date_str} - {end_date_str}. Error: {e}. Falling back.")
+                final_start_date = None
+                final_end_date = None
+        
+        if not final_start_date: # Fallback to time_period_str if custom range invalid or not set
+            if time_period_str == 'last_month':
+                final_start_date = datetime.now(timezone.utc) - timedelta(days=30)
+                date_filter_title_part = "Last Month"
+            elif time_period_str == 'last_year':
+                final_start_date = datetime.now(timezone.utc) - timedelta(days=365)
+                date_filter_title_part = "Last Year"
+            # 'all_time' means final_start_date remains None
+        # --- End Date Range Logic ---
         
         rsvpd_attending_event_ids_stmt = db.select(EventRSVP.event_id)\
             .where(EventRSVP.user_id == user.id)\
@@ -1473,8 +1536,10 @@ def get_analysis_data(analysis_type):
             .where(Event.cost_value.isnot(None)) \
             .where(Event.cost_value > 0)
 
-        if start_date:
-            stmt = stmt.where(Event.date >= start_date)
+        if final_start_date:
+            stmt = stmt.where(Event.date >= final_start_date)
+        if final_end_date:
+            stmt = stmt.where(Event.date <= final_end_date)
         
         stmt = stmt.group_by(Node.label).order_by(func.sum(Event.cost_value).desc())
         
@@ -1486,14 +1551,16 @@ def get_analysis_data(analysis_type):
         ]
         
         title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else "(All User's Groups)"
-        title_time_part = time_period.replace('_', ' ').title()
-        final_report_title = f"Attended Event Spending by Category {title_group_part} - {title_time_part}"
+        final_report_title = f"Attended Event Spending {title_group_part} - {date_filter_title_part}"
+        if not analysis_data:
+            final_report_title += " (No Data)"
+
 
         response_data = {
             "analysis_type": analysis_type,
             "title": final_report_title,
             "data": analysis_data,
-            "config_used": config
+            "config_used": config # Send back the config that was used
         }
         return jsonify(response_data)
 
@@ -1516,7 +1583,8 @@ def get_all_my_events():
         .where(GroupMember.user_id == user_id) \
         .options(
             joinedload(Event.node).joinedload(Node.group), 
-            joinedload(Event.attendees).joinedload(EventRSVP.user) 
+            joinedload(Event.attendees).joinedload(EventRSVP.user),
+            joinedload(Event.creator) # Eager load creator for to_dict
         )
     
     # Events user is directly invited to
@@ -1525,7 +1593,8 @@ def get_all_my_events():
         .where(InvitedGuest.email == user_email) \
         .options(
             joinedload(Event.node).joinedload(Node.group),
-            joinedload(Event.attendees).joinedload(EventRSVP.user)
+            joinedload(Event.attendees).joinedload(EventRSVP.user),
+            joinedload(Event.creator) # Eager load creator for to_dict
         )
 
     # Use .unique() when calling scalars() if joinedload involves collections

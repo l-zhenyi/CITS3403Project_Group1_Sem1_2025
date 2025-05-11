@@ -1,7 +1,7 @@
 /* --- START OF FILE plannerInsightsArea.css --- */
 
 /* ==========================================================================
-   Insights View Styles (V19 - Square Panels, Correct Glassiness & Preview)
+   Insights View Styles (V20 - Redesigned Panels, Config Area)
    ========================================================================== */
 
 /* Container - Establishing Flex Row Layout */
@@ -50,30 +50,214 @@
 .insights-empty-message { color: #bbb; text-align:center; grid-column: 1 / -1; padding: 40px 0; font-style: italic; align-self: start; display: block; font-size: 1rem; pointer-events: none; }
 .insights-grid:has(.insight-panel:not(.dragging-placeholder)) > .insights-empty-message { display: none; }
 
-/* Panels - Square & Correct Glassy Style */
+/* --- Insight Panel Redesign --- */
 .insight-panel {
     display: flex; flex-direction: column;
-    padding: 0;
-    border-radius: 16px;
+    padding: 12px; /* Uniform padding */
+    border-radius: 18px; /* Slightly more rounded */
     aspect-ratio: 1 / 1;
-    min-width: 180px;
-    min-height: 250px; /* merged min-height */
+    min-width: 200px; /* Adjusted */
+    min-height: 280px; /* Adjusted */
     box-sizing: border-box;
     background: rgba(140, 140, 145, 0.6);
-    backdrop-filter: blur(30px) saturate(150%);
+    backdrop-filter: blur(35px) saturate(160%); /* Enhanced glassiness */
     border: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2),
-                inset 0 1px 2px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25),
+                inset 0 1px 1px rgba(255, 255, 255, 0.08);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease-out, border-color 0.25s ease, box-shadow 0.25s ease, outline 0.25s ease;
     will-change: transform, opacity;
     outline: 2px solid transparent; outline-offset: -2px;
     position: relative;
     z-index: 1;
-    margin: 10px;
-    overflow: hidden; /* merged */
+    margin: 12px; /* Adjusted margin */
+    overflow: hidden;
+    cursor: grab; /* Default cursor for dragging panel */
+}
+.insight-panel:active {
+    cursor: grabbing;
 }
 
-/* Placeholder & Clone Styles */
+/* Panel Action Buttons (Close, Share, Config Toggle) */
+.panel-action-btn {
+    position: absolute;
+    display: inline-flex; justify-content: center; align-items: center;
+    width: 30px; height: 30px;
+    border: none; border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem; cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+    z-index: 10; /* Ensure they are above other content */
+}
+.panel-action-btn:hover { background-color: rgba(255, 255, 255, 0.22); color: #fff; }
+.panel-action-btn:active { transform: scale(0.92); }
+
+.panel-close-btn { top: 10px; right: 10px; }
+.panel-share-btn { bottom: 10px; right: 10px; }
+.panel-config-toggle-btn { top: 10px; left: 10px; }
+
+/* Configuration Area */
+.panel-config-area {
+    display: flex; /* To align toggle button if placed inside here later */
+    flex-direction: column;
+    position: relative; /* For toggle button positioning if needed */
+    margin-bottom: 10px; /* Space before main content */
+    padding: 0;
+    flex-shrink: 0;
+}
+.panel-config-controls {
+    background: rgba(0,0,0, 0.15);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 5px; /* Space from toggle button */
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+.panel-config-area.open .panel-config-controls {
+    display: flex;
+    max-height: 500px; /* Adjust as needed */
+    opacity: 1;
+}
+.panel-config-toggle-btn i.fa-chevron-down { transform: rotate(0deg); transition: transform 0.3s ease;}
+.panel-config-area.open .panel-config-toggle-btn i.fa-chevron-down { transform: rotate(180deg); }
+
+
+.config-group-selector, .config-time-selector {
+    display: flex; flex-direction: column; gap: 5px;
+}
+.config-group-selector label, .config-time-selector label {
+    font-size: 0.8rem; color: #bbb; font-weight: 500;
+}
+.config-group-selector select,
+.config-time-selector .noUi-target /* Target noUiSlider specifically */ {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e5;
+    font-size: 0.85rem;
+    box-sizing: border-box;
+}
+.config-group-selector select:focus,
+.config-time-selector .noUi-target:focus-within { /* For slider accessibility focus */
+    outline: none;
+    border-color: rgba(0, 123, 255, 0.7);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3);
+}
+
+/* Custom styles for noUiSlider to match glassy UI */
+.time-range-slider-placeholder .noUi-target {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+    height: 10px; /* Slimmer slider */
+}
+.time-range-slider-placeholder .noUi-connect {
+    background: rgba(0, 123, 255, 0.6); /* Semi-transparent blue */
+    box-shadow: none;
+}
+.time-range-slider-placeholder .noUi-handle {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    cursor: grab;
+    right: -9px; top: -5px; /* Adjust positioning */
+}
+.time-range-slider-placeholder .noUi-handle:focus {
+    outline: 2px solid rgba(0, 123, 255, 0.5);
+    outline-offset: 1px;
+}
+.time-range-slider-placeholder .noUi-handle:active { cursor: grabbing; }
+.time-range-slider-placeholder .noUi-tooltip {
+    display: none; /* Or style it if you want tooltips */
+}
+.time-slider-display {
+    font-size: 0.8rem;
+    color: #ccc;
+    text-align: center;
+    margin-top: 8px;
+}
+
+
+/* Main Content Wrapper (Title + Chart/Data) */
+.panel-main-content-wrapper {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* For flex item to shrink properly */
+    overflow: hidden; /* Prevent content from spilling during transitions */
+}
+.panel-dynamic-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 10px 0;
+    padding: 5px 0;
+    text-align: center;
+    white-space: normal; /* Allow wrapping */
+    overflow-wrap: break-word;
+    line-height: 1.3;
+    flex-shrink: 0;
+}
+
+/* Panel Content (Chart Area) - from previous style */
+.panel-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    /* padding: 10px 15px 15px 15px; Remove this as panel has padding now */
+    font-size: 0.9rem;
+    color: #e0e0e5;
+    line-height: 1.5;
+    overflow-y: auto; /* Allow scrolling if content overflows */
+    min-height: 0;
+}
+.panel-content > p {
+    margin-bottom: 10px;
+    flex-shrink: 0;
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: #ccc;
+}
+.panel-content p:last-of-type { margin-bottom: 0; }
+
+.placeholder-chart {
+    flex-grow: 1;
+    position: relative;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.1);
+    border-radius: 8px;
+    color: #aaa;
+    font-size: 0.9em;
+    /* margin-top: 10px; Removed, title handles spacing */
+    padding: 10px;
+    overflow: hidden;
+    pointer-events: none;
+}
+.placeholder-chart img, .placeholder-chart svg, .placeholder-chart ol, .placeholder-chart ul {
+    max-width: 100%; max-height: 100%; object-fit: contain; opacity: 0.7; margin-bottom: 5px;
+}
+.placeholder-chart canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+
+/* Placeholder & Clone Styles (Mostly Unchanged, but ensure z-index for clone) */
 .insight-panel.dragging-placeholder {
     opacity: 0.6; border-color: transparent !important;
     background: rgba(255, 255, 255, 0.1) !important;
@@ -96,81 +280,6 @@
 }
 .insight-panel.dragging-clone * { cursor: grabbing !important; }
 
-/* Panel Content */
-.panel-header { padding: 14px 18px; background-color: rgba(0,0,0, 0.1); border-bottom: 1px solid rgba(255, 255, 255, 0.18); display: flex; justify-content: space-between; align-items: center; cursor: grab; touch-action: none; flex-shrink: 0; border-top-left-radius: 16px; border-top-right-radius: 16px;}
-.panel-header:active { cursor: grabbing; }
-.panel-title { font-size: 1.1rem; font-weight: 600; color: #fff; margin-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.panel-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.panel-action-btn { display: inline-flex; justify-content: center; align-items: center; width: 28px; height: 28px; border: none; border-radius: 50%; background-color: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease; }
-.panel-action-btn i { pointer-events: none; }
-.panel-action-btn:hover { background-color: rgba(255, 255, 255, 0.2); color: #fff; }
-.panel-action-btn:active { transform: scale(0.9); }
-.panel-action-btn.remove-panel-btn:hover { background-color: rgba(220, 53, 69, 0.7); color: #fff; }
-
-.panel-content {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 10px 15px 15px 15px;
-    font-size: 0.9rem;
-    color: #e0e0e5;
-    line-height: 1.5;
-    overflow-y: auto;
-    min-height: 0;
-}
-.panel-content > p {
-    margin-bottom: 10px;
-    flex-shrink: 0;
-    font-size: 0.9em;
-    line-height: 1.4;
-    color: #ccc;
-}
-.panel-content p:last-of-type { margin-bottom: 0; }
-
-/* Chart and List Area */
-.placeholder-chart {
-    flex-grow: 1;
-    position: relative;
-    min-height: 150px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.1);
-    border-radius: 8px;
-    color: #aaa;
-    font-size: 0.9em;
-    margin-top: 10px;
-    padding: 10px;
-    overflow: hidden;
-    pointer-events: none;
-}
-.placeholder-chart img, .placeholder-chart svg, .placeholder-chart ol, .placeholder-chart ul {
-    max-width: 100%; max-height: 100%; object-fit: contain; opacity: 0.7; margin-bottom: 5px;
-}
-.placeholder-chart canvas {
-    max-width: 100%;
-    max-height: 100%;
-}
-
-/* Styling for the list generated by JS (if not using chart) */
-.analysis-data-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    font-size: 0.9em;
-    text-align: left;
-    color: #ddd;
-    max-height: 150px;
-    overflow-y: auto;
-}
-.analysis-data-list li {
-    padding: 3px 0;
-    border-bottom: 1px solid #444;
-}
-.analysis-data-list li:last-child {
-    border-bottom: none;
-}
 
 /* --- Palette - Left Side, Simple Collapse, Corrected Glassy Style --- */
 .analysis-palette {
