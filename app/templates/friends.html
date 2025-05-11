@@ -67,7 +67,8 @@
                                 {% else %}
                                     <!-- This user has not sent a friend request to the current user -->
                                     <form action="{{ url_for('send_friend_request') }}" method="POST" class="inline-form">
-                                        <input type="hidden" name="receiver_username" value="{{ user.username }}">
+                                        {{ forms[user.username].hidden_tag() }}
+                                        {{ forms[user.username].receiver_username(value=user.username) }}
                                         <button type="submit" class="btn btn-primary" 
                                                 {% if user.id in sent_requests %} disabled style="background-color: grey;" {% endif %}>
                                             {% if user.id in sent_requests %} Request Sent {% else %} Send Friend Request {% endif %}

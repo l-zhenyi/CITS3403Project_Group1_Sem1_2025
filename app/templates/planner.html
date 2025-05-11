@@ -79,7 +79,7 @@
                     <img src="{{ url_for('static', filename='img/default-group-avatar.png') }}"
                         alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
                     <span class="active-group-name" id="active-group-name">Select a Group</span>
-                    <button class="icon-button settings-button" aria-label="Group Settings">⚙️</button>
+                    <button class="icon-button settings-button" id="active-group-settings-button" aria-label="Group Settings">⚙️</button> {# Added ID #}
                 </div>
             </div>
             <div class="collage-viewport" id="collage-viewport">
@@ -320,6 +320,56 @@
             </form>
         </div>
     </div> <!-- End of Create Group Modal -->
+
+    <!-- Group Settings Modal -->
+    <div id="group-settings-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content glassy group-settings-modal-content">
+            <button class="modal-close-btn" id="group-settings-modal-close-btn-x" aria-label="Close group settings dialog">×</button>
+            <div class="modal-header">
+                <h2 id="group-settings-modal-title">Group Settings</h2>
+            </div>
+            <form id="group-settings-form">
+                <input type="hidden" id="settings-group-id" name="group_id">
+                <div class="modal-body">
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="edit-group-name">Group Name*</label>
+                            <input type="text" id="edit-group-name" name="name" required class="modal-input">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="edit-group-description">Description</label>
+                            <textarea id="edit-group-description" name="description" rows="3" class="modal-textarea"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Current Members</h4>
+                        <div id="current-members-list-container" class="members-list-scroll-container">
+                            <p class="loading-message">Loading members...</p>
+                            {# Current members populated by JS #}
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Add New Members</h4>
+                        <input type="text" id="settings-modal-friend-search" placeholder="Search friends to add..." class="modal-input friend-search-input">
+                        <div id="settings-modal-friends-to-add-list-container" class="friends-list-scroll-container">
+                            <p class="loading-message">Loading friends...</p>
+                            {# Friends to add list populated by JS #}
+                        </div>
+                    </div>
+                    <div id="group-settings-error-message" class="modal-error-message" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="button secondary" id="group-settings-cancel-btn">Cancel</button>
+                    <button type="submit" class="button primary" id="group-settings-save-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div> <!-- End of Group Settings Modal -->
+
 
     <!-- Day Events Modal (Added here, will be styled to be hidden by default) -->
     <div class="day-events-modal" id="day-events-modal">

@@ -156,7 +156,7 @@ async function handleCreateGroupSubmit(event) {
 
     try {
         const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-        const headers = { 
+        const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         };
@@ -169,7 +169,7 @@ async function handleCreateGroupSubmit(event) {
         const response = await fetch('/api/groups', {
             method: 'POST',
             headers: headers,
-            body: JSON.stringify({ name, description, member_ids }) 
+            body: JSON.stringify({ name, description, member_ids })
         });
 
         if (!response.ok) {
@@ -177,15 +177,16 @@ async function handleCreateGroupSubmit(event) {
             throw new Error(errorData.error || `HTTP error ${response.status}`);
         }
 
-        const newGroup = await response.json(); 
+        const newGroup = await response.json();
         closeCreateGroupModal();
-        await loadGroups(); 
+        await loadGroups(); // Refresh the group list in the sidebar
 
+        // Find the newly added group in the list and click it to make it active
         const groupListUL = document.querySelector('.group-list-area .groups-ul');
         if (groupListUL) {
             const newGroupLi = groupListUL.querySelector(`.group-item[data-group-id="${newGroup.id}"]`);
             if (newGroupLi) {
-                newGroupLi.click(); 
+                newGroupLi.click(); // This will trigger activateGroup in main.js
             }
         }
 
@@ -213,7 +214,7 @@ export function setupCreateGroupModal() {
     friendsListContainer = createGroupModal.querySelector('#modal-friends-list-container');
     createGroupSaveButton = createGroupModal.querySelector('#create-group-save-btn');
     createGroupCancelButton = createGroupModal.querySelector('#create-group-cancel-btn');
-    createGroupModalCloseBtnX = createGroupModal.querySelector('#create-group-modal-close-btn-x'); 
+    createGroupModalCloseBtnX = createGroupModal.querySelector('#create-group-modal-close-btn-x');
     errorMessageElement = createGroupModal.querySelector('#create-group-error-message');
 
     const addNewGroupButton = document.getElementById('add-new-group-button');
@@ -232,7 +233,7 @@ export function setupCreateGroupModal() {
     if (createGroupCancelButton) {
         createGroupCancelButton.addEventListener('click', closeCreateGroupModal);
     }
-    if (createGroupModalCloseBtnX) { 
+    if (createGroupModalCloseBtnX) {
         createGroupModalCloseBtnX.addEventListener('click', closeCreateGroupModal);
     }
 

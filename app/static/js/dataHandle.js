@@ -99,8 +99,8 @@ export async function loadGroups() {
  */
 export async function loadAllUserEventsAndProcess() {
     console.log("Loading all user events...");
-    allEventsData = [];
-    eventsByDate = {};
+    allEventsData = []; // Clear existing allEventsData
+    eventsByDate = {}; // Clear existing eventsByDate
 
     try {
         const response = await fetch('/api/me/all_events'); // GET request, CSRF not strictly needed here
@@ -122,8 +122,8 @@ export async function loadAllUserEventsAndProcess() {
                 date: eventDate, // Store as Date object
                 // group_id and group_name should be part of event.to_dict()
                 // If not, fallback might be needed or error logged
-                group_id: event.group_id,
-                group_name: event.group_name || 'Direct Invite/Other',
+                group_id: event.group_id, // Will be null if not part of a group via node
+                group_name: event.group_name || 'Direct Invite/Other', // Backend should send null if no group
             };
             allEventsData.push(processedEvent);
 
@@ -135,7 +135,7 @@ export async function loadAllUserEventsAndProcess() {
                     group_name: processedEvent.group_name, // Use consistent name
                     id: event.id,
                     // Add any other minimal info needed for calendar popups/tooltips
-                    status: event.current_user_rsvp_status 
+                    status: event.current_user_rsvp_status
                 });
             }
         });
