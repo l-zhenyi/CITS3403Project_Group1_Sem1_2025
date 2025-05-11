@@ -1,6 +1,8 @@
 import unittest
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 import uuid
 from app import app, db
@@ -36,6 +38,7 @@ class AuthTests(unittest.TestCase):
         self.assertIn('Invalid username or password', self.driver.page_source)
 
     def test_register_and_login(self):
+        wait = WebDriverWait(self.driver, 10)
         unique_username = f'user_{uuid.uuid4().hex[:6]}'
         unique_email = f'{unique_username}@example.com'
         password = 'TestPass123'
@@ -48,7 +51,8 @@ class AuthTests(unittest.TestCase):
         self.driver.find_element(By.NAME, 'password2').send_keys(password)
         self.driver.find_element(By.XPATH, "//button[text()='Register']").click()
 
-        # Confirm registration success
+        # Wait for registration success message
+        wait.until(EC.text_to_be_present_in_element((By.TAG_NAME, 'body'), f'Account created for {unique_username}!'))
         self.assertIn(f'Account created for {unique_username}!', self.driver.page_source)
 
         # Login
@@ -57,8 +61,10 @@ class AuthTests(unittest.TestCase):
         self.driver.find_element(By.NAME, 'password').send_keys(password)
         self.driver.find_element(By.NAME, 'submit').click()
 
-        # Confirm login success
-        self.assertIn(f'>Welcome, {unique_username}', self.driver.page_source)
+        # Wait for welcome message
+        welcome_header = wait.until(EC.presence_of_element_located((By.TAG_NAME, 'h1')))
+        self.assertEqual(welcome_header.text, f'Welcome, {unique_username}')
+
         self.assertIn('Logout', self.driver.page_source)
 
 
