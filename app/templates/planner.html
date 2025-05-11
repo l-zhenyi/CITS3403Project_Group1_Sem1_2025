@@ -91,11 +91,6 @@
                 <div class="event-panels-container" id="event-panels-container">
                     <p class="info-message" id="event-collage-placeholder">Select a group to view its event collage.</p>
                 </div>
-                {# Node controls might be better handled by JS if dynamic, or removed if not used currently #}
-                <!-- <div class="node-controls" style="position: absolute; top: 10px; left: 10px; z-index: 100;">
-                    <button id="add-node-btn" class="button accept"
-                        style="padding: 8px 12px; font-size: 0.9em; display: none;">Add Category</button>
-                </div> -->
             </div>
         </section>
 
@@ -161,32 +156,60 @@
             </aside>
             <div class="insights-grid-container" id="insights-grid-container">
                 <div class="insights-grid" id="insights-grid">
-                    {# --- Pre-rendered Insight Panels --- #}
+                    {# --- Pre-rendered Insight Panels (MODIFIED STRUCTURE) --- #}
                     {% if user_panels %}
                     {% for panel in user_panels %}
                     <div class="insight-panel glassy" data-panel-id="{{ panel.id }}"
                         data-analysis-type="{{ panel.analysis_type | e }}"
                         data-configuration="{{ panel.configuration | tojson | safe if panel.configuration else '{}' }}">
 
-                        {# Basic structure for JS to enhance. JS will build the full inner content. #}
-                        {# You can add more static HTML here if desired for no-JS fallback/SEO,
-                        but it must match what createInsightPanelElement in JS builds. #}
-                        <button class="panel-action-btn panel-config-toggle-btn" aria-label="Toggle Configuration"
-                            title="Configure"><i class="fas fa-cog"></i></button>
-                        <button class="panel-action-btn panel-close-btn" aria-label="Remove Analysis" title="Remove"><i
-                                class="fas fa-times"></i></button>
+                        <button class="panel-action-btn panel-config-toggle-btn" aria-label="Toggle Configuration" title="Configure Panel">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="panel-action-btn panel-close-btn" aria-label="Remove Panel" title="Remove Panel">
+                            <i class="fas fa-times"></i>
+                        </button>
 
-                        <div class="panel-main-content-wrapper">
-                            <h3 class="panel-dynamic-title">{{ panel.title | e }}</h3>
-                            <div class="panel-content">
-                                <div class="placeholder-chart">
-                                    {# This placeholder will be replaced by JS based on analysis type #}
-                                    <p>Loading data for {{ panel.title | e }}...</p>
+                        <div class="panel-config-area">
+                            <div class="panel-config-controls">
+                                <div class="config-group-selector">
+                                    <label for="group-select-{{ panel.id }}">Filter by Group:</label>
+                                    <select id="group-select-{{ panel.id }}" name="group_id">
+                                        <option value="all">All My Groups</option>
+                                        {# Options populated by JS #}
+                                    </select>
+                                </div>
+                                <div class="config-time-selector">
+                                    <label for="time-slider-{{ panel.id }}">Filter by Time Period:</label>
+                                    <div id="time-slider-{{ panel.id }}" class="time-range-slider-placeholder"></div>
+                                    <div id="time-slider-display-{{ panel.id }}" class="time-slider-display">Loading range...</div>
                                 </div>
                             </div>
                         </div>
-                        <button class="panel-action-btn panel-share-btn" aria-label="Share Analysis" title="Share"><i
-                                class="fas fa-share-alt"></i></button>
+
+                        <div class="panel-main-content-wrapper">
+                            {# JS will set this title based on analysis_type via getAnalysisDetails or use panel.title if available #}
+                            {# For now, let JS fully control it for consistency during init. Or use panel.title from server if it's preferred. #}
+                            <h3 class="panel-dynamic-title">
+                                {% set analysis_definition = available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first %}
+                                {{ (panel.title or analysis_definition.title if analysis_definition else 'Analysis') | e }}
+                            </h3>
+                            <div class="panel-config-summary">Loading configuration...</div>
+                            <div class="panel-content">
+                                <div class="placeholder-chart">
+                                    {# JS will set specific placeholder HTML based on analysis_type #}
+                                    {% if analysis_definition and analysis_definition.placeholder_html %}
+                                        {{ analysis_definition.placeholder_html | safe }}
+                                    {% else %}
+                                        <div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="panel-action-btn panel-share-btn" aria-label="Share Panel" title="Share Panel">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
                     </div>
                     {% endfor %}
                     {% endif %}
@@ -495,8 +518,6 @@
     </div>
 </main>
 
-{# Custom context menu is now dynamically created by JS if needed #}
-{# <div id="custom-context-menu" class="context-menu" style="display: none;"></div> #}
 {% endblock %}
 
 {% block scripts %}
@@ -512,7 +533,6 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 {# Your custom JavaScript files (ensure main.js is last or after its dependencies) #}
-{# Make sure these paths are correct and files exist #}
 <script type="module" src="{{ url_for('static', filename='js/dataHandle.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/viewportManager.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/orbitLayoutDOM.js') }}"></script>
