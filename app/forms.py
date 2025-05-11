@@ -73,3 +73,7 @@ class HandleFriendRequestForm(FlaskForm):
     accept = SubmitField('Accept')
     reject = SubmitField('Reject')
     receiver_username = HiddenField()
+
+class AddMemberForm(FlaskForm):
+    username = StringField('Friend Username', validators=[DataRequired()])
+    submit = SubmitField('Add to Group')
