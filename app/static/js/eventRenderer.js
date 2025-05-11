@@ -1,4 +1,4 @@
-// --- START OF FILE eventRenderer.js ---
+// --- START OF FILE static/js/eventRenderer.js ---
 // REVISED: Export layoutInstances
 
 // eventRenderer.js
@@ -22,6 +22,27 @@ let dayEventsModalEl = null;
 let dayEventsModalTitleEl = null;
 let dayEventsModalListEl = null;
 let dayEventsModalCloseBtn = null;
+
+// --- Context Menu Element (Module Scope) ---
+let contextMenuInstance = null;
+
+// --- Click Outside Handler for Context Menu (Module Scope Function) ---
+function handleClickOutsideContextMenu(event) {
+    if (contextMenuInstance && contextMenuInstance.style.display === 'block') {
+        if (!contextMenuInstance.contains(event.target)) {
+            hideContextMenu(); // Call a dedicated hide function
+        }
+    }
+}
+
+// --- Helper Function to Hide Context Menu and Remove Listener ---
+function hideContextMenu() {
+    if (contextMenuInstance) {
+        contextMenuInstance.style.display = 'none';
+        document.removeEventListener('click', handleClickOutsideContextMenu, true);
+    }
+}
+
 
 // --- Helper: Format Event Time for Day Modal ---
 /**
@@ -588,14 +609,24 @@ export function renderCalendar(year, month) {
 
 // --- Context Menu Logic ---
 function createContextMenuElement() {
-    let menu = document.getElementById('custom-context-menu');
-    if (!menu) {
-        menu = document.createElement('div');
-        menu.id = 'custom-context-menu';
-        menu.className = 'context-menu';
-        document.body.appendChild(menu);
+    if (!contextMenuInstance) {
+        contextMenuInstance = document.getElementById('custom-context-menu');
+        if (!contextMenuInstance) {
+            contextMenuInstance = document.createElement('div');
+            contextMenuInstance.id = 'custom-context-menu';
+            contextMenuInstance.className = 'context-menu';
+            document.body.appendChild(contextMenuInstance);
+        }
+        // Stop propagation for mousedown inside the menu to prevent immediate closure
+        // by the document's 'click' listener if the 'click' event for the menu itself
+        // is what we are trying to prevent from closing it.
+        // However, individual options already stop propagation on 'click'.
+        // This helps if user clicks menu padding.
+        contextMenuInstance.addEventListener('mousedown', (e) => {
+             e.stopPropagation();
+        });
     }
-    return menu;
+    return contextMenuInstance;
 }
 
 async function handleContextAction(label, x, y, id, elementType) {
@@ -637,18 +668,27 @@ export function showContextMenu({ x, y, type, id }) {
         'canvas': ['Create Node']
     };
     const options = optionsMap[type] || [];
-    if (options.length === 0) { menu.style.display = 'none'; return; }
+    if (options.length === 0) { hideContextMenu(); return; }
+
     options.forEach(label => {
         const option = document.createElement('div');
         option.className = 'context-menu-option';
         option.textContent = label;
-        option.onclick = (e) => {
-            e.stopPropagation(); menu.style.display = 'none';
+        option.onclick = (e) => { // Clicks on options will hide the menu
+            e.stopPropagation(); 
+            hideContextMenu(); // Use dedicated hide function
             handleContextAction(label, x, y, id, type);
         };
         menu.appendChild(option);
     });
     menu.style.left = `${x + 2}px`; menu.style.top = `${y + 2}px`; menu.style.display = 'block';
+
+    // Add the document click listener for "click outside"
+    // Use setTimeout to allow the current event cycle (contextmenu) to complete
+    // before attaching the listener. This prevents it from firing immediately.
+    setTimeout(() => {
+        document.addEventListener('click', handleClickOutsideContextMenu, true);
+    }, 0);
 }
 
 // --- CRUD Actions (Called by Context Menu Handler) ---
@@ -848,9 +888,9 @@ let isOutsideClickListenerActive = false;
 function handleOutsideClick(event) {
     const clickedPanel = event.target.closest('.event-panel');
     const clickedNode = event.target.closest('.event-node');
-    const clickedContextMenu = event.target.closest('.context-menu');
+    // Context menu "click outside" is now handled by its own dynamic listener
 
-    if (!clickedPanel && !clickedNode && !clickedContextMenu) {
+    if (!clickedPanel && !clickedNode) {
         layoutInstances.forEach(instance => {
             instance.unclickActivePanel();
         });
@@ -859,15 +899,19 @@ function handleOutsideClick(event) {
 
 function addOutsideClickListener() {
     if (!isOutsideClickListenerActive && collageViewport) {
-        document.addEventListener('click', handleOutsideClick, { capture: false });
+        document.addEventListener('mousedown', handleOutsideClick, { capture: false });
         isOutsideClickListenerActive = true;
     }
 }
 
 function removeOutsideClickListener() {
     if (isOutsideClickListenerActive) {
-        document.removeEventListener('click', handleOutsideClick, { capture: false });
+        document.removeEventListener('mousedown', handleOutsideClick, { capture: false });
         isOutsideClickListenerActive = false;
     }
 }
+
+// REMOVED the persistent global document click listener for context menu from here.
+// It's now managed dynamically by showContextMenu and hideContextMenu.
+
 // --- END OF FILE eventRenderer.js ---
