@@ -99,7 +99,7 @@ export function switchView(viewName) {
                  if (group) {
                       const activeGroupNameEl = document.getElementById('active-group-name');
                       const activeGroupAvatarEl = document.getElementById('active-group-avatar');
-                      if (activeGroupNameEl) activeGroupNameEl.textContent = `${group.name} Events`;
+                      if (activeGroupNameEl) activeGroupNameEl.textContent = group.name;
                       if (activeGroupAvatarEl) activeGroupAvatarEl.src = group.avatar_url || '/static/img/default-group-avatar.png';
                  }
                  renderGroupEvents(targetGroupId);

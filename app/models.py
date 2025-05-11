@@ -1,4 +1,4 @@
-# --- START OF FILE models.py ---
+# --- START OF FILE app/models.py ---
 
 from app import db, login
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -167,47 +167,54 @@ class Group(db.Model):
         back_populates="group", cascade="all, delete-orphan"
     )
 
-    # +++ NEW: Define owner_id for clearer ownership +++
     owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user.id"), nullable=True)
     owner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id])
 
+    # --- NEW PERMISSION FIELDS ---
+    allow_member_edit_name: Mapped[bool] = mapped_column(default=False, nullable=False)
+    allow_member_edit_description: Mapped[bool] = mapped_column(default=False, nullable=False)
+    allow_member_manage_members: Mapped[bool] = mapped_column(default=False, nullable=False)
+    # --- END NEW PERMISSION FIELDS ---
 
     @property
     def avatar(self, size=128): # This property should likely just return self.avatar_url or default
         return self.avatar_url if self.avatar_url else f'https://www.gravatar.com/avatar/{md5(str(self.id).lower().encode("utf-8")).hexdigest()}?d=identicon&s={size}'
 
 
-    # +++ MODIFIED to_dict METHOD +++
-    def to_dict(self, include_nodes=True, include_members=False): # Added include_members
+    def to_dict(self, include_nodes=True, include_members=False, current_user_id_param=None):
         data = {
             "id": self.id,
             "name": self.name,
-            "avatar_url": self.avatar_url or url_for('static', filename='img/default-group-avatar.png'), # Use direct or default
-            "description": self.about, # Changed 'about' to 'description' for frontend consistency
-            "owner_id": self.owner_id # Include owner_id
+            "avatar_url": self.avatar_url or url_for('static', filename='img/default-group-avatar.png'),
+            "description": self.about,
+            "owner_id": self.owner_id,
+            # --- INCLUDE NEW PERMISSIONS ---
+            "allow_member_edit_name": self.allow_member_edit_name,
+            "allow_member_edit_description": self.allow_member_edit_description,
+            "allow_member_manage_members": self.allow_member_manage_members,
+            "is_current_user_owner": False # Default
         }
+        if current_user_id_param is not None and self.owner_id == current_user_id_param:
+            data["is_current_user_owner"] = True
+        # --- END INCLUDE NEW PERMISSIONS ---
 
         if include_nodes:
-            data["nodes"] = [node.to_dict(include_events=False) for node in self.nodes] # Typically don't need events here
+            data["nodes"] = [node.to_dict(include_events=False) for node in self.nodes]
 
         if include_members:
             data['members'] = []
-            # Ensure members are loaded if lazy='dynamic'. If lazy='joined' or default, they are likely already loaded.
-            # If self.members is a query, use .all()
             members_list = self.members if not hasattr(self.members, 'all') else self.members.all()
             for member_assoc in members_list:
                 member_user = member_assoc.user
                 if member_user:
+                    # Use the is_current_user_owner determined above for the group owner,
+                    # then check member_assoc.is_owner for individual member ownership (though this is less common if group has one owner)
                     is_owner_flag = (self.owner_id == member_user.id) if self.owner_id else False
-                    # A simpler owner check if you made the first member the owner during creation:
-                    # if not self.owner_id and self.members and self.members[0].user_id == member_user.id:
-                    #    is_owner_flag = True
-
                     data['members'].append({
-                        'user_id': member_user.id, # Changed from 'id' to 'user_id' for clarity
+                        'user_id': member_user.id,
                         'username': member_user.username,
                         'avatar_url': member_user.avatar(40),
-                        'is_owner': is_owner_flag
+                        'is_owner': is_owner_flag # This reflects if THIS member is THE group owner
                     })
         return data
 
@@ -386,6 +393,4 @@ class InsightPanel(db.Model):
 
     def __repr__(self):
         return f"<InsightPanel {self.id} (User: {self.user_id}, Type: {self.analysis_type}, Order: {self.display_order})>"
-
-
-# --- END OF FILE models.py ---
+# --- END OF FILE app/models.py ---

@@ -1,4 +1,4 @@
-# --- START OF FILE routes.py ---
+# --- START OF FILE app/routes.py ---
 
 from flask import render_template, redirect, url_for, flash, request, session, jsonify, abort
 from app import app, db
@@ -533,7 +533,7 @@ def get_groups():
     # Given Group.members is lazy="joined" in model, this should be fine.
 
     user_groups = db.session.scalars(groups_query).unique().all() # +++ ADDED .unique() +++
-    group_data = [g.to_dict(include_nodes=False, include_members=False) for g in user_groups] # Default no members for list view
+    group_data = [g.to_dict(include_nodes=False, include_members=False, current_user_id_param=current_user.id) for g in user_groups] # Default no members for list view
     return jsonify(group_data)
 
 
@@ -608,10 +608,9 @@ def create_group_api():
          app.logger.error(f"Failed to re-fetch group {group.id} after creation.")
          return jsonify({"error": "Group created but could not retrieve details for response."}), 500
 
-    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True)), 201
+    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True, current_user_id_param=current_user.id)), 201
 
 
-# +++ MODIFIED GROUP DETAIL ENDPOINT (GET /api/groups/<id>) +++
 @app.route("/api/groups/<int:group_id>", methods=["GET"])
 @login_required
 @require_group_member 
@@ -628,10 +627,10 @@ def get_group_detail(group_id):
     if not group:
         return jsonify({"error": "Group not found"}), 404
 
-    return jsonify(group.to_dict(include_nodes=False, include_members=include_members))
+    # --- PASS current_user.id to to_dict ---
+    return jsonify(group.to_dict(include_nodes=False, include_members=include_members, current_user_id_param=current_user.id))
 
 
-# +++ NEW: GROUP UPDATE ENDPOINT (PATCH /api/groups/<id>) +++
 @app.route("/api/groups/<int:group_id>", methods=["PATCH"])
 @login_required
 @require_group_member 
@@ -641,6 +640,7 @@ def update_group_details(group_id):
         return jsonify({"error": "Group not found"}), 404
 
     # Authorization check (e.g., owner)
+    # This check protects all fields being updated, including the new permission flags.
     if group.owner_id != current_user.id:
         return jsonify({"error": "Only the group owner can modify group settings."}), 403
 
@@ -648,7 +648,6 @@ def update_group_details(group_id):
     updated_fields_count = 0
 
     if "name" in data:
-        # ... (name update logic) ...
         new_name = data["name"].strip()
         if not new_name:
             return jsonify({"error": "Group name cannot be empty"}), 400
@@ -657,26 +656,31 @@ def update_group_details(group_id):
             updated_fields_count += 1
 
     if "description" in data:
-        # ... (description update logic) ...
         new_description = data["description"].strip()
         if new_description != group.about:
             group.about = new_description
             updated_fields_count += 1
     
-    # Logic for adding members
+    # --- UPDATE PERMISSION FLAGS ---
+    if "allow_member_edit_name" in data:
+        if group.allow_member_edit_name != bool(data["allow_member_edit_name"]):
+            group.allow_member_edit_name = bool(data["allow_member_edit_name"])
+            updated_fields_count += 1
+    if "allow_member_edit_description" in data:
+        if group.allow_member_edit_description != bool(data["allow_member_edit_description"]):
+            group.allow_member_edit_description = bool(data["allow_member_edit_description"])
+            updated_fields_count += 1
+    if "allow_member_manage_members" in data:
+        if group.allow_member_manage_members != bool(data["allow_member_manage_members"]):
+            group.allow_member_manage_members = bool(data["allow_member_manage_members"])
+            updated_fields_count += 1
+    # --- END UPDATE PERMISSION FLAGS ---
+    
+    # Logic for adding members (remains owner-restricted in this endpoint)
     if "add_member_ids" in data and isinstance(data["add_member_ids"], list):
         member_ids_to_add = [int(mid) for mid in data["add_member_ids"] if isinstance(mid, (int, str)) and str(mid).isdigit()]
         
-        # Fetch current member IDs more efficiently if group.members is already loaded or by query
-        # If group.members is lazy="joined", it should be loaded.
-        # Otherwise, query:
-        # existing_member_ids_in_group_q = db.session.scalars(
-        #     db.select(GroupMember.user_id).filter_by(group_id=group.id)
-        # ).all()
-        # existing_member_ids_in_group = set(existing_member_ids_in_group_q)
-
         existing_member_ids_in_group = {gm.user_id for gm in group.members}
-
 
         for user_id_to_add in member_ids_to_add:
             if user_id_to_add == current_user.id or user_id_to_add in existing_member_ids_in_group:
@@ -687,13 +691,8 @@ def update_group_details(group_id):
                 app.logger.warning(f"Attempt to add non-existent user {user_id_to_add} to group {group_id}")
                 continue
             
-            # Optional: Check if friends, etc.
-            # if not current_user.is_friend(user_to_add_obj):
-            #     app.logger.warning(f"User {current_user.id} tried to add non-friend {user_id_to_add_obj.username} to group {group_id}")
-            #     continue
-
             new_member = GroupMember(group_id=group.id, user_id=user_id_to_add, is_owner=False)
-            db.session.add(new_member) # Add to session, will be part of the commit
+            db.session.add(new_member)
             updated_fields_count += 1
             app.logger.info(f"User {user_id_to_add} queued for addition to group {group_id} by {current_user.username}")
 
@@ -706,7 +705,6 @@ def update_group_details(group_id):
             app.logger.error(f"Error updating group {group_id}: {e}")
             return jsonify({"error": "Failed to save group changes."}), 500
     
-    # Re-fetch for the response to ensure all changes (especially new members) are reflected
     group_for_response = db.session.query(Group).options(
         joinedload(Group.owner),
         joinedload(Group.members).joinedload(GroupMember.user)
@@ -714,10 +712,10 @@ def update_group_details(group_id):
 
     if not group_for_response:
          app.logger.error(f"Failed to re-fetch group {group_id} after update.")
-         # group might have been deleted by another request, or other rare conditions
          return jsonify({"error": "Group details could not be retrieved after update."}), 500
          
-    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True))
+    # --- PASS current_user.id to to_dict for the response ---
+    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True, current_user_id_param=current_user.id))
 
 
 @app.route("/api/groups/<int:group_id>/nodes", methods=["GET"])
@@ -1509,5 +1507,4 @@ def get_all_my_events():
 
     events_data = [event.to_dict(current_user_id=user_id) for event in sorted_events]
     return jsonify(events_data)
-
-# --- END OF FILE routes.py ---
+# --- END OF FILE app/routes.py ---

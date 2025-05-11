@@ -344,6 +344,25 @@
                         </div>
                     </div>
 
+                    <!-- +++ START: NEW MEMBER PERMISSIONS SECTION +++ -->
+                    <div class="form-section permissions-section" style="display: none;"> {# Hidden by default, JS will show if owner #}
+                        <h4>Member Permissions <small>(Owner only)</small></h4>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-edit-name" name="allow_edit_name" class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-edit-name">Allow members to edit group name</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-edit-description" name="allow_edit_description" class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-edit-description">Allow members to edit group description</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-manage-members" name="allow_manage_members" class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-manage-members">Allow members to add/remove other members</label>
+                        </div>
+                    </div>
+                    <!-- +++ END: NEW MEMBER PERMISSIONS SECTION +++ -->
+
+
                     <div class="form-section">
                         <h4>Current Members</h4>
                         <div id="current-members-list-container" class="members-list-scroll-container">
@@ -352,14 +371,20 @@
                         </div>
                     </div>
 
-                    <div class="form-section">
+                    <!-- +++ WRAPPED "Add New Members" section for easier disabling +++ -->
+                    <div id="add-members-section-wrapper" class="form-section">
                         <h4>Add New Members</h4>
-                        <input type="text" id="settings-modal-friend-search" placeholder="Search friends to add..." class="modal-input friend-search-input">
+                        <div class="form-group"> {# Moved label inside form-group for consistency #}
+                             <label for="settings-modal-friend-search">Search Friends to Add</label>
+                             <input type="text" id="settings-modal-friend-search" placeholder="Search friends to add..." class="modal-input friend-search-input">
+                        </div>
                         <div id="settings-modal-friends-to-add-list-container" class="friends-list-scroll-container">
                             <p class="loading-message">Loading friends...</p>
                             {# Friends to add list populated by JS #}
                         </div>
                     </div>
+                    <!-- +++ END WRAPPER +++ -->
+
                     <div id="group-settings-error-message" class="modal-error-message" style="display: none;"></div>
                 </div>
                 <div class="modal-footer">
