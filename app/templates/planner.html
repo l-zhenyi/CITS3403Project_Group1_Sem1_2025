@@ -1,5 +1,3 @@
-{# --- START OF FILE planner.html --- #}
-
 {% extends "base.html" %}
 
 {% block head %}
@@ -159,9 +157,11 @@
                     {# --- Pre-rendered Insight Panels (MODIFIED STRUCTURE) --- #}
                     {% if user_panels %}
                     {% for panel in user_panels %}
-                    <div class="insight-panel glassy" data-panel-id="{{ panel.id }}"
+                    <div class="insight-panel glassy"
+                        data-panel-id="{{ panel.id }}"
                         data-analysis-type="{{ panel.analysis_type | e }}"
-                        data-configuration="{{ panel.configuration | tojson | safe if panel.configuration else '{}' }}">
+                        data-configuration="{{ panel.configuration | tojson | safe if panel.configuration else '{}' }}"
+                        data-title="{{ (panel.title or (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first).title if (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first) else 'Analysis') | e }}">
 
                         <button class="panel-action-btn panel-config-toggle-btn" aria-label="Toggle Configuration" title="Configure Panel">
                             <i class="fas fa-cog"></i>
@@ -188,21 +188,15 @@
                         </div>
 
                         <div class="panel-main-content-wrapper">
-                            {# JS will set this title based on analysis_type via getAnalysisDetails or use panel.title if available #}
-                            {# For now, let JS fully control it for consistency during init. Or use panel.title from server if it's preferred. #}
                             <h3 class="panel-dynamic-title">
-                                {% set analysis_definition = available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first %}
-                                {{ (panel.title or analysis_definition.title if analysis_definition else 'Analysis') | e }}
+                                {# Title will be set by JS from data-title or defaults for consistency #}
+                                {{ (panel.title or (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first).title if (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first) else 'Analysis') | e }}
                             </h3>
                             <div class="panel-config-summary">Loading configuration...</div>
                             <div class="panel-content">
                                 <div class="placeholder-chart">
-                                    {# JS will set specific placeholder HTML based on analysis_type #}
-                                    {% if analysis_definition and analysis_definition.placeholder_html %}
-                                        {{ analysis_definition.placeholder_html | safe }}
-                                    {% else %}
-                                        <div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>
-                                    {% endif %}
+                                    {# JS will set specific placeholder HTML based on analysis_type for consistency #}
+                                    <div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>
                                 </div>
                             </div>
                         </div>
@@ -547,4 +541,3 @@
 <script type="module" src="{{ url_for('static', filename='js/insightsManager.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}
-{# --- END OF FILE planner.html --- #}
