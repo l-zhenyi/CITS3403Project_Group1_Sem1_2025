@@ -31,9 +31,10 @@
                                         <span>{{ friend.username }}</span>
                                     </a>
                                     <form action="{{ url_for('add_members', group_id=group.id) }}" method="POST" class="inline-form">
-                                        <input type="hidden" name="username" value="{{ friend.username }}">
-                                        <button type="submit" class="btn-add">Add to Group</button>
-                                    </form>
+                                    {{ form.hidden_tag() }}
+                                    <input type="hidden" name="username" value="{{ friend.username }}">
+                                    <button type="submit" class="btn-add">Add to Group</button>
+                                </form>
                                 </li>
                             {% endif %}
                         {% endfor %}
@@ -45,14 +46,7 @@
         </div>
     </div>
 
-    <div class="manual-add">
-        <h3>Add by Username</h3>
-        <p>Don't see the person you're looking for? Add them directly by username:</p>
-        <form method="post" class="manual-add-form">
-            <input type="text" name="username" class="search-bar" placeholder="Enter username to add" required>
-            <button type="submit" class="btn-add">Add Member</button>
-        </form>
-    </div>
+
 
     <div class="back-button">
         <a href="{{ url_for('view_group', group_id=group.id) }}" class="btn btn-secondary">Back to Group</a>
