@@ -1,4 +1,4 @@
-// --- START OF FILE modalManager.js ---
+// --- START OF FILE static/js/modalManager.js ---
 
 // --- Date Formatting Helper ---
 function formatEventDateForDisplay(date) {
@@ -13,29 +13,63 @@ function formatEventDateForDisplay(date) {
 }
 
 // --- Cost Parsing and Formatting Helper ---
-function parseAndFormatCost(inputText) {
+export function parseAndFormatCost(inputText) {
     const text = String(inputText || '').trim();
     let original_input_text = text;
     let cost_display_standardized = text;
     let cost_value = null;
+    let is_split_cost = false; // NEW flag
+
     const lowerText = text.toLowerCase();
     const freeKeywords = ['free', 'free entry', 'no cost', '0', '0.0', '0.00'];
     const donationKeywords = ['donation', 'by donation', 'donations welcome', 'pay what you can', 'pwyc'];
     const otherSpecialKeywords = { 'varies': 'Varies', 'tbd': 'TBD', 'contact for price': 'Contact for Price', 'see description': 'See Description' };
-    if (freeKeywords.includes(lowerText)) { cost_display_standardized = 'Free'; cost_value = 0.0; }
-    else if (donationKeywords.includes(lowerText)) { cost_display_standardized = 'By Donation'; cost_value = null; }
-    else if (otherSpecialKeywords[lowerText]) { cost_display_standardized = otherSpecialKeywords[lowerText]; cost_value = null; }
-    else {
+
+    // Regex to detect split costs, e.g., "split $20", "$50 total split", "100 to split"
+    // It captures the amount if present.
+    const splitRegex = /(?:split\s*\$?(\d+(?:\.\d{1,2})?)|(?:\$?(\d+(?:\.\d{1,2})?)\s*(?:total\s*)?split))/i;
+    const splitMatch = lowerText.match(splitRegex);
+
+    if (splitMatch) {
+        is_split_cost = true;
+        const amountInSplit = splitMatch[1] || splitMatch[2]; // Get the captured amount
+        if (amountInSplit) {
+            const numericAmount = parseFloat(amountInSplit);
+            if (!isNaN(numericAmount)) {
+                cost_value = numericAmount;
+                cost_display_standardized = `$${cost_value.toFixed(2)} (Split)`;
+            } else {
+                // If "split" is mentioned but amount is not parseable, treat as "Split Cost (TBD)"
+                cost_display_standardized = "Split Cost (Amount TBD)";
+                cost_value = null;
+            }
+        } else {
+            // If "split" is mentioned without a clear amount
+            cost_display_standardized = "Split Cost";
+            cost_value = null;
+        }
+    } else if (freeKeywords.includes(lowerText)) {
+        cost_display_standardized = 'Free'; cost_value = 0.0;
+    } else if (donationKeywords.includes(lowerText)) {
+        cost_display_standardized = 'By Donation'; cost_value = null;
+    } else if (otherSpecialKeywords[lowerText]) {
+        cost_display_standardized = otherSpecialKeywords[lowerText]; cost_value = null;
+    } else {
         let numericString = lowerText.replace(/(usd|eur|gbp|jpy|aud|cad)/gi, '').replace(/\s*(per person|pp)\s*/gi, '').replace(/[$,€£¥₹]/g, '');
         const centsMatch = numericString.match(/^(\d+)\s*(c|cent|cents)$/);
         let potentialNumber;
         if (centsMatch) { const cents = parseInt(centsMatch[1], 10); if (!isNaN(cents)) potentialNumber = cents / 100.0; }
         else { potentialNumber = parseFloat(numericString.replace(/,/g, '')); }
-        if (!isNaN(potentialNumber) && potentialNumber !== null) { cost_value = potentialNumber; cost_display_standardized = cost_value === 0 ? 'Free' : `$${cost_value.toFixed(2)}`; }
-        else { cost_display_standardized = original_input_text; cost_value = null; }
+        if (!isNaN(potentialNumber) && potentialNumber !== null) {
+            cost_value = potentialNumber;
+            cost_display_standardized = cost_value === 0 ? 'Free' : `$${cost_value.toFixed(2)}`;
+        } else {
+            cost_display_standardized = original_input_text; cost_value = null;
+        }
     }
-    return { original_input_text, cost_display_standardized, cost_value };
+    return { original_input_text, cost_display_standardized, cost_value, is_split_cost }; // Return new flag
 }
+
 
 // --- Location Options & Map Configuration ---
 const AVAILABLE_LOCATIONS_DATA = [
@@ -58,12 +92,16 @@ let modalElement, modalContent, closeButton, modalEventImage, modalEventTitle,
     modalEventDescription, modalDescriptionWrapper,
     modalRsvpControls, rsvpButtons = [], rsvpConfirmationMessage,
     clearRsvpButton, modalAttendeeList, modalAttendeeCount, attendeeListContainer,
-    attendeeListMessage, attendeeLoadingIndicator;
+    attendeeListMessage, attendeeLoadingIndicator,
+    // NEW: Event Permission Elements
+    eventPermissionsSection, eventAllowOthersEditTitleCheckbox, eventAllowOthersEditDetailsCheckbox;
+
 
 let currentEventId = null;
-let isInitialized = false; // <<<<------ THIS IS WHERE IT'S DEFINED
+let isInitialized = false; 
 let activeEditField = null;
 let geocodeTimeout = null;
+let currentEventDataForModal = null; // Store full event data for permission checks
 
 
 function _initializeModalElements() {
@@ -89,10 +127,16 @@ function _initializeModalElements() {
     attendeeListMessage = modalElement.querySelector('#attendee-list-message');
     attendeeLoadingIndicator = modalElement.querySelector('#attendee-loading-indicator');
 
-    if (!modalContent || !closeButton || !modalEventTitle || !modalDescriptionWrapper || !modalEventDescription || !modalRsvpControls || !modalAttendeeList) {
-        console.error("One or more essential modal sub-elements not found!"); return false;
+    // Initialize Event Permission Elements
+    eventPermissionsSection = modalElement.querySelector('#event-permissions-section');
+    eventAllowOthersEditTitleCheckbox = modalElement.querySelector('#event-allow-others-edit-title');
+    eventAllowOthersEditDetailsCheckbox = modalElement.querySelector('#event-allow-others-edit-details');
+
+
+    if (!modalContent || !closeButton || !modalEventTitle || !modalDescriptionWrapper || !modalEventDescription || !modalRsvpControls || !modalAttendeeList || !eventPermissionsSection) {
+        console.error("One or more essential modal sub-elements (including event permissions section) not found!"); return false;
     }
-    isInitialized = true; // Set to true once elements are found
+    isInitialized = true; 
     return true;
 }
 
@@ -100,6 +144,7 @@ function _resetModal() {
     if (!isInitialized) return;
     if (activeEditField && activeEditField.cancelChanges) activeEditField.cancelChanges(true);
     activeEditField = null;
+    currentEventDataForModal = null;
 
     const editableFields = modalElement.querySelectorAll('.editable-field');
     editableFields.forEach(field => {
@@ -121,6 +166,7 @@ function _resetModal() {
         }
 
         field.classList.remove('is-editing-field', 'editable-field');
+        field.classList.remove('field-disabled-for-user'); // NEW: remove disabled visual
         if (field.clickHandler) {
             field.removeEventListener('click', field.clickHandler);
             delete field.clickHandler;
@@ -151,6 +197,13 @@ function _resetModal() {
     if (attendeeListMessage) attendeeListMessage.style.display = 'none';
     if (attendeeLoadingIndicator) attendeeLoadingIndicator.style.display = 'none';
     if (rsvpConfirmationMessage) { rsvpConfirmationMessage.style.display = 'none'; rsvpConfirmationMessage.textContent = ''; rsvpConfirmationMessage.style.color = ''; }
+    
+    // Reset event permission checkboxes
+    if (eventPermissionsSection) eventPermissionsSection.style.display = 'none';
+    if (eventAllowOthersEditTitleCheckbox) { eventAllowOthersEditTitleCheckbox.checked = false; eventAllowOthersEditTitleCheckbox.disabled = true;}
+    if (eventAllowOthersEditDetailsCheckbox) { eventAllowOthersEditDetailsCheckbox.checked = false; eventAllowOthersEditDetailsCheckbox.disabled = true;}
+
+
     _updateRSVPButtonState(null);
     currentEventId = null;
 }
@@ -234,8 +287,26 @@ async function _fetchEventDetails(eventId) {
 }
 
 // --- EDITABLE FIELD LOGIC ---
-function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, config = {}) {
-    if (!targetElement || targetElement.dataset.isEditing === 'true') return;
+// Config now includes 'canEditField' boolean, determined by caller
+function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, config = {}, canEditField = true) {
+    if (!targetElement) return;
+    if (targetElement.dataset.isEditing === 'true') return; // Already editing this one
+
+    // If field cannot be edited by current user, apply disabled style and prevent making it editable
+    if (!canEditField) {
+        targetElement.classList.add('field-disabled-for-user');
+        targetElement.style.cursor = 'default';
+        // Remove any pre-existing click handler to prevent edit mode
+        if (targetElement.clickHandler) {
+            targetElement.removeEventListener('click', targetElement.clickHandler);
+            delete targetElement.clickHandler;
+        }
+        return; // Do not proceed to make it editable
+    }
+    // If it *can* be edited, ensure disabled style is removed
+    targetElement.classList.remove('field-disabled-for-user');
+    targetElement.style.cursor = 'pointer';
+
 
     const inputType = config.inputType || 'text';
     const originalDisplayIsHTML = config.isHTML || false;
@@ -257,6 +328,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
         targetElement.dataset.originalContentForReset = initialData.standardized_display || '';
         targetElement.dataset.currentDisplayValue = initialData.raw_input_for_field || '';
         targetElement.dataset.currentNumericValue = initialData.value === null || initialData.value === undefined ? '' : String(initialData.value);
+        targetElement.dataset.isSplitCost = initialData.is_split_cost ? 'true' : 'false'; // Store is_split_cost
     } else if (apiFieldNameOrMode === 'location') {
         targetElement.dataset.originalContentForReset = initialData.text || 'Not specified';
         if (initialData.coordinates) targetElement.dataset.currentCoordinates = initialData.coordinates;
@@ -314,7 +386,8 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                 const parsed = parseAndFormatCost(costInput.value);
                 let numericValDisplay = parsed.cost_value === null || parsed.cost_value === undefined ? '<em>Not set</em>' : String(parsed.cost_value);
                 if (typeof parsed.cost_value === 'number') numericValDisplay = `<strong>${parsed.cost_value.toFixed(2)}</strong>`;
-                costInterpretationHelper.innerHTML = `Interpreted: Display as "<strong>${parsed.cost_display_standardized}</strong>", Value as ${numericValDisplay}`;
+                let splitText = parsed.is_split_cost ? " (Cost to be split)" : "";
+                costInterpretationHelper.innerHTML = `Interpreted: Display as "<strong>${parsed.cost_display_standardized}</strong>"${splitText}, Value as ${numericValDisplay}`;
                 const targetRect = targetElement.getBoundingClientRect();
                 costInterpretationHelper.style.position = 'fixed';
                 costInterpretationHelper.style.boxSizing = 'border-box';
@@ -501,11 +574,13 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             let finalDisplayToShow;
 
             if (savedDataFromServer) {
+                currentEventDataForModal = savedDataFromServer; // Update the modal's copy of event data
                 if (currentEditMode === 'cost') {
                     finalDisplayToShow = savedDataFromServer.cost_display || '';
                     targetElement.dataset.originalContentForReset = finalDisplayToShow;
                     targetElement.dataset.currentDisplayValue = savedDataFromServer.original_input_text || inputElementForDirtyCheckAndSave.value;
                     targetElement.dataset.currentNumericValue = savedDataFromServer.cost_value === null || savedDataFromServer.cost_value === undefined ? '' : String(savedDataFromServer.cost_value);
+                    targetElement.dataset.isSplitCost = savedDataFromServer.is_cost_split ? 'true' : 'false';
                 } else if (currentEditMode === 'date') {
                     finalDisplayToShow = formatEventDateForDisplay(new Date(savedDataFromServer.date));
                     targetElement.dataset.originalContentForReset = finalDisplayToShow;
@@ -517,7 +592,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                     else delete targetElement.dataset.currentCoordinates;
                     if (savedDataFromServer.location_key) targetElement.dataset.currentPredefinedKey = savedDataFromServer.location_key;
                     else delete targetElement.dataset.currentPredefinedKey;
-                } else {
+                } else { // title, description
                     finalDisplayToShow = savedDataFromServer[currentEditMode] || '';
                     targetElement.dataset.originalContentForReset = finalDisplayToShow;
                     targetElement.dataset.currentDataValue = finalDisplayToShow;
@@ -563,7 +638,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                 const parsedForSave = parseAndFormatCost(inputElementForDirtyCheckAndSave.value);
                 payload.cost_display = parsedForSave.cost_display_standardized;
                 payload.cost_value = parsedForSave.cost_value;
-                payload.original_input_text = inputElementForDirtyCheckAndSave.value;
+                payload.is_cost_split = parsedForSave.is_split_cost; // Send is_split_cost
             } else if (currentEditMode === 'date') {
                 if (!inputElementForDirtyCheckAndSave.value) { payload.date = null; }
                 else {
@@ -573,9 +648,21 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             } else if (currentEditMode === 'location') {
                 payload.location = inputElementForDirtyCheckAndSave.value;
                 payload.location_coordinates = locationMapController.currentCoords;
-            } else {
+            } else { // title, description
                 payload[currentEditMode] = inputElementForDirtyCheckAndSave.value;
             }
+
+            // Add event permission flags to payload if they were changed by owner/creator
+            if (currentEventDataForModal && (currentEventDataForModal.is_current_user_creator || currentEventDataForModal.is_current_user_group_owner)) {
+                if (eventAllowOthersEditTitleCheckbox && eventAllowOthersEditTitleCheckbox.checked !== currentEventDataForModal.allow_others_edit_title) {
+                    payload.allow_others_edit_title = eventAllowOthersEditTitleCheckbox.checked;
+                }
+                if (eventAllowOthersEditDetailsCheckbox && eventAllowOthersEditDetailsCheckbox.checked !== currentEventDataForModal.allow_others_edit_details) {
+                    payload.allow_others_edit_details = eventAllowOthersEditDetailsCheckbox.checked;
+                }
+            }
+
+
             saveBtn.classList.add('is-loading'); saveBtn.innerHTML = ''; saveBtn.disabled = true; cancelBtn.disabled = true;
             try {
                 const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -595,7 +682,7 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
                 });
                 if (!response.ok) { const errData = await response.json().catch(()=>({})); throw new Error(errData.detail || errData.error || `Update failed (${response.status})`);}
                 const updatedEventDataFromServer = await response.json();
-                exitEditMode(updatedEventDataFromServer);
+                exitEditMode(updatedEventDataFromServer); // This also updates currentEventDataForModal
                 document.dispatchEvent(new CustomEvent('eventDataUpdated', {
                     detail: {
                         eventId: updatedEventDataFromServer.id,
@@ -661,7 +748,7 @@ function _closeEventModal() {
 }
 
 function _setupInternalModalEventListeners() {
-    if (!isInitialized) return; // Guard against running if elements not found
+    if (!isInitialized) return; 
     if (closeButton) closeButton.addEventListener('click', _closeEventModal);
     modalElement.addEventListener('click', (event) => {
         if (event.target === modalElement) { _closeEventModal(); }
@@ -701,6 +788,7 @@ function _setupInternalModalEventListeners() {
                 const eventResponse = await fetch(`/api/events/${eventId}`);
                 if (!eventResponse.ok) throw new Error(`Failed to fetch updated event data after RSVP: ${eventResponse.status}`);
                 const fullUpdatedEventFromServer = await eventResponse.json();
+                currentEventDataForModal = fullUpdatedEventFromServer; // Update local copy for permissions
 
                 _updateRSVPButtonState(rsvpResult.status);
                 if (rsvpConfirmationMessage) { const friendlyStatus = rsvpResult.status ? rsvpResult.status.charAt(0).toUpperCase() + rsvpResult.status.slice(1) : 'cleared'; rsvpConfirmationMessage.textContent = rsvpResult.status ? `Your RSVP is set to ${friendlyStatus}!` : "Your RSVP has been cleared."; setTimeout(() => { if(rsvpConfirmationMessage) rsvpConfirmationMessage.style.display = 'none'; }, 3000);}
@@ -725,14 +813,52 @@ function _setupInternalModalEventListeners() {
             }
         });
     }
+
+    // Event listener for event permission checkboxes
+    const setupPermissionCheckboxListener = (checkbox, permissionField) => {
+        if (checkbox) {
+            checkbox.addEventListener('change', async () => {
+                if (!currentEventDataForModal || !(currentEventDataForModal.is_current_user_creator || currentEventDataForModal.is_current_user_group_owner)) {
+                    return; // Should not happen if checkboxes are disabled correctly
+                }
+                const payload = { [permissionField]: checkbox.checked };
+                try {
+                    // (Similar fetch logic as in saveBtn.onclick for PATCHing event)
+                     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                     const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+                     if (csrfTokenMeta) headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
+                     const response = await fetch(`/api/events/${currentEventId}`, {
+                         method: 'PATCH', headers: headers, body: JSON.stringify(payload)
+                     });
+                    if (!response.ok) throw new Error('Failed to update event permission.');
+                    const updatedEvent = await response.json();
+                    currentEventDataForModal = updatedEvent; // Update local state
+                    // Dispatch event so other parts of UI can react if necessary
+                    document.dispatchEvent(new CustomEvent('eventDataUpdated', {
+                        detail: { eventId: currentEventId, updatedEvent: updatedEvent },
+                        bubbles: true, composed: true
+                    }));
+
+                } catch (err) {
+                    console.error("Error updating event permission:", err);
+                    checkbox.checked = !checkbox.checked; // Revert UI on error
+                    alert("Failed to update permission. Please try again.");
+                }
+            });
+        }
+    };
+    setupPermissionCheckboxListener(eventAllowOthersEditTitleCheckbox, 'allow_others_edit_title');
+    setupPermissionCheckboxListener(eventAllowOthersEditDetailsCheckbox, 'allow_others_edit_details');
+
+
 }
 
 export function setupModal() {
-    if (isInitialized) { // Prevent re-initialization
+    if (isInitialized) { 
         console.warn("Modal already initialized.");
         return;
     }
-    if (_initializeModalElements()) { // This sets isInitialized = true on success
+    if (_initializeModalElements()) { 
         _setupInternalModalEventListeners();
         console.log("Modal setup complete.");
     }
@@ -742,7 +868,7 @@ export function setupModal() {
 }
 
 export async function openEventModal(eventData) {
-    if (!isInitialized) { // Check if modal elements are ready
+    if (!isInitialized) { 
         alert("Error: Event details modal is not ready. Please try again shortly.");
         console.error("openEventModal called before modal was initialized.");
         return;
@@ -755,18 +881,39 @@ export async function openEventModal(eventData) {
 
     _resetModal();
     currentEventId = eventData.id;
+    currentEventDataForModal = eventData; // Store the full event data
+
+    // Determine if current user can manage event permissions
+    const canManageEventPermissions = eventData.is_current_user_creator || eventData.is_current_user_group_owner;
+
+    if (eventPermissionsSection) {
+        eventPermissionsSection.style.display = canManageEventPermissions ? 'block' : 'none';
+    }
+    if (eventAllowOthersEditTitleCheckbox) {
+        eventAllowOthersEditTitleCheckbox.checked = eventData.allow_others_edit_title || false;
+        eventAllowOthersEditTitleCheckbox.disabled = !canManageEventPermissions;
+    }
+    if (eventAllowOthersEditDetailsCheckbox) {
+        eventAllowOthersEditDetailsCheckbox.checked = eventData.allow_others_edit_details || false;
+        eventAllowOthersEditDetailsCheckbox.disabled = !canManageEventPermissions;
+    }
+
 
     if (modalEventImage) modalEventImage.src = eventData.image_url || '/static/img/default-event-logo.png';
     if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group';
 
+    // Determine editability for each field
+    const canEditTitle = eventData.is_current_user_creator || eventData.is_current_user_group_owner || (eventData.allow_others_edit_title && is_group_member(current_user.id, eventData.group_id)); // You'll need is_group_member logic accessible or assume true if group member
+    const canEditDetails = eventData.is_current_user_creator || eventData.is_current_user_group_owner || (eventData.allow_others_edit_details && is_group_member(current_user.id, eventData.group_id)); // Similar logic for group membership
+
     if (modalEventTitle) {
         modalEventTitle.textContent = eventData.title || 'Untitled Event';
-        _makeFieldEditable(modalEventTitle, 'title', eventData.title);
+        _makeFieldEditable(modalEventTitle, 'title', eventData.title, {}, canEditTitle);
     }
     if (modalEventDate) {
-        const d = eventData.date; // Should be a Date object from allEventsData
+        const d = eventData.date; 
         modalEventDate.textContent = formatEventDateForDisplay(d);
-        _makeFieldEditable(modalEventDate, 'date', d ? d.toISOString() : null, { inputType: 'datetime-local' });
+        _makeFieldEditable(modalEventDate, 'date', d ? d.toISOString() : null, { inputType: 'datetime-local' }, canEditDetails);
     }
     if (modalEventLocation) {
         const initialLocationData = {
@@ -775,7 +922,7 @@ export async function openEventModal(eventData) {
             predefinedKey: null
         };
         modalEventLocation.textContent = initialLocationData.text;
-        _makeFieldEditable(modalEventLocation, 'location', initialLocationData, { inputType: 'custom-location-map' });
+        _makeFieldEditable(modalEventLocation, 'location', initialLocationData, { inputType: 'custom-location-map' }, canEditDetails);
     }
     if (modalEventCost) {
         const initialRawCostInput = eventData.original_input_text || eventData.cost_display || 'Not specified';
@@ -784,14 +931,16 @@ export async function openEventModal(eventData) {
         _makeFieldEditable(modalEventCost, 'cost', {
             raw_input_for_field: initialRawCostInput,
             standardized_display: parsedInitialCost.cost_display_standardized,
-            value: parsedInitialCost.cost_value
-        });
+            value: parsedInitialCost.cost_value,
+            is_split_cost: eventData.is_cost_split // Pass this from eventData
+        }, canEditDetails);
     }
     if (modalDescriptionWrapper && modalEventDescription) {
         const descContent = eventData.description || 'No description provided.';
         modalEventDescription.innerHTML = descContent;
-        _makeFieldEditable(modalDescriptionWrapper, 'description', descContent, { inputType: 'textarea', isHTML: true, contentDisplayElementId: 'modal-event-description' });
+        _makeFieldEditable(modalDescriptionWrapper, 'description', descContent, { inputType: 'textarea', isHTML: true, contentDisplayElementId: 'modal-event-description' }, canEditDetails);
     }
+
 
     if (modalRsvpControls) {
         modalRsvpControls.dataset.eventId = eventData.id;
@@ -805,4 +954,4 @@ export async function openEventModal(eventData) {
 
     await _fetchEventDetails(eventData.id);
 }
-// --- END OF FILE modalManager.js ---
+// --- END OF FILE static/js/modalManager.js ---

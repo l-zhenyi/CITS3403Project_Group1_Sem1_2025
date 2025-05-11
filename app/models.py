@@ -261,7 +261,17 @@ class Event(db.Model):
     image_url: Mapped[str] = mapped_column(String(255), nullable=True)
     cost_display: Mapped[str] = mapped_column(String(50), nullable=True) # User-facing display string
     cost_value: Mapped[Optional[Float]] = mapped_column(Float, nullable=True) # Actual numeric cost for calculations
-    node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
+    is_cost_split: Mapped[bool] = mapped_column(default=False, nullable=False) # NEW for cost splitting
+    
+    # Provide explicit names for ForeignKey constraints to aid Alembic, especially in batch mode
+    node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id", name="fk_event_node_id_nodes"), nullable=True)
+    creator_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user.id", name="fk_event_creator_id_user"), nullable=True) # Store who created event
+    
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[creator_id])
+
+    # Event-specific edit permissions (for non-creator/non-group-owner members if allowed)
+    allow_others_edit_title: Mapped[bool] = mapped_column(default=False, nullable=False)
+    allow_others_edit_details: Mapped[bool] = mapped_column(default=False, nullable=False) # Covers desc, loc, date, cost
 
     # Relationships
     node: Mapped[Optional["Node"]] = relationship("Node", back_populates="events") # Optional if node_id can be null
@@ -269,10 +279,7 @@ class Event(db.Model):
     attendees: Mapped[List["EventRSVP"]] = relationship("EventRSVP", back_populates="event", cascade="all, delete-orphan")
     guests: Mapped[List["InvitedGuest"]] = relationship("InvitedGuest", back_populates="event")
 
-    # --- MODIFIED to_dict ---
     def to_dict(self, current_user_id=None):
-        """Serializes the Event object to a dictionary, optionally including the
-           RSVP status for the specified user and group information."""
         data = {
             "id": self.id,
             "title": self.title,
@@ -283,28 +290,32 @@ class Event(db.Model):
             "image_url": self.image_url,
             "cost_display": self.cost_display,
             "cost_value": self.cost_value,
+            "is_cost_split": self.is_cost_split, # NEW
             "node_id": self.node_id,
+            "creator_id": self.creator_id, # NEW
+            "allow_others_edit_title": self.allow_others_edit_title, # NEW
+            "allow_others_edit_details": self.allow_others_edit_details, # NEW
             "current_user_rsvp_status": None,
-            "group_id": None,       # Initialize group_id
-            "group_name": None      # Initialize group_name
+            "group_id": None,
+            "group_name": None,
+            "is_current_user_creator": False, # NEW
+            "is_current_user_group_owner": False # NEW
         }
 
         if current_user_id is not None:
-            # No need to import EventRSVP here if it's already defined in the same file
-            # from app.models import EventRSVP # This is fine if EventRSVP is in app.models
             my_rsvp = db.session.execute(
                 db.select(EventRSVP).filter_by(event_id=self.id, user_id=current_user_id)
             ).scalar_one_or_none()
-
             if my_rsvp:
                 data['current_user_rsvp_status'] = my_rsvp.status
+            if self.creator_id == current_user_id:
+                data['is_current_user_creator'] = True
 
-        # Add group information if the event is associated with a node and group
         if self.node and self.node.group:
             data['group_id'] = self.node.group.id
             data['group_name'] = self.node.group.name
-        # If self.node is None, group_id and group_name will remain None
-
+            if current_user_id is not None and self.node.group.owner_id == current_user_id:
+                data['is_current_user_group_owner'] = True
         return data
     
 class GroupMember(db.Model):

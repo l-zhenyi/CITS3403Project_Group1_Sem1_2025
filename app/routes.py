@@ -781,62 +781,73 @@ def create_event_api(group_id):
     title = data.get("title", "Untitled Event").strip()
     location = data.get("location", "TBD").strip()
     iso_str = data.get("date")
-    node_id = data.get("node_id")
+    node_id = data.get("node_id") # This will be the node it's attached to
 
     if not title:
          return jsonify({"error": "Event title cannot be empty"}), 400
-    if not node_id:
+    if not node_id: # Event must be attached to a node
         return jsonify({"error": "node_id is required to associate event with a category/node"}), 400
 
-    if not node_belongs_to_group(node_id, group_id):
-        return jsonify({"error": "Node does not belong to this group."}), 400
+    # Check if the node belongs to the specified group
+    target_node = db.session.get(Node, node_id)
+    if not target_node or target_node.group_id != group_id:
+        return jsonify({"error": "Node does not belong to this group or does not exist."}), 400
 
     try:
-        event_date = isoparse(iso_str) if iso_str else datetime.now(timezone.utc)
+        event_date = isoparse(iso_str) if iso_str else datetime.now(timezone.utc) + timedelta(hours=1) # Default to 1 hour from now
         if event_date.tzinfo is None:
             event_date = event_date.replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
-        event_date = datetime.now(timezone.utc)
+        event_date = datetime.now(timezone.utc) + timedelta(hours=1)
+
 
     cost_display = data.get("cost_display", "Free")
-    cost_value = None
-    try:
-        cost_input = data.get("cost_value")
-        if cost_input is not None and str(cost_input).strip() != "": 
-            cost_value = float(cost_input)
-    except (ValueError, TypeError):
-        cost_value = None 
+    cost_value = data.get("cost_value") # Can be None
+    is_cost_split = data.get("is_cost_split", False)
     
+    try:
+        if cost_value is not None: cost_value = float(cost_value)
+    except (ValueError, TypeError):
+        cost_value = None # Default to None if conversion fails
+
     location_coordinates = data.get("location_coordinates")
+    description = data.get("description", "").strip()
+    image_url = data.get("image_url")
+
+    # Event-specific permissions
+    allow_others_edit_title = data.get("allow_others_edit_title", False)
+    allow_others_edit_details = data.get("allow_others_edit_details", False)
 
 
     event = Event(
         title=title,
         date=event_date,
         location=location,
-        description=data.get("description", "").strip(),
-        image_url=data.get("image_url"),
+        description=description,
+        image_url=image_url,
         cost_display=cost_display,
         cost_value=cost_value,
+        is_cost_split=is_cost_split,
         node_id=node_id,
-        location_coordinates=location_coordinates
+        location_coordinates=location_coordinates,
+        creator_id=current_user.id, # Set creator
+        allow_others_edit_title=bool(allow_others_edit_title),
+        allow_others_edit_details=bool(allow_others_edit_details)
     )
     db.session.add(event)
-    # It's often better to commit here if to_dict relies on committed state or related objects that get IDs on commit.
-    # However, for simple cases flush() might be enough. If issues, move commit before to_dict.
-    db.session.flush() 
+    db.session.commit() # Commit to get event.id and ensure all relationships are saved
 
-    # Eager load necessary relationships for to_dict before commit can sometimes be tricky
-    # For event.to_dict, it needs event.node and event.node.group.
-    # If these are not loaded before commit and accessed in to_dict, they might be None or cause issues.
-    # A safer pattern is to commit, then re-fetch or refresh for the response.
-    # However, let's try with flush and explicit refresh if needed.
-    db.session.refresh(event, attribute_names=['node'])
-    if event.node:
-        db.session.refresh(event.node, attribute_names=['group'])
+    # Re-fetch or refresh to ensure all relationships (like node.group) are loaded for to_dict
+    # Since we committed, event_obj will have its ID. We can use it to re-query if necessary,
+    # or rely on SQLAlchemy's session management if relationships are configured for eager loading.
+    # For simplicity and robustness, re-fetching can be safer.
+    event_for_response = db.session.query(Event).options(
+        joinedload(Event.node).joinedload(Node.group), # Eager load for group_name
+        joinedload(Event.creator) # Eager load creator
+    ).filter_by(id=event.id).one()
 
-    db.session.commit()
-    return jsonify(event.to_dict(current_user_id=current_user.id)), 201
+
+    return jsonify(event_for_response.to_dict(current_user_id=current_user.id)), 201
 
 
 @app.route("/api/groups/<int:group_id>/nodes", methods=["POST"])
@@ -844,9 +855,16 @@ def create_event_api(group_id):
 @require_group_member
 def create_node_api(group_id):
     data = request.get_json() or {}
-    label = data.get("label", "Untitled Node").strip()
+    label = data.get("label", "").strip() # Get label from payload
     if not label:
         return jsonify({"error": "Node label cannot be empty"}), 400
+
+    # Check for uniqueness within the group
+    existing_node = db.session.scalar(
+        db.select(Node).filter_by(group_id=group_id, label=label)
+    )
+    if existing_node:
+        return jsonify({"error": f"A node with the name '{label}' already exists in this group."}), 409 # 409 Conflict
 
     try:
         x_coord = float(data.get("x", 0)) 
@@ -869,7 +887,8 @@ def create_node_api(group_id):
 @login_required
 def manage_event(event_id):
     event_obj_loaded = db.session.query(Event).options(
-        joinedload(Event.node).joinedload(Node.group),
+        joinedload(Event.node).joinedload(Node.group), # For group owner check & group info
+        joinedload(Event.creator), # For creator check
         joinedload(Event.attendees).joinedload(EventRSVP.user) 
     ).filter(Event.id == event_id).first() 
     
@@ -877,114 +896,102 @@ def manage_event(event_id):
         return jsonify({"error": "Event not found"}), 404
     event_obj = event_obj_loaded
 
-
-    group_id_for_event = None
-    authorized_for_modification = False 
-    
-    if event_obj.node_id and event_obj.node and event_obj.node.group_id: 
+    # --- Authorization Logic ---
+    is_group_member_of_event_group = False
+    is_group_owner_of_event_group = False
+    if event_obj.node and event_obj.node.group:
         group_id_for_event = event_obj.node.group_id
         if is_group_member(current_user.id, group_id_for_event):
-            authorized_for_modification = True
+            is_group_member_of_event_group = True
+            if event_obj.node.group.owner_id == current_user.id:
+                is_group_owner_of_event_group = True
     
+    is_event_creator = (event_obj.creator_id == current_user.id)
+
+    # For GET requests, basic membership or invitation is enough
     if request.method == "GET":
-        is_authorized_get, msg_get, status_get = _check_event_authorization(event_id, current_user.id)
+        is_authorized_get, msg_get, status_get = _check_event_authorization(event_id, current_user.id) # Uses existing helper
         if not is_authorized_get:
              return jsonify({"error": msg_get}), status_get
         return jsonify(event_obj.to_dict(current_user_id=current_user.id))
 
-    if not authorized_for_modification:
-        return jsonify({"error": "Unauthorized action. Must be a member of the event's group to modify or delete."}), 403
+    # For PATCH/DELETE, stricter authorization needed
+    can_modify_title = is_event_creator or is_group_owner_of_event_group or \
+                       (event_obj.allow_others_edit_title and is_group_member_of_event_group)
+    can_modify_details = is_event_creator or is_group_owner_of_event_group or \
+                         (event_obj.allow_others_edit_details and is_group_member_of_event_group)
+    
+    # Only creator or group owner can delete
+    can_delete = is_event_creator or is_group_owner_of_event_group
+
 
     if request.method == "PATCH":
         data = request.get_json() or {}
         updated_fields = [] 
 
         if "title" in data:
+            if not can_modify_title: return jsonify({"error": "Not authorized to edit event title."}), 403
             new_title = data["title"]
             if isinstance(new_title, str): 
-                event_obj.title = new_title.strip()
-                updated_fields.append("title")
+                event_obj.title = new_title.strip(); updated_fields.append("title")
 
-        if "location" in data:
-            new_location = data["location"]
-            if isinstance(new_location, str):
-                event_obj.location = new_location.strip()
+        if "location" in data or "location_coordinates" in data or "location_key" in data:
+            if not can_modify_details: return jsonify({"error": "Not authorized to edit event location/details."}), 403
+            if "location" in data:
+                new_location = data["location"]
+                if isinstance(new_location, str): event_obj.location = new_location.strip()
+                elif new_location is None: event_obj.location = ""
                 updated_fields.append("location")
-            elif new_location is None: 
-                event_obj.location = ""
-                updated_fields.append("location")
+            if "location_coordinates" in data: 
+                new_coords = data["location_coordinates"]
+                event_obj.location_coordinates = new_coords.strip() if isinstance(new_coords, str) and new_coords.strip() else None
+                updated_fields.append("location_coordinates")
+            if "location_key" in data: # Assuming location_key is part of details
+                new_key = data["location_key"]
+                event_obj.location_key = new_key.strip() if isinstance(new_key, str) and new_key.strip() else None
+                updated_fields.append("location_key")
         
-        if "location_coordinates" in data: 
-            new_coords = data["location_coordinates"]
-            if isinstance(new_coords, str) and new_coords.strip():
-                event_obj.location_coordinates = new_coords.strip()
-            else: 
-                event_obj.location_coordinates = None
-            updated_fields.append("location_coordinates")
-
-        if "location_key" in data: 
-            new_key = data["location_key"]
-            if isinstance(new_key, str) and new_key.strip():
-                event_obj.location_key = new_key.strip()
-            else: 
-                event_obj.location_key = None
-            updated_fields.append("location_key")
-
         if "description" in data:
+            if not can_modify_details: return jsonify({"error": "Not authorized to edit event description."}), 403
             new_description = data["description"]
-            if isinstance(new_description, str):
-                event_obj.description = new_description.strip() 
-                updated_fields.append("description")
-            elif new_description is None: 
-                event_obj.description = None
-                updated_fields.append("description")
+            if isinstance(new_description, str): event_obj.description = new_description.strip() 
+            elif new_description is None: event_obj.description = None
+            updated_fields.append("description")
 
         if "date" in data:
+            if not can_modify_details: return jsonify({"error": "Not authorized to edit event date."}), 403
             new_date_str = data["date"]
-            if new_date_str is None: 
-                event_obj.date = None
-                updated_fields.append("date")
+            if new_date_str is None: event_obj.date = None
             elif isinstance(new_date_str, str):
                 try:
                     parsed_date = isoparse(new_date_str)
-                    if parsed_date.tzinfo is None:
-                        parsed_date = parsed_date.replace(tzinfo=timezone.utc)
-                    event_obj.date = parsed_date
+                    event_obj.date = parsed_date.replace(tzinfo=timezone.utc) if parsed_date.tzinfo is None else parsed_date
                     updated_fields.append("date")
-                except (ValueError, TypeError):
-                    app.logger.warning(f"Invalid date format for event {event_id}: {new_date_str}")
-                    pass 
-
-        if "original_input_text" in data: 
-            original_input = data["original_input_text"]
-            if original_input is not None: 
-                 event_obj.cost_display = str(original_input)
-                 updated_fields.append("cost_display")
-        elif "cost_display" in data: 
-            cost_display_val = data.get("cost_display")
-            if cost_display_val is not None:
-                 event_obj.cost_display = str(cost_display_val)
-                 updated_fields.append("cost_display")
-
-        if "cost_value" in data: 
-            cost_val_input = data["cost_value"]
-            if cost_val_input is None: 
-                event_obj.cost_value = None
+                except (ValueError, TypeError): pass 
+            
+        # Cost fields
+        if "cost_display" in data or "cost_value" in data or "is_cost_split" in data:
+            if not can_modify_details: return jsonify({"error": "Not authorized to edit event cost."}), 403
+            if "cost_display" in data:
+                event_obj.cost_display = str(data["cost_display"]) if data["cost_display"] is not None else None
+                updated_fields.append("cost_display")
+            if "cost_value" in data:
+                try: event_obj.cost_value = float(data["cost_value"]) if data["cost_value"] is not None else None
+                except (ValueError, TypeError): event_obj.cost_value = None
                 updated_fields.append("cost_value")
-            else:
-                try:
-                    event_obj.cost_value = float(cost_val_input)
-                    updated_fields.append("cost_value")
-                except (ValueError, TypeError):
-                    app.logger.warning(f"Invalid cost_value for event {event_id}: {cost_val_input}")
-                    pass
-        
+            if "is_cost_split" in data:
+                event_obj.is_cost_split = bool(data["is_cost_split"])
+                updated_fields.append("is_cost_split")
+
+        # Node assignment (typically by creator or group owner)
         if "node_id" in data and data["node_id"] != event_obj.node_id:
-             new_node_id_val = data["node_id"] 
-             if new_node_id_val is None: 
-                  event_obj.node_id = None
-                  updated_fields.append("node_id")
-             else:
+            if not (is_event_creator or is_group_owner_of_event_group):
+                 return jsonify({"error": "Not authorized to change event node assignment."}), 403
+            # (Validation for node_id belonging to the same group, etc. as before)
+            # ... (add your existing node_id validation logic here) ...
+            new_node_id_val = data["node_id"]
+            if new_node_id_val is None: event_obj.node_id = None
+            else:
                 try:
                     new_node_id_int = int(new_node_id_val)
                     target_node = db.session.get(Node, new_node_id_int)
@@ -998,33 +1005,40 @@ def manage_event(event_id):
                         return jsonify({"error": "Cannot assign event to a node in a group you are not a member of."}), 403
 
                     event_obj.node_id = new_node_id_int
-                    updated_fields.append("node_id")
+                except (ValueError, TypeError): return jsonify({"error": "Invalid node_id format."}), 400
+            updated_fields.append("node_id")
 
-                except (ValueError, TypeError):
-                    return jsonify({"error": "Invalid node_id format."}), 400
+        # Event-specific permissions (only group owner or event creator can change these)
+        if is_group_owner_of_event_group or is_event_creator:
+            if "allow_others_edit_title" in data:
+                event_obj.allow_others_edit_title = bool(data["allow_others_edit_title"])
+                updated_fields.append("allow_others_edit_title")
+            if "allow_others_edit_details" in data:
+                event_obj.allow_others_edit_details = bool(data["allow_others_edit_details"])
+                updated_fields.append("allow_others_edit_details")
 
 
         if updated_fields:
             try:
                 db.session.commit()
                 app.logger.info(f"Event {event_id} updated fields: {', '.join(updated_fields)}")
-                
+                # Re-fetch with all relations for consistent response
                 event_obj_refreshed = db.session.query(Event).options(
                     joinedload(Event.node).joinedload(Node.group),
+                    joinedload(Event.creator),
                     joinedload(Event.attendees).joinedload(EventRSVP.user)
                 ).filter(Event.id == event_id).first()
                 return jsonify(event_obj_refreshed.to_dict(current_user_id=current_user.id))
-
-
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Error committing updates for event {event_id}: {e}")
                 return jsonify({"error": "Could not save changes to the event."}), 500
         
-        return jsonify(event_obj.to_dict(current_user_id=current_user.id)) 
-
+        return jsonify(event_obj.to_dict(current_user_id=current_user.id)) # Return current state if no changes made
 
     if request.method == "DELETE":
+        if not can_delete:
+            return jsonify({"error": "Not authorized to delete this event."}), 403
         db.session.delete(event_obj)
         db.session.commit()
         return jsonify({"success": True, "message": "Event deleted successfully."})
@@ -1038,6 +1052,7 @@ def manage_node(node_id):
     if not node_obj:
         return jsonify({"error": "Node not found"}), 404
 
+    # Only group members can manage nodes, further restrictions (e.g. owner) can be added.
     if not is_group_member(current_user.id, node_obj.group_id):
         return jsonify({"error": "Unauthorized. Must be a member of the node's group."}), 403
 
@@ -1045,23 +1060,39 @@ def manage_node(node_id):
         include_events = request.args.get('include') == 'events'
         
         if include_events:
-            # This ensures that when node_obj.to_dict is called, its events are already loaded
             node_obj_loaded = db.session.query(Node).options(
-                joinedload(Node.events) # Load events
-                    .joinedload(Event.attendees) # Then load attendees for each event
-                    .joinedload(EventRSVP.user), # Then load user for each attendee
+                joinedload(Node.events) 
+                    .joinedload(Event.attendees) 
+                    .joinedload(EventRSVP.user), 
                 joinedload(Node.group) 
             ).filter(Node.id == node_id).unique().first()
-            if node_obj_loaded: node_obj = node_obj_loaded # Use the eagerly loaded object
+            if node_obj_loaded: node_obj = node_obj_loaded 
 
         return jsonify(node_obj.to_dict(include_events=include_events, current_user_id=current_user.id))
 
 
     if request.method == "PATCH":
+        # Typically, only group owner or designated admins should modify node structure/labels.
+        # For simplicity, this example allows any group member. Add stricter checks if needed.
+        # if node_obj.group.owner_id != current_user.id:
+        #     return jsonify({"error": "Only group owner can modify nodes."}), 403
+            
         data = request.get_json() or {}
         updated = False
-        if "label" in data and data["label"].strip():
-            node_obj.label = data["label"].strip(); updated = True
+        if "label" in data:
+            new_label = data["label"].strip()
+            if not new_label: return jsonify({"error": "Node label cannot be empty"}), 400
+            
+            # Check for uniqueness within the group if label changed
+            if new_label != node_obj.label:
+                existing_node = db.session.scalar(
+                    db.select(Node).filter_by(group_id=node_obj.group_id, label=new_label).where(Node.id != node_id)
+                )
+                if existing_node:
+                    return jsonify({"error": f"A node with the name '{new_label}' already exists in this group."}), 409
+                node_obj.label = new_label
+                updated = True
+
         try:
             if "x" in data:
                 node_obj.x = float(data["x"]); updated = True
@@ -1075,6 +1106,9 @@ def manage_node(node_id):
         return jsonify(node_obj.to_dict(include_events=False, current_user_id=current_user.id))
 
     if request.method == "DELETE":
+        # if node_obj.group.owner_id != current_user.id: # Stricter: only owner can delete
+        #     return jsonify({"error": "Only group owner can delete nodes."}), 403
+
         events_on_node = db.session.scalars(db.select(Event.id).filter_by(node_id=node_id).limit(1)).first()
         if events_on_node:
             db.session.execute(

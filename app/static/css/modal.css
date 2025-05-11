@@ -536,59 +536,89 @@
     opacity: 0.8;
 }
 
-/* --- Create Group Modal & Group Settings Modal Common Styles --- */
+/* --- Form Based Modals Common Styles (Group Create/Settings, Event Create) --- */
 .create-group-modal-content,
-.group-settings-modal-content {
-    max-width: 580px; 
+.group-settings-modal-content,
+.event-creation-modal-content { /* Added event-creation-modal-content */
+    max-width: 580px;
+    /* Height is auto based on content or constrained by general .modal-content rules */
 }
 
 .create-group-modal-content > form,
-.group-settings-modal-content > form {
-    flex-grow: 1;          
-    min-height: 0;         
-    display: flex;         
-    flex-direction: column; 
-    overflow: hidden;      
+.group-settings-modal-content > form,
+.event-creation-modal-content > form { /* Added event-creation-modal-content */
+    flex-grow: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Parent form should hide overflow, body will scroll */
 }
 
 .create-group-modal-content > form > .modal-body,
-.group-settings-modal-content > form > .modal-body {
-    flex-grow: 1;           
-    min-height: 0;          
-    overflow-y: auto;       
-    display: flex;          
-    flex-direction: column; 
-    gap: 15px;              
+.group-settings-modal-content > form > .modal-body,
+.event-creation-modal-content > form > .modal-body { /* Added event-creation-modal-content */
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto; /* This is where the scroll happens */
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Gap between form-sections */
+    padding-right: 10px; /* Add some padding to avoid scrollbar overlap if items are full width */
+    padding-left: 5px;
 }
 
+/* Ensure .modal-body specific scrollbar styling applies to these form modals too */
+.create-group-modal-content > form > .modal-body::-webkit-scrollbar,
+.group-settings-modal-content > form > .modal-body::-webkit-scrollbar,
+.event-creation-modal-content > form > .modal-body::-webkit-scrollbar { width: 8px; }
+
+.create-group-modal-content > form > .modal-body::-webkit-scrollbar-track,
+.group-settings-modal-content > form > .modal-body::-webkit-scrollbar-track,
+.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px; }
+
+.create-group-modal-content > form > .modal-body::-webkit-scrollbar-thumb,
+.group-settings-modal-content > form > .modal-body::-webkit-scrollbar-thumb,
+.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+
+.create-group-modal-content > form > .modal-body::-webkit-scrollbar-thumb:hover,
+.group-settings-modal-content > form > .modal-body::-webkit-scrollbar-thumb:hover,
+.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
+
+
 .create-group-modal-content > form > .modal-footer,
-.group-settings-modal-content > form > .modal-footer {
-    flex-shrink: 0;        
+.group-settings-modal-content > form > .modal-footer,
+.event-creation-modal-content > form > .modal-footer { /* Added event-creation-modal-content */
+    flex-shrink: 0;
 }
 
 
 .create-group-modal-content .form-group,
-.group-settings-modal-content .form-group {
-    margin-bottom: 0; 
+.group-settings-modal-content .form-group,
+.event-creation-modal-content .form-group { /* Added event-creation-modal-content */
+    margin-bottom: 0;
 }
-.form-section { /* Added for better spacing control */
-    padding-bottom: 15px; /* Add some space between sections */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Separator line */
-    margin-bottom: 15px; /* Space after the separator */
+.form-section { /* General for all modals using this structure */
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 15px;
 }
 .form-section:last-child {
-    border-bottom: none; /* No separator for the last section */
+    border-bottom: none;
     margin-bottom: 0;
     padding-bottom: 0;
 }
 
+/* Remove bottom margin from last form-group inside a form-section if there are multiple */
 .create-group-modal-content .form-section .form-group:not(:last-child),
-.group-settings-modal-content .form-section .form-group:not(:last-child) {
+.group-settings-modal-content .form-section .form-group:not(:last-child),
+.event-creation-modal-content .form-section .form-group:not(:last-child) {
     margin-bottom: 18px;
 }
 
-.create-group-modal-content .form-group label,
-.group-settings-modal-content .form-group label {
+.form-group label, /* General label styling */
+.create-group-modal-content .form-group label, /* Keep specific for now */
+.group-settings-modal-content .form-group label,
+.event-creation-modal-content .form-group label {
     display: block;
     margin-bottom: 6px;
     font-weight: 500;
@@ -611,10 +641,8 @@
 }
 
 
-.create-group-modal-content .modal-input,
-.create-group-modal-content .modal-textarea,
-.group-settings-modal-content .modal-input,
-.group-settings-modal-content .modal-textarea {
+.modal-input, /* General modal input styles */
+.modal-textarea {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -626,14 +654,14 @@
     transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-.create-group-modal-content .modal-input:focus,
-.create-group-modal-content .modal-textarea:focus,
-.group-settings-modal-content .modal-input:focus,
-.group-settings-modal-content .modal-textarea:focus {
+
+.modal-input:focus,
+.modal-textarea:focus {
     outline: none;
     border-color: rgba(138, 180, 248, 0.7);
     background-color: rgba(255, 255, 255, 0.15);
 }
+
 /* --- Styles for disabled inputs/textareas --- */
 .modal-input:disabled,
 .modal-textarea:disabled {
@@ -662,13 +690,17 @@
 }
 
 
-.create-group-modal-content .modal-textarea,
-.group-settings-modal-content .modal-textarea {
+.modal-textarea { /* General */
     resize: vertical;
     min-height: 80px;
 }
+/* For event description, make it a bit taller by default */
+.event-creation-modal-content #new-event-description {
+    min-height: 100px; /* Slightly taller for event description */
+}
 
-.friend-search-input {
+
+.friend-search-input { /* Used in Create Group and Group Settings */
     margin-bottom: 10px;
 }
 
@@ -748,35 +780,41 @@
     padding: 10px 0;
 }
 
-.modal-error-message {
+.modal-error-message { /* General for all modals */
     color: #ff8a8a;
-    margin-top: 10px;
+    margin-top: 10px; /* Space above if it appears */
     font-size: 0.9rem;
-    min-height: 1.2em;
+    min-height: 1.2em; /* Prevent layout jump */
+    text-align: center; /* Center error messages */
 }
 .modal-error-message:not(:empty) {
-    margin-bottom: 10px;
+    margin-bottom: 10px; /* Space below if it has content, relevant for forms */
+}
+/* Specific placement for error message in simple forms like node creation */
+.modal-content-small .modal-body .modal-error-message {
+    margin-top: 5px; /* Less space in small modals */
+    margin-bottom: 0; /* No space needed below if footer is next */
 }
 
-.group-settings-modal-content h4,
-.create-group-modal-content h4 {
+
+h4 { /* General h4 inside modals */
     font-size: 1.05rem;
     font-weight: 500;
     color: #e0e0e5;
     margin-top: 15px;
     margin-bottom: 8px;
     padding-bottom: 5px;
-    /* border-bottom: 1px solid rgba(255, 255, 255, 0.1); */ /* Removed from h4, handled by .form-section */
 }
-.group-settings-modal-content h4 small {
+.group-settings-modal-content h4 small,
+.event-creation-modal-content h4 small { /* Small text in h4 */
     font-size: 0.8em;
     font-weight: normal;
     color: #b0b0b5;
 }
-.group-settings-modal-content .form-section:first-of-type h4,
-.create-group-modal-content .form-section:first-of-type h4 {
+.form-section:first-of-type h4 { /* No top margin for first h4 in a form section */
     margin-top: 0;
 }
+
 
 .members-list-scroll-container::-webkit-scrollbar,
 .friends-list-scroll-container::-webkit-scrollbar {
@@ -809,5 +847,33 @@
     letter-spacing: 0.5px;
 }
 
+/* --- Node Creation Modal (Small) --- */
+.modal-content-small {
+    max-width: 380px; /* Smallest width */
+    height: auto; /* Auto height based on content */
+    padding: 20px 25px; /* Reduced padding */
+}
+.modal-content-small .modal-header {
+    margin-bottom: 20px; /* Slightly less margin after header */
+    padding-bottom: 12px;
+}
+.modal-content-small .modal-header h2 {
+    font-size: 1.4rem; /* Smaller title */
+}
+.modal-content-small .modal-body {
+    padding: 0; /* Remove body padding, form-section will handle it */
+    gap: 10px; /* Less gap if multiple items directly in body */
+    overflow-y: visible; /* Usually not needed for small modals */
+}
+.modal-content-small .form-section {
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+.modal-content-small .modal-footer {
+    margin-top: 20px;
+    padding-top: 12px;
+}
+
+/* --- End of Specific Modal Size/Layouts --- */
 
 /* --- END OF FILE static/css/modal.css --- */

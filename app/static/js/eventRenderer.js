@@ -5,6 +5,9 @@
 import { groupsData, allEventsData, eventsByDate } from './dataHandle.js';
 import { OrbitLayoutManager } from './orbitLayoutDOM.js';
 import { getTransformState } from './viewportManager.js';
+// NEW: Import for event creation modal
+import { openEventCreationModal } from './eventCreationModalManager.js';
+
 
 const eventPanelsContainer = document.getElementById('event-panels-container');
 const calendarMonthYearEl = document.getElementById('calendar-month-year');
@@ -36,10 +39,127 @@ function handleClickOutsideContextMenu(event) {
 }
 
 // --- Helper Function to Hide Context Menu and Remove Listener ---
-function hideContextMenu() {
+export function hideContextMenu() {
     if (contextMenuInstance) {
         contextMenuInstance.style.display = 'none';
         document.removeEventListener('click', handleClickOutsideContextMenu, true);
+    }
+}
+
+// --- Node Creation Modal Elements & Logic ---
+let nodeCreationModal = null;
+let nodeNameInput = null;
+let nodeCreationForm = null;
+let nodeCreationErrorMessage = null;
+let currentCoordsForNodeCreation = { x: 0, y: 0 }; // Store coords for node creation
+
+function setupNodeCreationModal() {
+    if (nodeCreationModal) return; // Already set up
+
+    nodeCreationModal = document.getElementById('node-creation-modal');
+    if (!nodeCreationModal) {
+        console.error("Node creation modal element (#node-creation-modal) not found.");
+        return;
+    }
+    nodeNameInput = nodeCreationModal.querySelector('#new-node-name-input');
+    nodeCreationForm = nodeCreationModal.querySelector('#node-creation-form');
+    nodeCreationErrorMessage = nodeCreationModal.querySelector('#node-creation-error-message');
+    const closeBtn = nodeCreationModal.querySelector('.modal-close-btn');
+    const cancelBtn = nodeCreationModal.querySelector('#node-creation-cancel-btn');
+
+    if (!nodeNameInput || !nodeCreationForm || !closeBtn || !cancelBtn || !nodeCreationErrorMessage) {
+        console.error("Essential elements for node creation modal are missing.");
+        nodeCreationModal = null; // Prevent usage
+        return;
+    }
+
+    closeBtn.addEventListener('click', closeNodeCreationModal);
+    cancelBtn.addEventListener('click', closeNodeCreationModal);
+    nodeCreationModal.addEventListener('click', (event) => {
+        if (event.target === nodeCreationModal) {
+            closeNodeCreationModal();
+        }
+    });
+
+    nodeCreationForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const nodeName = nodeNameInput.value.trim();
+        if (!nodeName) {
+            nodeCreationErrorMessage.textContent = "Node name cannot be empty.";
+            nodeCreationErrorMessage.style.display = 'block';
+            nodeNameInput.focus();
+            return;
+        }
+
+        const activeGroupId = getActiveGroupId();
+        if (!activeGroupId) {
+            alert("Cannot create node: No active group selected.");
+            closeNodeCreationModal();
+            return;
+        }
+        
+        nodeCreationErrorMessage.textContent = "";
+        nodeCreationErrorMessage.style.display = 'none';
+        const saveButton = nodeCreationForm.querySelector('button[type="submit"]');
+        saveButton.disabled = true;
+        saveButton.textContent = 'Creating...';
+
+        try {
+            const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+            if (csrfTokenMeta) headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
+
+            const response = await fetch(`/api/groups/${activeGroupId}/nodes`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    label: nodeName,
+                    x: currentCoordsForNodeCreation.x,
+                    y: currentCoordsForNodeCreation.y
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: `Node creation failed (${response.status})` }));
+                throw new Error(errorData.error || `HTTP error ${response.status}`);
+            }
+            // Success
+            closeNodeCreationModal();
+            await renderGroupEvents(activeGroupId); // Refresh view
+        } catch (error) {
+            console.error("Error creating node:", error);
+            nodeCreationErrorMessage.textContent = `Error: ${error.message}`;
+            nodeCreationErrorMessage.style.display = 'block';
+        } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Create Node';
+        }
+    });
+}
+
+function openNodeCreationModal(x, y) {
+    if (!nodeCreationModal) setupNodeCreationModal();
+    if (!nodeCreationModal) return; // Setup failed
+
+    currentCoordsForNodeCreation = { x, y };
+    nodeNameInput.value = '';
+    if(nodeCreationErrorMessage) nodeCreationErrorMessage.style.display = 'none';
+    nodeCreationModal.style.display = 'flex';
+    requestAnimationFrame(() => {
+        nodeCreationModal.classList.add('visible');
+        nodeNameInput.focus();
+    });
+}
+
+function closeNodeCreationModal() {
+    if (nodeCreationModal) {
+        nodeCreationModal.classList.remove('visible');
+        // Use timeout to allow fade-out animation
+        setTimeout(() => {
+            nodeCreationModal.style.display = 'none';
+            if(nodeCreationErrorMessage) nodeCreationErrorMessage.style.display = 'none';
+
+        }, 300); // Match CSS transition duration
     }
 }
 
@@ -174,9 +294,13 @@ function closeDayEventsModal() {
 }
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupDayEventsModal);
+    document.addEventListener('DOMContentLoaded', () => {
+        setupDayEventsModal();
+        setupNodeCreationModal(); // Setup node creation modal on DOMContentLoaded
+    });
 } else {
     setupDayEventsModal();
+    setupNodeCreationModal(); // Setup node creation modal if DOM already loaded
 }
 
 
@@ -617,11 +741,6 @@ function createContextMenuElement() {
             contextMenuInstance.className = 'context-menu';
             document.body.appendChild(contextMenuInstance);
         }
-        // Stop propagation for mousedown inside the menu to prevent immediate closure
-        // by the document's 'click' listener if the 'click' event for the menu itself
-        // is what we are trying to prevent from closing it.
-        // However, individual options already stop propagation on 'click'.
-        // This helps if user clicks menu padding.
         contextMenuInstance.addEventListener('mousedown', (e) => {
              e.stopPropagation();
         });
@@ -638,8 +757,13 @@ async function handleContextAction(label, x, y, id, elementType) {
 
     try {
         switch (label) {
-            case 'Create Node': await createNodeAt(relX, relY, groupId); break;
-            case 'Create Event on Node': if (elementType !== 'event-node') return; await createEvent(groupId, id); break;
+            // MODIFIED: Call openNodeCreationModal instead of createNodeAt directly
+            case 'Create Node': openNodeCreationModal(relX, relY); break;
+            // MODIFIED: Call openEventCreationModal (from imported module)
+            case 'Create Event on Node':
+                if (elementType !== 'event-node') return;
+                openEventCreationModal(groupId, id); // Pass groupId and nodeId
+                break;
             case 'Rename Event': if (elementType !== 'event-panel') return; await renameEvent(id); break;
             case 'Delete Event': if (elementType !== 'event-panel') return; if(confirm('Are you sure you want to delete this event?')) await deleteEvent(id); break;
             case 'Rename Node': if (elementType !== 'event-node') return; await renameNode(id); break;
@@ -651,11 +775,12 @@ async function handleContextAction(label, x, y, id, elementType) {
         alert(`Action failed: ${error.message}`);
     }
 
+    // This refresh might still be needed if node/event creation modals don't trigger eventDataUpdated
+    // or if a direct render is preferred after modal actions.
     const activeGroupId = getActiveGroupId();
-    if (activeGroupId && ['Create Node', 'Delete Node', 'Create Event on Node', 'Delete Event', 'Rename Event', 'Rename Node'].includes(label)) {
-        if (['Create Node', 'Delete Node', 'Rename Node'].includes(label)){
-             await renderGroupEvents(activeGroupId); // Make sure this is awaited if it's async now
-        }
+    if (activeGroupId && (label === 'Delete Node' || label === 'Rename Node' || label === 'Delete Event' || label === 'Rename Event')) {
+        // Only re-render for actions that don't already cause a refresh via eventDataUpdated or modal close
+         await renderGroupEvents(activeGroupId);
     }
 }
 
@@ -674,18 +799,15 @@ export function showContextMenu({ x, y, type, id }) {
         const option = document.createElement('div');
         option.className = 'context-menu-option';
         option.textContent = label;
-        option.onclick = (e) => { // Clicks on options will hide the menu
+        option.onclick = (e) => { 
             e.stopPropagation(); 
-            hideContextMenu(); // Use dedicated hide function
+            hideContextMenu(); 
             handleContextAction(label, x, y, id, type);
         };
         menu.appendChild(option);
     });
     menu.style.left = `${x + 2}px`; menu.style.top = `${y + 2}px`; menu.style.display = 'block';
 
-    // Add the document click listener for "click outside"
-    // Use setTimeout to allow the current event cycle (contextmenu) to complete
-    // before attaching the listener. This prevents it from firing immediately.
     setTimeout(() => {
         document.addEventListener('click', handleClickOutsideContextMenu, true);
     }, 0);
@@ -793,19 +915,9 @@ async function deleteNode(nodeId) {
     } catch(error) { console.error("Error deleting node:", error); alert(`Delete failed: ${error.message}`); }
 }
 
-async function createNodeAt(x, y, groupId) {
-    if (!groupId) throw new Error("Cannot create node without active group ID.");
+// REMOVED createNodeAt - now handled by modal
+// REMOVED createEvent - now handled by eventCreationModalManager.js (imported and called by context menu)
 
-    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-    if (csrfTokenMeta) headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
-
-    try {
-        const response = await fetch(`/api/groups/${groupId}/nodes`, { method: 'POST', headers: headers, body: JSON.stringify({ label: "New Node", x: x, y: y }) });
-        if (!response.ok) throw new Error(`Node creation failed (${response.status})`);
-        // Node element added via renderGroupEvents by handleContextAction.
-    } catch (error) { console.error("Error creating node:", error); alert(`Node creation failed: ${error.message}`); }
-}
 
 function getActiveGroupId() {
     const activeLi = document.querySelector('.group-list-area ul .group-item.active');
@@ -826,61 +938,6 @@ function getRelativeCoordsToContainer(pageX, pageY) {
     return { x: relX, y: relY };
 }
 
-async function createEvent(groupId, nodeId = null) {
-    if (!groupId) throw new Error("Cannot create event without active group ID.");
-    if (!nodeId) {
-        alert("Please right-click on a Node to create an event attached to it.");
-        return;
-    }
-
-    const eventData = {
-        title: "New Event",
-        date: new Date(Date.now() + 3600000).toISOString(), 
-        location: "TBD",
-        description: "",
-        node_id: nodeId, // This is crucial
-        location_coordinates: null,
-        cost_display: null,
-        cost_value: null,
-        image_url: null
-    };
-
-    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-    if (csrfTokenMeta) headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
-
-    try {
-        const response = await fetch(`/api/groups/${groupId}/events`, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(eventData)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Unknown error during event creation.' }));
-            throw new Error(`Event creation failed: ${errorData.detail || response.statusText}`);
-        }
-
-        const newEventFromServer = await response.json();
-        // newEventFromServer should contain: id, title, date, node_id, group_id, group_name, etc.
-        console.log("[eventRenderer] Raw newEventFromServer:", newEventFromServer);
-
-        // Ensure a plain object is dispatched
-        const plainNewEventObject = { ...newEventFromServer }; 
-        console.log("[eventRenderer] Dispatching plainNewEventObject:", plainNewEventObject);
-
-        document.dispatchEvent(new CustomEvent('eventDataUpdated', {
-            detail: { 
-                eventId: plainNewEventObject.id, 
-                updatedEvent: plainNewEventObject 
-            },
-            bubbles: true, composed: true
-        }));
-    } catch (error) {
-        console.error("Error creating event:", error);
-        alert(`Event creation failed: ${error.message}`);
-    }
-}
 
 // --- Outside Click Handling ---
 let isOutsideClickListenerActive = false;
@@ -910,8 +967,4 @@ function removeOutsideClickListener() {
         isOutsideClickListenerActive = false;
     }
 }
-
-// REMOVED the persistent global document click listener for context menu from here.
-// It's now managed dynamically by showContextMenu and hideContextMenu.
-
-// --- END OF FILE eventRenderer.js ---
+// --- END OF FILE static/js/eventRenderer.js ---
