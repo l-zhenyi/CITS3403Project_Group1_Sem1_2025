@@ -495,6 +495,40 @@
     margin-bottom: 5px; font-size: 0.95em;
 }
 
+.analysis-palette.drag-over-delete {
+    background: rgba(255, 80, 80, 0.3) !important; /* Reddish hue */
+    border-color: rgba(255, 50, 50, 0.7) !important;
+    box-shadow: 0 0 25px rgba(255, 0, 0, 0.5), inset 0 0 10px rgba(255,0,0,0.2) !important;
+}
+
+.analysis-palette.drag-over-delete::after {
+    content: "\f2ed"; /* Font Awesome trash icon */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    color: rgba(255, 255, 255, 0.7);
+    opacity: 0;
+    animation: fadeInTrash 0.3s forwards;
+    pointer-events: none; /* Don't interfere with drop */
+}
+/* Hide normal palette content when delete is active, if desired */
+.analysis-palette.drag-over-delete .palette-header-title,
+.analysis-palette.drag-over-delete .palette-scroll-container {
+    opacity: 0.3;
+    filter: blur(2px);
+}
+
+
+@keyframes fadeInTrash {
+    to {
+        opacity: 1;
+    }
+}
+
 /* Mobile Adjustments */
 @media (max-width: 768px) {
     .insights-view { flex-direction: column; padding: 10px; gap: 10px; }

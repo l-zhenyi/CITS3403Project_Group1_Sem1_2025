@@ -4,7 +4,7 @@
 let insightsView = null, insightsGridContainer = null, insightsGrid = null, palette = null, paletteHeader = null, paletteToggleBtn = null, paletteScrollContainer = null, emptyMessage = null, palettePreviewContainer = null;
 let isDragging = false, draggedElement = null, placeholderElement = null, originalSourceElementForGridDrag = null;
 let sourceIndex = -1, currentTargetIndex = -1, dragType = null, startClientX = 0, startClientY = 0, offsetX = 0, offsetY = 0;
-let gridRect = null, animationFrameId = null;
+let gridRect = null, paletteRect = null, animationFrameId = null;
 let activeChartInstances = {};
 let userGroupsCache = [];
 let gridCellLayout = [], gridComputedStyle = null, gridColCount = 2;
@@ -36,7 +36,6 @@ async function addPanelToServer(analysisType, config = {}) { return await fetchA
 async function removePanelFromServer(panelIdInt) { return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'DELETE' }); }
 async function updatePanelOrderOnServer(panelIdInts) { return await fetchApi(`${API_BASE}/insights/panels/order`, { method: 'PUT', body: { panel_ids: panelIdInts } }); }
 async function updatePanelConfigurationOnServer(panelIdInt, newConfig) { return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'PATCH', body: { configuration: newConfig } }); }
-
 async function fetchAnalysisData(analysisType, panelIdInt = null) {
     let url = `${API_BASE}/analysis/data/${analysisType}`;
     if (panelIdInt !== null && typeof panelIdInt === 'number' && !isNaN(panelIdInt)) {
@@ -47,13 +46,12 @@ async function fetchAnalysisData(analysisType, panelIdInt = null) {
 async function fetchUserGroups() { if (userGroupsCache.length > 0) return userGroupsCache; try { const groups = await fetchApi('/api/groups'); userGroupsCache = groups || []; return userGroupsCache; } catch (error) { console.error("Failed to fetch user groups:", error); return []; } }
 
 // --- Panel Creation & Content Loading ---
-function createInsightPanelElement(panelData) {
+function createInsightPanelElement(panelData, isForPaletteDragClone = false) {
     const panelIdStr = String(panelData.id);
     const panel = document.createElement('div');
     panel.className = 'insight-panel glassy';
     panel.dataset.panelId = panelIdStr;
     panel.dataset.analysisType = panelData.analysis_type;
-    // Store panel.title in data-title if provided from server/creation, for consistent retrieval
     if(panelData.title) panel.dataset.title = panelData.title;
     panel.dataset.configuration = JSON.stringify(panelData.configuration || {});
 
@@ -61,8 +59,8 @@ function createInsightPanelElement(panelData) {
     const panelTitleText = panelData.title || analysisDetails?.title || 'Analysis';
     const placeholderHtml = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`;
 
-    const isTemporary = panelIdStr.startsWith('temp-');
-    const controlsHtml = isTemporary ? '' : `
+    const showControls = !isForPaletteDragClone;
+    const controlsHtml = showControls ? `
         <button class="panel-action-btn panel-config-toggle-btn" aria-label="Toggle Configuration" title="Configure Panel"><i class="fas fa-cog"></i></button>
         <button class="panel-action-btn panel-close-btn" aria-label="Remove Panel" title="Remove Panel"><i class="fas fa-times"></i></button>
         <div class="panel-config-area">
@@ -70,17 +68,20 @@ function createInsightPanelElement(panelData) {
                 <div class="config-group-selector"><label for="group-select-${panelIdStr}">Filter by Group:</label><select id="group-select-${panelIdStr}" name="group_id"><option value="all">All My Groups</option></select></div>
                 <div class="config-time-selector"><label for="time-slider-${panelIdStr}">Filter by Time Period:</label><div id="time-slider-${panelIdStr}" class="time-range-slider-placeholder"></div><div id="time-slider-display-${panelIdStr}" class="time-slider-display">Loading range...</div></div>
             </div>
-        </div>`;
-    const shareButtonHtml = isTemporary ? '' : `<button class="panel-action-btn panel-share-btn" aria-label="Share Panel" title="Share Panel"><i class="fas fa-share-alt"></i></button>`;
+        </div>` : '';
+    const shareButtonHtml = showControls ? `<button class="panel-action-btn panel-share-btn" aria-label="Share Panel" title="Share Panel"><i class="fas fa-share-alt"></i></button>` : '';
+    // Config summary for palette drag clone will be set by _updatePanelConfigSummary after its (default) config is known.
+    // For other temp panels (like the grid placeholder itself, though it's not an insight-panel), "Drop to add panel" is fine.
+    // For real panels, "Loading configuration..." is the initial state.
+    const configSummaryText = isForPaletteDragClone ? "Loading default view..." : (panelIdStr.startsWith('temp-') ? 'Drop to add panel' : 'Loading configuration...');
 
     panel.innerHTML = `
         ${controlsHtml}
-        <div class="panel-main-content-wrapper"><h3 class="panel-dynamic-title">${panelTitleText}</h3><div class="panel-config-summary">${isTemporary ? 'Drop to add panel' : 'Loading configuration...'}</div><div class="panel-content"><div class="placeholder-chart">${placeholderHtml}</div></div></div>
+        <div class="panel-main-content-wrapper"><h3 class="panel-dynamic-title">${panelTitleText}</h3><div class="panel-config-summary">${configSummaryText}</div><div class="panel-content"><div class="placeholder-chart">${placeholderHtml}</div></div></div>
         ${shareButtonHtml}`;
 
-    if (!isTemporary) {
-        makePanelDraggable(panel); // Attaches pointerdown for drag
-        // Config toggle listener is now consistently attached in _initializePanelConfigurationControls or setupEventListeners
+    if (showControls) {
+        makePanelDraggable(panel);
     }
     return panel;
 }
@@ -88,10 +89,38 @@ function createInsightPanelElement(panelData) {
 function _updatePanelConfigSummary(panelElement) {
     if (!panelElement) return; const summaryElement = panelElement.querySelector('.panel-config-summary'); if (!summaryElement) return;
     const panelIdStr = panelElement.dataset.panelId;
-    if (panelIdStr.startsWith('temp-')) {
-        summaryElement.textContent = 'Drop to add panel';
+
+    if (panelIdStr.startsWith('temp-live-')) { // Palette drag clone
+        const panelConfig = JSON.parse(panelElement.dataset.configuration || '{}'); // Should be default config
+        const analysisDetails = getAnalysisDetails(panelElement.dataset.analysisType);
+        const defaultConfig = analysisDetails?.default_config || {};
+        const effectiveConfig = { ...defaultConfig, ...panelConfig };
+
+        let groupDisplay = "All Groups";
+        if (effectiveConfig.group_id && effectiveConfig.group_id !== "all") {
+            const group = userGroupsCache.find(g => String(g.id) === String(effectiveConfig.group_id));
+            groupDisplay = group ? group.name : `Group ID: ${effectiveConfig.group_id}`;
+        } else { groupDisplay = "All Groups"; } // Explicitly default
+
+        let dateRangeDisplay = "All Time";
+        if (effectiveConfig.time_period !== 'all_time' && effectiveConfig.startDate && effectiveConfig.endDate) {
+            const startDate = new Date(effectiveConfig.startDate + 'T00:00:00Z');
+            const endDate = new Date(effectiveConfig.endDate + 'T00:00:00Z');
+            const options = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+            if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+                dateRangeDisplay = `${startDate.toLocaleDateString(undefined, options)} - ${endDate.toLocaleDateString(undefined, options)}`;
+            } else { dateRangeDisplay = "Invalid Dates"; }
+        } else { dateRangeDisplay = "All Time"; }  // Explicitly default for all_time or missing dates
+        summaryElement.textContent = `${groupDisplay} | ${dateRangeDisplay}`;
         return;
     }
+
+    if (panelIdStr.startsWith('temp-') && !panelIdStr.startsWith('temp-live-')) {
+        summaryElement.textContent = 'Drop to add panel'; // For placeholder in grid, etc.
+        return;
+    }
+
+    // Persisted panels logic (same as V32.5)
     const panelConfig = JSON.parse(panelElement.dataset.configuration || '{}');
     const groupSelect = panelElement.querySelector(`#group-select-${panelIdStr}`); let groupDisplay = "All Groups";
     if (panelConfig.group_id && panelConfig.group_id !== "all") { if (groupSelect && groupSelect.value !== "all") { const selectedOption = groupSelect.options[groupSelect.selectedIndex]; groupDisplay = selectedOption ? selectedOption.text : `Group ID: ${panelConfig.group_id}`; } else if (userGroupsCache.length > 0) { const group = userGroupsCache.find(g => String(g.id) === String(panelConfig.group_id)); groupDisplay = group ? group.name : `Group ID: ${panelConfig.group_id}`; } else { groupDisplay = `Group ID: ${panelConfig.group_id}`; }} else if (groupSelect && groupSelect.value !== "all") { const selectedOption = groupSelect.options[groupSelect.selectedIndex]; groupDisplay = selectedOption ? selectedOption.text : "Selected Group"; }
@@ -102,7 +131,7 @@ function _updatePanelConfigSummary(panelElement) {
 
 function _initializePanelConfigurationControls(panelElement, panelDataForControls) {
     const panelIdStr = String(panelDataForControls.id);
-    if (panelIdStr.startsWith('temp-')) return;
+    if (panelIdStr.startsWith('temp-')) return; // No controls for temp elements, including palette drag clones
 
     const analysisType = panelDataForControls.analysis_type; const analysisDetails = getAnalysisDetails(analysisType);
     const defaultConfig = analysisDetails?.default_config || {};
@@ -111,10 +140,10 @@ function _initializePanelConfigurationControls(panelElement, panelDataForControl
 
     const groupSelect = panelElement.querySelector(`#group-select-${panelIdStr}`);
     if (groupSelect) {
-        while (groupSelect.options.length > 1) groupSelect.remove(1); // Clear existing options except "All My Groups"
+        while (groupSelect.options.length > 1) groupSelect.remove(1);
         userGroupsCache.forEach(group => groupSelect.add(new Option(group.name, group.id)));
         groupSelect.value = String(currentConfig.group_id || "all");
-        groupSelect.removeEventListener('change', _configChangeHandler); // Ensure no duplicate listeners
+        groupSelect.removeEventListener('change', _configChangeHandler);
         groupSelect.addEventListener('change', _configChangeHandler);
     }
 
@@ -134,25 +163,23 @@ function _initializePanelConfigurationControls(panelElement, panelDataForControl
         try {
             noUiSlider.create(sliderElement, { start: [initialStart, initialEnd], connect: true, range: { 'min': minTimestamp, 'max': maxTimestamp }, step: DAY_IN_MILLISECONDS, format: { to: v=>new Date(Math.round(parseFloat(v)/DAY_IN_MILLISECONDS)*DAY_IN_MILLISECONDS).toISOString().split('T')[0], from: s=>new Date(s+'T00:00:00Z').getTime()||minTimestamp }, behaviour: 'tap-drag', pips: {mode:'positions',values:[0,25,50,75,100],density:4,format:{to:v=>new Date(Math.round(parseFloat(v)/DAY_IN_MILLISECONDS)*DAY_IN_MILLISECONDS).toLocaleDateString(undefined,{month:'short',year:'2-digit',timeZone:'UTC'})}} });
             const updateSliderDisplay = (values) => { const sD = new Date(values[0]+'T00:00:00Z'), eD = new Date(values[1]+'T00:00:00Z'); sliderDisplayElement.textContent = `${sD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})} - ${eD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}`;};
-            sliderElement.noUiSlider.on('update', (values)=>{updateSliderDisplay(values); _updatePanelConfigSummary(panelElement);}); // Update summary on any slider visual update
-            sliderElement.noUiSlider.on('set', _configChangeHandler); // Handle actual config change on set
-            updateSliderDisplay(sliderElement.noUiSlider.get()); // Initial display
+            sliderElement.noUiSlider.on('update', (values)=>{updateSliderDisplay(values); _updatePanelConfigSummary(panelElement);});
+            sliderElement.noUiSlider.on('set', _configChangeHandler);
+            updateSliderDisplay(sliderElement.noUiSlider.get());
         } catch(err) { console.error("Slider Error for panel " + panelIdStr + ":", err); sliderDisplayElement.textContent = "Slider Error"; }
     }
 
-    // Attach config toggle listener here for consistency
     const configToggleBtn = panelElement.querySelector('.panel-config-toggle-btn');
     const configArea = panelElement.querySelector('.panel-config-area');
     if (configToggleBtn && configArea && !configToggleBtn.getAttribute('listener-attached-init')) {
         configToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            configArea.classList.toggle('open');
+            e.stopPropagation(); configArea.classList.toggle('open');
             const icon = configToggleBtn.querySelector('i');
             if (icon) icon.className = configArea.classList.contains('open') ? 'fas fa-chevron-up' : 'fas fa-cog';
         });
         configToggleBtn.setAttribute('listener-attached-init', 'true');
     }
-    _updatePanelConfigSummary(panelElement); // Final call to ensure summary is correct after all controls init
+    _updatePanelConfigSummary(panelElement);
 }
 
 function _configChangeHandler(event) { const panelElement = event.target.closest('.insight-panel'); if (panelElement) _handleConfigChange(panelElement); }
@@ -173,31 +200,27 @@ async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
     const analysisType = panelElement.dataset.analysisType;
     const contentContainer = panelElement.querySelector('.placeholder-chart');
 
-    if (!analysisType || !contentContainer) {
-        console.error(`loadPanelContent - ABORTING. Missing type or contentContainer. PanelID: ${panelIdStr}`);
-        if(contentContainer) contentContainer.innerHTML = "<p style='color:red'>Internal Error: Panel misconfigured.</p>";
-        return;
-    }
+    if (!analysisType || !contentContainer) { console.error(`loadPanelContent - ABORTING. Missing type/container. PanelID: ${panelIdStr}`); if(contentContainer) contentContainer.innerHTML = "<p style='color:red'>Internal Error.</p>"; return; }
 
     let panelIdForDataFetch = null;
     if (!panelIdStr.startsWith('temp-')) {
         const parsedId = parseInt(panelIdStr);
         if (!isNaN(parsedId)) { panelIdForDataFetch = parsedId; }
-        else { console.error(`loadPanelContent - Invalid numeric PanelID for non-temp panel: ${panelIdStr}.`); contentContainer.innerHTML = `<p style='color:red'>Config Error: Panel ID '${panelIdStr}' is invalid.</p>`; return; }
+        else { console.error(`loadPanelContent - Invalid ID for non-temp: ${panelIdStr}.`); contentContainer.innerHTML = `<p style='color:red'>Config Error.</p>`; return; }
     }
 
-    const isTemporaryPanelFromPalette = panelIdStr.startsWith('temp-live-');
+    const isPaletteDragClone = panelIdStr.startsWith('temp-live-'); // Used for palette drag visual element
     let chartInstanceToDestroy = null;
-    if (!isTemporaryPanelFromPalette && activeChartInstances[panelIdStr]) {
+    if (!isPaletteDragClone && activeChartInstances[panelIdStr]) {
         chartInstanceToDestroy = activeChartInstances[panelIdStr];
-    } else if (isTemporaryPanelFromPalette && chartInDraggedElement) {
+    } else if (isPaletteDragClone && chartInDraggedElement) {
         chartInstanceToDestroy = chartInDraggedElement;
     }
 
     if (chartInstanceToDestroy) {
         try { chartInstanceToDestroy.destroy(); } catch (e) {}
-        if (!isTemporaryPanelFromPalette && !panelIdStr.startsWith('temp-')) delete activeChartInstances[panelIdStr];
-        else if (isTemporaryPanelFromPalette) chartInDraggedElement = null;
+        if (!isPaletteDragClone && !panelIdStr.startsWith('temp-')) delete activeChartInstances[panelIdStr]; // For actual panels in grid
+        else if (isPaletteDragClone) chartInDraggedElement = null; // For palette drag clone
     }
 
     const analysisDetails = getAnalysisDetails(analysisType);
@@ -207,7 +230,10 @@ async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
         if (typeof Chart === 'undefined') throw new Error("Chart.js library not loaded.");
         const analysisResult = await fetchAnalysisData(analysisType, panelIdForDataFetch);
 
-        if(!panelIdStr.startsWith('temp-')) _updatePanelConfigSummary(panelElement); // Update summary AFTER data load for real panels in case config influences summary.
+        // Update summary for non-temp panels AND for palette drag clones (which now show default summary)
+        if (isPaletteDragClone || !panelIdStr.startsWith('temp-')) {
+            _updatePanelConfigSummary(panelElement);
+        }
 
         if (analysisType === 'spending-by-category' && analysisResult?.data) {
             if (analysisResult.data.length > 0) {
@@ -217,8 +243,8 @@ async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
                 const chartOptions = { responsive: true, maintainAspectRatio: false, animation: { duration: isForDragCloneVisuals ? 0 : CHART_ANIMATION_DURATION }, plugins: { legend: { display: !isForDragCloneVisuals, position: 'bottom', labels: { color: '#ddd', padding: 15, boxWidth: 12, usePointStyle: true } }, tooltip: { enabled: !isForDragCloneVisuals, backgroundColor: 'rgba(20,20,30,0.85)', titleColor: '#eee', bodyColor: '#ddd', callbacks: { label: chartCtx => `${chartCtx.label || ''}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(chartCtx.parsed)} (${(chartCtx.parsed / chartCtx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0) * 100).toFixed(1)}%)` } } } };
                 if(isForDragCloneVisuals) { chartOptions.elements = { arc: { borderWidth: 1 }}; }
                 const newChart = new Chart(ctx, { type: 'pie', data: { labels, datasets: [{ label: 'Spending', data: amounts, backgroundColor: bgColors, hoverBackgroundColor: bgColors.map(c => c.replace(/60%\)$/, '70%)')), borderColor: '#333', borderWidth: 1, hoverOffset: isForDragCloneVisuals ? 0: 8 }] }, options: chartOptions });
-                if(isTemporaryPanelFromPalette) chartInDraggedElement = newChart;
-                else if (!panelIdStr.startsWith('temp-')) activeChartInstances[panelIdStr] = newChart;
+                if(isPaletteDragClone) chartInDraggedElement = newChart; // Store chart for palette drag clone
+                else if (!panelIdStr.startsWith('temp-')) activeChartInstances[panelIdStr] = newChart; // Store for real panels
             } else { contentContainer.innerHTML = `<p style="text-align:center;color:#bbb;padding:15px 5px;">No data found ${panelIdStr.startsWith('temp-') ? 'for this analysis type' : 'for current filters'}.</p>`; }
         } else if (analysisType !== 'spending-by-category') { contentContainer.innerHTML = `<p style='text-align:center;color:orange;padding:15px 5px;'>Display not implemented for: ${analysisType}</p>`; }
         else { contentContainer.innerHTML = `<p style="text-align:center;color:#bbb;padding:15px 5px;">No data or unexpected format.</p>`;}
@@ -228,7 +254,7 @@ async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
     }
 }
 
-// --- Grid State & Layout --- (V32.3 - Null check fix)
+// --- Grid State & Layout ---
 function checkGridEmpty() { if (!insightsGrid || !emptyMessage) return; const hasContent = insightsGrid.querySelector('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'); emptyMessage.style.display = hasContent ? 'none' : 'block'; if (!hasContent && emptyMessage.parentElement !== insightsGrid) insightsGrid.appendChild(emptyMessage); }
 function calculateGridCellLayout() {
     if (!insightsGrid || !insightsGridContainer) { gridCellLayout = []; return; }
@@ -253,23 +279,26 @@ function findNearestSlotIndex(pointerX, pointerY) { let closestIndex = -1, minDi
     return Math.min(closestIndex, panelCount);
 }
 
-// --- Palette Preview Logic --- (Same as V32.x)
+// --- Palette Preview Logic ---
 function showPalettePreview(targetPaletteItem) { if (!palettePreviewContainer || !targetPaletteItem || isDragging || (palette?.classList.contains('collapsed') && window.innerWidth > 768)) return; const { previewTitle, previewImageUrl, previewDescription } = targetPaletteItem.dataset; if (!previewTitle || !previewDescription) { hidePalettePreview(); return; } clearTimeout(previewHideTimeout); previewHideTimeout = null; palettePreviewContainer.innerHTML = `<div class="preview-container-inner"><h3 class="preview-title">${previewTitle}</h3><div class="preview-content">${previewImageUrl ? `<img src="${previewImageUrl}" alt="${previewTitle} preview" style="max-height:120px;width:auto;display:block;margin:5px auto 8px;border-radius:3px;">` : ''}<p>${previewDescription}</p></div></div>`; palettePreviewContainer.style.display = 'block'; palettePreviewContainer.style.visibility = 'hidden'; palettePreviewContainer.style.opacity = '0'; palettePreviewContainer.style.transform = 'scale(0.95)'; palettePreviewContainer.classList.remove('visible'); requestAnimationFrame(() => { if (!palettePreviewContainer || !targetPaletteItem) return; const prevRect = palettePreviewContainer.getBoundingClientRect(); const itemRect = targetPaletteItem.getBoundingClientRect(); const contRect = insightsView?.getBoundingClientRect() || { left:0,top:0,right:window.innerWidth,bottom:window.innerHeight }; let l = Math.max(contRect.left+VIEWPORT_PADDING, Math.min(itemRect.right+PREVIEW_GAP_TO_RIGHT, contRect.right-prevRect.width-VIEWPORT_PADDING)); let t = Math.max(contRect.top+VIEWPORT_PADDING, Math.min(itemRect.top+(itemRect.height/2)-(prevRect.height/2), contRect.bottom-prevRect.height-VIEWPORT_PADDING)); palettePreviewContainer.style.left = `${Math.round(l-contRect.left)}px`; palettePreviewContainer.style.top = `${Math.round(t-contRect.top)}px`; palettePreviewContainer.style.visibility = 'visible'; palettePreviewContainer.classList.add('visible'); palettePreviewContainer.style.opacity = '1'; palettePreviewContainer.style.transform = 'scale(1)'; }); }
 function scheduleHidePalettePreview() { clearTimeout(previewHideTimeout); previewHideTimeout = setTimeout(hidePalettePreview, PREVIEW_HIDE_DELAY + 100); }
 function hidePalettePreview() { clearTimeout(previewHideTimeout); previewHideTimeout = null; if (palettePreviewContainer?.classList.contains('visible')) { palettePreviewContainer.classList.remove('visible'); palettePreviewContainer.style.opacity = '0'; palettePreviewContainer.style.transform = 'scale(0.95)'; setTimeout(() => { if (palettePreviewContainer && !palettePreviewContainer.classList.contains('visible')) { palettePreviewContainer.style.display = 'none'; palettePreviewContainer.innerHTML = ''; } }, 300); } else if (palettePreviewContainer) { palettePreviewContainer.style.display = 'none'; palettePreviewContainer.innerHTML = ''; } }
 function cancelHidePreview() { clearTimeout(previewHideTimeout); }
 
-
-// --- Drag and Drop Logic --- (Same as V32.x, placeholder sizing handled in CSS & calculateGridCellLayout)
+// --- Drag and Drop Logic ---
 function onPointerDown(event) { if (event.target.closest('.panel-action-btn, .add-analysis-btn, .palette-toggle-btn, .panel-config-area, .panel-config-controls, .panel-config-controls *, .noUi-handle, .noUi-pips')) return; if (event.button !== 0 || isDragging) return; const panelElement = event.target.closest('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'); const paletteItem = event.target.closest('.palette-item'); if (panelElement?.dataset.panelId && !panelElement.dataset.panelId.startsWith('temp-')) initiateDrag(event, panelElement, 'grid'); else if (paletteItem && !palette?.classList.contains('collapsed') && paletteItem.dataset.analysisType) initiateDrag(event, paletteItem, 'palette');}
+
 function initiateDrag(event, element, type) {
     event.preventDefault(); event.stopPropagation(); hidePalettePreview();
     isDragging = true; dragType = type; startClientX = event.clientX; startClientY = event.clientY;
     calculateGridCellLayout();
+    if (palette) paletteRect = palette.getBoundingClientRect();
+
     placeholderElement = document.createElement('div');
     placeholderElement.className = 'dragging-placeholder drop-slot-indicator';
     if (gridCellLayout.length > 0) { placeholderElement.style.width = `${gridCellLayout[0].contentWidth}px`; placeholderElement.style.height = `${gridCellLayout[0].contentHeight}px`; }
     else { placeholderElement.style.width = '250px'; placeholderElement.style.height = '200px'; }
+
     let elementRect;
     if (dragType === 'grid') {
         originalSourceElementForGridDrag = element; draggedElement = originalSourceElementForGridDrag;
@@ -278,13 +307,15 @@ function initiateDrag(event, element, type) {
         if (draggedElement.parentElement === insightsGrid && sourceIndex !== -1) { insightsGrid.insertBefore(placeholderElement, draggedElement); draggedElement.remove(); }
         else { console.error("Error: Dragged grid panel not found correctly."); isDragging = false; return; }
         currentTargetIndex = sourceIndex;
-    } else {
+    } else { // dragType === 'palette'
         originalSourceElementForGridDrag = null; const sourcePaletteItem = element;
         const { analysisType } = sourcePaletteItem.dataset; if (!analysisType) { isDragging = false; return; }
         const analysisDetails = getAnalysisDetails(analysisType); const defaultConfig = analysisDetails?.default_config || {};
         const tempPanelData = { id: generateUniqueId('temp-live'), analysis_type:analysisType, title: sourcePaletteItem.dataset.title || analysisDetails?.title || 'Analysis', configuration:defaultConfig };
-        draggedElement = createInsightPanelElement(tempPanelData);
-        loadPanelContent(draggedElement, true).catch(err => { console.error("Error loading live data into dragged palette item:", err); const phc = draggedElement.querySelector('.placeholder-chart'); if(phc) phc.innerHTML = "<p style='color:red;text-align:center;'>Error loading preview</p>"; });
+        
+        draggedElement = createInsightPanelElement(tempPanelData, true); // true for isForPaletteDragClone
+        loadPanelContent(draggedElement, true).catch(err => { console.error("Error loading data into palette drag clone:", err); const phc = draggedElement.querySelector('.placeholder-chart'); if(phc) phc.innerHTML = "<p style='color:red;text-align:center;'>Error loading data</p>"; });
+        
         let cloneWidth = gridCellLayout.length > 0 ? gridCellLayout[0].contentWidth : 250; let cloneHeight = gridCellLayout.length > 0 ? gridCellLayout[0].contentHeight : 200;
         offsetX = cloneWidth * 0.5; offsetY = cloneHeight * 0.2; elementRect = {left:startClientX-offsetX, top:startClientY-offsetY, width:cloneWidth, height:cloneHeight};
         sourceIndex = -1; currentTargetIndex = -1;
@@ -294,56 +325,97 @@ function initiateDrag(event, element, type) {
     document.body.appendChild(draggedElement);
     document.addEventListener('pointermove', onPointerMove); document.addEventListener('pointerup', onPointerUp, {once:true}); document.addEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
 }
+
 function onPointerMove(event) {
     if (!isDragging || !draggedElement) return; const currentX = event.clientX, currentY = event.clientY;
     cancelAnimationFrame(animationFrameId);
     animationFrameId = requestAnimationFrame(() => {
         draggedElement.style.left = `${currentX - offsetX}px`; draggedElement.style.top = `${currentY - offsetY}px`;
         gridRect = insightsGridContainer.getBoundingClientRect();
-        const pointerXInGridCont = currentX - gridRect.left, pointerYInGridCont = currentY - gridRect.top;
-        const isOverGrid = currentX>=gridRect.left && currentX<=gridRect.right && currentY>=gridRect.top && currentY<=gridRect.bottom;
-        let nearestIdx = -1;
-        if (isOverGrid) { const pointerXInGrid = pointerXInGridCont + insightsGridContainer.scrollLeft; const pointerYInGrid = pointerYInGridCont + insightsGridContainer.scrollTop; nearestIdx = findNearestSlotIndex(pointerXInGrid, pointerYInGrid); }
-        if (isOverGrid && nearestIdx !== -1) { if (nearestIdx !== currentTargetIndex || !placeholderElement.parentElement) { insertElementAtIndex(placeholderElement, nearestIdx); currentTargetIndex = nearestIdx; } }
-        else { if (placeholderElement.parentElement) placeholderElement.remove(); currentTargetIndex = -1; }
-        if (isOverGrid) handleGridScroll(currentY, gridRect);
+        
+        let isOverPalette = false;
+        if (dragType === 'grid' && paletteRect && palette && !palette.classList.contains('collapsed')) {
+            isOverPalette = currentX >= paletteRect.left && currentX <= paletteRect.right &&
+                            currentY >= paletteRect.top && currentY <= paletteRect.bottom;
+        }
+
+        if (isOverPalette) {
+            palette.classList.add('drag-over-delete');
+            if (placeholderElement.parentElement) placeholderElement.remove();
+            currentTargetIndex = -2; // Special index for palette drop
+        } else {
+            palette.classList.remove('drag-over-delete');
+            const pointerXInGridCont = currentX - gridRect.left, pointerYInGridCont = currentY - gridRect.top;
+            const isOverGrid = currentX>=gridRect.left && currentX<=gridRect.right && currentY>=gridRect.top && currentY<=gridRect.bottom;
+            let nearestIdx = -1;
+            if (isOverGrid) { const pointerXInGrid = pointerXInGridCont + insightsGridContainer.scrollLeft; const pointerYInGrid = pointerYInGridCont + insightsGridContainer.scrollTop; nearestIdx = findNearestSlotIndex(pointerXInGrid, pointerYInGrid); }
+            if (isOverGrid && nearestIdx !== -1) { if (nearestIdx !== currentTargetIndex || !placeholderElement.parentElement) { insertElementAtIndex(placeholderElement, nearestIdx); currentTargetIndex = nearestIdx; } }
+            else { if (placeholderElement.parentElement) placeholderElement.remove(); currentTargetIndex = -1; }
+        }
+        if (dragType === 'grid' && !isOverPalette) handleGridScroll(currentY, gridRect); // Only scroll grid if not over palette for delete
+        else if (dragType === 'palette') handleGridScroll(currentY, gridRect); // Palette drags can scroll grid
     });
 }
 function handleGridScroll(clientY, gridContainerRect) { let scrollDelta = 0; const speed = SCROLL_THRESHOLD * SCROLL_SPEED_MULTIPLIER * 0.5; if (clientY < gridContainerRect.top + SCROLL_THRESHOLD) { scrollDelta = -speed * (1 - (clientY - gridContainerRect.top) / SCROLL_THRESHOLD); } else if (clientY > gridContainerRect.bottom - SCROLL_THRESHOLD) { scrollDelta = speed * (1 - (gridContainerRect.bottom - clientY) / SCROLL_THRESHOLD); } if (scrollDelta !== 0) insightsGridContainer.scrollTop += scrollDelta; }
+
 async function onPointerUp() {
     if (!isDragging) return; cancelAnimationFrame(animationFrameId);
     document.removeEventListener('pointermove', onPointerMove); document.removeEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
-    const droppedInside = currentTargetIndex !== -1 && placeholderElement?.parentElement === insightsGrid; let finalPanelToFocus = null;
+    if (palette) palette.classList.remove('drag-over-delete');
+
+    const droppedOnPalette = currentTargetIndex === -2 && dragType === 'grid' && originalSourceElementForGridDrag;
+    const droppedInsideGrid = currentTargetIndex !== -1 && currentTargetIndex !== -2 && placeholderElement?.parentElement === insightsGrid;
+    let finalPanelToFocus = null;
+
     if (draggedElement) { draggedElement.remove(); draggedElement.classList.remove('dragging-clone'); ['position', 'left', 'top', 'width', 'height', 'zIndex', 'pointerEvents', 'transform', 'margin'].forEach(prop => { draggedElement.style[prop] = ''; }); }
     if (dragType === 'palette' && chartInDraggedElement) { try { chartInDraggedElement.destroy(); } catch(e){} chartInDraggedElement = null; }
+
     try {
-        if (droppedInside) {
+        if (droppedOnPalette) {
+            const panelToRemove = originalSourceElementForGridDrag;
+            const panelIdStr = panelToRemove.dataset.panelId;
+            const panelIdInt = parseInt(panelIdStr);
+
+            if (activeChartInstances[panelIdStr]) { try { activeChartInstances[panelIdStr].destroy(); } catch(e){} delete activeChartInstances[panelIdStr]; }
+            const sliderEl = panelToRemove.querySelector(`#time-slider-${panelIdStr}`); if (sliderEl?.noUiSlider) sliderEl.noUiSlider.destroy();
+            if (placeholderElement?.parentElement) placeholderElement.remove(); // Remove grid placeholder if it was shown
+            // Panel is already visually gone (was draggedElement)
+            if (!isNaN(panelIdInt)) { await removePanelFromServer(panelIdInt); }
+            else { console.error("Cannot remove panel by dragging to palette: Invalid ID", panelIdStr); }
+        } else if (droppedInsideGrid) {
             if (dragType === 'palette') {
                 const analysisType = draggedElement.dataset.analysisType; const analysisDetails = getAnalysisDetails(analysisType);
                 const initialConfig = JSON.parse(draggedElement.dataset.configuration) || analysisDetails?.default_config || {};
                 const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig); if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed on server.");
                 const panelDataForCreation = { id: String(newPanelDataFromServer.id), analysis_type: newPanelDataFromServer.analysis_type || analysisType, title: newPanelDataFromServer.title || draggedElement.dataset.title || analysisDetails?.title || 'Analysis', configuration: newPanelDataFromServer.configuration || initialConfig };
-                finalPanelToFocus = createInsightPanelElement(panelDataForCreation);
+                finalPanelToFocus = createInsightPanelElement(panelDataForCreation, false); // Not a palette drag clone
                 placeholderElement.replaceWith(finalPanelToFocus);
                 _initializePanelConfigurationControls(finalPanelToFocus, panelDataForCreation); await loadPanelContent(finalPanelToFocus);
             } else if (dragType === 'grid' && originalSourceElementForGridDrag) {
                 finalPanelToFocus = originalSourceElementForGridDrag; placeholderElement.replaceWith(finalPanelToFocus);
                 const chartInstance = activeChartInstances[finalPanelToFocus.dataset.panelId]; if (chartInstance?.resize) { setTimeout(() => { try { chartInstance.resize(); } catch(e){} }, 50); }
-                _updatePanelConfigSummary(finalPanelToFocus); // Ensure summary is updated
+                _updatePanelConfigSummary(finalPanelToFocus);
             }
-            const panelElementsInGrid = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
-            const persistentPanelIds = panelElementsInGrid.filter(panel => panel.dataset.panelId && !String(panel.dataset.panelId).startsWith('temp-')).map(panel => parseInt(panel.dataset.panelId)).filter(id => !isNaN(id));
-            if (persistentPanelIds.length > 0) { await updatePanelOrderOnServer(persistentPanelIds); }
-        } else {
+        } else { // Dropped outside grid and not on palette
             if (dragType === 'grid' && originalSourceElementForGridDrag) {
                 finalPanelToFocus = originalSourceElementForGridDrag; if (placeholderElement?.parentElement) placeholderElement.remove(); insertElementAtIndex(finalPanelToFocus, sourceIndex);
                 const chartInstance = activeChartInstances[finalPanelToFocus.dataset.panelId]; if (chartInstance?.resize) { setTimeout(() => { try { chartInstance.resize(); } catch(e){} }, 50); }
-                _updatePanelConfigSummary(finalPanelToFocus); // Ensure summary is updated
+                _updatePanelConfigSummary(finalPanelToFocus);
             } else if (dragType === 'palette') { if (placeholderElement?.parentElement) placeholderElement.remove(); }
+        }
+
+        if (droppedInsideGrid || droppedOnPalette) {
+             const panelElementsInGrid = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
+             const persistentPanelIds = panelElementsInGrid.filter(p => p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id));
+            // Update order if list changed or became empty
+            if (persistentPanelIds.length > 0 || ( (droppedInsideGrid || droppedOnPalette) && panelElementsInGrid.length === 0) ) {
+                await updatePanelOrderOnServer(persistentPanelIds);
+            }
         }
     } catch (apiError) {
         alert(`Error saving changes: ${apiError.message}`); console.error("[Insights] onPointerUp - API Error:", apiError);
-        if (dragType === 'grid' && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { if (placeholderElement?.parentElement) placeholderElement.remove(); insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); _updatePanelConfigSummary(originalSourceElementForGridDrag); }
+        if (droppedOnPalette && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); _updatePanelConfigSummary(originalSourceElementForGridDrag); }
+        else if (dragType === 'grid' && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { if (placeholderElement?.parentElement) placeholderElement.remove(); insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); _updatePanelConfigSummary(originalSourceElementForGridDrag); }
         else if (dragType === 'palette' && placeholderElement?.parentElement) { placeholderElement.remove(); }
     } finally {
         if(placeholderElement?.parentElement) placeholderElement.remove(); placeholderElement = null;
@@ -366,7 +438,7 @@ function insertElementAtIndex(elementToInsert, index) {
     checkGridEmpty();
 }
 
-// --- Panel Actions & Palette Toggle --- (Largely same)
+// --- Panel Actions & Palette Toggle ---
 async function handleGridAction(event) {
     const panel = event.target.closest('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'); if (!panel || !panel.dataset.panelId) return; const panelIdStr = panel.dataset.panelId; if (panelIdStr.startsWith('temp-')) return;
     if (event.target.closest('.panel-close-btn')) {
@@ -403,7 +475,7 @@ async function setupEventListeners() {
                     try {
                         const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig); if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed.");
                         const panelDataForCreation = { id: String(newPanelDataFromServer.id), analysis_type: newPanelDataFromServer.analysis_type || analysisType, title: item.dataset.title || newPanelDataFromServer.title || analysisDetails?.title || 'Analysis', configuration: newPanelDataFromServer.configuration || initialConfig };
-                        const newEl = createInsightPanelElement(panelDataForCreation);
+                        const newEl = createInsightPanelElement(panelDataForCreation, false); // Not a palette drag clone
                         insertElementAtIndex(newEl, insightsGrid.children.length - (emptyMessage.parentElement === insightsGrid ? 1 : 0) );
                         _initializePanelConfigurationControls(newEl, panelDataForCreation);
                         await loadPanelContent(newEl);
@@ -425,45 +497,16 @@ async function setupEventListeners() {
         insightsGrid.addEventListener('click', handleGridAction);
         const existingPanels = insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)');
         for (const panel of existingPanels) {
-            const panelIdStr = panel.dataset.panelId;
-            const analysisType = panel.dataset.analysisType;
-
+            const panelIdStr = panel.dataset.panelId; const analysisType = panel.dataset.analysisType;
             if (!panelIdStr || !analysisType || panelIdStr.startsWith('temp-')) { continue; }
-            if (isNaN(parseInt(panelIdStr))) { const contentDiv = panel.querySelector('.placeholder-chart') || panel.querySelector('.panel-content'); if (contentDiv) contentDiv.innerHTML = `<p style='color:red;'><b>Config Error:</b><br>Invalid ID ('${panelIdStr}')</p>`; const titleH3 = panel.querySelector('.panel-dynamic-title'); if (titleH3) titleH3.textContent = "Config Error"; continue; }
-
-            makePanelDraggable(panel); // Already done in createInsightPanelElement if it were new, but good for server-rendered.
-            const analysisDetails = getAnalysisDetails(analysisType);
-
-            // Set title from data-title (set by server) or fallbacks
-            const titleEl = panel.querySelector('.panel-dynamic-title');
-            let panelTitleText = panel.dataset.title || (analysisDetails?.title || 'Analysis');
-            if (titleEl) titleEl.textContent = panelTitleText;
-            else { console.warn(`Panel ${panelIdStr} missing .panel-dynamic-title element`); }
-
-
-            // Set initial placeholder HTML from analysis details
-            const placeholderChartDiv = panel.querySelector('.placeholder-chart');
-            if (placeholderChartDiv) {
-                placeholderChartDiv.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`;
-            } else { console.warn(`Panel ${panelIdStr} missing .placeholder-chart element`); }
-
-            let configObject;
-            try {
-                configObject = JSON.parse(panel.dataset.configuration || '{}');
-            } catch (e) {
-                console.error(`Error parsing configuration for panel ${panelIdStr} from data-attribute:`, panel.dataset.configuration, e);
-                configObject = analysisDetails?.default_config || {};
-            }
-
-            const panelDataForInit = {
-                id: panelIdStr,
-                analysis_type: analysisType,
-                title: panelTitleText, // Use the title determined above
-                configuration: configObject
-            };
-
-            _initializePanelConfigurationControls(panel, panelDataForInit); // This sets up controls AND calls _updatePanelConfigSummary
-            await loadPanelContent(panel); // This fetches data and renders chart, might also call _updatePanelConfigSummary
+            if (isNaN(parseInt(panelIdStr))) { const contentDiv = panel.querySelector('.placeholder-chart') || panel.querySelector('.panel-content'); if (contentDiv) contentDiv.innerHTML = `<p style='color:red;'><b>Error:</b>Invalid ID ('${panelIdStr}')</p>`; const titleH3 = panel.querySelector('.panel-dynamic-title'); if (titleH3) titleH3.textContent = "Config Error"; continue; }
+            makePanelDraggable(panel); const analysisDetails = getAnalysisDetails(analysisType);
+            const titleEl = panel.querySelector('.panel-dynamic-title'); let panelTitleText = panel.dataset.title || (analysisDetails?.title || 'Analysis');
+            if (titleEl) titleEl.textContent = panelTitleText; else { console.warn(`Panel ${panelIdStr} missing .panel-dynamic-title`); }
+            const placeholderChartDiv = panel.querySelector('.placeholder-chart'); if (placeholderChartDiv) { placeholderChartDiv.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`; } else { console.warn(`Panel ${panelIdStr} missing .placeholder-chart`); }
+            let configObject; try { configObject = JSON.parse(panel.dataset.configuration || '{}'); } catch (e) { console.error(`Error parsing config for ${panelIdStr}:`, panel.dataset.configuration, e); configObject = analysisDetails?.default_config || {}; }
+            const panelDataForInit = { id: panelIdStr, analysis_type: analysisType, title: panelTitleText, configuration: configObject };
+            _initializePanelConfigurationControls(panel, panelDataForInit); await loadPanelContent(panel);
         }
         const initialPanelElements = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
         const initialPersistentPanelIds = initialPanelElements.filter(p => p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id));
@@ -474,19 +517,33 @@ async function setupEventListeners() {
 }
 
 export async function initInsightsManager() {
-    console.log("%c[Insights] initInsightsManager - START (V32.5 - Consistent Panel Init)", "background-color: yellow; color: black; font-weight:bold;");
-    insightsView = document.getElementById('insights-view'); insightsGridContainer = document.getElementById('insights-grid-container'); insightsGrid = document.getElementById('insights-grid'); palette = document.getElementById('analysis-palette'); paletteHeader = document.getElementById('palette-header'); paletteToggleBtn = document.getElementById('palette-toggle-btn'); paletteScrollContainer = document.getElementById('palette-scroll-container'); emptyMessage = document.getElementById('insights-empty-message'); palettePreviewContainer = document.getElementById('palette-preview-container');
-    if (!insightsView || !insightsGridContainer || !insightsGrid || !palette || !palettePreviewContainer || !emptyMessage) { console.error("Insights Manager init failed: Critical elements not found."); return; }
+    console.log("%c[Insights] initInsightsManager - START (V32.6 - Palette Drag Full & Delete)", "background-color: yellow; color: black; font-weight:bold;");
+    insightsView = document.getElementById('insights-view');
+    insightsGridContainer = document.getElementById('insights-grid-container');
+    insightsGrid = document.getElementById('insights-grid');
+    palette = document.getElementById('analysis-palette');
+    paletteHeader = document.getElementById('palette-header');
+    paletteToggleBtn = document.getElementById('palette-toggle-btn');
+    paletteScrollContainer = document.getElementById('palette-scroll-container');
+    emptyMessage = document.getElementById('insights-empty-message');
+    palettePreviewContainer = document.getElementById('palette-preview-container');
+
+    if (!insightsView || !insightsGridContainer || !insightsGrid || !palette ||
+        !paletteHeader || !paletteToggleBtn || !paletteScrollContainer || // Added missing checks
+        !emptyMessage || !palettePreviewContainer) {
+        console.error("Insights Manager init failed: Critical DOM elements not found. Check HTML IDs.");
+        return;
+    }
     if (typeof Chart === 'undefined') console.error("Chart.js library not found."); if (typeof noUiSlider === 'undefined') console.warn("noUiSlider library not found.");
     await fetchUserGroups();
     calculateGridCellLayout();
-    await setupEventListeners(); // This will now fully initialize existing panels
+    await setupEventListeners();
     checkGridEmpty();
     isDragging = false; if(draggedElement) draggedElement.remove(); draggedElement = null;
     document.querySelectorAll('.dragging-placeholder.drop-slot-indicator').forEach(el => el.remove());
     document.removeEventListener('pointermove', onPointerMove); document.removeEventListener('pointerup', onPointerUp); document.removeEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
     hidePalettePreview(); if (palette) { insightsView.classList.toggle('palette-collapsed', palette.classList.contains('collapsed')); } updateToggleButtonIcon();
-    console.log("%c[Insights] initInsightsManager - Initialized Successfully (V32.5)", "background-color: lightgreen; color: black; font-weight:bold;");
+    console.log("%c[Insights] initInsightsManager - Initialized Successfully (V32.6)", "background-color: lightgreen; color: black; font-weight:bold;");
 }
 
 function getAnalysisDetails(analysisTypeId) { const localAvailableAnalyses = { "spending-by-category": { id: "spending-by-category", title: "💸 Spending by Category", description: "Total event costs by node. Filter by group & time.", preview_title: "Spending Example", preview_image_filename: "img/placeholder-bar-chart.png", preview_description: "Shows total costs for events linked to different nodes.", placeholder_html: `<div class='loading-placeholder' style='text-align: center; padding: 20px; color: #aaa;'><i class='fas fa-spinner fa-spin fa-2x'></i><p style='margin-top: 10px;'>Loading spending data...</p></div>`, default_config: { time_period: "all_time", group_id: "all", startDate: null, endDate: null } } }; return localAvailableAnalyses[analysisTypeId]; }
