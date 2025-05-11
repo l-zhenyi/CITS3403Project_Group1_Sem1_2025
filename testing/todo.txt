@@ -1,0 +1,7 @@
+/tests
+├── test_auth.py             # Registration, login, logout (Done)
+├── test_friends.py          # Add, accept, reject, remove friends
+├── test_messaging.py        # Sending and receiving private messages
+├── test_groups.py           # Create groups, add members, group posts
+├── test_events.py           # Create events, RSVP, visibility
+└── test_utils.py            # Fixtures or helper functions (optional)
