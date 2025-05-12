@@ -59,16 +59,19 @@
                                 
                                 {% if user.id in received_requests %}
                                     <!-- This user has sent a friend request to the current user -->
-                                    <form action="{{ url_for('handle_friend_request') }}" method="POST" class="inline-form">
-                                        <input type="hidden" name="request_id" value="{{ received_requests[user.id] }}">
-                                        <button type="submit" name="action" value="accept" class="btn btn-success">Accept Request</button>
-                                        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
-                                    </form>
+                                    <!-- In both places where you accept/reject a request -->
+                                <!-- In both places where you accept/reject a request -->
+                                <form action="{{ url_for('handle_friend_request') }}" method="POST" class="inline-form">
+                                    {{ friend_request_forms[request.id].hidden_tag() }}
+                                    {{ friend_request_forms[request.id].request_id() }}
+                                    {{ friend_request_forms[request.id].accept(class_="btn btn-success") }}
+                                    {{ friend_request_forms[request.id].reject(class_="btn btn-danger") }}
+                                </form>
                                 {% else %}
                                     <!-- This user has not sent a friend request to the current user -->
                                     <form action="{{ url_for('send_friend_request') }}" method="POST" class="inline-form">
-                                        {{ forms[user.username].hidden_tag() }}
-                                        {{ forms[user.username].receiver_username(value=user.username) }}
+                                        {{ forms[user.username].hidden_tag() }}  <!-- CSRF token -->
+                                        {{ forms[user.username].receiver_username(value=user.username) }} <!-- Receiver username -->
                                         <button type="submit" class="btn btn-primary" 
                                                 {% if user.id in sent_requests %} disabled style="background-color: grey;" {% endif %}>
                                             {% if user.id in sent_requests %} Request Sent {% else %} Send Friend Request {% endif %}
@@ -88,18 +91,21 @@
                 <ul class="list-group">
                     {% if friend_requests %}
                         {% for request in friend_requests %}
-                            <li class="friend-item">
-                                <a href="{{ url_for('user', username=request.sender.username) }}" class="friend-link">
-                                    <img src="{{ request.sender.avatar(128) or url_for('static', filename='images/default-avatar.png') }}" alt="{{ request.sender.username }}'s avatar" class="friend-avatar">
-                                    <span>{{ request.sender.username }}</span>
-                                </a>
-                                <form action="{{ url_for('handle_friend_request') }}" method="POST" class="inline-form">
-                                    <input type="hidden" name="request_id" value="{{ request.id }}">
-                                    <button type="submit" name="action" value="accept" class="btn btn-success">Accept</button>
-                                    <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
-                                </form>
-                            </li>
-                        {% endfor %}
+                        <li class="friend-item">
+                            <a href="{{ url_for('user', username=request.sender.username) }}" class="friend-link">
+                                <img src="{{ request.sender.avatar(128) or url_for('static', filename='images/default-avatar.png') }}" alt="{{ request.sender.username }}'s avatar" class="friend-avatar">
+                                <span>{{ request.sender.username }}</span>
+                            </a>
+                            <!-- In both places where you accept/reject a request -->
+                            <form action="{{ url_for('handle_friend_request') }}" method="POST" class="inline-form">
+                                {{ friend_request_forms[request.id].hidden_tag() }}
+                                {{ friend_request_forms[request.id].request_id() }}
+                                {{ friend_request_forms[request.id].accept(class_="btn btn-success") }}
+                                {{ friend_request_forms[request.id].reject(class_="btn btn-danger") }}
+                            </form>
+                        </li>
+                    {% endfor %}
+
                     {% else %}
                         <p class="text-muted">You have no pending friend requests.</p>
                     {% endif %}

@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, HiddenField
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Length
 from app.models import User 
 
@@ -60,8 +60,20 @@ class MessageForm(FlaskForm):
         DataRequired(), Length(min=0, max=140)]) 
     submit = SubmitField('Submit')
 
-# FriendRequestForm for sending friend requests
-from wtforms import HiddenField
+class SearchForm(FlaskForm):
+    query = StringField('Search', validators=[DataRequired()])
+    submit = SubmitField('Search')
 
-class FriendRequestForm(FlaskForm):
+class SendFriendRequestForm(FlaskForm):
+    receiver_username = HiddenField('Receiver Username', validators=[DataRequired()])
+    submit = SubmitField('Send Friend Request')
+
+class HandleFriendRequestForm(FlaskForm):
+    request_id = HiddenField('Request ID', validators=[DataRequired()])
+    accept = SubmitField('Accept')
+    reject = SubmitField('Reject')
     receiver_username = HiddenField()
+
+class AddMemberForm(FlaskForm):
+    username = StringField('Friend Username', validators=[DataRequired()])
+    submit = SubmitField('Add to Group')

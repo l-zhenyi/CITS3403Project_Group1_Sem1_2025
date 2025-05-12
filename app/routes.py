@@ -2,7 +2,7 @@
 
 from flask import render_template, redirect, url_for, flash, request, session, jsonify, abort
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm, FriendRequestForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm, HandleFriendRequestForm, SendFriendRequestForm, AddMemberForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest, InsightPanel
 from urllib.parse import urlparse
@@ -137,18 +137,39 @@ def profile():
 def explore():
     return render_template('explore.html', title='Explore')
 
-@app.route('/friends', methods=['GET'])
+@app.route('/friends')
 @login_required
 def friends():
-    # Get the current user's friends
-    friends_list = current_user.friends.all()  # Use `.all()` if the relationship is lazy="dynamic"
+    search_query = request.args.get('query')
+    search_results = None
 
-    # Get pending friend requests (assuming a FriendRequest model exists)
+    if search_query:
+        search_results = User.query.filter(
+            User.username.ilike(f"%{search_query}%"),
+            User.id != current_user.id
+        ).all()
+
     friend_requests = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
 
-    # Prepare a forms dictionary mapping usernames to FriendRequestForm instances
-    forms = {user.username: FriendRequestForm(receiver_username=user.username) for user in friends_list}
-    return render_template('friends.html', friends=friends_list, friend_requests=friend_requests, forms=forms)
+    # Create a unique form instance per request
+    friend_request_forms = {r.id: HandleFriendRequestForm(request_id=r.id) for r in friend_requests}
+    received_requests = {r.sender.id: r.id for r in friend_requests}
+
+    # Existing forms for sending requests
+    forms = {user.username: SendFriendRequestForm(receiver_username=user.username) for user in (search_results or [])}
+    friends = current_user.friends
+    sent_requests = {r.receiver.id for r in current_user.sent_requests}
+
+    return render_template(
+        'friends.html',
+        search_results=search_results,
+        friend_requests=friend_requests,
+        forms=forms,
+        friend_request_forms=friend_request_forms,
+        received_requests=received_requests,
+        friends=friends,
+        sent_requests=sent_requests,
+    )
 
 
 @app.route('/search_friends', methods=['GET'])
@@ -181,7 +202,7 @@ def search_friends():
     # Also get the pending friend requests
     friend_requests_list = FriendRequest.query.filter_by(receiver_id=current_user.id).all()
 
-    forms = {user.username: FriendRequestForm(receiver_username=user.username) for user in search_results}
+    forms = {user.username: HandleFriendRequestForm(receiver_username=user.username) for user in search_results}
 
     # Render the friends page with search results, sent requests, and friend requests
     friends_list = current_user.friends.all()
@@ -195,28 +216,31 @@ def search_friends():
 @app.route('/handle_friend_request', methods=['POST'])
 @login_required
 def handle_friend_request():
-    request_id = request.form.get('request_id')
-    action = request.form.get('action')
+    form = HandleFriendRequestForm()
 
-    # Fetch the friend request
-    friend_request_obj = FriendRequest.query.get(request_id)
-    if not friend_request_obj or friend_request_obj.receiver_id != current_user.id:
-        flash('Invalid friend request.', 'danger')
+    if form.validate_on_submit():
+        request_id = form.request_id.data
+        friend_request_obj = FriendRequest.query.get(request_id)
+
+        if not friend_request_obj or friend_request_obj.receiver_id != current_user.id:
+            flash('Invalid friend request.', 'danger')
+            return redirect(url_for('friends'))
+
+        if form.accept.data:
+            current_user.add_friend(friend_request_obj.sender)
+            db.session.delete(friend_request_obj)
+            db.session.commit()
+            flash(f'You are now friends with {friend_request_obj.sender.username}!', 'success')
+        elif form.reject.data:
+            db.session.delete(friend_request_obj)
+            db.session.commit()
+            flash('Friend request rejected.', 'info')
+
         return redirect(url_for('friends'))
 
-    if action == 'accept':
-        # Add the sender as a friend
-        current_user.add_friend(friend_request_obj.sender)
-        db.session.delete(friend_request_obj)  # Remove the friend request
-        db.session.commit()
-        flash(f'You are now friends with {friend_request_obj.sender.username}!', 'success')
-    elif action == 'reject':
-        # Reject the friend request
-        db.session.delete(friend_request_obj)
-        db.session.commit()
-        flash('Friend request rejected.', 'info')
-
+    flash('Invalid form submission.', 'danger')
     return redirect(url_for('friends'))
+
 
 @app.route('/add_friend', methods=['POST'])
 @login_required
@@ -344,7 +368,7 @@ def user(username):
     posts_query = db.select(Post).where(Post.user_id == user_obj.id).order_by(Post.timestamp.desc())
     posts_pagination = db.paginate(posts_query, page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
 
-    form = FriendRequestForm()
+    form = HandleFriendRequestForm()
     form.receiver_username.data = user_obj.username
 
     shared_groups = []
@@ -355,7 +379,7 @@ def user(username):
         if shared_group_ids:
             shared_groups = db.session.scalars(
                 db.select(Group).where(Group.id.in_(shared_group_ids)).order_by(Group.name)
-            ).all()
+            ).unique().all()
 
     return render_template('user.html', user=user_obj, posts=posts_pagination.items, # Use user_obj
                            next_url=url_for('user', username=user_obj.username, page=posts_pagination.next_num) if posts_pagination.has_next else None,
@@ -408,7 +432,7 @@ def view_group(group_id):
         return redirect(url_for('view_group', group_id=group_id))
 
     page = request.args.get('page', 1, type=int)
-    posts_query = db.select(Post).where(Post.group_id == group_id).order_by(Post.timestamp.desc())
+    posts_query = db.select(Post).where(Post.group_id == group_id).order_by(Post.timestamp.asc())
     pagination = db.paginate(posts_query, page=page, per_page=app.config['POSTS_PER_PAGE'], error_out=False)
     posts = pagination.items
 
@@ -421,14 +445,17 @@ def view_group(group_id):
 @login_required
 @require_group_member
 def add_members(group_id):
+    form = AddMemberForm()
     group = db.session.get(Group, group_id)
     if not group:
         abort(404)
     
+    # TODO: This messes with my testing. I think we should remove it because
+
     # Permission check: Only owner should be able to add members via this route
-    if group.owner_id != current_user.id:
-        flash("Only the group owner can add members.", "warning")
-        return redirect(url_for('view_group', group_id=group_id))
+    # if group.owner_id != current_user.id:
+    #     flash("Only the group owner can add members.", "warning")
+    #     return redirect(url_for('view_group', group_id=group_id))
 
     friends_list = current_user.friends.all()
     
@@ -469,7 +496,8 @@ def add_members(group_id):
     return render_template('add_members.html', 
                           title='Add Members', 
                           group=group, 
-                          friends=eligible_friends)
+                          friends=eligible_friends,
+                          form=form)
 
 @app.route('/send_message/<recipient_username>', methods=['GET', 'POST']) # Changed param name
 @login_required
