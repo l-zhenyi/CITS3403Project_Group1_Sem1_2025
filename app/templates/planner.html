@@ -1,33 +1,37 @@
-{# --- START OF FILE planner.html --- #}
-
 {% extends "base.html" %}
 
 {% block head %}
+{{ super() }} {# Include parent template's head content #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planner.css') }}" type="text/css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerCalendarArea.css') }}" type="text/css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerEventsArea.css') }}" type="text/css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerGroupsArea.css') }}" type="text/css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/plannerInsightsArea.css') }}" type="text/css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}" type="text/css">
-{# Ensure your plannerCalendarArea.css or modal.css contains the Day Events Modal styles #}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{# Leaflet CSS (for Event Details Modal map - if you implement it) #}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+{# Font Awesome (for icons) #}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+{# noUiSlider CSS (for Insights time range slider) #}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.css"
+    integrity="sha512-qveKnGrvOChbSzAdtSs8p69eoLegyh+1hwOMbmpCViIwj7rn4oJjdmMvWOuyQlTOZgTlZA0N2PXA7iA8/2TUYA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
 {% endblock %}
 
 {% block title %}{{ title | default('Planner') }}{% endblock %}
 
 {% block content %}
 <main class="planner-interface">
-    {# ... (planner-header, view-selector, etc. - no changes) ... #}
     <div class="planner-header">
         <h1 class="planner-title">Planner</h1>
         <nav class="view-selector glassy">
-            <button class="view-tab active" id="groups-tab">Groups</button> {# Default view might change #}
+            <button class="view-tab active" id="groups-tab">Groups</button>
             <button class="view-tab" id="calendar-tab">Calendar</button>
             <button class="view-tab" id="events-tab">Events</button>
             <button class="view-tab" id="insights-tab">Insights</button>
@@ -35,87 +39,78 @@
     </div>
 
     <div class="planner-pane" id="planner-pane">
-        {# ... (group-list-area, event-collage-area, calendar-view, events-view, insights-view - no changes) ... #}
-        {# Left Side: Group List #}
         <aside class="group-list-area">
             <div class="mobile-list-header"></div>
-            <ul class="groups-ul"> {# Added a class to the UL for easier selection #}
-                {# Check if groups exist before looping #}
+            <ul class="groups-ul">
                 {% if groups %}
                 {% for group in groups %}
-                {# Determine active state based on logic (e.g., first non-mobile) #}
                 {% set is_active = loop.first and not is_mobile_on_load %}
                 <li class="group-item {% if is_active %}active{% endif %}" data-group-id="{{ group.id | e }}"
                     data-group-name="{{ group.name | e }}"
-                    data-group-avatar="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') | e }}">
-                    <img src="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') | e }}"
+                    data-group-avatar="{{ group.avatar_url or url_for('static', filename='img/default-group-avatar.png') | e }}">
+                    <img src="{{ group.avatar_url or url_for('static', filename='img/default-group-avatar.png') | e }}"
                         alt="{{ group.name | e }} Avatar" class="group-avatar">
                     <div class="group-info">
                         <span class="group-name">{{ group.name | e }}</span>
-                        <span class="group-stats">View details</span> {# Simpler placeholder #}
+                        <span class="group-stats">View details</span>
                     </div>
                 </li>
                 {% endfor %}
                 {% else %}
                 <li class="no-groups-placeholder" id="no-groups-message">
-                    No groups found. <a href="{{ url_for('create_group') }}">Create one?</a>
+                    No groups found.
                 </li>
                 {% endif %}
             </ul>
-            {# MOVED THE NEW GROUP BUTTON HERE - CHANGED TO <button> #}
             <button class="add-new-group-button-fixed" id="add-new-group-button">
                 <span class="add-new-group-icon">+</span>
                 <span class="add-new-group-text">Create New Group</span>
             </button>
         </aside>
 
-        {# Right Side: Event Collage Area (No Functional Changes) #}
-        <section class="event-collage-area" id="event-collage">
-            {# Content dynamically loaded by JS #}
+        <section class="event-collage-area" id="event-collage-area"> {# Corrected ID from 'event-collage' to
+            'event-collage-area' to match JS #}
             <div class="blur-wrapper">
                 <div class="blur-overlay"></div>
                 <div class="active-group-header glassy">
-                    <button class="icon-button back-button" aria-label="Back to groups">←</button>
+                    <button class="icon-button back-button" aria-label="Back to groups">
+                        <i class="fas fa-arrow-left"></i> {# Changed to Font Awesome icon #}
+                    </button>
                     <img src="{{ url_for('static', filename='img/default-group-avatar.png') }}"
                         alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
                     <span class="active-group-name" id="active-group-name">Select a Group</span>
-                    <button class="icon-button settings-button" id="active-group-settings-button" aria-label="Group Settings">⚙️</button> {# Added ID #}
+                    <button class="icon-button settings-button" id="active-group-settings-button"
+                        aria-label="Group Settings">
+                        <i class="fas fa-cog"></i> {# Changed to Font Awesome icon #}
+                    </button>
                 </div>
             </div>
             <div class="collage-viewport" id="collage-viewport">
                 <div class="event-panels-container" id="event-panels-container">
                     <p class="info-message" id="event-collage-placeholder">Select a group to view its event collage.</p>
-                    {# Event nodes/panels added by JS #}
-                </div>
-                <div class="node-controls" style="position: absolute; top: 10px; left: 10px; z-index: 100;">
-                    {# Controls might be shown/hidden by JS based on context #}
-                    <button id="add-node-btn" class="button accept"
-                        style="padding: 8px 12px; font-size: 0.9em; display: none;">Add Category</button>
                 </div>
             </div>
         </section>
 
-        {# Calendar View Area (No Functional Changes) #}
         <section class="calendar-view" id="calendar-view">
-            {# Content loaded/managed by JS #}
             <div class="calendar-header">
-                <button class="calendar-nav prev-month" id="calendar-prev-month" aria-label="Previous month"><</button>
-                        <h2 class="calendar-month-year" id="calendar-month-year">Loading...</h2>
-                        <button class="calendar-nav next-month" id="calendar-next-month"
-                            aria-label="Next month">></button>
+                <button class="calendar-nav prev-month" id="calendar-prev-month" aria-label="Previous month">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <h2 class="calendar-month-year" id="calendar-month-year">Loading...</h2>
+                <button class="calendar-nav next-month" id="calendar-next-month" aria-label="Next month">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
             <div class="calendar-days-header">
                 <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
             </div>
             <div class="calendar-grid" id="calendar-grid">
                 <p class="info-message" id="calendar-loading-message">Loading calendar...</p>
-                {# Calendar days added by JS #}
             </div>
         </section>
 
-        {# Events List View Area (No Functional Changes) #}
         <section class="events-view" id="events-view">
-            {# Content loaded/managed by JS #}
             <nav class="event-filter-bar glassy" id="event-filter-bar">
                 <button class="filter-pill active" data-filter="upcoming">Upcoming</button>
                 <button class="filter-pill" data-filter="past">Past</button>
@@ -123,33 +118,27 @@
             </nav>
             <div class="event-list-container" id="event-list-container">
                 <p class="info-message" id="event-list-loading-message">Loading events...</p>
-                {# Event list items added by JS #}
             </div>
         </section>
 
-        <!-- ================== Insights View Area (Backend Integrated) ================== -->
         <section class="insights-view" id="insights-view">
-
-            {# Analysis Palette - Rendered by Jinja #}
             <aside class="analysis-palette glassy" id="analysis-palette">
                 <div class="palette-header" id="palette-header">
                     <span class="palette-header-title">Analysis Palette</span>
                     <button class="palette-toggle-btn" id="palette-toggle-btn" aria-label="Collapse Palette"
                         title="Collapse Palette">
-                        <i class="fas fa-chevron-left"></i> {# Icon updated by JS #}
+                        <i class="fas fa-chevron-left"></i>
                     </button>
                 </div>
                 <div class="palette-scroll-container" id="palette-scroll-container">
-                    {# --- Loop through available analyses from Flask --- #}
                     {% if available_analyses %}
                     {% for analysis in available_analyses %}
-                    {# MODIFIED: Use url_for() here for the image URL attribute #}
                     <div class="palette-item" data-analysis-type="{{ analysis.id | e }}"
                         data-title="{{ analysis.title | e }}" data-description="{{ analysis.description | e }}"
                         data-placeholder-html="{{ analysis.placeholder_html | safe }}"
                         data-preview-title="{{ analysis.preview_title | e }}"
                         data-preview-image-url="{{ url_for('static', filename=analysis.preview_image_filename) if analysis.preview_image_filename else '' | e }}"
-                        {# Generate URL here #} data-preview-description="{{ analysis.preview_description | e }}">
+                        data-preview-description="{{ analysis.preview_description | e }}">
                         <div class="palette-item-header">
                             <span class="palette-item-title">{{ analysis.title | e }}</span>
                             <button class="add-analysis-btn"
@@ -163,60 +152,80 @@
                     {% endif %}
                 </div>
             </aside>
-
-            {# Main Grid Area - Rendered by Jinja #}
             <div class="insights-grid-container" id="insights-grid-container">
                 <div class="insights-grid" id="insights-grid">
-                    {# --- Loop through user's saved panels from Flask --- #}
+                    {# --- Pre-rendered Insight Panels (MODIFIED STRUCTURE) --- #}
                     {% if user_panels %}
                     {% for panel in user_panels %}
-                    <div class="insight-panel glassy" data-panel-id="{{ panel.id }}"
-                        data-analysis-type="{{ panel.analysis_type | e }}">
-                        <div class="panel-header" draggable="false">
-                            <span class="panel-title">{{ panel.title | e }}</span>
-                            <div class="panel-actions">
-                                <button class="panel-action-btn share-panel-btn" aria-label="Share Analysis"
-                                    title="Share"><i class="fas fa-share-alt"></i></button>
-                                <button class="panel-action-btn remove-panel-btn" aria-label="Remove Analysis"
-                                    title="Remove"><i class="fas fa-times"></i></button>
+                    <div class="insight-panel glassy"
+                        data-panel-id="{{ panel.id }}"
+                        data-analysis-type="{{ panel.analysis_type | e }}"
+                        data-configuration='{{ panel.configuration | tojson | safe if panel.configuration else "{}" }}'
+                        data-title="{{ (panel.title or (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first).title if (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first) else 'Analysis') | e }}">
+
+                        <button class="panel-action-btn panel-config-toggle-btn" aria-label="Toggle Configuration" title="Configure Panel">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="panel-action-btn panel-close-btn" aria-label="Remove Panel" title="Remove Panel">
+                            <i class="fas fa-times"></i>
+                        </button>
+
+                        <div class="panel-config-area">
+                            <div class="panel-config-controls">
+                                <div class="config-group-selector">
+                                    <label for="group-select-{{ panel.id }}">Filter by Group:</label>
+                                    <select id="group-select-{{ panel.id }}" name="group_id">
+                                        <option value="all">All My Groups</option>
+                                        {# Options populated by JS #}
+                                    </select>
+                                </div>
+                                <div class="config-time-selector">
+                                    <label for="time-slider-{{ panel.id }}">Filter by Time Period:</label>
+                                    <div id="time-slider-{{ panel.id }}" class="time-range-slider-placeholder"></div>
+                                    <div id="time-slider-display-{{ panel.id }}" class="time-slider-display">Loading range...</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="panel-content">
-                            <p>{{ panel.description | e }}</p>
-                            <div class="placeholder-chart">
-                                {# Find placeholder HTML from available_analyses based on panel.analysis_type #}
-                                {% set analysis_details = available_analyses | selectattr('id', 'equalto',
-                                panel.analysis_type) | first %}
-                                {{ analysis_details.placeholder_html | safe if analysis_details else '<p>Loading data...
-                                </p>' }}
+
+                        <div class="panel-main-content-wrapper">
+                            <h3 class="panel-dynamic-title">
+                                {# Title will be set by JS from data-title or defaults for consistency #}
+                                {{ (panel.title or (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first).title if (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first) else 'Analysis') | e }}
+                            </h3>
+                            <div class="panel-config-summary">Loading configuration...</div>
+                            <div class="panel-content">
+                                <div class="placeholder-chart">
+                                    {# JS will set specific placeholder HTML based on analysis_type for consistency #}
+                                    <div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>
+                                </div>
                             </div>
                         </div>
+
+                        <button class="panel-action-btn panel-share-btn" aria-label="Share Panel" title="Share Panel">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
                     </div>
                     {% endfor %}
                     {% endif %}
+                    {# End of Pre-rendered Panels #}
 
-                    {# Empty message - Displayed only if no panels AND handled by JS checkGridEmpty #}
                     <p class="insights-empty-message" id="insights-empty-message"
-                        style="display: '{{ 'block' if not user_panels else 'none' }}';">
-                        Add analyses from the palette on the left or drag existing ones to rearrange.
+                        style="display: {{ 'block' if not user_panels else 'none' }};">
+                        Add analyses from the palette or drag existing ones to rearrange.
                     </p>
                 </div>
             </div>
-
-            {# Preview Container - Positioned by JS, content built by JS #}
             <div id="palette-preview-container" class="palette-item-preview-container glassy"
                 style="display: none; position: absolute;">
-                {# Content dynamically built by JS based on data-* attributes #}
+                {# Content injected by JS #}
             </div>
         </section>
-        <!-- ================== END Insights View Area ================== -->
     </div> <!-- End of planner-pane -->
 
     <!-- Event Details Modal -->
     <div id="event-details-modal" class="modal-backdrop" style="display: none;">
-        {# ... (event details modal content - no changes) ... #}
         <div class="modal-content glassy">
-            <button class="modal-close-btn" aria-label="Close event details">×</button>
+            <button class="modal-close-btn" aria-label="Close event details"><i class="fas fa-times"></i></button>
             <div class="modal-header">
                 <img id="modal-event-image-header" src="{{ url_for('static', filename='img/default-event-logo.png') }}"
                     alt="Event Image" class="modal-event-image-small">
@@ -242,6 +251,21 @@
                         <h3>📝 Description</h3>
                         <div class="editable-field-wrapper" id="modal-description-wrapper">
                             <p id="modal-event-description">No description provided.</p>
+                        </div>
+                    </div>
+                    <div class="form-section" id="event-permissions-section" style="display: none;">
+                        <h4>Event Edit Permissions <small>(Creator/Owner only)</small></h4>
+                        <div class="form-group">
+                            <input type="checkbox" id="event-allow-others-edit-title" name="allow_others_edit_title"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="event-allow-others-edit-title">Allow other group members to edit event
+                                title</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="event-allow-others-edit-details" name="allow_others_edit_details"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="event-allow-others-edit-details">Allow other group members to edit event
+                                details (date, location, cost, description)</label>
                         </div>
                     </div>
                 </div>
@@ -272,22 +296,18 @@
                     </div>
                 </div>
             </div>
-            {# Optional Footer #}
-            {# <div class="modal-footer"> ... </div> #}
         </div>
-    </div> <!-- End of Event Details Modal -->
+    </div>
 
-    <!-- Create Group Modal -->
     <div id="create-group-modal" class="modal-backdrop" style="display: none;">
-        {# ... (create group modal content - no changes) ... #}
         <div class="modal-content glassy create-group-modal-content">
-            <button class="modal-close-btn" id="create-group-modal-close-btn-x" aria-label="Close create group dialog">×</button>
+            <button class="modal-close-btn" id="create-group-modal-close-btn-x"
+                aria-label="Close create group dialog"><i class="fas fa-times"></i></button>
             <div class="modal-header">
                 <h2 id="create-group-modal-title">Create New Group</h2>
             </div>
             <form id="create-group-form">
                 <div class="modal-body">
-                    {# MODIFIED LAYOUT: Each main input on its own line #}
                     <div class="form-section">
                         <div class="form-group">
                             <label for="new-group-name">Group Name*</label>
@@ -297,17 +317,17 @@
                     <div class="form-section">
                         <div class="form-group">
                             <label for="new-group-description">Description (Optional)</label>
-                            <textarea id="new-group-description" name="description" rows="3" class="modal-textarea"></textarea>
+                            <textarea id="new-group-description" name="description" rows="3"
+                                class="modal-textarea"></textarea>
                         </div>
                     </div>
-
                     <div class="form-section">
                         <div class="form-group">
                             <h4>Add Friends to Group (Optional)</h4>
-                            <input type="text" id="modal-friend-search" placeholder="Search friends..." class="modal-input friend-search-input">
+                            <input type="text" id="modal-friend-search" placeholder="Search friends..."
+                                class="modal-input friend-search-input">
                             <div id="modal-friends-list-container" class="friends-list-scroll-container">
                                 <p class="loading-friends-message">Loading friends...</p>
-                                {# Friends list populated by JS #}
                             </div>
                         </div>
                     </div>
@@ -319,12 +339,12 @@
                 </div>
             </form>
         </div>
-    </div> <!-- End of Create Group Modal -->
+    </div>
 
-    <!-- Group Settings Modal -->
     <div id="group-settings-modal" class="modal-backdrop" style="display: none;">
         <div class="modal-content glassy group-settings-modal-content">
-            <button class="modal-close-btn" id="group-settings-modal-close-btn-x" aria-label="Close group settings dialog">×</button>
+            <button class="modal-close-btn" id="group-settings-modal-close-btn-x"
+                aria-label="Close group settings dialog"><i class="fas fa-times"></i></button>
             <div class="modal-header">
                 <h2 id="group-settings-modal-title">Group Settings</h2>
             </div>
@@ -340,24 +360,43 @@
                     <div class="form-section">
                         <div class="form-group">
                             <label for="edit-group-description">Description</label>
-                            <textarea id="edit-group-description" name="description" rows="3" class="modal-textarea"></textarea>
+                            <textarea id="edit-group-description" name="description" rows="3"
+                                class="modal-textarea"></textarea>
                         </div>
                     </div>
-
+                    <div class="form-section permissions-section" style="display: none;">
+                        <h4>Member Permissions <small>(Owner only)</small></h4>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-edit-name" name="allow_edit_name"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-edit-name">Allow members to edit group name</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-edit-description" name="allow_edit_description"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-edit-description">Allow members to edit group description</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-manage-members" name="allow_manage_members"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-manage-members">Allow members to add/remove other members</label>
+                        </div>
+                    </div>
                     <div class="form-section">
                         <h4>Current Members</h4>
                         <div id="current-members-list-container" class="members-list-scroll-container">
                             <p class="loading-message">Loading members...</p>
-                            {# Current members populated by JS #}
                         </div>
                     </div>
-
-                    <div class="form-section">
+                    <div id="add-members-section-wrapper" class="form-section">
                         <h4>Add New Members</h4>
-                        <input type="text" id="settings-modal-friend-search" placeholder="Search friends to add..." class="modal-input friend-search-input">
+                        <div class="form-group">
+                            <label for="settings-modal-friend-search">Search Friends to Add</label>
+                            <input type="text" id="settings-modal-friend-search" placeholder="Search friends to add..."
+                                class="modal-input friend-search-input">
+                        </div>
                         <div id="settings-modal-friends-to-add-list-container" class="friends-list-scroll-container">
                             <p class="loading-message">Loading friends...</p>
-                            {# Friends to add list populated by JS #}
                         </div>
                     </div>
                     <div id="group-settings-error-message" class="modal-error-message" style="display: none;"></div>
@@ -368,23 +407,137 @@
                 </div>
             </form>
         </div>
-    </div> <!-- End of Group Settings Modal -->
+    </div>
 
-
-    <!-- Day Events Modal (Added here, will be styled to be hidden by default) -->
     <div class="day-events-modal" id="day-events-modal">
         <div class="modal-content">
-            <button class="modal-close-btn" id="day-events-modal-close-btn" aria-label="Close day events list">×</button>
+            <button class="modal-close-btn" id="day-events-modal-close-btn" aria-label="Close day events list"><i
+                    class="fas fa-times"></i></button>
             <h3 id="day-events-modal-title">Events for Date</h3>
             <ul class="day-event-list" id="day-events-modal-list">
-                <!-- Event items will be populated here by JS -->
             </ul>
         </div>
     </div>
-    <!-- End of Day Events Modal -->
 
+    <div id="node-creation-modal" class="modal-backdrop modal-backdrop-small" style="display: none;">
+        <div class="modal-content modal-content-small">
+            <button class="modal-close-btn" aria-label="Close node creation dialog"><i
+                    class="fas fa-times"></i></button>
+            <div class="modal-header">
+                <h2 id="node-creation-modal-title">Create New Node</h2>
+            </div>
+            <form id="node-creation-form">
+                <div class="modal-body">
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-node-name-input">Node Name*</label>
+                            <input type="text" id="new-node-name-input" name="node_name" required class="modal-input">
+                        </div>
+                    </div>
+                    <div id="node-creation-error-message" class="modal-error-message" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="node-creation-cancel-btn" class="button secondary">Cancel</button>
+                    <button type="submit" class="button primary">Create Node</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="event-creation-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content glassy event-creation-modal-content">
+            <button class="modal-close-btn" id="event-creation-modal-close-btn"
+                aria-label="Close event creation dialog"><i class="fas fa-times"></i></button>
+            <div class="modal-header">
+                <h2 id="event-creation-modal-title">Create New Event</h2>
+            </div>
+            <form id="event-creation-form">
+                <div class="modal-body">
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-title">Event Title*</label>
+                            <input type="text" id="new-event-title" name="title" required class="modal-input">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-date">Date & Time*</label>
+                            <input type="datetime-local" id="new-event-date" name="date" required class="modal-input">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-location">Location</label>
+                            <input type="text" id="new-event-location" name="location" class="modal-input"
+                                placeholder="e.g., Main Hall, Online, TBD">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-cost">Cost</label>
+                            <input type="text" id="new-event-cost" name="cost" class="modal-input"
+                                placeholder="e.g., Free, $10, Split $50, Donation">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-description">Description</label>
+                            <textarea id="new-event-description" name="description" rows="4"
+                                class="modal-textarea"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-section" id="new-event-permissions-section" style="display: none;">
+                        <h4>Event Edit Permissions <small>(Group Owner Setting)</small></h4>
+                        <div class="form-group">
+                            <input type="checkbox" id="new-event-allow-others-edit-title" name="allow_others_edit_title"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="new-event-allow-others-edit-title">Allow other group members to edit event
+                                title</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="new-event-allow-others-edit-details"
+                                name="allow_others_edit_details" class="permission-checkbox-input modal-checkbox">
+                            <label for="new-event-allow-others-edit-details">Allow other group members to edit event
+                                details (date, location, cost, description)</label>
+                        </div>
+                    </div>
+                    <div id="event-creation-error-message" class="modal-error-message" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="button secondary" id="event-creation-cancel-btn">Cancel</button>
+                    <button type="submit" class="button primary" id="event-creation-save-btn">Create Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </main>
-{# Optional: Context menu container if still used #}
-{# <div id="custom-context-menu" class="context-menu" style="display: none;"></div> #}
+
 {% endblock %}
-{# --- END OF FILE planner.html --- #}
+
+{% block scripts %}
+{{ super() }} {# Include parent template's scripts #}
+{# Leaflet JS (for Event Details Modal map - if you implement it) #}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+{# Chart.js #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+{# noUiSlider JS #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.js"
+    integrity="sha512-g/feAizmeiVKSwvfW0Xk3ZHZqv5Zs8PEXEBKzL15pM0SevEvoX8eJ4yFWbqakvRj7vtw1Q97bLzEpG2IVWX0Mg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+{# Your custom JavaScript files (ensure main.js is last or after its dependencies) #}
+<script type="module" src="{{ url_for('static', filename='js/dataHandle.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/viewportManager.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/orbitLayoutDOM.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/modalManager.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/eventCreationModalManager.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/eventRenderer.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/eventActions.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/viewManager.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/groupModalManager.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/groupSettingsModalManager.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/search.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/insightsManager.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

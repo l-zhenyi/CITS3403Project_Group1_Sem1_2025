@@ -1,4 +1,4 @@
-# --- START OF FILE routes.py ---
+# --- START OF FILE app/routes.py ---
 
 from flask import render_template, redirect, url_for, flash, request, session, jsonify, abort
 from app import app, db
@@ -7,7 +7,7 @@ from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest, InsightPanel
 from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta
-from dateutil.parser import isoparse
+from dateutil.parser import isoparse # Make sure this is imported
 from functools import wraps
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy import func, text, or_
@@ -39,7 +39,7 @@ AVAILABLE_ANALYSES = {
     "spending-by-category": {
         "id": "spending-by-category",
         "title": "💸 Spending by Category",
-        "description": "Total event costs grouped by the event's node (category). Can be filtered by group.", # MODIFIED description
+        "description": "Total event costs grouped by the event's node (category). Filter by group and time period.", # MODIFIED description
         "preview_title": "Spending Example",
         "preview_image_filename": "img/placeholder-bar-chart.png",
         "preview_description": "Shows total costs for events linked to different nodes. Helps track budget allocation.",
@@ -49,7 +49,12 @@ AVAILABLE_ANALYSES = {
                 <p style='margin-top: 10px;'>Loading spending data...</p>
             </div>
         """,
-        "default_config": {"time_period": "all_time", "group_id": "all"} # ADDED group_id: "all"
+        "default_config": {
+            "time_period": "all_time", # Retain for backward compatibility or simple selections
+            "group_id": "all",
+            "startDate": None, # NEW: For custom range
+            "endDate": None    # NEW: For custom range
+        }
     },
     # ... (other analysis types if any) ...
 }
@@ -561,7 +566,7 @@ def get_groups():
     # Given Group.members is lazy="joined" in model, this should be fine.
 
     user_groups = db.session.scalars(groups_query).unique().all() # +++ ADDED .unique() +++
-    group_data = [g.to_dict(include_nodes=False, include_members=False) for g in user_groups] # Default no members for list view
+    group_data = [g.to_dict(include_nodes=False, include_members=False, current_user_id_param=current_user.id) for g in user_groups] # Default no members for list view
     return jsonify(group_data)
 
 
@@ -636,10 +641,9 @@ def create_group_api():
          app.logger.error(f"Failed to re-fetch group {group.id} after creation.")
          return jsonify({"error": "Group created but could not retrieve details for response."}), 500
 
-    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True)), 201
+    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True, current_user_id_param=current_user.id)), 201
 
 
-# +++ MODIFIED GROUP DETAIL ENDPOINT (GET /api/groups/<id>) +++
 @app.route("/api/groups/<int:group_id>", methods=["GET"])
 @login_required
 @require_group_member 
@@ -656,10 +660,10 @@ def get_group_detail(group_id):
     if not group:
         return jsonify({"error": "Group not found"}), 404
 
-    return jsonify(group.to_dict(include_nodes=False, include_members=include_members))
+    # --- PASS current_user.id to to_dict ---
+    return jsonify(group.to_dict(include_nodes=False, include_members=include_members, current_user_id_param=current_user.id))
 
 
-# +++ NEW: GROUP UPDATE ENDPOINT (PATCH /api/groups/<id>) +++
 @app.route("/api/groups/<int:group_id>", methods=["PATCH"])
 @login_required
 @require_group_member 
@@ -669,6 +673,7 @@ def update_group_details(group_id):
         return jsonify({"error": "Group not found"}), 404
 
     # Authorization check (e.g., owner)
+    # This check protects all fields being updated, including the new permission flags.
     if group.owner_id != current_user.id:
         return jsonify({"error": "Only the group owner can modify group settings."}), 403
 
@@ -676,7 +681,6 @@ def update_group_details(group_id):
     updated_fields_count = 0
 
     if "name" in data:
-        # ... (name update logic) ...
         new_name = data["name"].strip()
         if not new_name:
             return jsonify({"error": "Group name cannot be empty"}), 400
@@ -685,26 +689,31 @@ def update_group_details(group_id):
             updated_fields_count += 1
 
     if "description" in data:
-        # ... (description update logic) ...
         new_description = data["description"].strip()
         if new_description != group.about:
             group.about = new_description
             updated_fields_count += 1
     
-    # Logic for adding members
+    # --- UPDATE PERMISSION FLAGS ---
+    if "allow_member_edit_name" in data:
+        if group.allow_member_edit_name != bool(data["allow_member_edit_name"]):
+            group.allow_member_edit_name = bool(data["allow_member_edit_name"])
+            updated_fields_count += 1
+    if "allow_member_edit_description" in data:
+        if group.allow_member_edit_description != bool(data["allow_member_edit_description"]):
+            group.allow_member_edit_description = bool(data["allow_member_edit_description"])
+            updated_fields_count += 1
+    if "allow_member_manage_members" in data:
+        if group.allow_member_manage_members != bool(data["allow_member_manage_members"]):
+            group.allow_member_manage_members = bool(data["allow_member_manage_members"])
+            updated_fields_count += 1
+    # --- END UPDATE PERMISSION FLAGS ---
+    
+    # Logic for adding members (remains owner-restricted in this endpoint)
     if "add_member_ids" in data and isinstance(data["add_member_ids"], list):
         member_ids_to_add = [int(mid) for mid in data["add_member_ids"] if isinstance(mid, (int, str)) and str(mid).isdigit()]
         
-        # Fetch current member IDs more efficiently if group.members is already loaded or by query
-        # If group.members is lazy="joined", it should be loaded.
-        # Otherwise, query:
-        # existing_member_ids_in_group_q = db.session.scalars(
-        #     db.select(GroupMember.user_id).filter_by(group_id=group.id)
-        # ).all()
-        # existing_member_ids_in_group = set(existing_member_ids_in_group_q)
-
         existing_member_ids_in_group = {gm.user_id for gm in group.members}
-
 
         for user_id_to_add in member_ids_to_add:
             if user_id_to_add == current_user.id or user_id_to_add in existing_member_ids_in_group:
@@ -715,13 +724,8 @@ def update_group_details(group_id):
                 app.logger.warning(f"Attempt to add non-existent user {user_id_to_add} to group {group_id}")
                 continue
             
-            # Optional: Check if friends, etc.
-            # if not current_user.is_friend(user_to_add_obj):
-            #     app.logger.warning(f"User {current_user.id} tried to add non-friend {user_id_to_add_obj.username} to group {group_id}")
-            #     continue
-
             new_member = GroupMember(group_id=group.id, user_id=user_id_to_add, is_owner=False)
-            db.session.add(new_member) # Add to session, will be part of the commit
+            db.session.add(new_member)
             updated_fields_count += 1
             app.logger.info(f"User {user_id_to_add} queued for addition to group {group_id} by {current_user.username}")
 
@@ -734,7 +738,6 @@ def update_group_details(group_id):
             app.logger.error(f"Error updating group {group_id}: {e}")
             return jsonify({"error": "Failed to save group changes."}), 500
     
-    # Re-fetch for the response to ensure all changes (especially new members) are reflected
     group_for_response = db.session.query(Group).options(
         joinedload(Group.owner),
         joinedload(Group.members).joinedload(GroupMember.user)
@@ -742,10 +745,10 @@ def update_group_details(group_id):
 
     if not group_for_response:
          app.logger.error(f"Failed to re-fetch group {group_id} after update.")
-         # group might have been deleted by another request, or other rare conditions
          return jsonify({"error": "Group details could not be retrieved after update."}), 500
          
-    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True))
+    # --- PASS current_user.id to to_dict for the response ---
+    return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True, current_user_id_param=current_user.id))
 
 
 @app.route("/api/groups/<int:group_id>/nodes", methods=["GET"])
@@ -811,62 +814,73 @@ def create_event_api(group_id):
     title = data.get("title", "Untitled Event").strip()
     location = data.get("location", "TBD").strip()
     iso_str = data.get("date")
-    node_id = data.get("node_id")
+    node_id = data.get("node_id") # This will be the node it's attached to
 
     if not title:
          return jsonify({"error": "Event title cannot be empty"}), 400
-    if not node_id:
+    if not node_id: # Event must be attached to a node
         return jsonify({"error": "node_id is required to associate event with a category/node"}), 400
 
-    if not node_belongs_to_group(node_id, group_id):
-        return jsonify({"error": "Node does not belong to this group."}), 400
+    # Check if the node belongs to the specified group
+    target_node = db.session.get(Node, node_id)
+    if not target_node or target_node.group_id != group_id:
+        return jsonify({"error": "Node does not belong to this group or does not exist."}), 400
 
     try:
-        event_date = isoparse(iso_str) if iso_str else datetime.now(timezone.utc)
+        event_date = isoparse(iso_str) if iso_str else datetime.now(timezone.utc) + timedelta(hours=1) # Default to 1 hour from now
         if event_date.tzinfo is None:
             event_date = event_date.replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
-        event_date = datetime.now(timezone.utc)
+        event_date = datetime.now(timezone.utc) + timedelta(hours=1)
+
 
     cost_display = data.get("cost_display", "Free")
-    cost_value = None
-    try:
-        cost_input = data.get("cost_value")
-        if cost_input is not None and str(cost_input).strip() != "": 
-            cost_value = float(cost_input)
-    except (ValueError, TypeError):
-        cost_value = None 
+    cost_value = data.get("cost_value") # Can be None
+    is_cost_split = data.get("is_cost_split", False)
     
+    try:
+        if cost_value is not None: cost_value = float(cost_value)
+    except (ValueError, TypeError):
+        cost_value = None # Default to None if conversion fails
+
     location_coordinates = data.get("location_coordinates")
+    description = data.get("description", "").strip()
+    image_url = data.get("image_url")
+
+    # Event-specific permissions
+    allow_others_edit_title = data.get("allow_others_edit_title", False)
+    allow_others_edit_details = data.get("allow_others_edit_details", False)
 
 
     event = Event(
         title=title,
         date=event_date,
         location=location,
-        description=data.get("description", "").strip(),
-        image_url=data.get("image_url"),
+        description=description,
+        image_url=image_url,
         cost_display=cost_display,
         cost_value=cost_value,
+        is_cost_split=is_cost_split,
         node_id=node_id,
-        location_coordinates=location_coordinates
+        location_coordinates=location_coordinates,
+        creator_id=current_user.id, # Set creator
+        allow_others_edit_title=bool(allow_others_edit_title),
+        allow_others_edit_details=bool(allow_others_edit_details)
     )
     db.session.add(event)
-    # It's often better to commit here if to_dict relies on committed state or related objects that get IDs on commit.
-    # However, for simple cases flush() might be enough. If issues, move commit before to_dict.
-    db.session.flush() 
+    db.session.commit() # Commit to get event.id and ensure all relationships are saved
 
-    # Eager load necessary relationships for to_dict before commit can sometimes be tricky
-    # For event.to_dict, it needs event.node and event.node.group.
-    # If these are not loaded before commit and accessed in to_dict, they might be None or cause issues.
-    # A safer pattern is to commit, then re-fetch or refresh for the response.
-    # However, let's try with flush and explicit refresh if needed.
-    db.session.refresh(event, attribute_names=['node'])
-    if event.node:
-        db.session.refresh(event.node, attribute_names=['group'])
+    # Re-fetch or refresh to ensure all relationships (like node.group) are loaded for to_dict
+    # Since we committed, event_obj will have its ID. We can use it to re-query if necessary,
+    # or rely on SQLAlchemy's session management if relationships are configured for eager loading.
+    # For simplicity and robustness, re-fetching can be safer.
+    event_for_response = db.session.query(Event).options(
+        joinedload(Event.node).joinedload(Node.group), # Eager load for group_name
+        joinedload(Event.creator) # Eager load creator
+    ).filter_by(id=event.id).one()
 
-    db.session.commit()
-    return jsonify(event.to_dict(current_user_id=current_user.id)), 201
+
+    return jsonify(event_for_response.to_dict(current_user_id=current_user.id)), 201
 
 
 @app.route("/api/groups/<int:group_id>/nodes", methods=["POST"])
@@ -874,9 +888,16 @@ def create_event_api(group_id):
 @require_group_member
 def create_node_api(group_id):
     data = request.get_json() or {}
-    label = data.get("label", "Untitled Node").strip()
+    label = data.get("label", "").strip() # Get label from payload
     if not label:
         return jsonify({"error": "Node label cannot be empty"}), 400
+
+    # Check for uniqueness within the group
+    existing_node = db.session.scalar(
+        db.select(Node).filter_by(group_id=group_id, label=label)
+    )
+    if existing_node:
+        return jsonify({"error": f"A node with the name '{label}' already exists in this group."}), 409 # 409 Conflict
 
     try:
         x_coord = float(data.get("x", 0)) 
@@ -899,7 +920,8 @@ def create_node_api(group_id):
 @login_required
 def manage_event(event_id):
     event_obj_loaded = db.session.query(Event).options(
-        joinedload(Event.node).joinedload(Node.group),
+        joinedload(Event.node).joinedload(Node.group), # For group owner check & group info
+        joinedload(Event.creator), # For creator check
         joinedload(Event.attendees).joinedload(EventRSVP.user) 
     ).filter(Event.id == event_id).first() 
     
@@ -907,114 +929,102 @@ def manage_event(event_id):
         return jsonify({"error": "Event not found"}), 404
     event_obj = event_obj_loaded
 
-
-    group_id_for_event = None
-    authorized_for_modification = False 
-    
-    if event_obj.node_id and event_obj.node and event_obj.node.group_id: 
+    # --- Authorization Logic ---
+    is_group_member_of_event_group = False
+    is_group_owner_of_event_group = False
+    if event_obj.node and event_obj.node.group:
         group_id_for_event = event_obj.node.group_id
         if is_group_member(current_user.id, group_id_for_event):
-            authorized_for_modification = True
+            is_group_member_of_event_group = True
+            if event_obj.node.group.owner_id == current_user.id:
+                is_group_owner_of_event_group = True
     
+    is_event_creator = (event_obj.creator_id == current_user.id)
+
+    # For GET requests, basic membership or invitation is enough
     if request.method == "GET":
-        is_authorized_get, msg_get, status_get = _check_event_authorization(event_id, current_user.id)
+        is_authorized_get, msg_get, status_get = _check_event_authorization(event_id, current_user.id) # Uses existing helper
         if not is_authorized_get:
              return jsonify({"error": msg_get}), status_get
         return jsonify(event_obj.to_dict(current_user_id=current_user.id))
 
-    if not authorized_for_modification:
-        return jsonify({"error": "Unauthorized action. Must be a member of the event's group to modify or delete."}), 403
+    # For PATCH/DELETE, stricter authorization needed
+    can_modify_title = is_event_creator or is_group_owner_of_event_group or \
+                       (event_obj.allow_others_edit_title and is_group_member_of_event_group)
+    can_modify_details = is_event_creator or is_group_owner_of_event_group or \
+                         (event_obj.allow_others_edit_details and is_group_member_of_event_group)
+    
+    # Only creator or group owner can delete
+    can_delete = is_event_creator or is_group_owner_of_event_group
+
 
     if request.method == "PATCH":
         data = request.get_json() or {}
         updated_fields = [] 
 
         if "title" in data:
+            if not can_modify_title: return jsonify({"error": "Not authorized to edit event title."}), 403
             new_title = data["title"]
             if isinstance(new_title, str): 
-                event_obj.title = new_title.strip()
-                updated_fields.append("title")
+                event_obj.title = new_title.strip(); updated_fields.append("title")
 
-        if "location" in data:
-            new_location = data["location"]
-            if isinstance(new_location, str):
-                event_obj.location = new_location.strip()
+        if "location" in data or "location_coordinates" in data or "location_key" in data:
+            if not can_modify_details: return jsonify({"error": "Not authorized to edit event location/details."}), 403
+            if "location" in data:
+                new_location = data["location"]
+                if isinstance(new_location, str): event_obj.location = new_location.strip()
+                elif new_location is None: event_obj.location = ""
                 updated_fields.append("location")
-            elif new_location is None: 
-                event_obj.location = ""
-                updated_fields.append("location")
+            if "location_coordinates" in data: 
+                new_coords = data["location_coordinates"]
+                event_obj.location_coordinates = new_coords.strip() if isinstance(new_coords, str) and new_coords.strip() else None
+                updated_fields.append("location_coordinates")
+            if "location_key" in data: # Assuming location_key is part of details
+                new_key = data["location_key"]
+                event_obj.location_key = new_key.strip() if isinstance(new_key, str) and new_key.strip() else None
+                updated_fields.append("location_key")
         
-        if "location_coordinates" in data: 
-            new_coords = data["location_coordinates"]
-            if isinstance(new_coords, str) and new_coords.strip():
-                event_obj.location_coordinates = new_coords.strip()
-            else: 
-                event_obj.location_coordinates = None
-            updated_fields.append("location_coordinates")
-
-        if "location_key" in data: 
-            new_key = data["location_key"]
-            if isinstance(new_key, str) and new_key.strip():
-                event_obj.location_key = new_key.strip()
-            else: 
-                event_obj.location_key = None
-            updated_fields.append("location_key")
-
         if "description" in data:
+            if not can_modify_details: return jsonify({"error": "Not authorized to edit event description."}), 403
             new_description = data["description"]
-            if isinstance(new_description, str):
-                event_obj.description = new_description.strip() 
-                updated_fields.append("description")
-            elif new_description is None: 
-                event_obj.description = None
-                updated_fields.append("description")
+            if isinstance(new_description, str): event_obj.description = new_description.strip() 
+            elif new_description is None: event_obj.description = None
+            updated_fields.append("description")
 
         if "date" in data:
+            if not can_modify_details: return jsonify({"error": "Not authorized to edit event date."}), 403
             new_date_str = data["date"]
-            if new_date_str is None: 
-                event_obj.date = None
-                updated_fields.append("date")
+            if new_date_str is None: event_obj.date = None
             elif isinstance(new_date_str, str):
                 try:
                     parsed_date = isoparse(new_date_str)
-                    if parsed_date.tzinfo is None:
-                        parsed_date = parsed_date.replace(tzinfo=timezone.utc)
-                    event_obj.date = parsed_date
+                    event_obj.date = parsed_date.replace(tzinfo=timezone.utc) if parsed_date.tzinfo is None else parsed_date
                     updated_fields.append("date")
-                except (ValueError, TypeError):
-                    app.logger.warning(f"Invalid date format for event {event_id}: {new_date_str}")
-                    pass 
-
-        if "original_input_text" in data: 
-            original_input = data["original_input_text"]
-            if original_input is not None: 
-                 event_obj.cost_display = str(original_input)
-                 updated_fields.append("cost_display")
-        elif "cost_display" in data: 
-            cost_display_val = data.get("cost_display")
-            if cost_display_val is not None:
-                 event_obj.cost_display = str(cost_display_val)
-                 updated_fields.append("cost_display")
-
-        if "cost_value" in data: 
-            cost_val_input = data["cost_value"]
-            if cost_val_input is None: 
-                event_obj.cost_value = None
+                except (ValueError, TypeError): pass 
+            
+        # Cost fields
+        if "cost_display" in data or "cost_value" in data or "is_cost_split" in data:
+            if not can_modify_details: return jsonify({"error": "Not authorized to edit event cost."}), 403
+            if "cost_display" in data:
+                event_obj.cost_display = str(data["cost_display"]) if data["cost_display"] is not None else None
+                updated_fields.append("cost_display")
+            if "cost_value" in data:
+                try: event_obj.cost_value = float(data["cost_value"]) if data["cost_value"] is not None else None
+                except (ValueError, TypeError): event_obj.cost_value = None
                 updated_fields.append("cost_value")
-            else:
-                try:
-                    event_obj.cost_value = float(cost_val_input)
-                    updated_fields.append("cost_value")
-                except (ValueError, TypeError):
-                    app.logger.warning(f"Invalid cost_value for event {event_id}: {cost_val_input}")
-                    pass
-        
+            if "is_cost_split" in data:
+                event_obj.is_cost_split = bool(data["is_cost_split"])
+                updated_fields.append("is_cost_split")
+
+        # Node assignment (typically by creator or group owner)
         if "node_id" in data and data["node_id"] != event_obj.node_id:
-             new_node_id_val = data["node_id"] 
-             if new_node_id_val is None: 
-                  event_obj.node_id = None
-                  updated_fields.append("node_id")
-             else:
+            if not (is_event_creator or is_group_owner_of_event_group):
+                 return jsonify({"error": "Not authorized to change event node assignment."}), 403
+            # (Validation for node_id belonging to the same group, etc. as before)
+            # ... (add your existing node_id validation logic here) ...
+            new_node_id_val = data["node_id"]
+            if new_node_id_val is None: event_obj.node_id = None
+            else:
                 try:
                     new_node_id_int = int(new_node_id_val)
                     target_node = db.session.get(Node, new_node_id_int)
@@ -1028,33 +1038,40 @@ def manage_event(event_id):
                         return jsonify({"error": "Cannot assign event to a node in a group you are not a member of."}), 403
 
                     event_obj.node_id = new_node_id_int
-                    updated_fields.append("node_id")
+                except (ValueError, TypeError): return jsonify({"error": "Invalid node_id format."}), 400
+            updated_fields.append("node_id")
 
-                except (ValueError, TypeError):
-                    return jsonify({"error": "Invalid node_id format."}), 400
+        # Event-specific permissions (only group owner or event creator can change these)
+        if is_group_owner_of_event_group or is_event_creator:
+            if "allow_others_edit_title" in data:
+                event_obj.allow_others_edit_title = bool(data["allow_others_edit_title"])
+                updated_fields.append("allow_others_edit_title")
+            if "allow_others_edit_details" in data:
+                event_obj.allow_others_edit_details = bool(data["allow_others_edit_details"])
+                updated_fields.append("allow_others_edit_details")
 
 
         if updated_fields:
             try:
                 db.session.commit()
                 app.logger.info(f"Event {event_id} updated fields: {', '.join(updated_fields)}")
-                
+                # Re-fetch with all relations for consistent response
                 event_obj_refreshed = db.session.query(Event).options(
                     joinedload(Event.node).joinedload(Node.group),
+                    joinedload(Event.creator),
                     joinedload(Event.attendees).joinedload(EventRSVP.user)
                 ).filter(Event.id == event_id).first()
                 return jsonify(event_obj_refreshed.to_dict(current_user_id=current_user.id))
-
-
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Error committing updates for event {event_id}: {e}")
                 return jsonify({"error": "Could not save changes to the event."}), 500
         
-        return jsonify(event_obj.to_dict(current_user_id=current_user.id)) 
-
+        return jsonify(event_obj.to_dict(current_user_id=current_user.id)) # Return current state if no changes made
 
     if request.method == "DELETE":
+        if not can_delete:
+            return jsonify({"error": "Not authorized to delete this event."}), 403
         db.session.delete(event_obj)
         db.session.commit()
         return jsonify({"success": True, "message": "Event deleted successfully."})
@@ -1068,6 +1085,7 @@ def manage_node(node_id):
     if not node_obj:
         return jsonify({"error": "Node not found"}), 404
 
+    # Only group members can manage nodes, further restrictions (e.g. owner) can be added.
     if not is_group_member(current_user.id, node_obj.group_id):
         return jsonify({"error": "Unauthorized. Must be a member of the node's group."}), 403
 
@@ -1075,23 +1093,39 @@ def manage_node(node_id):
         include_events = request.args.get('include') == 'events'
         
         if include_events:
-            # This ensures that when node_obj.to_dict is called, its events are already loaded
             node_obj_loaded = db.session.query(Node).options(
-                joinedload(Node.events) # Load events
-                    .joinedload(Event.attendees) # Then load attendees for each event
-                    .joinedload(EventRSVP.user), # Then load user for each attendee
+                joinedload(Node.events) 
+                    .joinedload(Event.attendees) 
+                    .joinedload(EventRSVP.user), 
                 joinedload(Node.group) 
             ).filter(Node.id == node_id).unique().first()
-            if node_obj_loaded: node_obj = node_obj_loaded # Use the eagerly loaded object
+            if node_obj_loaded: node_obj = node_obj_loaded 
 
         return jsonify(node_obj.to_dict(include_events=include_events, current_user_id=current_user.id))
 
 
     if request.method == "PATCH":
+        # Typically, only group owner or designated admins should modify node structure/labels.
+        # For simplicity, this example allows any group member. Add stricter checks if needed.
+        # if node_obj.group.owner_id != current_user.id:
+        #     return jsonify({"error": "Only group owner can modify nodes."}), 403
+            
         data = request.get_json() or {}
         updated = False
-        if "label" in data and data["label"].strip():
-            node_obj.label = data["label"].strip(); updated = True
+        if "label" in data:
+            new_label = data["label"].strip()
+            if not new_label: return jsonify({"error": "Node label cannot be empty"}), 400
+            
+            # Check for uniqueness within the group if label changed
+            if new_label != node_obj.label:
+                existing_node = db.session.scalar(
+                    db.select(Node).filter_by(group_id=node_obj.group_id, label=new_label).where(Node.id != node_id)
+                )
+                if existing_node:
+                    return jsonify({"error": f"A node with the name '{new_label}' already exists in this group."}), 409
+                node_obj.label = new_label
+                updated = True
+
         try:
             if "x" in data:
                 node_obj.x = float(data["x"]); updated = True
@@ -1105,6 +1139,9 @@ def manage_node(node_id):
         return jsonify(node_obj.to_dict(include_events=False, current_user_id=current_user.id))
 
     if request.method == "DELETE":
+        # if node_obj.group.owner_id != current_user.id: # Stricter: only owner can delete
+        #     return jsonify({"error": "Only group owner can delete nodes."}), 403
+
         events_on_node = db.session.scalars(db.select(Event.id).filter_by(node_id=node_id).limit(1)).first()
         if events_on_node:
             db.session.execute(
@@ -1289,6 +1326,7 @@ def add_insight_panel():
     next_order = (max_order_val + 1) if max_order_val is not None else 0
     
     panel_config = details.get('default_config', {}).copy()
+    # User can override default config on creation (e.g., if palette item offers choices)
     if 'configuration' in data and isinstance(data['configuration'], dict):
         panel_config.update(data['configuration'])
 
@@ -1296,7 +1334,7 @@ def add_insight_panel():
     new_panel = InsightPanel(
         user_id=current_user.id,
         analysis_type=analysis_type,
-        title=details['title'], 
+        title=details['title'], # Initial title from definition
         description=details['description'],
         display_order=next_order,
         configuration=panel_config 
@@ -1304,6 +1342,35 @@ def add_insight_panel():
     db.session.add(new_panel)
     db.session.commit()
     return jsonify(new_panel.to_dict()), 201
+
+
+@app.route('/api/insights/panels/<int:panel_id>', methods=['PATCH']) # New endpoint for updating panel config
+@login_required
+def update_insight_panel_config(panel_id):
+    panel = db.session.get(InsightPanel, panel_id)
+    if not panel:
+        return jsonify({"error": "Panel not found"}), 404
+    if panel.user_id != current_user.id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json()
+    if 'configuration' not in data or not isinstance(data['configuration'], dict):
+        return jsonify({"error": "Missing or invalid 'configuration' in request body"}), 400
+
+    # Preserve existing config keys not being updated, merge new ones
+    # This allows partial updates to configuration
+    if panel.configuration is None:
+        panel.configuration = {}
+    
+    current_config = panel.configuration.copy() # Make a mutable copy if it's immutable
+    current_config.update(data['configuration'])
+    panel.configuration = current_config
+    
+    # Optionally, update title if a standard title format depends on config
+    # For now, title is updated by the analysis data endpoint itself
+
+    db.session.commit()
+    return jsonify(panel.to_dict())
 
 
 @app.route('/api/insights/panels/order', methods=['PUT'])
@@ -1377,9 +1444,17 @@ def get_analysis_data(analysis_type):
     else:
         analysis_details = get_analysis_details(analysis_type)
         config = analysis_details.get('default_config', {}).copy() if analysis_details else {}
+        # If panel_id was provided but panel not found or mismatched, log warning.
+        if panel_id and (not panel or panel.user_id != user.id or panel.analysis_type != analysis_type):
+            app.logger.warning(f"Panel ID {panel_id} provided for analysis {analysis_type} "
+                               f"but panel not found, mismatched, or not owned by user {user.id}. Using default config.")
+
 
     if analysis_type == 'spending-by-category':
-        time_period = config.get('time_period', 'all_time')
+        time_period_str = config.get('time_period', 'all_time') # from simple dropdown
+        start_date_str = config.get('startDate') # from range slider
+        end_date_str = config.get('endDate')     # from range slider
+        
         raw_group_id_filter = config.get('group_id', 'all')
         
         group_id_to_filter = 'all' 
@@ -1397,11 +1472,31 @@ def get_analysis_data(analysis_type):
             except ValueError:
                 app.logger.warning(f"Invalid group_id '{raw_group_id_filter}' in spending config. Defaulting to 'all'.")
 
-        start_date = None
-        if time_period == 'last_month':
-            start_date = datetime.now(timezone.utc) - timedelta(days=30)
-        elif time_period == 'last_year':
-            start_date = datetime.now(timezone.utc) - timedelta(days=365)
+        # --- Date Range Logic ---
+        final_start_date = None
+        final_end_date = None
+        date_filter_title_part = "All Time"
+
+        if start_date_str and end_date_str:
+            try:
+                final_start_date = isoparse(start_date_str).replace(tzinfo=timezone.utc)
+                # For end_date, make it inclusive of the whole day
+                final_end_date = (isoparse(end_date_str) + timedelta(days=1) - timedelta(microseconds=1)).replace(tzinfo=timezone.utc)
+                date_filter_title_part = f"{final_start_date.strftime('%b %d, %Y')} - {isoparse(end_date_str).strftime('%b %d, %Y')}"
+            except (ValueError, TypeError) as e:
+                app.logger.warning(f"Invalid custom date range: {start_date_str} - {end_date_str}. Error: {e}. Falling back.")
+                final_start_date = None
+                final_end_date = None
+        
+        if not final_start_date: # Fallback to time_period_str if custom range invalid or not set
+            if time_period_str == 'last_month':
+                final_start_date = datetime.now(timezone.utc) - timedelta(days=30)
+                date_filter_title_part = "Last Month"
+            elif time_period_str == 'last_year':
+                final_start_date = datetime.now(timezone.utc) - timedelta(days=365)
+                date_filter_title_part = "Last Year"
+            # 'all_time' means final_start_date remains None
+        # --- End Date Range Logic ---
         
         rsvpd_attending_event_ids_stmt = db.select(EventRSVP.event_id)\
             .where(EventRSVP.user_id == user.id)\
@@ -1469,8 +1564,10 @@ def get_analysis_data(analysis_type):
             .where(Event.cost_value.isnot(None)) \
             .where(Event.cost_value > 0)
 
-        if start_date:
-            stmt = stmt.where(Event.date >= start_date)
+        if final_start_date:
+            stmt = stmt.where(Event.date >= final_start_date)
+        if final_end_date:
+            stmt = stmt.where(Event.date <= final_end_date)
         
         stmt = stmt.group_by(Node.label).order_by(func.sum(Event.cost_value).desc())
         
@@ -1482,14 +1579,16 @@ def get_analysis_data(analysis_type):
         ]
         
         title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else "(All User's Groups)"
-        title_time_part = time_period.replace('_', ' ').title()
-        final_report_title = f"Attended Event Spending by Category {title_group_part} - {title_time_part}"
+        final_report_title = f"Attended Event Spending {title_group_part} - {date_filter_title_part}"
+        if not analysis_data:
+            final_report_title += " (No Data)"
+
 
         response_data = {
             "analysis_type": analysis_type,
             "title": final_report_title,
             "data": analysis_data,
-            "config_used": config
+            "config_used": config # Send back the config that was used
         }
         return jsonify(response_data)
 
@@ -1512,7 +1611,8 @@ def get_all_my_events():
         .where(GroupMember.user_id == user_id) \
         .options(
             joinedload(Event.node).joinedload(Node.group), 
-            joinedload(Event.attendees).joinedload(EventRSVP.user) 
+            joinedload(Event.attendees).joinedload(EventRSVP.user),
+            joinedload(Event.creator) # Eager load creator for to_dict
         )
     
     # Events user is directly invited to
@@ -1521,7 +1621,8 @@ def get_all_my_events():
         .where(InvitedGuest.email == user_email) \
         .options(
             joinedload(Event.node).joinedload(Node.group),
-            joinedload(Event.attendees).joinedload(EventRSVP.user)
+            joinedload(Event.attendees).joinedload(EventRSVP.user),
+            joinedload(Event.creator) # Eager load creator for to_dict
         )
 
     # Use .unique() when calling scalars() if joinedload involves collections
@@ -1537,5 +1638,4 @@ def get_all_my_events():
 
     events_data = [event.to_dict(current_user_id=user_id) for event in sorted_events]
     return jsonify(events_data)
-
-# --- END OF FILE routes.py ---
+# --- END OF FILE app/routes.py ---

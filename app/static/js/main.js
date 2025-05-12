@@ -1,15 +1,15 @@
-// --- START OF FILE main.js ---
+// --- START OF FILE static/js/main.js ---
 
 // --- Imports ---
 import { loadGroups, groupsData, parseHash, updateHash, loadAllUserEventsAndProcess, allEventsData, eventsByDate } from './dataHandle.js';
-import { renderGroupEvents, showContextMenu, openDayEventsModal, renderAllEventsList, renderCalendar } from './eventRenderer.js';
+import { renderGroupEvents, showContextMenu, openDayEventsModal, renderAllEventsList, renderCalendar, hideContextMenu } from './eventRenderer.js'; // Added hideContextMenu
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList, getCalendarDate } from './viewManager.js';
 import { hookEventFilterBar } from './eventActions.js';
 import { setupModal as setupEventDetailsModal, openEventModal } from './modalManager.js';
 import { setupCreateGroupModal } from './groupModalManager.js';
-// --- MINIMAL ADDITION: Import for settings modal ---
 import { setupGroupSettingsModal, openGroupSettingsModal } from './groupSettingsModalManager.js';
-// --- END ADDITION ---
+// Event Creation Modal self-initializes. We don't need to explicitly call a setup function from main.
+// import { setupEventCreationModal } from './eventCreationModalManager.js'; 
 import { setupViewportInteractions, getTransformState, setTransformState, debounce } from './viewportManager.js';
 import { setupSearchWidget } from './search.js';
 import { initInsightsManager } from './insightsManager.js';
@@ -20,9 +20,9 @@ const groupViewStates = new Map();
 
 let activeGroupNameEl, activeGroupAvatarEl, plannerPane, backButton, groupListUL,
     collageViewport, eventPanelsContainer, calendarGridEl, eventListFilterBar,
-    // --- MINIMAL ADDITION: Variable for settings button ---
     activeGroupSettingsButton;
-    // --- END ADDITION ---
+
+let mainJSInitialized = false; // Flag to prevent re-initialization
 
 // --- Global Setup for All Views ---
 function setupGlobalUI() {
@@ -32,6 +32,7 @@ function setupGlobalUI() {
     if (collageViewportElement) {
         collageViewportElement.addEventListener('contextmenu', (e) => {
             e.preventDefault();
+            hideContextMenu(); // Hide any existing context menu first
             let type = 'canvas', targetElement = null, elementId = null;
             const nodeTarget = e.target.closest('.event-node');
             const panelTarget = e.target.closest('.event-panel');
@@ -54,43 +55,39 @@ function setupGlobalUI() {
 
 // --- Planner-Specific Setup ---
 async function setupPlannerView() {
-    console.log("Planner view detected. Initializing planner setup...");
+    if (mainJSInitialized) {
+        console.warn("Main.js: Planner view setup already initialized. Skipping.");
+        return;
+    }
+    console.log("Main.js: Planner view detected. Initializing planner setup...");
 
     activeGroupNameEl = document.getElementById('active-group-name');
     activeGroupAvatarEl = document.getElementById('active-group-avatar');
-    // --- MINIMAL ADDITION: Get settings button element ---
     activeGroupSettingsButton = document.getElementById('active-group-settings-button');
-    // --- END ADDITION ---
     plannerPane = document.getElementById('planner-pane');
     backButton = document.querySelector('.back-button');
-    groupListUL = document.querySelector('.group-list-area ul');
+    groupListUL = document.querySelector('.group-list-area ul.groups-ul'); // More specific selector
     collageViewport = document.getElementById('collage-viewport');
     eventPanelsContainer = document.getElementById('event-panels-container');
     calendarGridEl = document.getElementById('calendar-grid');
     eventListFilterBar = document.querySelector('.event-filter-bar');
 
+    // Check for critical elements
+    if (!plannerPane) { console.warn("Main.js: Planner pane element missing. Skipping planner view setup."); return; }
+    if (!groupListUL) console.warn("Main.js: Group list UL missing.");
+    if (!collageViewport) console.warn("Main.js: Collage viewport missing.");
+    if (!eventPanelsContainer) console.warn("Main.js: Event panels container missing.");
+    if (!activeGroupNameEl) console.warn("Main.js: Active group name element missing.");
+    if (!activeGroupAvatarEl) console.warn("Main.js: Active group avatar element missing.");
+    if (!activeGroupSettingsButton) console.warn("Main.js: Active group settings button missing.");
+    if (!calendarGridEl) console.warn("Main.js: Calendar grid element missing.");
+    if (!eventListFilterBar) console.warn("Main.js: Event list filter bar missing.");
 
-    if (!plannerPane) {
-        console.warn("Planner pane element missing. Skipping planner view setup.");
-        return;
-    }
-     if (!groupListUL) console.warn("Group list UL missing.");
-     if (!collageViewport) console.warn("Collage viewport missing.");
-     if (!eventPanelsContainer) console.warn("Event panels container missing.");
-     if (!activeGroupNameEl) console.warn("Active group name element missing.");
-     if (!activeGroupAvatarEl) console.warn("Active group avatar element missing.");
-     // --- MINIMAL ADDITION: Check settings button element ---
-     if (!activeGroupSettingsButton) console.warn("Active group settings button missing.");
-     // --- END ADDITION ---
-     if (!calendarGridEl) console.warn("Calendar grid element missing.");
-     if (!eventListFilterBar) console.warn("Event list filter bar missing.");
-
-
+    // Initialize Modals and UI Components
     setupEventDetailsModal();
     setupCreateGroupModal();
-    // --- MINIMAL ADDITION: Setup settings modal ---
     setupGroupSettingsModal();
-    // --- END ADDITION ---
+    // setupEventCreationModal(); // Not needed here as it self-initializes
     if (collageViewport && eventPanelsContainer) {
         setupViewportInteractions(collageViewport, eventPanelsContainer);
     }
@@ -99,16 +96,16 @@ async function setupPlannerView() {
     hookCalendarNavigation();
     initInsightsManager();
 
-    if(groupListUL) {
+    // Load initial data
+    if(groupListUL) { // Only load if the UL exists (to prevent errors if planner-pane is not fully loaded)
         await loadGroups();
     }
     await loadAllUserEventsAndProcess();
 
-
+    // Handle initial view based on hash
     const { view: initialView, groupId: initialGroupId } = parseHash();
     let currentView = initialView || 'groups';
-
-    console.log(`Initial Hash State: view=${currentView}, groupId=${initialGroupId}`);
+    console.log(`Main.js: Initial Hash State: view=${currentView}, groupId=${initialGroupId}`);
 
     if (currentView === "calendar") {
         switchView("calendar");
@@ -116,22 +113,22 @@ async function setupPlannerView() {
         switchView("events");
     } else if (currentView === "insights") {
          switchView("insights");
-    } else {
+    } else { // Default to 'groups'
         currentView = 'groups';
         let activated = false;
         if (groupListUL && initialGroupId) {
             const li = groupListUL.querySelector(`.group-item[data-group-id="${initialGroupId}"]`);
             if (li) {
-                 activated = await activateGroup(li, initialGroupId); // activateGroup will handle settings button visibility
+                 activated = await activateGroup(li, initialGroupId); 
             }
         }
 
         const isMobile = window.innerWidth <= 768;
-        if (!activated && !isMobile && groupListUL) {
+        if (!activated && !isMobile && groupListUL && groupsData.length > 0) {
             const firstLi = groupListUL.querySelector(".group-item:not(.add-new-group-item)");
             if (firstLi) {
                 const firstGroupId = firstLi.dataset.groupId;
-                activated = await activateGroup(firstLi, firstGroupId); // activateGroup will handle settings button visibility
+                activated = await activateGroup(firstLi, firstGroupId);
             }
         }
 
@@ -139,40 +136,38 @@ async function setupPlannerView() {
              if(eventPanelsContainer) eventPanelsContainer.innerHTML = '<p class="info-message">No groups available or selected.</p>';
              if(activeGroupNameEl) activeGroupNameEl.textContent = 'No Group Selected';
              if(activeGroupAvatarEl) activeGroupAvatarEl.src = '/static/img/default-group-avatar.png';
-             // --- MINIMAL ADDITION: Hide settings button if no group active ---
              if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'none';
-             // --- END ADDITION ---
         }
-        // If 'activated' is true, activateGroup already handled showing the settings button.
-        switchView("groups");
+        switchView("groups"); // Ensure groups view is active
     }
 
-    // --- Event Listeners ---
+    // --- Event Listeners (Attached only once) ---
+    if (groupListUL) {
+        groupListUL.addEventListener('click', (e) => {
+            const li = e.target.closest('.group-item');
+            if (!li || li.classList.contains('add-new-group-item')) return;
+            if (li.classList.contains('active') && window.innerWidth > 768) return; // Don't re-activate on desktop if already active
+            const groupId = li.dataset.groupId;
+            if (groupId) {
+                activateGroup(li, groupId);
+            }
+        });
+    }
 
-    groupListUL?.addEventListener('click', (e) => {
-        const li = e.target.closest('.group-item');
-        if (!li || li.classList.contains('add-new-group-item')) return;
+    if (backButton) {
+        backButton.addEventListener('click', goBackToGroupList);
+    }
 
-        if (li.classList.contains('active') && window.innerWidth > 768) return;
-        const groupId = li.dataset.groupId;
-        if (groupId) {
-            activateGroup(li, groupId);
-        }
-    });
-
-
-    backButton?.addEventListener('click', goBackToGroupList);
-
-    // --- MINIMAL ADDITION: Event listener for settings button ---
-    activeGroupSettingsButton?.addEventListener('click', () => {
-        const activeLi = groupListUL?.querySelector('.group-item.active:not(.add-new-group-item)');
-        if (activeLi && activeLi.dataset.groupId) {
-            openGroupSettingsModal(activeLi.dataset.groupId);
-        } else {
-            alert("Please select an active group first to change its settings.");
-        }
-    });
-    // --- END ADDITION ---
+    if (activeGroupSettingsButton) {
+        activeGroupSettingsButton.addEventListener('click', () => {
+            const activeLi = groupListUL?.querySelector('.group-item.active:not(.add-new-group-item)');
+            if (activeLi && activeLi.dataset.groupId) {
+                openGroupSettingsModal(activeLi.dataset.groupId);
+            } else {
+                alert("Please select an active group first to change its settings.");
+            }
+        });
+    }
 
     let isCurrentlyMobile = window.innerWidth <= 768;
     window.addEventListener('resize', debounce(() => {
@@ -180,28 +175,25 @@ async function setupPlannerView() {
         isCurrentlyMobile = window.innerWidth <= 768;
 
         if (wasMobile !== isCurrentlyMobile) {
-            let currentLogicalView = 'groups';
+            let currentLogicalView = 'groups'; // Default
             if (plannerPane?.classList.contains('calendar-view-active')) currentLogicalView = 'calendar';
             else if (plannerPane?.classList.contains('events-view-active')) currentLogicalView = 'events';
             else if (plannerPane?.classList.contains('insights-view-active')) currentLogicalView = 'insights';
 
-             if(collageViewport) setTransformState({ x: 0, y: 0, s: 1.0 });
-            switchView(currentLogicalView);
+             if(collageViewport) setTransformState({ x: 0, y: 0, s: 1.0 }); // Reset viewport on resize
+            switchView(currentLogicalView); // Refresh view for new screen size
 
-            if (!isCurrentlyMobile) {
-                if (currentLogicalView === 'groups') {
-                     const activeLi = groupListUL?.querySelector('.group-item.active:not(.add-new-group-item)') || groupListUL?.querySelector('.group-item:not(.add-new-group-item)');
-                     if (activeLi) {
-                         activateGroup(activeLi, activeLi.dataset.groupId); // activateGroup handles settings button
-                     } else {
-                         if(eventPanelsContainer) eventPanelsContainer.innerHTML = '<p class="info-message">No groups available.</p>';
-                          if(activeGroupNameEl) activeGroupNameEl.textContent = 'No Group Selected';
-                          if(activeGroupAvatarEl) activeGroupAvatarEl.src = '/static/img/default-group-avatar.png';
-                          // --- MINIMAL ADDITION: Hide settings button on resize if no group active ---
-                          if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'none';
-                          // --- END ADDITION ---
-                     }
-                }
+            if (!isCurrentlyMobile && currentLogicalView === 'groups') { // If switched to desktop and in groups view
+                 const activeLi = groupListUL?.querySelector('.group-item.active:not(.add-new-group-item)') || 
+                                groupListUL?.querySelector('.group-item:not(.add-new-group-item)'); // Fallback to first group
+                 if (activeLi && activeLi.dataset.groupId) {
+                     activateGroup(activeLi, activeLi.dataset.groupId);
+                 } else {
+                     if(eventPanelsContainer) eventPanelsContainer.innerHTML = '<p class="info-message">No groups available.</p>';
+                     if(activeGroupNameEl) activeGroupNameEl.textContent = 'No Group Selected';
+                     if(activeGroupAvatarEl) activeGroupAvatarEl.src = '/static/img/default-group-avatar.png';
+                     if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'none';
+                 }
             }
         }
     }, 250));
@@ -211,15 +203,11 @@ async function setupPlannerView() {
         if (eventData?.id) {
             openEventModal(eventData);
         } else {
-            console.warn("Received openEventModalRequest without valid event data.");
+            console.warn("Main.js: Received openEventModalRequest without valid event data.");
         }
     });
 
-    // ========================================================================
-    // THIS IS YOUR WORKING eventDataUpdated LISTENER - UNCHANGED CORE LOGIC
-    // Only made async because activateGroup (called within) is async.
-    // ========================================================================
-    document.addEventListener('eventDataUpdated', (event) => {
+    document.addEventListener('eventDataUpdated', async (event) => {
         const { eventId, updatedEvent } = event.detail;
 
         if (!updatedEvent || (typeof updatedEvent.id === 'undefined' && !updatedEvent._deleted)) {
@@ -228,31 +216,20 @@ async function setupPlannerView() {
         }
         console.log(`[MainJS] Event data updated for ID ${eventId}:`, updatedEvent);
 
-
+        // Update allEventsData
         const indexInAllEvents = allEventsData.findIndex(e => String(e.id) === String(eventId));
-
         if (updatedEvent._deleted) {
-            if (indexInAllEvents !== -1) {
-                allEventsData.splice(indexInAllEvents, 1);
-            }
+            if (indexInAllEvents !== -1) allEventsData.splice(indexInAllEvents, 1);
         } else {
             const processedUpdatedEvent = {
                 ...updatedEvent,
                 date: updatedEvent.date ? new Date(updatedEvent.date) : null,
-                group_name: updatedEvent.group_name || 'Direct Invite/Other',
+                group_name: updatedEvent.group_name || 'Direct Invite/Other', // Ensure group_name consistency
             };
-
             if (indexInAllEvents !== -1) {
                 allEventsData[indexInAllEvents] = { ...allEventsData[indexInAllEvents], ...processedUpdatedEvent };
             } else {
-                allEventsData.push(processedUpdatedEvent);
-            }
-        }
-
-        for (const dateKey in eventsByDate) {
-            eventsByDate[dateKey] = eventsByDate[dateKey].filter(e => String(e.id) !== String(eventId));
-            if (eventsByDate[dateKey].length === 0) {
-                delete eventsByDate[dateKey];
+                allEventsData.push(processedUpdatedEvent); // Add if new event
             }
         }
 
@@ -269,19 +246,12 @@ async function setupPlannerView() {
                     id: updatedEvent.id,
                     status: updatedEvent.current_user_rsvp_status
                 });
-                eventsByDate[newDateKey].sort((a,b) => (a.title || '').localeCompare(b.title || ''));
+                 eventsByDate[newDateKey].sort((a,b) => (a.title || '').localeCompare(b.title || ''));
             }
         }
 
         if (plannerPane?.classList.contains('events-view-active')) {
-            let currentFilter = 'upcoming';
-            if (eventListFilterBar) {
-                const activeFilterPill = eventListFilterBar.querySelector('.filter-pill.active');
-                if (activeFilterPill && activeFilterPill.dataset.filter) {
-                    currentFilter = activeFilterPill.dataset.filter;
-                }
-            }
-            console.log(`[MainJS] Refreshing event list with filter: ${currentFilter}`);
+            let currentFilter = eventListFilterBar?.querySelector('.filter-pill.active')?.dataset.filter || 'upcoming';
             renderAllEventsList(currentFilter);
         }
         if (plannerPane?.classList.contains('calendar-view-active')) {
@@ -290,54 +260,60 @@ async function setupPlannerView() {
         }
 
         const activeGroupLi = groupListUL?.querySelector('.group-item.active');
-        if (activeGroupLi &&
-            plannerPane?.offsetParent !== null && // Check if plannerPane is actually visible
-            !plannerPane.classList.contains('events-view-active') &&
-            !plannerPane.classList.contains('calendar-view-active') &&
-            !plannerPane.classList.contains('insights-view-active')) { // i.e., groups view is active
+        if (activeGroupLi && plannerPane?.offsetParent !== null && 
+            !plannerPane.classList.contains('events-view-active') && 
+            !plannerPane.classList.contains('calendar-view-active') && 
+            !plannerPane.classList.contains('insights-view-active')) {
+            
             const activeGroupId = activeGroupLi.dataset.groupId;
+            let eventIsRelevantToActiveGroup = String(updatedEvent.group_id) === String(activeGroupId);
+            if (updatedEvent._deleted && indexInAllEvents !== -1) { 
+                 // Check original data if available and not yet spliced from a temporary allEventsData copy
+                 // This part can be tricky if allEventsData is mutated directly before this check.
+                 // A robust way is to check if the original event (before update/delete) belonged to the group.
+                 // For now, this relies on the group_id provided in the deleted event marker.
+                 const originalGroupIdIfDeleted = event.detail.originalGroupId; // If eventRenderer.js provided it
+                 if (originalGroupIdIfDeleted && String(originalGroupIdIfDeleted) === String(activeGroupId)) {
+                    eventIsRelevantToActiveGroup = true;
+                 } else if (updatedEvent.group_id && String(updatedEvent.group_id) === String(activeGroupId)){
+                    // If deleted event still has group_id from payload
+                    eventIsRelevantToActiveGroup = true;
+                 }
+            } else if (!updatedEvent._deleted && updatedEvent.node_id === null && indexInAllEvents !== -1) {
+                // Logic for unassigned events, assuming they were previously in this group
+                const previousEventData = allEventsData[indexInAllEvents]; 
+                if (previousEventData && String(previousEventData.group_id) === String(activeGroupId)) {
+                    eventIsRelevantToActiveGroup = true;
+                }
+            }
 
-            const eventBelongsOrDidBelongToGroup = String(updatedEvent.group_id) === String(activeGroupId) ||
-                                                (indexInAllEvents !== -1 && String(allEventsData[indexInAllEvents]?.group_id) === String(activeGroupId));
-
-            if (eventBelongsOrDidBelongToGroup || updatedEvent._deleted) {
-                 console.log(`[MainJS] Re-rendering group events for group ${activeGroupId} due to event update/delete.`);
-                 // Calling activateGroup will re-render, no need to call renderGroupEvents directly here
-                 // as activateGroup handles other state changes too.
-                 activateGroup(activeGroupLi, activeGroupId);
+            if (eventIsRelevantToActiveGroup) {
+                 console.log(`[MainJS] Re-rendering group events for group ${activeGroupId} due to relevant event update/delete.`);
+                 await activateGroup(activeGroupLi, activeGroupId);
             }
         }
         console.log("[MainJS] UI refresh logic executed after eventDataUpdated.");
     });
-    // ========================================================================
-    // END OF YOUR WORKING eventDataUpdated LISTENER
-    // ========================================================================
 
-
-    console.log("Planner setup complete.");
+    mainJSInitialized = true; // Set initialization flag
+    console.log("Main.js: Planner setup complete.");
 }
 
 // --- Group Activation ---
 async function activateGroup(groupListItem, groupId) {
-    if (!groupListItem || !groupId) {
+    if (!groupListItem || !groupId) return false;
+    if (groupListItem.classList.contains('add-new-group-item')) return false;
+    
+    // Ensure critical elements are available (could be put in a checkInitialized function)
+    if (!groupListUL || !activeGroupNameEl || !activeGroupAvatarEl || !plannerPane || !eventPanelsContainer || !activeGroupSettingsButton) {
+         console.error("Main.js: Cannot activate group - Required UI elements missing.");
          return false;
     }
-    if (groupListItem.classList.contains('add-new-group-item')) {
-        return false;
-    }
-     // --- MINIMAL ADDITION: Check settings button ---
-     if (!groupListUL || !activeGroupNameEl || !activeGroupAvatarEl || !plannerPane || !eventPanelsContainer || !activeGroupSettingsButton) {
-         console.error("Cannot activate group: Required UI elements missing.");
-         return false;
-     }
-     // --- END ADDITION ---
 
     const group = groupsData.find(g => String(g.id) === String(groupId));
     if (!group) {
-        console.warn(`Group with ID ${groupId} not found in groupsData.`);
-        // --- MINIMAL ADDITION: Hide settings button if group not found ---
+        console.warn(`Main.js: Group with ID ${groupId} not found in groupsData.`);
         if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'none';
-        // --- END ADDITION ---
         return false;
     }
 
@@ -349,34 +325,24 @@ async function activateGroup(groupListItem, groupId) {
         if (currentGroupId) {
             try {
                 const currentState = getTransformState();
-                if(currentState) {
-                     groupViewStates.set(String(currentGroupId), currentState);
-                 }
-            } catch (e) {
-                 console.warn("Could not get transform state for saving:", e);
-             }
+                if(currentState) groupViewStates.set(String(currentGroupId), currentState);
+            } catch (e) { console.warn("Main.js: Could not get transform state for saving:", e); }
         }
         currentActiveGroupLi.classList.remove('active');
     }
 
-     try {
-         const savedView = groupViewStates.get(String(groupId));
-         if (savedView) {
-             setTransformState({ x: savedView.panX, y: savedView.panY, s: savedView.scale });
-         } else {
-             setTransformState({ x: 0, y: 0, s: 1.0 });
-         }
-     } catch (e) {
-         console.warn("Could not set transform state:", e);
-          if(eventPanelsContainer) eventPanelsContainer.style.transform = 'translate(0px, 0px) scale(1)';
-     }
+    try {
+        const savedView = groupViewStates.get(String(groupId));
+        setTransformState(savedView || { x: 0, y: 0, s: 1.0 });
+    } catch (e) {
+        console.warn("Main.js: Could not set transform state:", e);
+        if(eventPanelsContainer) eventPanelsContainer.style.transform = 'translate(0px, 0px) scale(1)';
+    }
 
     groupListItem.classList.add('active');
     activeGroupNameEl.textContent = group.name || 'Group Events';
     activeGroupAvatarEl.src = group.avatar_url || '/static/img/default-group-avatar.png';
-    // --- MINIMAL ADDITION: Show settings button when group is active ---
     if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'inline-flex';
-    // --- END ADDITION ---
 
     await renderGroupEvents(groupId); 
 
@@ -387,8 +353,7 @@ async function activateGroup(groupListItem, groupId) {
             collageArea.style.display = 'block';
             collageArea.scrollTop = 0;
         }
-         if (groupListUL.parentElement) groupListUL.parentElement.style.display = 'none';
-
+        if (groupListUL.parentElement) groupListUL.parentElement.style.display = 'none';
     } else { 
         if (plannerPane.classList.contains('calendar-view-active') ||
             plannerPane.classList.contains('events-view-active') ||
@@ -402,10 +367,14 @@ async function activateGroup(groupListItem, groupId) {
 
 // --- DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded', async () => {
-    setupGlobalUI();
-    const plannerEl = document.getElementById('planner-pane');
-    if (plannerEl) {
-        await setupPlannerView();
+    if (!mainJSInitialized) { // Check flag before running setup
+        setupGlobalUI(); // Global UI can be setup regardless of planner
+        const plannerEl = document.getElementById('planner-pane');
+        if (plannerEl) {
+            await setupPlannerView();
+        }
+    } else {
+        console.log("Main.js: DOMContentLoaded fired, but mainJSInitialized is true. Skipping setup.");
     }
 });
-// --- END OF FILE main.js ---
+// --- END OF FILE static/js/main.js ---

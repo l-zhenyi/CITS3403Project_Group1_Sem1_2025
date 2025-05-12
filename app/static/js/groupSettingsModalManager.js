@@ -1,3 +1,4 @@
+// --- START OF FILE static/js/groupSettingsModalManager.js ---
 // static/js/groupSettingsModalManager.js
 import { loadGroups, groupsData } from './dataHandle.js';
 
@@ -6,10 +7,17 @@ let settingsModal, settingsForm, settingsGroupIdInput,
     currentMembersListContainer, settingsFriendSearchInput,
     friendsToAddListContainer, settingsSaveButton,
     settingsCancelButton, settingsModalCloseBtnX,
-    settingsErrorMessageElement;
+    settingsErrorMessageElement,
+    // --- NEW: Permission Elements ---
+    permissionsSectionElement,
+    settingsAllowEditNameCheckbox,
+    settingsAllowEditDescriptionCheckbox,
+    settingsAllowManageMembersCheckbox,
+    addMembersSectionWrapper; // Wrapper for the "Add Members" section
 
 let currentActiveGroupIdForSettings = null;
 let allFriendsForSettingsCache = [];
+let currentGroupIsOwner = false; // Store if current user is owner of the group being edited
 
 // --- API Helper (Consider moving to a shared utils.js if used elsewhere) ---
 async function apiRequest(url, method = 'GET', body = null) {
@@ -53,8 +61,7 @@ async function apiRequest(url, method = 'GET', body = null) {
 async function fetchGroupDetailsForSettings(groupId) {
     currentMembersListContainer.innerHTML = '<p class="loading-message">Loading group details...</p>';
     try {
-        // Assuming your API endpoint for group details is /api/groups/<id>
-        // And it can include member details with a query parameter
+        // API now returns permission flags and is_current_user_owner
         return await apiRequest(`/api/groups/${groupId}?include_members=true`);
     } catch (error) {
         // Error already logged by apiRequest
@@ -125,7 +132,7 @@ function populateFriendsToAddList(friendsToDisplay) {
         const li = document.createElement('li');
         li.className = 'friend-item-to-add';
         li.innerHTML = `
-            <input type="checkbox" id="settings-friend-checkbox-${friend.id}" name="friend_ids_to_add" value="${friend.id}" class="friend-checkbox-input">
+            <input type="checkbox" id="settings-friend-checkbox-${friend.id}" name="friend_ids_to_add" value="${friend.id}" class="friend-checkbox-input modal-checkbox">
             <label for="settings-friend-checkbox-${friend.id}">
                 <img src="${friend.avatar_url || '/static/img/default-avatar.png'}" alt="${friend.username}" class="friend-avatar-small">
                 <span>${friend.username}</span>
@@ -167,8 +174,9 @@ export async function openGroupSettingsModal(groupId) {
     }
     console.log(`Opening group settings modal for group ID: ${groupId}`);
     currentActiveGroupIdForSettings = groupId;
+    currentGroupIsOwner = false; // Reset owner status
 
-    if (settingsForm) settingsForm.reset(); // Clear previous form values
+    if (settingsForm) settingsForm.reset();
     if (settingsGroupIdInput) settingsGroupIdInput.value = groupId;
     if (settingsFriendSearchInput) settingsFriendSearchInput.value = '';
     if (settingsErrorMessageElement) {
@@ -179,35 +187,69 @@ export async function openGroupSettingsModal(groupId) {
     settingsSaveButton.disabled = true;
     settingsSaveButton.textContent = 'Loading...';
 
-    // Clear lists before fetching
     if (currentMembersListContainer) currentMembersListContainer.innerHTML = '<p class="loading-message">Loading members...</p>';
     if (friendsToAddListContainer) friendsToAddListContainer.innerHTML = '<p class="loading-message">Loading friends...</p>';
+    if (permissionsSectionElement) permissionsSectionElement.style.display = 'none'; // Hide initially
 
 
     const groupDetails = await fetchGroupDetailsForSettings(groupId);
 
     if (groupDetails) {
+        currentGroupIsOwner = groupDetails.is_current_user_owner || false;
+
         if (editGroupNameInput) editGroupNameInput.value = groupDetails.name || '';
         if (editGroupDescriptionInput) editGroupDescriptionInput.value = groupDetails.description || '';
         populateCurrentMembersList(groupDetails.members || []);
         
-        const existingMemberIds = (groupDetails.members || []).map(m => m.user_id); // Assuming member object has user_id
+        // --- Populate Permission Checkboxes ---
+        if (settingsAllowEditNameCheckbox) settingsAllowEditNameCheckbox.checked = groupDetails.allow_member_edit_name || false;
+        if (settingsAllowEditDescriptionCheckbox) settingsAllowEditDescriptionCheckbox.checked = groupDetails.allow_member_edit_description || false;
+        if (settingsAllowManageMembersCheckbox) settingsAllowManageMembersCheckbox.checked = groupDetails.allow_member_manage_members || false;
+
+        // --- UI Element Disabling Logic ---
+        if (permissionsSectionElement) {
+            permissionsSectionElement.style.display = currentGroupIsOwner ? 'block' : 'none';
+        }
+        [settingsAllowEditNameCheckbox, settingsAllowEditDescriptionCheckbox, settingsAllowManageMembersCheckbox].forEach(cb => {
+            if (cb) cb.disabled = !currentGroupIsOwner;
+        });
+
+        if (editGroupNameInput) {
+            editGroupNameInput.disabled = !currentGroupIsOwner && !groupDetails.allow_member_edit_name;
+        }
+        if (editGroupDescriptionInput) {
+            editGroupDescriptionInput.disabled = !currentGroupIsOwner && !groupDetails.allow_member_edit_description;
+        }
+
+        const canManageMembers = currentGroupIsOwner || groupDetails.allow_member_manage_members;
+        if (addMembersSectionWrapper) {
+            addMembersSectionWrapper.classList.toggle('section-disabled', !canManageMembers);
+        }
+        if (settingsFriendSearchInput) settingsFriendSearchInput.disabled = !canManageMembers;
+        // If friendsToAddListContainer itself should be non-interactive, disable its children or use CSS pointer-events
+        if (friendsToAddListContainer) {
+             friendsToAddListContainer.querySelectorAll('input, label').forEach(el => {
+                if (el.tagName === 'INPUT') el.disabled = !canManageMembers;
+                else el.style.pointerEvents = canManageMembers ? 'auto' : 'none';
+             });
+        }
+        // --- End UI Element Disabling Logic ---
+        
+        const existingMemberIds = (groupDetails.members || []).map(m => m.user_id);
         await fetchFriendsForAdding(existingMemberIds).then(friends => {
             populateFriendsToAddList(friends);
         });
-        settingsSaveButton.disabled = false;
+        settingsSaveButton.disabled = false; // Enable save if details loaded, even if some fields are disabled for non-owner
         settingsSaveButton.textContent = 'Save Changes';
     } else {
-        // Error messages are displayed by fetch functions
-        // Keep save button disabled if group details failed to load
-        settingsSaveButton.textContent = 'Save Changes'; // Reset text even on failure
-        settingsSaveButton.disabled = true;
+        settingsSaveButton.textContent = 'Save Changes';
+        settingsSaveButton.disabled = true; // Keep disabled if critical data failed
     }
 
     settingsModal.style.display = 'flex';
     requestAnimationFrame(() => {
         settingsModal.classList.add('visible');
-        if (editGroupNameInput && groupDetails) editGroupNameInput.focus(); // Focus only if loaded
+        if (editGroupNameInput && groupDetails && !editGroupNameInput.disabled) editGroupNameInput.focus();
     });
 }
 
@@ -215,7 +257,6 @@ function closeGroupSettingsModal() {
     if (!settingsModal) return;
     settingsModal.classList.remove('visible');
 
-    // Explicitly clear fields and caches
     if (editGroupNameInput) editGroupNameInput.value = '';
     if (editGroupDescriptionInput) editGroupDescriptionInput.value = '';
     if (settingsFriendSearchInput) settingsFriendSearchInput.value = '';
@@ -225,8 +266,14 @@ function closeGroupSettingsModal() {
         settingsErrorMessageElement.textContent = '';
         settingsErrorMessageElement.style.display = 'none';
     }
+    // Reset permission checkboxes
+    [settingsAllowEditNameCheckbox, settingsAllowEditDescriptionCheckbox, settingsAllowManageMembersCheckbox].forEach(cb => {
+        if(cb) cb.checked = false;
+    });
+
     allFriendsForSettingsCache = [];
     currentActiveGroupIdForSettings = null;
+    currentGroupIsOwner = false;
     if (settingsForm) settingsForm.reset();
 
 
@@ -238,57 +285,74 @@ function closeGroupSettingsModal() {
 
 async function handleUpdateGroupSubmit(event) {
     event.preventDefault();
-    if (!editGroupNameInput || !editGroupDescriptionInput || !settingsSaveButton || !settingsErrorMessageElement || !friendsToAddListContainer || !currentActiveGroupIdForSettings) {
+    if (!settingsSaveButton || !settingsErrorMessageElement || !currentActiveGroupIdForSettings) {
         console.error("Group settings form submission aborted: Critical elements missing.");
         return;
     }
 
-    const name = editGroupNameInput.value.trim();
-    const description = editGroupDescriptionInput.value.trim(); // Description can be empty
-    const selectedFriendCheckboxes = friendsToAddListContainer.querySelectorAll('input[name="friend_ids_to_add"]:checked');
-    const add_member_ids = Array.from(selectedFriendCheckboxes).map(cb => parseInt(cb.value, 10));
+    const payload = {};
+    let changesMade = false;
 
-    if (!name) {
-        settingsErrorMessageElement.textContent = 'Group name is required.';
-        settingsErrorMessageElement.style.display = 'block';
-        editGroupNameInput.focus();
-        return;
+    // Only include fields if they are not disabled (i.e., user has permission or is owner)
+    if (editGroupNameInput && !editGroupNameInput.disabled) {
+        const name = editGroupNameInput.value.trim();
+        if (!name) {
+            settingsErrorMessageElement.textContent = 'Group name is required.';
+            settingsErrorMessageElement.style.display = 'block';
+            editGroupNameInput.focus();
+            return;
+        }
+        payload.name = name;
+        changesMade = true; // Assume name can always be changed if field is enabled
+    }
+    if (editGroupDescriptionInput && !editGroupDescriptionInput.disabled) {
+        payload.description = editGroupDescriptionInput.value.trim();
+        changesMade = true; // Assume description can always be changed if field is enabled
+    }
+    
+    // Include permission flags only if user is owner (checkboxes would be enabled)
+    if (currentGroupIsOwner) {
+        if (settingsAllowEditNameCheckbox) payload.allow_member_edit_name = settingsAllowEditNameCheckbox.checked;
+        if (settingsAllowEditDescriptionCheckbox) payload.allow_member_edit_description = settingsAllowEditDescriptionCheckbox.checked;
+        if (settingsAllowManageMembersCheckbox) payload.allow_member_manage_members = settingsAllowManageMembersCheckbox.checked;
+        changesMade = true; // Changing permissions is a change
     }
 
+    // Check if "Add Members" section is enabled for the current user
+    const canManageMembersSubmit = currentGroupIsOwner || (settingsAllowManageMembersCheckbox && settingsAllowManageMembersCheckbox.checked);
+
+    if (friendsToAddListContainer && canManageMembersSubmit) { 
+        const selectedFriendCheckboxes = friendsToAddListContainer.querySelectorAll('input[name="friend_ids_to_add"]:checked');
+        if (selectedFriendCheckboxes.length > 0) {
+            payload.add_member_ids = Array.from(selectedFriendCheckboxes).map(cb => parseInt(cb.value, 10));
+            changesMade = true;
+        }
+    }
+    
     settingsSaveButton.disabled = true;
     settingsSaveButton.textContent = 'Saving...';
     settingsErrorMessageElement.textContent = '';
     settingsErrorMessageElement.style.display = 'none';
 
     try {
-        const payload = { name, description };
-        if (add_member_ids.length > 0) {
-            payload.add_member_ids = add_member_ids;
-        }
-        
-        // API endpoint needs to be created: PATCH /api/groups/<groupId>
         const updatedGroup = await apiRequest(`/api/groups/${currentActiveGroupIdForSettings}`, 'PATCH', payload);
 
-        closeGroupSettingsModal();
-        await loadGroups(); // Refresh the group list in the sidebar
+        closeGroupSettingsModal(); 
+        await loadGroups(); 
 
-        // Update active group header if the edited group is currently active
-        const activeGroupLi = document.querySelector('.group-list-area .group-item.active');
-        if (activeGroupLi && activeGroupLi.dataset.groupId === String(currentActiveGroupIdForSettings)) {
-            const activeGroupNameEl = document.getElementById('active-group-name');
-            // const activeGroupAvatarEl = document.getElementById('active-group-avatar'); // Avatar not changed here
+        const editedGroupId = updatedGroup.id; 
 
-            if (activeGroupNameEl) activeGroupNameEl.textContent = updatedGroup.name;
-            // Update data attributes on the LI element for consistency
-            activeGroupLi.dataset.groupName = updatedGroup.name;
-             // If avatar could change, update it:
-             // activeGroupLi.dataset.groupAvatar = updatedGroup.avatar_url;
-             // activeGroupAvatarEl.src = updatedGroup.avatar_url || '/static/img/default-group-avatar.png';
+        const groupListUL = document.querySelector('.group-list-area .groups-ul');
+        if (groupListUL && editedGroupId) {
+            const groupLiToMakeActive = groupListUL.querySelector(`.group-item[data-group-id="${editedGroupId}"]`);
+            if (groupLiToMakeActive) {
+                // Clicking the LI will trigger main.js's activateGroup,
+                // which will use the fresh name from the updated groupsData to update the header.
+                groupLiToMakeActive.click();
+            }
         }
         
-        // Optionally, inform other parts of the app that group data changed
-        document.dispatchEvent(new CustomEvent('groupDataUpdated', { detail: { groupId: currentActiveGroupIdForSettings, updatedGroup } }));
-
+        document.dispatchEvent(new CustomEvent('groupDataUpdated', { detail: { groupId: editedGroupId, updatedGroup } }));
 
     } catch (error) {
         console.error("Error updating group:", error);
@@ -308,21 +372,28 @@ export function setupGroupSettingsModal() {
     }
 
     settingsForm = settingsModal.querySelector('#group-settings-form');
-    settingsGroupIdInput = settingsModal.querySelector('#settings-group-id'); // Hidden input
+    settingsGroupIdInput = settingsModal.querySelector('#settings-group-id');
     editGroupNameInput = settingsModal.querySelector('#edit-group-name');
     editGroupDescriptionInput = settingsModal.querySelector('#edit-group-description');
     currentMembersListContainer = settingsModal.querySelector('#current-members-list-container');
     settingsFriendSearchInput = settingsModal.querySelector('#settings-modal-friend-search');
     friendsToAddListContainer = settingsModal.querySelector('#settings-modal-friends-to-add-list-container');
+    addMembersSectionWrapper = settingsModal.querySelector('#add-members-section-wrapper'); // Get wrapper
     settingsSaveButton = settingsModal.querySelector('#group-settings-save-btn');
     settingsCancelButton = settingsModal.querySelector('#group-settings-cancel-btn');
     settingsModalCloseBtnX = settingsModal.querySelector('#group-settings-modal-close-btn-x');
     settingsErrorMessageElement = settingsModal.querySelector('#group-settings-error-message');
 
-    // Basic check for essential elements
-    if (!settingsForm || !editGroupNameInput || !settingsSaveButton || !settingsCancelButton || !settingsModalCloseBtnX) {
-        console.error("Essential elements for Group Settings Modal are missing. Aborting setup.");
-        settingsModal = null; // Prevent usage
+    // --- Get Permission Checkbox Elements ---
+    permissionsSectionElement = settingsModal.querySelector('.permissions-section');
+    settingsAllowEditNameCheckbox = settingsModal.querySelector('#settings-allow-edit-name');
+    settingsAllowEditDescriptionCheckbox = settingsModal.querySelector('#settings-allow-edit-description');
+    settingsAllowManageMembersCheckbox = settingsModal.querySelector('#settings-allow-manage-members');
+
+
+    if (!settingsForm || !editGroupNameInput || !settingsSaveButton || !settingsCancelButton || !settingsModalCloseBtnX || !permissionsSectionElement || !addMembersSectionWrapper) {
+        console.error("Essential elements for Group Settings Modal (including permissions section and add members wrapper) are missing. Aborting setup.");
+        settingsModal = null; 
         return;
     }
 
@@ -339,10 +410,11 @@ export function setupGroupSettingsModal() {
     }
 
     settingsModal.addEventListener('click', (event) => {
-        if (event.target === settingsModal) { // Click on backdrop
+        if (event.target === settingsModal) { 
             closeGroupSettingsModal();
         }
     });
 
-    console.log("Group Settings Modal setup complete.");
+    console.log("Group Settings Modal setup complete (with permissions).");
 }
+// --- END OF FILE static/js/groupSettingsModalManager.js ---

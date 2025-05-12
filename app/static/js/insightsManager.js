@@ -1,852 +1,673 @@
 // --- START OF FILE insightsManager.js ---
 
 // DOM Elements & State
-let insightsView = null;
-let insightsGridContainer = null;
-let insightsGrid = null;
-let palette = null;
-let paletteHeader = null;
-let paletteToggleBtn = null;
-let paletteScrollContainer = null;
-let emptyMessage = null;
-let palettePreviewContainer = null; // Initialized in initInsightsManager
-
-// State Variables
-let isDragging = false;
-let draggedElementClone = null;
-let placeholderElement = null;
-let sourceElement = null; // Palette item OR the original grid panel being dragged
-let originalSourceElement = null; // Explicitly stores the grid panel during grid drag
-let sourceIndex = -1;
-let currentTargetIndex = -1;
-let dragType = null; // 'grid' or 'palette'
-let startClientX = 0;
-let startClientY = 0;
-let offsetX = 0;
-let offsetY = 0;
-let gridRect = null;
-let animationFrameId = null;
-let activeChartInstances = {}; // Store active chart instances { panelId: chartInstance }
-
-// Grid Layout Cache
-let gridCellLayout = [];
-let gridComputedStyle = null;
-let gridColCount = 2;
-
-// Preview State
+let insightsView = null, insightsGridContainer = null, insightsGrid = null, palette = null, paletteHeader = null, paletteToggleBtn = null, paletteScrollContainer = null, emptyMessage = null, palettePreviewContainer = null;
+let isDragging = false, draggedElement = null, placeholderElement = null, originalSourceElementForGridDrag = null;
+let sourceIndex = -1, currentTargetIndex = -1, dragType = null, startClientX = 0, startClientY = 0, offsetX = 0, offsetY = 0;
+let gridRect = null, paletteRect = null, animationFrameId = null;
+let activeChartInstances = {};
+let userGroupsCache = [];
+let gridCellLayout = [], gridComputedStyle = null, gridColCount = 2;
 let previewHideTimeout = null;
-const PREVIEW_HIDE_DELAY = 150; // Base delay before hiding preview
-const PREVIEW_GAP_TO_RIGHT = 12; // Gap between item and preview
-const VIEWPORT_PADDING = 15; // Padding from viewport edges
-
-// Constants
-const SCROLL_THRESHOLD = 40;
-const SCROLL_SPEED_MULTIPLIER = 0.15;
-const API_BASE = '/api'; // Base path for API calls
-const CHART_ANIMATION_DURATION = 400; // ms for chart animations
+const PREVIEW_HIDE_DELAY = 150, PREVIEW_GAP_TO_RIGHT = 12, VIEWPORT_PADDING = 15;
+const SCROLL_THRESHOLD = 40, SCROLL_SPEED_MULTIPLIER = 0.15, API_BASE = '/api', CHART_ANIMATION_DURATION = 400, DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
+let chartInDraggedElement = null;
 
 // --- Helper Functions ---
-function generateUniqueId(prefix = 'panel') {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
+function generateUniqueId(prefix = 'panel') { return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`; }
 
 // --- API Interaction Helpers ---
 async function fetchApi(url, options = {}) {
-    const defaultHeaders = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    };
-
-    options.headers = { ...defaultHeaders, ...options.headers };
-    if (options.body && typeof options.body !== 'string') {
-        options.body = JSON.stringify(options.body);
+    const defaultHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    if (options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) defaultHeaders['X-CSRFToken'] = csrfToken;
     }
-
+    options.headers = { ...defaultHeaders, ...options.headers };
+    if (options.body && typeof options.body !== 'string') options.body = JSON.stringify(options.body);
     try {
         const response = await fetch(url, options);
-        if (!response.ok) {
-            let errorData;
-            try {
-                errorData = await response.json();
-            } catch (e) {
-                errorData = { error: response.statusText || `Request failed with status ${response.status}` };
-            }
-            console.error(`API Error (${response.status}) on ${options.method || 'GET'} ${url}:`, errorData);
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-        if (response.status === 204 || response.headers.get('content-length') === '0') {
-            return null;
-        }
+        if (!response.ok) { let errorData = { error: `Request failed (${response.status})` }; try { errorData = await response.json(); } catch (e) {} throw new Error(errorData.error || `HTTP error ${response.status}`);}
+        if (response.status === 204 || response.headers.get('content-length') === '0') return null;
         return await response.json();
-    } catch (error) {
-        console.error(`Network or API error on ${options.method || 'GET'} ${url}:`, error);
-        throw error;
-    }
+    } catch (error) { console.error(`[API] Network/API error on ${options.method || 'GET'} ${url}:`, error); throw error; }
 }
-
-async function addPanelToServer(analysisType, config = {}) {
-    console.log(`Adding panel of type: ${analysisType}`);
-    return await fetchApi(`${API_BASE}/insights/panels`, {
-        method: 'POST',
-        body: { analysis_type: analysisType, configuration: config }
-    });
-}
-
-async function removePanelFromServer(panelId) {
-    console.log(`Removing panel ID: ${panelId}`);
-    return await fetchApi(`${API_BASE}/insights/panels/${panelId}`, {
-        method: 'DELETE'
-    });
-}
-
-async function updatePanelOrderOnServer(panelIds) {
-    console.log(`Updating panel order:`, panelIds);
-    const integerIds = panelIds.map(id => parseInt(id)).filter(id => !isNaN(id));
-    return await fetchApi(`${API_BASE}/insights/panels/order`, {
-        method: 'PUT',
-        body: { panel_ids: integerIds }
-    });
-}
-
-async function fetchAnalysisData(analysisType, panelId = null) {
-    console.log(`Fetching data for type: ${analysisType}, panel ID: ${panelId}`);
+async function addPanelToServer(analysisType, config = {}) { return await fetchApi(`${API_BASE}/insights/panels`, { method: 'POST', body: { analysis_type: analysisType, configuration: config } }); }
+async function removePanelFromServer(panelIdInt) { return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'DELETE' }); }
+async function updatePanelOrderOnServer(panelIdInts) { return await fetchApi(`${API_BASE}/insights/panels/order`, { method: 'PUT', body: { panel_ids: panelIdInts } }); }
+async function updatePanelConfigurationOnServer(panelIdInt, newConfig) { console.log(`[Insights V32.13] Panel ${panelIdInt} (updatePanelConfigurationOnServer): Sending newConfig:`, JSON.parse(JSON.stringify(newConfig))); return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'PATCH', body: { configuration: newConfig } }); }
+async function fetchAnalysisData(analysisType, panelIdInt = null) {
     let url = `${API_BASE}/analysis/data/${analysisType}`;
-    if (panelId) {
-        const panelIdInt = parseInt(panelId);
-        if (!isNaN(panelIdInt)) {
-            url += `?panel_id=${panelIdInt}`;
-        } else {
-            console.warn(`Invalid panelId (${panelId}) passed to fetchAnalysisData.`);
-        }
+    if (panelIdInt !== null && typeof panelIdInt === 'number' && !isNaN(panelIdInt)) {
+        url += `?panel_id=${panelIdInt}`;
     }
+    // console.log(`[Insights V32.13] (fetchAnalysisData) For ${analysisType}, panelId ${panelIdInt}. URL: ${url}`);
     return await fetchApi(url);
 }
+async function fetchUserGroups() { if (userGroupsCache.length > 0) return userGroupsCache; try { const groups = await fetchApi('/api/groups'); userGroupsCache = groups || []; return userGroupsCache; } catch (error) { console.error("Failed to fetch user groups:", error); return []; } }
 
 // --- Panel Creation & Content Loading ---
-
-function createInsightPanelElement(panelData) {
+function createInsightPanelElement(panelData, isForPaletteDragClone = false) {
+    const panelIdStr = String(panelData.id);
     const panel = document.createElement('div');
     panel.className = 'insight-panel glassy';
-    panel.dataset.panelId = panelData.id;
+    panel.dataset.panelId = panelIdStr;
     panel.dataset.analysisType = panelData.analysis_type;
+    
+    const analysisDetails = getAnalysisDetails(panelData.analysis_type);
+    const panelMainTitleText = panelData.title || analysisDetails?.title || 'Analysis';
+    // Store the static title directly in a data attribute for easy access
+    panel.dataset.staticTitle = panelMainTitleText; 
 
-    // Find placeholder HTML from the palette item's data attribute if possible,
-    // otherwise use a generic loading indicator. This assumes the analysis type
-    // is known when creating the element (e.g., from palette drag or existing panel data).
-    let placeholderHtmlContent = `<div style='text-align: center; padding: 20px; color: #aaa;'><i class='fas fa-spinner fa-spin fa-2x'></i><p style='margin-top: 10px;'>Loading data...</p></div>`; // Default
-    const paletteItemForType = paletteScrollContainer?.querySelector(`.palette-item[data-analysis-type="${panelData.analysis_type}"]`);
-    if (paletteItemForType && paletteItemForType.dataset.placeholderHtml) {
-        placeholderHtmlContent = paletteItemForType.dataset.placeholderHtml;
-    }
+    const configToStore = typeof panelData.configuration === 'object' && panelData.configuration !== null 
+                          ? panelData.configuration 
+                          : (analysisDetails?.default_config || {});
+    panel.dataset.configuration = JSON.stringify(configToStore);
+
+
+    const placeholderHtml = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`;
+
+    const showControls = !isForPaletteDragClone;
+    const controlsHtml = showControls ? `
+        <button class="panel-action-btn panel-config-toggle-btn" aria-label="Toggle Configuration" title="Configure Panel"><i class="fas fa-cog"></i></button>
+        <button class="panel-action-btn panel-close-btn" aria-label="Remove Panel" title="Remove Panel"><i class="fas fa-times"></i></button>
+        <div class="panel-config-area">
+            <div class="panel-config-controls">
+                <div class="config-group-selector"><label for="group-select-${panelIdStr}">Filter by Group:</label><select id="group-select-${panelIdStr}" name="group_id"><option value="all">All My Groups</option></select></div>
+                <div class="config-time-selector"><label for="time-slider-${panelIdStr}">Filter by Time Period:</label><div id="time-slider-${panelIdStr}" class="time-range-slider-placeholder"></div><div id="time-slider-display-${panelIdStr}" class="time-slider-display">Loading range...</div></div>
+            </div>
+        </div>` : '';
+    const shareButtonHtml = showControls ? `<button class="panel-action-btn panel-share-btn" aria-label="Share Panel" title="Share Panel"><i class="fas fa-share-alt"></i></button>` : '';
+    const configSummaryText = isForPaletteDragClone ? "Default View" : (panelIdStr.startsWith('temp-') ? 'Drop to add panel' : 'Loading filters...');
 
     panel.innerHTML = `
-        <div class="panel-header" draggable="false">
-            <span class="panel-title">${panelData.title || 'Loading...'}</span>
-            <div class="panel-actions">
-                <button class="panel-action-btn share-panel-btn" aria-label="Share Analysis" title="Share"><i class="fas fa-share-alt"></i></button>
-                <button class="panel-action-btn remove-panel-btn" aria-label="Remove Analysis" title="Remove"><i class="fas fa-times"></i></button>
-            </div>
-        </div>
-        <div class="panel-content">
-            <p>${panelData.description || ''}</p>
-            <div class="placeholder-chart">
-                ${placeholderHtmlContent} {# Inject the specific placeholder HTML #}
-            </div>
-        </div>
-    `;
-    makePanelDraggable(panel);
-    loadPanelContent(panel);
+        ${controlsHtml}
+        <div class="panel-main-content-wrapper"><h3 class="panel-dynamic-title">${panelMainTitleText}</h3><div class="panel-config-summary">${configSummaryText}</div><div class="panel-content"><div class="placeholder-chart">${placeholderHtml}</div></div></div>
+        ${shareButtonHtml}`;
+
+    if (showControls) {
+        makePanelDraggable(panel);
+    }
     return panel;
 }
 
-async function loadPanelContent(panelElement) {
-    const analysisType = panelElement.dataset.analysisType;
-    const panelId = panelElement.dataset.panelId;
-    const contentContainer = panelElement.querySelector('.placeholder-chart');
-    const panelTitleEl = panelElement.querySelector('.panel-title');
+function _updatePanelConfigSummary(panelElement, backendGeneratedTitle) {
+    if (!panelElement) return;
+    const summaryElement = panelElement.querySelector('.panel-config-summary');
+    if (!summaryElement) return;
+    const panelIdStr = panelElement.dataset.panelId;
 
-    if (!analysisType || !panelId || !contentContainer) {
-        console.error("Cannot load panel content: Missing type, ID, or container.", { analysisType, panelId, panelElement });
-        if (contentContainer) contentContainer.innerHTML = "<p style='color: red; text-align: center;'>Error loading: Invalid panel data.</p>";
-        return;
-    }
-
-    if (activeChartInstances[panelId]) {
-        try { activeChartInstances[panelId].destroy(); } catch (e) { console.error("Error destroying chart:", e); }
-        delete activeChartInstances[panelId];
-    }
-
-    // Show loading state (reuse placeholder HTML initially set or reset it)
-    const paletteItemForType = paletteScrollContainer?.querySelector(`.palette-item[data-analysis-type="${analysisType}"]`);
-    if (paletteItemForType && paletteItemForType.dataset.placeholderHtml) {
-        contentContainer.innerHTML = paletteItemForType.dataset.placeholderHtml;
+    if (backendGeneratedTitle) {
+        const staticTitle = panelElement.dataset.staticTitle || ""; // Get stored static title
+        let summaryText = backendGeneratedTitle;
+        
+        // Attempt to make the summary more concise by removing the static part if present
+        // Case-insensitive comparison for robustness
+        if (staticTitle && summaryText.toLowerCase().startsWith(staticTitle.toLowerCase())) {
+            summaryText = summaryText.substring(staticTitle.length).trim();
+            // Remove leading hyphen or similar separators if they exist after stripping
+            if (summaryText.startsWith("-") || summaryText.startsWith("–") || summaryText.startsWith("—")) {
+                 summaryText = summaryText.substring(1).trim();
+            }
+        }
+        summaryElement.textContent = summaryText || "Current filters"; // Fallback if stripping makes it empty
+        // console.log(`[Insights V32.13] Panel ${panelIdStr} (_updatePanelConfigSummary): Set summary from backend: "${summaryElement.textContent}" (Orig backend: "${backendGeneratedTitle}")`);
     } else {
-        contentContainer.innerHTML = `<div style='text-align: center; padding: 20px; color: #aaa;'><i class='fas fa-spinner fa-spin fa-2x'></i><p style='margin-top: 10px;'>Loading data...</p></div>`;
-    }
-
-
-    try {
-        if (typeof Chart === 'undefined') {
-            throw new Error("Chart.js library is not loaded.");
+        // Fallback if backend title is missing - try to use local config
+        // This is more of a safety net, ideal case is backend title is always available
+        const panelConfig = JSON.parse(panelElement.dataset.configuration || '{}');
+        let groupDisplay = "All Groups"; 
+        if (panelConfig.group_id && String(panelConfig.group_id) !== "all") {
+            const group = userGroupsCache.find(g => String(g.id) === String(panelConfig.group_id));
+            groupDisplay = group ? group.name : `Group ID: ${panelConfig.group_id}`;
         }
-
-        const analysisResult = await fetchAnalysisData(analysisType, panelId);
-
-        if (panelTitleEl && analysisResult && analysisResult.title) {
-            panelTitleEl.textContent = analysisResult.title;
+        let dateRangeDisplay = "All Time"; 
+        if (panelConfig.startDate && panelConfig.endDate) {
+            const startDate = new Date(panelConfig.startDate + 'T00:00:00Z');
+            const endDate = new Date(panelConfig.endDate + 'T00:00:00Z');
+            const options = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+            if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+                dateRangeDisplay = `${startDate.toLocaleDateString(undefined, options)} - ${endDate.toLocaleDateString(undefined, options)}`;
+            } else { dateRangeDisplay = "Invalid Dates"; }
         }
-
-        if (analysisType === 'spending-by-category' && analysisResult && analysisResult.data) {
-            if (analysisResult.data.length > 0) {
-                contentContainer.innerHTML = ''; // Clear loading spinner
-                const canvas = document.createElement('canvas');
-                contentContainer.appendChild(canvas);
-
-                const ctx = canvas.getContext('2d');
-                const labels = analysisResult.data.map(item => item.category || 'Uncategorized');
-                const amounts = analysisResult.data.map(item => item.amount);
-
-                const generateColors = (numColors) => {
-                    const colors = []; const hueStep = 360 / numColors;
-                    for (let i = 0; i < numColors; i++) {
-                        const hue = (i * hueStep) % 360; const saturation = 60 + (i % 3) * 5; const lightness = 55 + (i % 2) * 10;
-                        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-                    } return colors;
-                };
-                const backgroundColors = generateColors(labels.length);
-                const hoverBackgroundColors = backgroundColors.map(color => {
-                    try { let [h, s, l] = color.match(/\d+/g).map(Number); l = Math.min(100, l + 10); return `hsl(${h}, ${s}%, ${l}%)`; }
-                    catch (e) { return color; }
-                });
-
-                const chartConfig = { /* ... (Chart.js config as before) ... */
-                    type: 'pie',
-                    data: { labels: labels, datasets: [{ label: 'Spending', data: amounts, backgroundColor: backgroundColors, hoverBackgroundColor: hoverBackgroundColors, borderColor: '#333', borderWidth: 1, hoverOffset: 8 }] },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'bottom', labels: { color: '#ddd', padding: 15, boxWidth: 12, usePointStyle: true, } },
-                            title: { display: false, },
-                            tooltip: {
-                                backgroundColor: 'rgba(20, 20, 30, 0.8)', titleColor: '#eee', bodyColor: '#ddd',
-                                callbacks: {
-                                    label: function (context) {
-                                        let label = context.label || ''; if (label) { label += ': '; }
-                                        if (context.parsed !== null) {
-                                            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
-                                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-                                            label += ` (${percentage}%)`;
-                                        } return label;
-                                    }
-                                }
-                            }
-                        },
-                        animation: { duration: CHART_ANIMATION_DURATION }
-                    }
-                };
-                activeChartInstances[panelId] = new Chart(ctx, chartConfig);
-                console.log(`Created chart for panel ${panelId}`);
-            } else {
-                contentContainer.innerHTML = '<p style="text-align: center; color: #bbb; padding: 15px 5px;">No spending data found matching the criteria.</p>';
-            }
-        }
-        // --- Add rendering logic for other analysis types here ---
-        else {
-            if (analysisResult) {
-                contentContainer.innerHTML = `<p style='text-align: center; color: orange; padding: 15px 5px;'>Data display not implemented for analysis type: ${analysisType}</p>`;
-            } else {
-                contentContainer.innerHTML = `<p style='text-align: center; color: orange; padding: 15px 5px;'>Received no data for analysis type: ${analysisType}</p>`;
-            }
-        }
-
-    } catch (error) {
-        console.error(`Failed to load content for panel ${panelId} (${analysisType}):`, error);
-        contentContainer.innerHTML = `<p style='color: red; text-align: center; padding: 15px 5px;'>Error loading analysis data.<br><small>${error.message || 'Check console for details.'}</small></p>`;
-        if (activeChartInstances[panelId]) {
-            try { activeChartInstances[panelId].destroy(); } catch (e) { }
-            delete activeChartInstances[panelId];
-        }
+        summaryElement.textContent = `${groupDisplay} | ${dateRangeDisplay}`;
+        console.warn(`[Insights V32.13] Panel ${panelIdStr} (_updatePanelConfigSummary): backendGeneratedTitle missing. Used local config for summary: "${summaryElement.textContent}"`);
     }
 }
 
+
+function _initializePanelConfigurationControls(panelElement, panelDataForControls) {
+    const panelIdStr = String(panelDataForControls.id);
+    if (panelIdStr.startsWith('temp-')) return; 
+
+    const analysisType = panelDataForControls.analysis_type;
+    // panelDataForControls.configuration should already be a valid object (parsed or defaulted in setupEventListeners)
+    const currentConfig = panelDataForControls.configuration; 
+    
+    // The dataset.configuration was already set correctly by the caller (setupEventListeners or createInsightPanelElement)
+    // So, no need to set it again here, just use currentConfig.
+    console.log(`[Insights V32.13] Panel ${panelIdStr} (_initializePanelConfigurationControls): Initializing controls with currentConfig:`, JSON.parse(JSON.stringify(currentConfig)));
+
+    const groupSelect = panelElement.querySelector(`#group-select-${panelIdStr}`);
+    if (groupSelect) {
+        while (groupSelect.options.length > 1) groupSelect.remove(1);
+        userGroupsCache.forEach(group => groupSelect.add(new Option(group.name, group.id)));
+        groupSelect.value = String(currentConfig.group_id || "all");
+        groupSelect.removeEventListener('change', _configChangeHandler);
+        groupSelect.addEventListener('change', _configChangeHandler);
+    }
+
+    const sliderElement = panelElement.querySelector(`#time-slider-${panelIdStr}`);
+    const sliderDisplayElement = panelElement.querySelector(`#time-slider-display-${panelIdStr}`);
+    if (sliderElement && sliderDisplayElement && typeof noUiSlider !== 'undefined') {
+        if (sliderElement.noUiSlider) sliderElement.noUiSlider.destroy();
+        
+        const todayDate = new Date();
+        let maxTimestamp = Date.UTC(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+        const twoYearsAgoDate = new Date(todayDate); twoYearsAgoDate.setFullYear(todayDate.getFullYear() - 2);
+        let minTimestamp = Date.UTC(twoYearsAgoDate.getFullYear(), twoYearsAgoDate.getMonth(), twoYearsAgoDate.getDate());
+        if (isNaN(minTimestamp) || isNaN(maxTimestamp) || minTimestamp >= maxTimestamp) {
+             maxTimestamp = new Date().getTime(); minTimestamp = maxTimestamp - (2 * 365 * DAY_IN_MILLISECONDS);
+        }
+        
+        let initialStart = minTimestamp; 
+        let initialEnd = maxTimestamp;   
+
+        if (currentConfig.startDate && currentConfig.endDate) {
+            const parsedStartDate = new Date(currentConfig.startDate + 'T00:00:00Z').getTime();
+            const parsedEndDate = new Date(currentConfig.endDate + 'T00:00:00Z').getTime();
+
+            if (!isNaN(parsedStartDate) && !isNaN(parsedEndDate) && parsedStartDate <= parsedEndDate) {
+                initialStart = Math.max(minTimestamp, parsedStartDate); 
+                initialEnd = Math.min(maxTimestamp, parsedEndDate);     
+                if (initialStart > initialEnd) { 
+                    initialStart = minTimestamp; initialEnd = maxTimestamp;
+                }
+            }
+        }
+        if (initialStart === initialEnd) {
+             initialEnd = Math.min(initialStart + DAY_IN_MILLISECONDS, maxTimestamp); 
+             if (initialStart === initialEnd) { 
+                 initialStart = Math.max(initialEnd - DAY_IN_MILLISECONDS, minTimestamp); 
+             }
+        }
+        if (initialStart > initialEnd) { 
+            [initialStart, initialEnd] = [initialEnd, initialStart]; 
+        }
+
+        console.log(`[Insights V32.13] Panel ${panelIdStr} (_initializePanelConfigurationControls): Slider INITIALIZING with values: start=${new Date(initialStart).toISOString()}, end=${new Date(initialEnd).toISOString()}`);
+
+        try {
+            noUiSlider.create(sliderElement, { 
+                start: [initialStart, initialEnd], connect: true, range: { 'min': minTimestamp, 'max': maxTimestamp }, step: DAY_IN_MILLISECONDS, 
+                format: { to: v => new Date(Math.round(parseFloat(v)/DAY_IN_MILLISECONDS)*DAY_IN_MILLISECONDS).toISOString().split('T')[0], from: s => new Date(s+'T00:00:00Z').getTime() || minTimestamp }, 
+                behaviour: 'tap-drag', pips: {mode:'positions',values:[0,25,50,75,100],density:4,format:{to:v=>new Date(Math.round(parseFloat(v)/DAY_IN_MILLISECONDS)*DAY_IN_MILLISECONDS).toLocaleDateString(undefined,{month:'short',year:'2-digit',timeZone:'UTC'})}} 
+            });
+            const updateSliderDisplay = (values) => { 
+                const sD = new Date(values[0]+'T00:00:00Z'), eD = new Date(values[1]+'T00:00:00Z'); 
+                sliderDisplayElement.textContent = `${sD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})} - ${eD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}`;
+            };
+            sliderElement.noUiSlider.on('update', (values) => { updateSliderDisplay(values); }); 
+            sliderElement.noUiSlider.on('set', _configChangeHandler); 
+            updateSliderDisplay(sliderElement.noUiSlider.get()); 
+        } catch(err) { console.error(`[Insights V32.13] Slider Error for panel ${panelIdStr}:`, err); sliderDisplayElement.textContent = "Slider Error"; }
+    }
+
+    const configToggleBtn = panelElement.querySelector('.panel-config-toggle-btn');
+    const configArea = panelElement.querySelector('.panel-config-area');
+    if (configToggleBtn && configArea && !configToggleBtn.getAttribute('listener-attached-init')) {
+        configToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); configArea.classList.toggle('open');
+            const icon = configToggleBtn.querySelector('i');
+            if (icon) icon.className = configArea.classList.contains('open') ? 'fas fa-chevron-up' : 'fas fa-cog';
+        });
+        configToggleBtn.setAttribute('listener-attached-init', 'true');
+    }
+    // Initial summary display will be handled by loadPanelContent
+}
+
+function _configChangeHandler(event) { const panelElement = event.target.closest('.insight-panel'); if (panelElement) _handleConfigChange(panelElement, event); }
+
+async function _handleConfigChange(panelElement, event = null) {
+    const panelIdStr = panelElement.dataset.panelId; const analysisType = panelElement.dataset.analysisType;
+    if (!panelIdStr || !analysisType || panelIdStr.startsWith('temp-')) { return; }
+
+    console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): START. Triggered by:`, event?.target?.id || event?.target?.classList[0] || event?.target?.tagName || 'programmatic call');
+
+    const panelIdInt = parseInt(panelIdStr); if (isNaN(panelIdInt)) { alert("Config error: Invalid panel ID."); return; }
+    
+    let newConfig = JSON.parse(panelElement.dataset.configuration || '{}');
+
+    const groupSelect = panelElement.querySelector(`#group-select-${panelIdStr}`);
+    if (groupSelect) { newConfig.group_id = groupSelect.value; }
+    
+    const sliderElement = panelElement.querySelector(`#time-slider-${panelIdStr}`);
+    if (sliderElement && sliderElement.noUiSlider) {
+        try {
+            const [sS, eS] = sliderElement.noUiSlider.get(); 
+            if (sS === "ERR_NaN" || eS === "ERR_NaN") throw new Error("Invalid date from slider get()");
+            newConfig.startDate = sS; newConfig.endDate = eS; newConfig.time_period = 'custom'; 
+            const sliderOptions = sliderElement.noUiSlider.options;
+            const sliderMinDateStr = new Date(sliderOptions.range.min).toISOString().split('T')[0];
+            const sliderMaxDateStr = new Date(sliderOptions.range.max).toISOString().split('T')[0];
+            if (sS === sliderMinDateStr && eS === sliderMaxDateStr) {
+                newConfig.time_period = 'all_time'; newConfig.startDate = null; newConfig.endDate = null;
+            }
+            // console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): Slider values read: ${sS} - ${eS}. New time_period: ${newConfig.time_period}`);
+        } catch (e) {
+            console.error(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): Error reading date range from slider: ${e.message}.`);
+        }
+    } else { 
+        if (!newConfig.startDate && !newConfig.endDate) { newConfig.time_period = 'all_time';}
+    }
+    
+    panelElement.dataset.configuration = JSON.stringify(newConfig);
+    // Summary will be updated by loadPanelContent after data fetch.
+    
+    console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): newConfig constructed:`, JSON.parse(JSON.stringify(newConfig)));
+    console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): Sending to server for update...`);
+    try {
+        await updatePanelConfigurationOnServer(panelIdInt, newConfig);
+        console.log(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): Server update successful. Calling loadPanelContent.`);
+        await loadPanelContent(panelElement);
+    } catch (error) {
+        alert(`Failed to update panel settings: ${error.message}`);
+        console.error(`[Insights V32.13] Panel ${panelIdStr} (_handleConfigChange): API error:`, error);
+    }
+}
+
+async function loadPanelContent(panelElement, isForDragCloneVisuals = false) {
+    const panelIdStr = panelElement.dataset.panelId;
+    const analysisType = panelElement.dataset.analysisType;
+    const contentContainer = panelElement.querySelector('.placeholder-chart');
+
+    if (!analysisType || !contentContainer) { console.error(`loadPanelContent - ABORTING. Missing type/container. PanelID: ${panelIdStr}`); if(contentContainer) contentContainer.innerHTML = "<p style='color:red'>Internal Error.</p>"; return; }
+
+    let panelIdForDataFetch = null;
+    if (!panelIdStr.startsWith('temp-')) {
+        const parsedId = parseInt(panelIdStr);
+        if (!isNaN(parsedId)) { panelIdForDataFetch = parsedId; } 
+        else { console.error(`loadPanelContent - Invalid ID for non-temp: ${panelIdStr}.`); contentContainer.innerHTML = `<p style='color:red'>Config Error.</p>`; return; }
+    }
+
+    const isPaletteDragClone = panelIdStr.startsWith('temp-live-'); 
+    let chartInstanceToDestroy = null;
+    if (!isPaletteDragClone && activeChartInstances[panelIdStr]) {
+        chartInstanceToDestroy = activeChartInstances[panelIdStr];
+    } else if (isPaletteDragClone && chartInDraggedElement) {
+        chartInstanceToDestroy = chartInDraggedElement;
+    }
+
+    if (chartInstanceToDestroy) {
+        try { chartInstanceToDestroy.destroy(); } catch (e) {}
+        if (!isPaletteDragClone && !panelIdStr.startsWith('temp-')) delete activeChartInstances[panelIdStr]; 
+        else if (isPaletteDragClone) chartInDraggedElement = null; 
+    }
+
+    const analysisDetails = getAnalysisDetails(analysisType);
+    contentContainer.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`;
+    
+    if (isPaletteDragClone) {
+        const summaryEl = panelElement.querySelector('.panel-config-summary');
+        if(summaryEl) summaryEl.textContent = "Default View";
+    }
+    // For real panels, summary is updated after fetch using analysisResult.title
+
+    try {
+        if (typeof Chart === 'undefined') throw new Error("Chart.js library not loaded.");
+        const analysisResult = await fetchAnalysisData(analysisType, panelIdForDataFetch); 
+        
+        if (!isPaletteDragClone && analysisResult?.title) {
+            _updatePanelConfigSummary(panelElement, analysisResult.title);
+        } else if (!isPaletteDragClone) {
+             _updatePanelConfigSummary(panelElement, null); // Fallback: will use local config to build summary
+        }
+        
+        if (analysisResult?.config_used && !panelIdStr.startsWith('temp-')) {
+             console.log(`[Insights V32.13] Panel ${panelIdStr} (loadPanelContent): Config used by server:`, analysisResult.config_used);
+        }
+
+        if (analysisType === 'spending-by-category' && analysisResult?.data) {
+            if (analysisResult.data.length > 0) {
+                contentContainer.innerHTML = ''; const canvas = document.createElement('canvas'); contentContainer.appendChild(canvas); const ctx = canvas.getContext('2d');
+                const labels = analysisResult.data.map(item => item.category || 'Uncategorized'); const amounts = analysisResult.data.map(item => item.amount);
+                const bgColors = Array.from({ length: labels.length }, (_, i) => `hsl(${(i * 360 / labels.length) % 360}, 65%, 60%)`);
+                const chartOptions = { responsive: true, maintainAspectRatio: false, animation: { duration: isForDragCloneVisuals ? 0 : CHART_ANIMATION_DURATION }, plugins: { legend: { display: !isForDragCloneVisuals, position: 'bottom', labels: { color: '#ddd', padding: 15, boxWidth: 12, usePointStyle: true } }, tooltip: { enabled: !isForDragCloneVisuals, backgroundColor: 'rgba(20,20,30,0.85)', titleColor: '#eee', bodyColor: '#ddd', callbacks: { label: chartCtx => `${chartCtx.label || ''}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(chartCtx.parsed)} (${(chartCtx.parsed / chartCtx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0) * 100).toFixed(1)}%)` } } } };
+                if(isForDragCloneVisuals) { chartOptions.elements = { arc: { borderWidth: 1 }}; }
+                const newChart = new Chart(ctx, { type: 'pie', data: { labels, datasets: [{ label: 'Spending', data: amounts, backgroundColor: bgColors, hoverBackgroundColor: bgColors.map(c => c.replace(/60%\)$/, '70%)')), borderColor: '#333', borderWidth: 1, hoverOffset: isForDragCloneVisuals ? 0: 8 }] }, options: chartOptions });
+                if(isPaletteDragClone) chartInDraggedElement = newChart; 
+                else if (!panelIdStr.startsWith('temp-')) activeChartInstances[panelIdStr] = newChart; 
+            } else { contentContainer.innerHTML = `<p style="text-align:center;color:#bbb;padding:15px 5px;">No data found for current filters.</p>`; }
+        } else if (analysisType !== 'spending-by-category') { contentContainer.innerHTML = `<p style='text-align:center;color:orange;padding:15px 5px;'>Display not implemented for: ${analysisType}</p>`; }
+        else { contentContainer.innerHTML = `<p style="text-align:center;color:#bbb;padding:15px 5px;">No data or unexpected format.</p>`;}
+    } catch (error) {
+        console.error(`[Insights V32.13] loadPanelContent - ERROR CAUGHT - PanelID: ${panelIdStr}, Type: ${analysisType}:`, error);
+        contentContainer.innerHTML = `<p style='color:red;text-align:center;padding:15px 5px;'>Error loading data.<br><small>${error.message}</small></p>`;
+        if (!isPaletteDragClone) _updatePanelConfigSummary(panelElement, "Error loading filter details");
+    }
+}
 
 // --- Grid State & Layout ---
-
-function checkGridEmpty() {
-    if (!insightsGrid || !emptyMessage) return;
-    const hasContent = insightsGrid.querySelector('.insight-panel:not(.dragging-placeholder)');
-    emptyMessage.style.display = hasContent ? 'none' : 'block';
-    if (!hasContent && emptyMessage.parentElement !== insightsGrid) {
-        insightsGrid.appendChild(emptyMessage); // Ensure it's in the grid if empty
-    }
-}
-
+function checkGridEmpty() { if (!insightsGrid || !emptyMessage) return; const hasContent = insightsGrid.querySelector('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'); emptyMessage.style.display = hasContent ? 'none' : 'block'; if (!hasContent && emptyMessage.parentElement !== insightsGrid) insightsGrid.appendChild(emptyMessage); }
 function calculateGridCellLayout() {
-    // ... (No changes needed in this function) ...
-    if (!insightsGrid || !insightsGridContainer) {
-        gridCellLayout = []; return;
-    }
-    gridCellLayout = [];
-    gridComputedStyle = window.getComputedStyle(insightsGrid);
-    if (window.innerWidth <= 768) { gridColCount = 1; }
-    else {
-        const gridTemplateColumns = gridComputedStyle.gridTemplateColumns;
-        const columnMatch = gridTemplateColumns?.split(' ').filter(s => s !== '0px' && s !== 'auto');
-        gridColCount = columnMatch ? columnMatch.length : 2;
-    }
-    const firstPanel = insightsGrid.querySelector('.insight-panel:not(.dragging-placeholder)');
-    let sampleCellWidth = 250; let sampleCellHeight = 250; let sampleMargin = 10;
-    if (firstPanel) {
-        const panelRect = firstPanel.getBoundingClientRect(); const panelStyle = window.getComputedStyle(firstPanel);
-        sampleCellWidth = panelRect.width; sampleCellHeight = panelRect.height; sampleMargin = parseInt(panelStyle.marginRight) || sampleMargin;
-    } else {
-        const gridWidth = insightsGrid.offsetWidth - parseInt(gridComputedStyle.paddingLeft) - parseInt(gridComputedStyle.paddingRight);
-        if (gridWidth > 0 && gridColCount > 0) {
-            const totalMarginSpace = (gridColCount > 1) ? (gridColCount - 1) * (2 * sampleMargin) : 0;
-            sampleCellWidth = Math.max(200, (gridWidth - totalMarginSpace) / gridColCount); sampleCellHeight = sampleCellWidth * 1.0;
-        }
-    }
-    const effectiveColGap = 2 * sampleMargin; const effectiveRowGap = 2 * sampleMargin;
-    const startOffsetX = (parseInt(gridComputedStyle.paddingLeft) || 0) + sampleMargin; const startOffsetY = (parseInt(gridComputedStyle.paddingTop) || 0) + sampleMargin;
-    const visiblePanels = Array.from(insightsGrid.children).filter(el => el.classList.contains('insight-panel') && !el.classList.contains('dragging-placeholder'));
-    const estimatedRows = Math.max(1, Math.ceil((visiblePanels.length + 1) / gridColCount)) + 1;
-    let currentX = startOffsetX; let currentY = startOffsetY;
-    for (let r = 0; r < estimatedRows; r++) {
-        currentX = startOffsetX;
-        for (let c = 0; c < gridColCount; c++) {
-            gridCellLayout.push({
-                x: currentX - sampleMargin, y: currentY - sampleMargin, width: sampleCellWidth + 2 * sampleMargin, height: sampleCellHeight + 2 * sampleMargin,
-                contentX: currentX, contentY: currentY, contentWidth: sampleCellWidth, contentHeight: sampleCellHeight
-            }); currentX += sampleCellWidth + effectiveColGap;
-        } currentY += sampleCellHeight + effectiveRowGap;
-    }
+    if (!insightsGrid || !insightsGridContainer) { gridCellLayout = []; return; }
+    gridCellLayout = []; gridComputedStyle = window.getComputedStyle(insightsGrid); gridColCount = (window.innerWidth <= 768) ? 1 : 2;
+    const panelOwnMargin = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--panel-margin') || '12');
+    const gridPadding = parseFloat(gridComputedStyle.paddingLeft) || 10;
+    const availableGridWidth = insightsGridContainer.clientWidth - (2 * gridPadding);
+    let panelContentWidth = (availableGridWidth - (gridColCount - 1) * (2 * panelOwnMargin)) / gridColCount;
+    if (gridColCount === 1) { panelContentWidth = availableGridWidth; }
+    panelContentWidth = Math.max(200, panelContentWidth); const panelContentHeight = panelContentWidth * 0.8;
+    const startOffsetX = gridPadding; const startOffsetY = gridPadding;
+    const visiblePanels = Array.from(insightsGrid.children).filter(el => (el.classList.contains('insight-panel') || el.classList.contains('dragging-placeholder')) && !el.classList.contains('dragging-clone'));
+    const estimatedItems = visiblePanels.length + (isDragging && dragType === 'palette' && (!placeholderElement || !placeholderElement.parentElement) ? 1 : 0);
+    const estimatedRows = Math.max(1, Math.ceil(estimatedItems / gridColCount));
+    for (let r = 0; r < estimatedRows; r++) { for (let c = 0; c < gridColCount; c++) {
+        const slotX = startOffsetX + c * (panelContentWidth + 2 * panelOwnMargin); const slotY = startOffsetY + r * (panelContentHeight + 2 * panelOwnMargin);
+        gridCellLayout.push({ x: slotX, y: slotY, width: panelContentWidth + 2 * panelOwnMargin, height: panelContentHeight + 2 * panelOwnMargin, contentX: slotX + panelOwnMargin, contentY: slotY + panelOwnMargin, contentWidth: panelContentWidth, contentHeight: panelContentHeight });
+    }}
+}
+function findNearestSlotIndex(pointerX, pointerY) { let closestIndex = -1, minDistSq = Infinity; if (!gridCellLayout.length) calculateGridCellLayout(); if (!gridCellLayout.length) return -1; gridCellLayout.forEach((slot, index) => { const slotCenterX = slot.contentX + slot.contentWidth / 2; const slotCenterY = slot.contentY + slot.contentHeight / 2; const distSq = (pointerX - slotCenterX) ** 2 + (pointerY - slotCenterY) ** 2; if (distSq < minDistSq) { minDistSq = distSq; closestIndex = index; } }); const panelChildren = Array.from(insightsGrid.children).filter(el => (el.classList.contains('insight-panel') || el.classList.contains('dragging-placeholder')) && !el.classList.contains('dragging-clone'));
+    const panelCount = panelChildren.length + (isDragging && dragType === 'palette' && (!placeholderElement || !placeholderElement.parentElement) ? 1 : 0);
+    return Math.min(closestIndex, panelCount);
 }
 
-function findNearestSlotIndex(pointerX, pointerY) {
-    // ... (No changes needed in this function) ...
-    let closestIndex = -1; let minDistSq = Infinity;
-    if (!gridCellLayout || gridCellLayout.length === 0) {
-        console.warn("findNearestSlotIndex called with no grid layout."); calculateGridCellLayout();
-        if (!gridCellLayout || gridCellLayout.length === 0) { console.error("Grid layout unavailable."); return -1; }
-    }
-    gridCellLayout.forEach((slot, index) => {
-        const slotContentCenterX = slot.contentX + slot.contentWidth / 2; const slotContentCenterY = slot.contentY + slot.contentHeight / 2;
-        const distSq = (pointerX - slotContentCenterX) ** 2 + (pointerY - slotContentCenterY) ** 2;
-        if (distSq < minDistSq) { minDistSq = distSq; closestIndex = index; }
-    });
-    const currentPanelCount = insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder)').length;
-    return Math.min(closestIndex, currentPanelCount);
-}
-
-
-// --- Palette Preview Logic (Refactored for JSON data) ---
-
-/**
- * Shows the preview popup next to the target palette item.
- * Reads structured data from data-* attributes and dynamically builds the preview HTML.
- *
- * @param {HTMLElement} targetPaletteItem The palette item being hovered.
- */
-function showPalettePreview(targetPaletteItem) {
-    // 1. Validate Inputs & State
-    if (!palettePreviewContainer) {
-        console.error("Preview failed: palettePreviewContainer element not found.");
-        return;
-    }
-    if (!targetPaletteItem || isDragging || (palette && palette.classList.contains('collapsed') && window.innerWidth > 768)) {
-        return; // Exit if no target, dragging, or palette collapsed
-    }
-
-    // 2. Read Structured Data from data-* attributes
-    const { previewTitle, previewImageUrl, previewDescription } = targetPaletteItem.dataset;
-
-    // 3. Validate required data
-    if (!previewTitle || !previewDescription) { // Image is optional maybe? Adjust as needed
-        console.warn("Preview skipped: Target item missing required data attributes (title, description).", targetPaletteItem.dataset);
-        hidePalettePreview(); // Hide any previous preview
-        return;
-    }
-
-    // 4. Clear Hide Timeout
-    clearTimeout(previewHideTimeout);
-    previewHideTimeout = null;
-
-    console.log("Showing preview for:", previewTitle);
-
-    // 5. Build Preview DOM Dynamically
-    try {
-        // Clear previous content safely
-        palettePreviewContainer.innerHTML = '';
-
-        // Create elements (example structure based on previous HTML)
-        const innerDiv = document.createElement('div');
-        innerDiv.className = 'preview-container-inner'; // Use classes for styling
-
-        const titleEl = document.createElement('h3');
-        titleEl.className = 'preview-title';
-        titleEl.textContent = previewTitle; // Use textContent for safety
-        innerDiv.appendChild(titleEl);
-
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'preview-content';
-
-        // Add image only if URL is provided
-        if (previewImageUrl) {
-            const imgEl = document.createElement('img');
-            imgEl.src = previewImageUrl;
-            imgEl.alt = `${previewTitle} preview`; // Basic alt text
-            // Apply styling via CSS or inline if necessary
-            imgEl.style.maxHeight = '120px';
-            imgEl.style.width = 'auto';
-            imgEl.style.display = 'block';
-            imgEl.style.margin = '5px auto 8px'; // Example spacing
-            imgEl.style.borderRadius = '3px';
-            contentDiv.appendChild(imgEl);
-        }
-
-        const descEl = document.createElement('p');
-        descEl.textContent = previewDescription; // Use textContent for safety
-        contentDiv.appendChild(descEl);
-
-        innerDiv.appendChild(contentDiv);
-        palettePreviewContainer.appendChild(innerDiv); // Add the built structure
-
-    } catch (error) {
-        console.error("Error building preview DOM:", error);
-        palettePreviewContainer.innerHTML = "<p style='color: red;'>Error loading preview.</p>";
-    }
-
-    // 6. Prepare for Positioning (make measurable but hidden)
-    palettePreviewContainer.style.display = 'block';
-    palettePreviewContainer.style.visibility = 'hidden';
-    palettePreviewContainer.style.opacity = '0';
-    palettePreviewContainer.style.transform = 'scale(0.95)';
-    palettePreviewContainer.classList.remove('visible');
-
-    // 7. Calculate Position and Animate In (using rAF)
-    requestAnimationFrame(() => {
-        if (!palettePreviewContainer || !targetPaletteItem) return; // Re-check elements
-
-        const previewRect = palettePreviewContainer.getBoundingClientRect();
-        const itemRect = targetPaletteItem.getBoundingClientRect();
-        const containerRect = insightsView?.getBoundingClientRect()
-            ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
-
-        // --- Position Calculation (Clamped to viewport) ---
-        let left = itemRect.right + PREVIEW_GAP_TO_RIGHT;
-        left = Math.max(containerRect.left + VIEWPORT_PADDING, left);
-        left = Math.min(left, containerRect.right - previewRect.width - VIEWPORT_PADDING);
-
-        let top = itemRect.top + (itemRect.height / 2) - (previewRect.height / 2);
-        top = Math.max(containerRect.top + VIEWPORT_PADDING, top);
-        top = Math.min(top, containerRect.bottom - previewRect.height - VIEWPORT_PADDING);
-        // --- End Position Calculation ---
-
-        const relLeft = left - containerRect.left;
-        const relTop = top - containerRect.top;
-
-        palettePreviewContainer.style.left = `${Math.round(relLeft)}px`;
-        palettePreviewContainer.style.top = `${Math.round(relTop)}px`;
-        palettePreviewContainer.style.visibility = 'visible'; // Make it visible now
-
-        palettePreviewContainer.classList.add('visible');
-        palettePreviewContainer.style.opacity = '1';
-        palettePreviewContainer.style.transform = 'scale(1)';
-    });
-}
-
-function scheduleHidePalettePreview() {
-    clearTimeout(previewHideTimeout);
-    previewHideTimeout = setTimeout(hidePalettePreview, PREVIEW_HIDE_DELAY + 100);
-}
-
-function hidePalettePreview() {
-    clearTimeout(previewHideTimeout);
-    previewHideTimeout = null;
-
-    if (palettePreviewContainer && palettePreviewContainer.classList.contains('visible')) {
-        palettePreviewContainer.classList.remove('visible');
-        palettePreviewContainer.style.opacity = '0';
-        palettePreviewContainer.style.transform = 'scale(0.95)';
-
-        const computedStyle = getComputedStyle(palettePreviewContainer);
-        const transitionDurations = computedStyle.transitionDuration.split(',').map(d => parseFloat(d) || 0);
-        const transitionDelays = computedStyle.transitionDelay.split(',').map(d => parseFloat(d) || 0);
-        let maxTotalDuration = 0;
-        for (let i = 0; i < transitionDurations.length; i++) {
-            maxTotalDuration = Math.max(maxTotalDuration, (transitionDurations[i] + transitionDelays[i]) * 1000);
-        }
-
-        setTimeout(() => {
-            if (palettePreviewContainer && !palettePreviewContainer.classList.contains('visible')) {
-                palettePreviewContainer.style.display = 'none';
-                palettePreviewContainer.innerHTML = ''; // Clear content after hiding
-            }
-        }, maxTotalDuration || 300);
-    } else if (palettePreviewContainer) {
-        // Ensure it's hidden and clear content even if class wasn't present
-        palettePreviewContainer.style.display = 'none';
-        palettePreviewContainer.innerHTML = '';
-    }
-}
-
-function cancelHidePreview() {
-    clearTimeout(previewHideTimeout);
-    previewHideTimeout = null;
-}
-
+// --- Palette Preview Logic ---
+function showPalettePreview(targetPaletteItem) { if (!palettePreviewContainer || !targetPaletteItem || isDragging || (palette?.classList.contains('collapsed') && window.innerWidth > 768)) return; const { previewTitle, previewImageUrl, previewDescription } = targetPaletteItem.dataset; if (!previewTitle || !previewDescription) { hidePalettePreview(); return; } clearTimeout(previewHideTimeout); previewHideTimeout = null; palettePreviewContainer.innerHTML = `<div class="preview-container-inner"><h3 class="preview-title">${previewTitle}</h3><div class="preview-content">${previewImageUrl ? `<img src="${previewImageUrl}" alt="${previewTitle} preview" style="max-height:120px;width:auto;display:block;margin:5px auto 8px;border-radius:3px;">` : ''}<p>${previewDescription}</p></div></div>`; palettePreviewContainer.style.display = 'block'; palettePreviewContainer.style.visibility = 'hidden'; palettePreviewContainer.style.opacity = '0'; palettePreviewContainer.style.transform = 'scale(0.95)'; palettePreviewContainer.classList.remove('visible'); requestAnimationFrame(() => { if (!palettePreviewContainer || !targetPaletteItem) return; const prevRect = palettePreviewContainer.getBoundingClientRect(); const itemRect = targetPaletteItem.getBoundingClientRect(); const contRect = insightsView?.getBoundingClientRect() || { left:0,top:0,right:window.innerWidth,bottom:window.innerHeight }; let l = Math.max(contRect.left+VIEWPORT_PADDING, Math.min(itemRect.right+PREVIEW_GAP_TO_RIGHT, contRect.right-prevRect.width-VIEWPORT_PADDING)); let t = Math.max(contRect.top+VIEWPORT_PADDING, Math.min(itemRect.top+(itemRect.height/2)-(prevRect.height/2), contRect.bottom-prevRect.height-VIEWPORT_PADDING)); palettePreviewContainer.style.left = `${Math.round(l-contRect.left)}px`; palettePreviewContainer.style.top = `${Math.round(t-contRect.top)}px`; palettePreviewContainer.style.visibility = 'visible'; palettePreviewContainer.classList.add('visible'); palettePreviewContainer.style.opacity = '1'; palettePreviewContainer.style.transform = 'scale(1)'; }); }
+function scheduleHidePalettePreview() { clearTimeout(previewHideTimeout); previewHideTimeout = setTimeout(hidePalettePreview, PREVIEW_HIDE_DELAY + 100); }
+function hidePalettePreview() { clearTimeout(previewHideTimeout); previewHideTimeout = null; if (palettePreviewContainer?.classList.contains('visible')) { palettePreviewContainer.classList.remove('visible'); palettePreviewContainer.style.opacity = '0'; palettePreviewContainer.style.transform = 'scale(0.95)'; setTimeout(() => { if (palettePreviewContainer && !palettePreviewContainer.classList.contains('visible')) { palettePreviewContainer.style.display = 'none'; palettePreviewContainer.innerHTML = ''; } }, 300); } else if (palettePreviewContainer) { palettePreviewContainer.style.display = 'none'; palettePreviewContainer.innerHTML = ''; } }
+function cancelHidePreview() { clearTimeout(previewHideTimeout); }
 
 // --- Drag and Drop Logic ---
-
-function onPointerDown(event) {
-    // ... (No changes needed in this function for preview refactor) ...
-    if (event.button !== 0 || isDragging) return;
-    if (event.target.closest('.panel-action-btn, .add-analysis-btn, .palette-toggle-btn')) { return; }
-
-    const panelHeader = event.target.closest('.panel-header');
-    const paletteItem = event.target.closest('.palette-item');
-
-    if (panelHeader) {
-        const panel = panelHeader.closest('.insight-panel:not(.dragging-placeholder)');
-        if (panel && panel.dataset.panelId) { initiateDrag(event, panel, 'grid'); }
-    } else if (paletteItem && !palette?.classList.contains('collapsed')) {
-        if (paletteItem.dataset.analysisType) { initiateDrag(event, paletteItem, 'palette'); }
-    }
-}
+function onPointerDown(event) { if (event.target.closest('.panel-action-btn, .add-analysis-btn, .palette-toggle-btn, .panel-config-area, .panel-config-controls, .panel-config-controls *, .noUi-handle, .noUi-pips')) return; if (event.button !== 0 || isDragging) return; const panelElement = event.target.closest('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'); const paletteItem = event.target.closest('.palette-item'); if (panelElement?.dataset.panelId && !panelElement.dataset.panelId.startsWith('temp-')) initiateDrag(event, panelElement, 'grid'); else if (paletteItem && !palette?.classList.contains('collapsed') && paletteItem.dataset.analysisType) initiateDrag(event, paletteItem, 'palette');}
 
 function initiateDrag(event, element, type) {
-    // ... (No changes needed in this function for preview refactor) ...
-    event.preventDefault(); event.stopPropagation();
-    hidePalettePreview(); // Ensure preview hides on drag start
-
-    isDragging = true; dragType = type; sourceElement = element;
-    startClientX = event.clientX; startClientY = event.clientY;
-
+    event.preventDefault(); event.stopPropagation(); hidePalettePreview();
+    isDragging = true; dragType = type; startClientX = event.clientX; startClientY = event.clientY;
     calculateGridCellLayout();
+    if (palette) paletteRect = palette.getBoundingClientRect();
 
     placeholderElement = document.createElement('div');
-    placeholderElement.className = 'insight-panel dragging-placeholder';
+    placeholderElement.className = 'dragging-placeholder drop-slot-indicator';
+    if (gridCellLayout.length > 0) { placeholderElement.style.width = `${gridCellLayout[0].contentWidth}px`; placeholderElement.style.height = `${gridCellLayout[0].contentHeight}px`; }
+    else { placeholderElement.style.width = '250px'; placeholderElement.style.height = '200px'; }
 
     let elementRect;
     if (dragType === 'grid') {
-        originalSourceElement = sourceElement;
-        elementRect = originalSourceElement.getBoundingClientRect();
-        const gridContainerRect = insightsGridContainer.getBoundingClientRect();
-        const initialX = (elementRect.left - gridContainerRect.left + insightsGridContainer.scrollLeft) + elementRect.width / 2;
-        const initialY = (elementRect.top - gridContainerRect.top + insightsGridContainer.scrollTop) + elementRect.height / 2;
-        sourceIndex = findNearestSlotIndex(initialX, initialY);
+        originalSourceElementForGridDrag = element; draggedElement = originalSourceElementForGridDrag;
+        elementRect = draggedElement.getBoundingClientRect(); offsetX = startClientX - elementRect.left; offsetY = startClientY - elementRect.top;
+        sourceIndex = Array.from(insightsGrid.children).filter(child => child.classList.contains('insight-panel') && !child.classList.contains('dragging-clone')).indexOf(draggedElement);
+        if (draggedElement.parentElement === insightsGrid && sourceIndex !== -1) { insightsGrid.insertBefore(placeholderElement, draggedElement); draggedElement.remove(); }
+        else { console.error("Error: Dragged grid panel not found correctly."); isDragging = false; return; }
         currentTargetIndex = sourceIndex;
-        if (originalSourceElement.parentElement) { originalSourceElement.parentElement.replaceChild(placeholderElement, originalSourceElement); }
-        else { console.error("Cannot replace original element, parent not found."); isDragging = false; return; }
-        draggedElementClone = originalSourceElement.cloneNode(true);
-        draggedElementClone.classList.remove('dragging-placeholder');
-        offsetX = startClientX - elementRect.left; offsetY = startClientY - elementRect.top;
-    } else { // dragType === 'palette'
-        originalSourceElement = null;
-        const analysisType = sourceElement.dataset.analysisType; const title = sourceElement.dataset.title; const description = sourceElement.dataset.description;
-        if (!analysisType || !title) { console.warn("Palette item missing data attributes."); isDragging = false; return; }
-        const tempPanelData = { id: 'temp-drag', analysis_type: analysisType, title: title, description: description };
-        const tempPanelElement = createInsightPanelElement(tempPanelData); // Uses placeholder HTML from data attr now
-        tempPanelElement.style.position = 'absolute'; tempPanelElement.style.visibility = 'hidden';
-        tempPanelElement.style.width = 'auto'; tempPanelElement.style.height = 'auto';
-        tempPanelElement.style.minWidth = '250px'; tempPanelElement.style.margin = '0';
-        document.body.appendChild(tempPanelElement); const cloneRect = tempPanelElement.getBoundingClientRect(); document.body.removeChild(tempPanelElement);
-        draggedElementClone = createInsightPanelElement(tempPanelData); // Create actual clone
-        elementRect = cloneRect;
+    } else { 
+        originalSourceElementForGridDrag = null; const sourcePaletteItem = element;
+        const { analysisType } = sourcePaletteItem.dataset; if (!analysisType) { isDragging = false; return; }
+        const analysisDetails = getAnalysisDetails(analysisType); const defaultConfig = analysisDetails?.default_config || {};
+        const tempPanelData = { id: generateUniqueId('temp-live'), analysis_type:analysisType, title: sourcePaletteItem.dataset.title || analysisDetails?.title || 'Analysis', configuration:defaultConfig };
+        
+        draggedElement = createInsightPanelElement(tempPanelData, true); 
+        loadPanelContent(draggedElement, true).catch(err => { console.error("Error loading data into palette drag clone:", err); const phc = draggedElement.querySelector('.placeholder-chart'); if(phc) phc.innerHTML = "<p style='color:red;text-align:center;'>Error loading data</p>"; });
+        
+        let cloneWidth = gridCellLayout.length > 0 ? gridCellLayout[0].contentWidth : 250; let cloneHeight = gridCellLayout.length > 0 ? gridCellLayout[0].contentHeight : 200;
+        offsetX = cloneWidth * 0.5; offsetY = cloneHeight * 0.2; elementRect = {left:startClientX-offsetX, top:startClientY-offsetY, width:cloneWidth, height:cloneHeight};
         sourceIndex = -1; currentTargetIndex = -1;
-        offsetX = Math.min(elementRect.width * 0.15, 30); offsetY = Math.min(elementRect.height * 0.15, 20);
-        elementRect = { left: startClientX - offsetX, top: startClientY - offsetY, width: elementRect.width, height: elementRect.height };
     }
-
-    draggedElementClone.classList.add('dragging-clone'); draggedElementClone.style.position = 'fixed';
-    draggedElementClone.style.zIndex = '1000'; draggedElementClone.style.pointerEvents = 'none';
-    draggedElementClone.style.width = `${elementRect.width}px`; draggedElementClone.style.height = `${elementRect.height}px`;
-    draggedElementClone.style.left = `${elementRect.left}px`; draggedElementClone.style.top = `${elementRect.top}px`;
-    document.body.appendChild(draggedElementClone);
-
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp, { once: true });
-    document.addEventListener('contextmenu', preventContextMenuDuringDrag, { capture: true });
+    draggedElement.classList.add('dragging-clone');
+    Object.assign(draggedElement.style, { position:'fixed', zIndex:1000, pointerEvents:'none', width:`${elementRect.width}px`, height:`${elementRect.height}px`, left:`${elementRect.left}px`, top:`${elementRect.top}px` });
+    document.body.appendChild(draggedElement);
+    document.addEventListener('pointermove', onPointerMove); document.addEventListener('pointerup', onPointerUp, {once:true}); document.addEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
 }
 
 function onPointerMove(event) {
-    // ... (No changes needed in this function for preview refactor) ...
-    if (!isDragging || !draggedElementClone) return;
-    const currentClientX = event.clientX; const currentClientY = event.clientY;
+    if (!isDragging || !draggedElement) return; const currentX = event.clientX, currentY = event.clientY;
     cancelAnimationFrame(animationFrameId);
     animationFrameId = requestAnimationFrame(() => {
-        draggedElementClone.style.left = `${currentClientX - offsetX}px`;
-        draggedElementClone.style.top = `${currentClientY - offsetY}px`;
+        draggedElement.style.left = `${currentX - offsetX}px`; draggedElement.style.top = `${currentY - offsetY}px`;
         gridRect = insightsGridContainer.getBoundingClientRect();
-        const pointerXInGridContainer = currentClientX - gridRect.left; const pointerYInGridContainer = currentClientY - gridRect.top;
-        const isOverGridContainer = currentClientX >= gridRect.left && currentClientX <= gridRect.right && currentClientY >= gridRect.top && currentClientY <= gridRect.bottom;
-        let nearestIndex = -1;
-        if (isOverGridContainer) {
-            const pointerXInGrid = pointerXInGridContainer + insightsGridContainer.scrollLeft; const pointerYInGrid = pointerYInGridContainer + insightsGridContainer.scrollTop;
-            nearestIndex = findNearestSlotIndex(pointerXInGrid, pointerYInGrid);
+        
+        let isOverPalette = false;
+        if (dragType === 'grid' && paletteRect && palette && !palette.classList.contains('collapsed')) {
+            isOverPalette = currentX >= paletteRect.left && currentX <= paletteRect.right &&
+                            currentY >= paletteRect.top && currentY <= paletteRect.bottom;
         }
-        if (isOverGridContainer && nearestIndex !== -1) {
-            const needsMove = (nearestIndex !== currentTargetIndex || !placeholderElement.parentElement);
-            if (needsMove) { insertElementAtIndex(placeholderElement, nearestIndex); currentTargetIndex = nearestIndex; }
+
+        if (isOverPalette) {
+            palette.classList.add('drag-over-delete');
+            if (placeholderElement.parentElement) placeholderElement.remove();
+            currentTargetIndex = -2; 
         } else {
-            if (placeholderElement.parentElement) { placeholderElement.remove(); }
-            currentTargetIndex = -1;
+            palette.classList.remove('drag-over-delete');
+            const pointerXInGridCont = currentX - gridRect.left, pointerYInGridCont = currentY - gridRect.top;
+            const isOverGrid = currentX>=gridRect.left && currentX<=gridRect.right && currentY>=gridRect.top && currentY<=gridRect.bottom;
+            let nearestIdx = -1;
+            if (isOverGrid) { const pointerXInGrid = pointerXInGridCont + insightsGridContainer.scrollLeft; const pointerYInGrid = pointerYInGridCont + insightsGridContainer.scrollTop; nearestIdx = findNearestSlotIndex(pointerXInGrid, pointerYInGrid); }
+            if (isOverGrid && nearestIdx !== -1) { if (nearestIdx !== currentTargetIndex || !placeholderElement.parentElement) { insertElementAtIndex(placeholderElement, nearestIdx); currentTargetIndex = nearestIdx; } }
+            else { if (placeholderElement.parentElement) placeholderElement.remove(); currentTargetIndex = -1; }
         }
-        if (isOverGridContainer) { handleGridScroll(currentClientY, gridRect); }
+        if (dragType === 'grid' && !isOverPalette) handleGridScroll(currentY, gridRect); 
+        else if (dragType === 'palette') handleGridScroll(currentY, gridRect); 
     });
 }
+function handleGridScroll(clientY, gridContainerRect) { let scrollDelta = 0; const speed = SCROLL_THRESHOLD * SCROLL_SPEED_MULTIPLIER * 0.5; if (clientY < gridContainerRect.top + SCROLL_THRESHOLD) { scrollDelta = -speed * (1 - (clientY - gridContainerRect.top) / SCROLL_THRESHOLD); } else if (clientY > gridContainerRect.bottom - SCROLL_THRESHOLD) { scrollDelta = speed * (1 - (gridContainerRect.bottom - clientY) / SCROLL_THRESHOLD); } if (scrollDelta !== 0) insightsGridContainer.scrollTop += scrollDelta; }
 
-function handleGridScroll(clientY, gridRect) {
-    // ... (No changes needed in this function) ...
-    const scrollSpeed = 15 * SCROLL_SPEED_MULTIPLIER; let scrollDelta = 0;
-    if (clientY < gridRect.top + SCROLL_THRESHOLD) { const proximityFactor = 1 - Math.max(0, clientY - gridRect.top) / SCROLL_THRESHOLD; scrollDelta = -scrollSpeed * (1 + proximityFactor); }
-    else if (clientY > gridRect.bottom - SCROLL_THRESHOLD) { const proximityFactor = 1 - Math.max(0, gridRect.bottom - clientY) / SCROLL_THRESHOLD; scrollDelta = scrollSpeed * (1 + proximityFactor); }
-    if (scrollDelta !== 0) { insightsGridContainer.scrollTop += scrollDelta; }
-}
+async function onPointerUp() {
+    if (!isDragging) return; cancelAnimationFrame(animationFrameId);
+    document.removeEventListener('pointermove', onPointerMove); document.removeEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
+    if (palette) palette.classList.remove('drag-over-delete');
 
-async function onPointerUp(event) {
-    // ... (No changes needed in this function for preview refactor) ...
-    if (!isDragging) return;
-    const panelIdBeingDragged = (dragType === 'grid' && originalSourceElement) ? originalSourceElement.dataset.panelId : null;
-    cancelAnimationFrame(animationFrameId);
-    document.removeEventListener('pointermove', onPointerMove);
-    document.removeEventListener('contextmenu', preventContextMenuDuringDrag, { capture: true });
-    if (draggedElementClone) { draggedElementClone.remove(); draggedElementClone = null; }
-    const droppedInsideGrid = currentTargetIndex !== -1 && placeholderElement && placeholderElement.parentElement === insightsGrid;
-    let finalPanelElement = null; let addedPanelData = null;
+    const droppedOnPalette = currentTargetIndex === -2 && dragType === 'grid' && originalSourceElementForGridDrag;
+    const droppedInsideGrid = currentTargetIndex !== -1 && currentTargetIndex !== -2 && placeholderElement?.parentElement === insightsGrid;
+    let finalPanelToFocus = null;
+
+    if (draggedElement) { draggedElement.remove(); draggedElement.classList.remove('dragging-clone'); ['position', 'left', 'top', 'width', 'height', 'zIndex', 'pointerEvents', 'transform', 'margin'].forEach(prop => { draggedElement.style[prop] = ''; }); }
+    if (dragType === 'palette' && chartInDraggedElement) { try { chartInDraggedElement.destroy(); } catch(e){} chartInDraggedElement = null; }
+
     try {
-        if (droppedInsideGrid) {
+        if (droppedOnPalette) {
+            const panelToRemove = originalSourceElementForGridDrag;
+            const panelIdStr = panelToRemove.dataset.panelId;
+            const panelIdInt = parseInt(panelIdStr);
+
+            if (activeChartInstances[panelIdStr]) { try { activeChartInstances[panelIdStr].destroy(); } catch(e){} delete activeChartInstances[panelIdStr]; }
+            const sliderEl = panelToRemove.querySelector(`#time-slider-${panelIdStr}`); if (sliderEl?.noUiSlider) sliderEl.noUiSlider.destroy();
+            if (placeholderElement?.parentElement) placeholderElement.remove(); 
+            if (!isNaN(panelIdInt)) { await removePanelFromServer(panelIdInt); }
+            else { console.error("Cannot remove panel by dragging to palette: Invalid ID", panelIdStr); }
+        } else if (droppedInsideGrid) {
             if (dragType === 'palette') {
-                const analysisType = sourceElement.dataset.analysisType;
-                try {
-                    addedPanelData = await addPanelToServer(analysisType);
-                    if (!addedPanelData || !addedPanelData.id) { throw new Error("Failed to create panel: Invalid data from server."); }
-                    finalPanelElement = createInsightPanelElement(addedPanelData); // This now loads content correctly
-                    placeholderElement.replaceWith(finalPanelElement); placeholderElement = null;
-                    const finalPanelIds = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder)')).map(p => p.dataset.panelId);
-                    await updatePanelOrderOnServer(finalPanelIds);
-                } catch (error) {
-                    console.error("Error adding panel via drag/drop:", error); placeholderElement?.remove(); addedPanelData = null; finalPanelElement = null;
-                    alert(`Error adding panel: ${error.message}`);
-                }
-            } else if (dragType === 'grid' && originalSourceElement) {
-                originalSourceElement.style = ''; placeholderElement.replaceWith(originalSourceElement);
-                finalPanelElement = originalSourceElement; placeholderElement = null;
-                const finalPanelIds = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder)')).map(p => p.dataset.panelId);
-                await updatePanelOrderOnServer(finalPanelIds);
-                // Optional: Reload content if needed after move: loadPanelContent(finalPanelElement);
+                const analysisType = draggedElement.dataset.analysisType; const analysisDetails = getAnalysisDetails(analysisType);
+                const initialConfig = JSON.parse(draggedElement.dataset.configuration) || analysisDetails?.default_config || {};
+                const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig); if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed on server.");
+                const panelDataForCreation = { 
+                    id: String(newPanelDataFromServer.id), 
+                    analysis_type: newPanelDataFromServer.analysis_type || analysisType, 
+                    title: newPanelDataFromServer.title || draggedElement.dataset.staticTitle || analysisDetails?.title || 'Analysis', 
+                    configuration: newPanelDataFromServer.configuration || initialConfig 
+                };
+                finalPanelToFocus = createInsightPanelElement(panelDataForCreation, false); 
+                placeholderElement.replaceWith(finalPanelToFocus);
+                _initializePanelConfigurationControls(finalPanelToFocus, panelDataForCreation); 
+                await loadPanelContent(finalPanelToFocus);
+            } else if (dragType === 'grid' && originalSourceElementForGridDrag) {
+                finalPanelToFocus = originalSourceElementForGridDrag; placeholderElement.replaceWith(finalPanelToFocus);
+                const chartInstance = activeChartInstances[finalPanelToFocus.dataset.panelId]; if (chartInstance?.resize) { setTimeout(() => { try { chartInstance.resize(); } catch(e){} }, 50); }
+                // Summary is updated by loadPanelContent if its config changed, or if it was re-added to DOM
+                // It's safer to just call loadPanelContent to ensure everything is fresh
+                await loadPanelContent(finalPanelToFocus);
             }
-        } else { // Dropped Outside Grid
-            if (dragType === 'grid' && originalSourceElement) {
-                originalSourceElement.style = ''; insertElementAtIndex(originalSourceElement, sourceIndex);
-                const panelId = originalSourceElement.dataset.panelId;
-                if (panelId) { console.warn(`Panel ${panelId} dropped outside, reloading content.`); loadPanelContent(originalSourceElement); }
+        } else { 
+            if (dragType === 'grid' && originalSourceElementForGridDrag) {
+                finalPanelToFocus = originalSourceElementForGridDrag; 
+                if (placeholderElement?.parentElement) placeholderElement.remove(); 
+                insertElementAtIndex(finalPanelToFocus, sourceIndex);
+                const chartInstance = activeChartInstances[finalPanelToFocus.dataset.panelId]; 
+                if (chartInstance?.resize) { setTimeout(() => { try { chartInstance.resize(); } catch(e){} }, 50); }
+                // Reload content to ensure summary is correct after being re-inserted
+                await loadPanelContent(finalPanelToFocus);
+
+            } else if (dragType === 'palette') { if (placeholderElement?.parentElement) placeholderElement.remove(); }
+        }
+
+        if (droppedInsideGrid || droppedOnPalette) {
+             const panelElementsInGrid = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
+             const persistentPanelIds = panelElementsInGrid.filter(p => p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id));
+            if (persistentPanelIds.length > 0 || ( (droppedInsideGrid || droppedOnPalette) && panelElementsInGrid.length === 0) ) {
+                await updatePanelOrderOnServer(persistentPanelIds);
             }
-            placeholderElement?.remove(); placeholderElement = null;
         }
     } catch (apiError) {
-        console.error("API Error during panel drop/reorder:", apiError); alert(`Error saving changes: ${apiError.message}`);
-        if (dragType === 'palette' && droppedInsideGrid) { placeholderElement?.remove(); }
-        if (dragType === 'grid' && originalSourceElement) {
-            insertElementAtIndex(originalSourceElement, sourceIndex); placeholderElement?.remove();
-            if (originalSourceElement.dataset.panelId) { loadPanelContent(originalSourceElement); }
-        }
-        finalPanelElement = null; addedPanelData = null;
+        alert(`Error saving changes: ${apiError.message}`); console.error("[Insights V32.13] onPointerUp - API Error:", apiError);
+        if (droppedOnPalette && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); /* Re-render summary if needed */ }
+        else if (dragType === 'grid' && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) { if (placeholderElement?.parentElement) placeholderElement.remove(); insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex); /* Re-render summary */ }
+        else if (dragType === 'palette' && placeholderElement?.parentElement) { placeholderElement.remove(); }
     } finally {
-        isDragging = false; sourceElement = null; originalSourceElement = null; placeholderElement = null; sourceIndex = -1; dragType = null; currentTargetIndex = -1;
+        if(placeholderElement?.parentElement) placeholderElement.remove(); placeholderElement = null;
+        isDragging = false; draggedElement = null; originalSourceElementForGridDrag = null; sourceIndex = -1; dragType = null; currentTargetIndex = -1;
         setTimeout(() => {
             calculateGridCellLayout(); checkGridEmpty();
-            const currentPanelIds = new Set(Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder)')).map(p => p.dataset.panelId));
-            for (const panelId in activeChartInstances) {
-                if (!currentPanelIds.has(panelId)) {
-                    try { activeChartInstances[panelId].destroy(); } catch (e) { }
-                    delete activeChartInstances[panelId]; console.log(`Cleaned up orphaned chart for panel ${panelId}`);
-                }
-            }
+            const currentPanelIds = new Set(Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)')).map(p => p.dataset.panelId));
+            Object.keys(activeChartInstances).forEach(idStr => { if(!idStr.startsWith('temp-') && !currentPanelIds.has(idStr)) { try{ activeChartInstances[idStr].destroy(); } catch(e){} delete activeChartInstances[idStr]; }});
         }, 50);
     }
 }
-
-function preventContextMenuDuringDrag(event) {
-    if (isDragging) { event.preventDefault(); event.stopPropagation(); }
-}
-
-function insertElementAtIndex(elementToInsert, targetIndex) {
-    // ... (No changes needed in this function) ...
-    const currentPanels = Array.from(insightsGrid.children).filter(el => el.classList.contains('insight-panel') && el !== elementToInsert);
-    targetIndex = Math.max(0, Math.min(targetIndex, currentPanels.length));
-    const referenceElement = (targetIndex < currentPanels.length) ? currentPanels[targetIndex] : emptyMessage;
-    let needsInsert = true;
-    if (referenceElement && referenceElement.parentElement === insightsGrid) { if (referenceElement.previousElementSibling === elementToInsert) { needsInsert = false; } }
-    else {
-        const lastPanelElement = Array.from(insightsGrid.children).filter(el => el.classList.contains('insight-panel') && !el.classList.contains('insights-empty-message')).pop();
-        if (lastPanelElement === elementToInsert) { needsInsert = false; }
-        else if (!lastPanelElement && insightsGrid.firstElementChild === elementToInsert && !elementToInsert.classList.contains('insights-empty-message')) { needsInsert = false; }
-    }
-    if (!elementToInsert.parentElement || elementToInsert.parentElement !== insightsGrid) { needsInsert = true; }
-    if (needsInsert) {
-        if (referenceElement && referenceElement.parentElement === insightsGrid) { insightsGrid.insertBefore(elementToInsert, referenceElement); }
-        else {
-            insightsGrid.appendChild(elementToInsert);
-            if (emptyMessage && emptyMessage.parentElement !== insightsGrid) { insightsGrid.appendChild(emptyMessage); }
-        }
-    }
+function preventContextMenuDuringDrag(event) { if (isDragging) event.preventDefault(); }
+function insertElementAtIndex(elementToInsert, index) {
+    const currentGridChildren = Array.from(insightsGrid.children).filter(el => (el.classList.contains('insight-panel') || el.classList.contains('dragging-placeholder')) && !el.classList.contains('dragging-clone'));
+    const actualItems = currentGridChildren.filter(child => child !== elementToInsert);
+    const effectiveIndex = Math.max(0, Math.min(index, actualItems.length));
+    if (elementToInsert.parentElement === insightsGrid) { insightsGrid.removeChild(elementToInsert); }
+    if (effectiveIndex < actualItems.length) { insightsGrid.insertBefore(elementToInsert, actualItems[effectiveIndex]); }
+    else { if (emptyMessage && emptyMessage.parentElement === insightsGrid && insightsGrid.lastChild === emptyMessage) { insightsGrid.insertBefore(elementToInsert, emptyMessage); } else { insightsGrid.appendChild(elementToInsert); }}
+    checkGridEmpty();
 }
 
 // --- Panel Actions & Palette Toggle ---
-
-async function handlePanelAction(event) {
-    // ... (No changes needed in this function) ...
-    const removeButton = event.target.closest('.remove-panel-btn'); const shareButton = event.target.closest('.share-panel-btn');
-    const panel = event.target.closest('.insight-panel');
-    if (!panel || !panel.dataset.panelId || panel.classList.contains('dragging-placeholder')) return;
-    const panelId = panel.dataset.panelId;
-    if (removeButton && panelId) {
-        if (activeChartInstances[panelId]) {
-            try { activeChartInstances[panelId].destroy(); console.log(`Destroyed chart for panel ${panelId} before removal.`); }
-            catch (e) { console.error("Error destroying chart:", e); }
-            delete activeChartInstances[panelId];
-        }
+async function handleGridAction(event) {
+    const panel = event.target.closest('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'); if (!panel || !panel.dataset.panelId) return; const panelIdStr = panel.dataset.panelId; if (panelIdStr.startsWith('temp-')) return;
+    if (event.target.closest('.panel-close-btn')) {
+        event.stopPropagation(); if (activeChartInstances[panelIdStr]) { try { activeChartInstances[panelIdStr].destroy(); } catch(e){} delete activeChartInstances[panelIdStr]; }
+        const sliderEl = panel.querySelector(`#time-slider-${panelIdStr}`); if (sliderEl?.noUiSlider) sliderEl.noUiSlider.destroy();
         panel.remove(); checkGridEmpty(); calculateGridCellLayout();
-        try { await removePanelFromServer(parseInt(panelId)); console.log(`Panel ${panelId} removed from server.`); }
-        catch (error) { console.error(`Failed to remove panel ${panelId} from server:`, error); alert(`Error removing panel: ${error.message}. Please refresh.`); }
-    } else if (shareButton) { alert(`Sharing panel '${panel.querySelector('.panel-title')?.textContent || 'N/A'}' (ID: ${panelId}) - Feature not implemented.`); }
+        const panelIdInt = parseInt(panelIdStr); if (!isNaN(panelIdInt)) { try { await removePanelFromServer(panelIdInt); } catch (error) { alert(`Error removing panel: ${error.message}.`);}} else { console.error("Cannot remove panel: Invalid ID", panelIdStr); }
+    } else if (event.target.closest('.panel-share-btn')) { event.stopPropagation(); const panelTitleText = panel.querySelector('.panel-dynamic-title')?.textContent || 'N/A'; alert(`Sharing panel '${panelTitleText}' - Not implemented.`); }
 }
-
-function makePanelDraggable(panelElement) {
-    // ... (No changes needed in this function) ...
-    const header = panelElement.querySelector('.panel-header');
-    if (header) { header.removeEventListener('pointerdown', onPointerDown); header.addEventListener('pointerdown', onPointerDown); }
-    else { console.warn("Panel header not found for making draggable:", panelElement); }
-}
-
-// --- Palette & Resize ---
-
-function debounce(func, wait) {
-    // ... (No changes needed in this function) ...
-    let timeout; return function executedFunction(...args) { const later = () => { clearTimeout(timeout); func(...args); }; clearTimeout(timeout); timeout = setTimeout(later, wait); };
-}
-
-function handlePaletteToggle(forceState = null) {
-    // ... (No changes needed in this function) ...
-    if (!palette || !paletteToggleBtn) return; hidePalettePreview();
-    const currentCollapsedState = palette.classList.contains('collapsed'); let shouldBeCollapsed;
-    if (forceState !== null) { shouldBeCollapsed = (forceState === 'close'); } else { shouldBeCollapsed = !currentCollapsedState; }
-    if (shouldBeCollapsed === currentCollapsedState) return;
-    if (shouldBeCollapsed) { palette.classList.add('collapsed'); insightsView?.classList.add('palette-collapsed'); }
-    else { palette.classList.remove('collapsed'); insightsView?.classList.remove('palette-collapsed'); }
-    updateToggleButtonIcon();
-    const transitionDuration = parseFloat(getComputedStyle(palette).transitionDuration) * 1000;
-    setTimeout(() => { calculateGridCellLayout(); }, transitionDuration || 350);
-}
-
-function updateToggleButtonIcon() {
-    // ... (No changes needed in this function) ...
-    if (!palette || !paletteToggleBtn) return; const isMobile = window.innerWidth <= 768; const isCollapsed = palette.classList.contains('collapsed');
-    const icon = paletteToggleBtn.querySelector('i'); if (!icon) return;
-    if (isMobile) { icon.className = `fas ${isCollapsed ? 'fa-chevron-up' : 'fa-chevron-down'}`; }
-    else { icon.className = `fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'}`; }
-    const label = isCollapsed ? 'Expand Palette' : 'Collapse Palette'; paletteToggleBtn.setAttribute('aria-label', label); paletteToggleBtn.setAttribute('title', label);
-}
+function makePanelDraggable(panelElement) { panelElement.removeEventListener('pointerdown', onPointerDown); panelElement.addEventListener('pointerdown', onPointerDown); }
+function debounce(func, wait) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => func.apply(this,a), wait); }; }
+function handlePaletteToggle(forceState=null) { if (!palette || !paletteToggleBtn) return; hidePalettePreview(); let shouldClose = forceState === 'close' || (forceState === null && !palette.classList.contains('collapsed')); palette.classList.toggle('collapsed', shouldClose); insightsView?.classList.toggle('palette-collapsed', shouldClose); updateToggleButtonIcon(); setTimeout(calculateGridCellLayout, parseFloat(getComputedStyle(palette).transitionDuration)*1000 || 350); }
+function updateToggleButtonIcon() { if (!palette || !paletteToggleBtn) return; const icon = paletteToggleBtn.querySelector('i'); if (!icon) return; const isMobile = window.innerWidth <= 768, isCollapsed = palette.classList.contains('collapsed'); icon.className = `fas ${isMobile ? (isCollapsed ? 'fa-chevron-up':'fa-chevron-down') : (isCollapsed ? 'fa-chevron-right':'fa-chevron-left')}`; paletteToggleBtn.setAttribute('aria-label', isCollapsed ? 'Expand Palette' : 'Collapse Palette'); }
 
 // --- Initialization and Event Setup ---
+async function setupEventListeners() {
+    if (!insightsView) { return; }
+    if (!getComputedStyle(document.documentElement).getPropertyValue('--panel-margin')) {
+        document.documentElement.style.setProperty('--panel-margin', '12px');
+    }
 
-function setupEventListeners() {
-    if (!insightsView) { console.error("Insights view not found, cannot setup listeners."); return; }
-
-    // --- Palette Header & Toggle Button ---
-    if (paletteHeader && paletteToggleBtn) {
-        paletteHeader.addEventListener('click', (event) => { if (paletteToggleBtn.contains(event.target) || event.target.closest('.add-analysis-btn')) { return; } handlePaletteToggle(); });
-        paletteToggleBtn.addEventListener('click', (event) => { event.stopPropagation(); handlePaletteToggle(); });
-    } else { console.warn("Palette header or toggle button not found."); }
-
-    // --- Palette Items (Drag Start, Preview, Add Button) ---
+    paletteHeader?.addEventListener('click', e => { if (!e.target.closest('.palette-toggle-btn, .add-analysis-btn')) handlePaletteToggle(); });
+    paletteToggleBtn?.addEventListener('click', e => { e.stopPropagation(); handlePaletteToggle(); });
     if (paletteScrollContainer) {
-        // Drag start
         paletteScrollContainer.addEventListener('pointerdown', onPointerDown);
-
-        // Show preview on hover (uses refactored showPalettePreview)
-        paletteScrollContainer.addEventListener('mouseover', (event) => {
-            if (isDragging || (palette && palette.classList.contains('collapsed') && window.innerWidth > 768)) return;
-            const targetItem = event.target.closest('.palette-item');
-            if (targetItem) {
-                showPalettePreview(targetItem); // Will now read data-* and build DOM
-            }
-        });
-
-        // Hide preview on mouseout
-        paletteScrollContainer.addEventListener('mouseout', (event) => {
-            if (isDragging) return;
-            const targetItem = event.target.closest('.palette-item');
-            const relatedTarget = event.relatedTarget;
-            if (targetItem && !targetItem.contains(relatedTarget) && !palettePreviewContainer?.contains(relatedTarget)) {
-                scheduleHidePalettePreview();
-            }
-        });
-
-        // '+' Add Analysis Button Click
-        paletteScrollContainer.addEventListener('click', async (event) => {
-            const addButton = event.target.closest('.add-analysis-btn');
-            if (addButton && !isDragging) {
-                const item = addButton.closest('.palette-item');
-                if (item && item.dataset.analysisType) {
-                    const analysisType = item.dataset.analysisType;
-                    addButton.disabled = true; addButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                    let newPanelElement = null;
+        paletteScrollContainer.addEventListener('mouseover', e => { if (!isDragging && !palette?.classList.contains('collapsed') && window.innerWidth>768) { const item = e.target.closest('.palette-item'); if(item) showPalettePreview(item); }});
+        paletteScrollContainer.addEventListener('mouseout', e => { if(!isDragging){ const item=e.target.closest('.palette-item'); if(item && !item.contains(e.relatedTarget) && !palettePreviewContainer?.contains(e.relatedTarget)) scheduleHidePalettePreview(); }});
+        paletteScrollContainer.addEventListener('click', async e => {
+            const addBtn = e.target.closest('.add-analysis-btn');
+            if (addBtn && !isDragging) {
+                e.stopPropagation(); const item = addBtn.closest('.palette-item'); if (item?.dataset.analysisType) {
+                    const { analysisType } = item.dataset; const analysisDetails = getAnalysisDetails(analysisType); const initialConfig = analysisDetails?.default_config || {};
+                    addBtn.disabled=true; addBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';
                     try {
-                        const newPanelData = await addPanelToServer(analysisType);
-                        if (!newPanelData || !newPanelData.id) throw new Error("Failed to add panel: Invalid response.");
-                        newPanelElement = createInsightPanelElement(newPanelData);
-                        if (emptyMessage && emptyMessage.parentElement === insightsGrid) { insightsGrid.insertBefore(newPanelElement, emptyMessage); }
-                        else { insightsGrid.appendChild(newPanelElement); }
+                        const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig); if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed.");
+                        const panelTitleForCreation = newPanelDataFromServer.title || item.dataset.title || analysisDetails?.title || 'Analysis';
+                        const panelDataForCreation = { 
+                            id: String(newPanelDataFromServer.id), 
+                            analysis_type: newPanelDataFromServer.analysis_type || analysisType, 
+                            title: panelTitleForCreation, 
+                            configuration: newPanelDataFromServer.configuration || initialConfig 
+                        };
+                        const newEl = createInsightPanelElement(panelDataForCreation, false); 
+                        insertElementAtIndex(newEl, insightsGrid.children.length - (emptyMessage.parentElement === insightsGrid ? 1 : 0) );
+                        _initializePanelConfigurationControls(newEl, panelDataForCreation);
+                        await loadPanelContent(newEl);
                         checkGridEmpty(); calculateGridCellLayout();
-                        const finalPanelIds = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder)')).map(p => p.dataset.panelId);
-                        await updatePanelOrderOnServer(finalPanelIds);
-                        setTimeout(() => { newPanelElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
-                    } catch (error) {
-                        console.error("Error adding panel via '+' button:", error); alert(`Failed to add panel: ${error.message || 'Server error'}`); newPanelElement?.remove();
-                    } finally { addButton.disabled = false; addButton.innerHTML = '+'; }
+                        const panelElementsAfterAdd = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
+                        const panelIdsToOrderAfterAdd = panelElementsAfterAdd.filter(p => p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id));
+                        if (panelIdsToOrderAfterAdd.length > 0) { await updatePanelOrderOnServer(panelIdsToOrderAfterAdd); }
+                        setTimeout(() => newEl?.scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
+                    } catch (err) { alert(`Failed to add panel: ${err.message}`); }
+                    finally { addBtn.disabled=false; addBtn.innerHTML='+'; }
                 }
             }
         });
-    } else { console.warn("Palette scroll container not found."); }
+    }
+    palettePreviewContainer?.addEventListener('mouseleave', e => { if (!e.relatedTarget || !e.relatedTarget.closest('.palette-item')) scheduleHidePalettePreview(); });
+    palettePreviewContainer?.addEventListener('mouseenter', cancelHidePreview);
 
-    // --- Palette Preview Container (Cancel Hide on Hover) ---
-    if (palettePreviewContainer) {
-        palettePreviewContainer.addEventListener('mouseleave', (event) => {
-            const relatedTarget = event.relatedTarget;
-            if (!relatedTarget || !relatedTarget.closest('.palette-item')) { scheduleHidePalettePreview(); }
-        });
-        palettePreviewContainer.addEventListener('mouseenter', cancelHidePreview);
-    } else { console.warn("Palette preview container not found, hover previews will not work."); }
-
-    // --- Insights Grid (Panel Actions & Initial Load) ---
     if (insightsGrid) {
-        insightsGrid.addEventListener('click', handlePanelAction);
-        // Initialize existing panels (make draggable, load content)
-        insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder)').forEach(panel => {
-            if (panel.dataset.panelId) { makePanelDraggable(panel); loadPanelContent(panel); }
-            else { console.warn("Found grid panel without panel ID:", panel); } // Warn if ID missing
-        });
-    } else { console.warn("Insights grid element not found."); }
+        insightsGrid.addEventListener('click', handleGridAction);
+        const existingPanels = insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)');
+        for (const panel of existingPanels) {
+            const panelIdStr = panel.dataset.panelId; 
+            const analysisType = panel.dataset.analysisType;
+            const analysisDetails = getAnalysisDetails(analysisType); // For default_config
 
-    // --- Window Resize ---
-    window.addEventListener('resize', debounce(() => {
-        console.log("Window resized, recalculating layout."); hidePalettePreview(); calculateGridCellLayout(); updateToggleButtonIcon();
-    }, 250));
+            if (!panelIdStr || !analysisType || panelIdStr.startsWith('temp-')) { continue; }
+            if (isNaN(parseInt(panelIdStr))) { 
+                const contentDiv = panel.querySelector('.placeholder-chart') || panel.querySelector('.panel-content'); 
+                if (contentDiv) contentDiv.innerHTML = `<p style='color:red;'><b>Error:</b>Invalid ID ('${panelIdStr}')</p>`; 
+                const titleH3 = panel.querySelector('.panel-dynamic-title'); 
+                if (titleH3) titleH3.textContent = "Config Error"; 
+                continue; 
+            }
+            
+            makePanelDraggable(panel); 
+            
+            const panelStaticTitleText = panel.dataset.staticTitle || analysisDetails?.title || 'Analysis'; 
+            const titleEl = panel.querySelector('.panel-dynamic-title'); 
+            if (titleEl) { titleEl.textContent = panelStaticTitleText; }
+             else { console.warn(`Panel ${panelIdStr} missing .panel-dynamic-title`); }
+            
+            const placeholderChartDiv = panel.querySelector('.placeholder-chart'); 
+            if (placeholderChartDiv) { placeholderChartDiv.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`; } 
+            else { console.warn(`Panel ${panelIdStr} missing .placeholder-chart`); }
+            
+            // Robustly parse or default the configuration from the HTML dataset
+            let configObject;
+            const rawConfigString = panel.dataset.configuration; 
+            if (!rawConfigString || rawConfigString.trim() === "") {
+                console.warn(`[Insights V32.13] Panel ${panelIdStr} (setupEventListeners): data-configuration attribute is missing or empty. Using default_config.`);
+                configObject = analysisDetails?.default_config || {};
+                panel.dataset.configuration = JSON.stringify(configObject); // Ensure dataset is populated with valid JSON
+            } else {
+                try {
+                    configObject = JSON.parse(rawConfigString);
+                } catch (e) { 
+                    console.error(`[Insights V32.13] Panel ${panelIdStr} (setupEventListeners): Error parsing panel.dataset.configuration: "${rawConfigString}". Error: ${e.message}. Falling back to default_config.`);
+                    configObject = analysisDetails?.default_config || {};
+                    panel.dataset.configuration = JSON.stringify(configObject); // Correct dataset with valid default
+                }
+            }
+            
+            const panelDataForInit = { 
+                id: panelIdStr, 
+                analysis_type: analysisType, 
+                title: panelStaticTitleText, // Pass the static title
+                configuration: configObject 
+            };
 
-    // --- Grid Container Scroll ---
-    insightsGridContainer?.addEventListener('scroll', debounce(() => { if (!isDragging) { hidePalettePreview(); } }, 100));
-
-    console.log("Insights event listeners attached.");
+            _initializePanelConfigurationControls(panel, panelDataForInit); 
+            await loadPanelContent(panel); 
+        }
+        const initialPanelElements = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
+        const initialPersistentPanelIds = initialPanelElements.filter(p => p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id));
+        if (initialPersistentPanelIds.length > 0) { await updatePanelOrderOnServer(initialPersistentPanelIds); }
+    }
+    window.addEventListener('resize', debounce(() => { hidePalettePreview(); calculateGridCellLayout(); updateToggleButtonIcon(); }, 250));
+    insightsGridContainer?.addEventListener('scroll', debounce(() => { if (!isDragging) hidePalettePreview(); }, 100));
 }
 
-// --- initInsightsManager: Initialize the module ---
-export function initInsightsManager() {
-    console.log("Initializing Insights Manager (JSON Preview Data)...");
-
+export async function initInsightsManager() {
+    console.log("%c[Insights] initInsightsManager - START (V32.13 - Robust JSON Parse & Summary)", "background-color: yellow; color: black; font-weight:bold;");
     insightsView = document.getElementById('insights-view');
     insightsGridContainer = document.getElementById('insights-grid-container');
     insightsGrid = document.getElementById('insights-grid');
@@ -855,38 +676,25 @@ export function initInsightsManager() {
     paletteToggleBtn = document.getElementById('palette-toggle-btn');
     paletteScrollContainer = document.getElementById('palette-scroll-container');
     emptyMessage = document.getElementById('insights-empty-message');
-    palettePreviewContainer = document.getElementById('palette-preview-container'); // CRITICAL assignment
+    palettePreviewContainer = document.getElementById('palette-preview-container');
 
-    const criticalElements = { insightsView, insightsGridContainer, insightsGrid, palette, paletteHeader, paletteToggleBtn, paletteScrollContainer, palettePreviewContainer, emptyMessage };
-    let missingElement = false;
-    for (const key in criticalElements) {
-        if (!criticalElements[key]) {
-            const idSelector = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-            console.error(`Insights Manager init failed: Element with ID '${idSelector}' not found.`);
-            missingElement = true;
-        }
+    if (!insightsView || !insightsGridContainer || !insightsGrid || !palette ||
+        !paletteHeader || !paletteToggleBtn || !paletteScrollContainer || 
+        !emptyMessage || !palettePreviewContainer) {
+        console.error("Insights Manager init failed: Critical DOM elements not found. Check HTML IDs.");
+        return;
     }
-    if (missingElement) { console.error("Aborting Insights Manager initialization."); return; }
-
-    if (!document.querySelector('meta[name="csrf-token"]')) { console.warn("CSRF token meta tag not found."); }
-    if (typeof Chart === 'undefined') { console.error("Chart.js library not found."); }
-
+    if (typeof Chart === 'undefined') console.error("Chart.js library not found."); if (typeof noUiSlider === 'undefined') console.warn("noUiSlider library not found.");
+    await fetchUserGroups();
     calculateGridCellLayout();
+    await setupEventListeners(); // This now has the robust parsing
     checkGridEmpty();
-    setupEventListeners(); // Setup listeners after finding elements
-
-    isDragging = false; draggedElementClone?.remove();
-    document.querySelectorAll('.dragging-placeholder').forEach(el => el.remove());
-    document.removeEventListener('pointermove', onPointerMove);
-    document.removeEventListener('pointerup', onPointerUp);
-    document.removeEventListener('contextmenu', preventContextMenuDuringDrag, { capture: true });
-    hidePalettePreview(); // Ensure preview is hidden initially
-
-    const isInitiallyCollapsed = palette.classList.contains('collapsed');
-    insightsView?.classList.toggle('palette-collapsed', isInitiallyCollapsed);
-    updateToggleButtonIcon();
-
-    console.log("Insights Manager Initialized Successfully.");
+    isDragging = false; if(draggedElement) draggedElement.remove(); draggedElement = null;
+    document.querySelectorAll('.dragging-placeholder.drop-slot-indicator').forEach(el => el.remove());
+    document.removeEventListener('pointermove', onPointerMove); document.removeEventListener('pointerup', onPointerUp); document.removeEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
+    hidePalettePreview(); if (palette) { insightsView.classList.toggle('palette-collapsed', palette.classList.contains('collapsed')); } updateToggleButtonIcon();
+    console.log("%c[Insights] initInsightsManager - Initialized Successfully (V32.13)", "background-color: lightgreen; color: black; font-weight:bold;");
 }
 
+function getAnalysisDetails(analysisTypeId) { const localAvailableAnalyses = { "spending-by-category": { id: "spending-by-category", title: "💸 Spending by Category", description: "Total event costs by node. Filter by group & time.", preview_title: "Spending Example", preview_image_filename: "img/placeholder-bar-chart.png", preview_description: "Shows total costs for events linked to different nodes.", placeholder_html: `<div class='loading-placeholder' style='text-align: center; padding: 20px; color: #aaa;'><i class='fas fa-spinner fa-spin fa-2x'></i><p style='margin-top: 10px;'>Loading spending data...</p></div>`, default_config: { time_period: "all_time", group_id: "all", startDate: null, endDate: null } } }; return localAvailableAnalyses[analysisTypeId]; }
 // --- END OF FILE insightsManager.js ---

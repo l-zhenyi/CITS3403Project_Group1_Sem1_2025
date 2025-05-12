@@ -1,4 +1,4 @@
-# --- START OF FILE models.py ---
+# --- START OF FILE app/models.py ---
 
 from app import db, login
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -167,47 +167,54 @@ class Group(db.Model):
         back_populates="group", cascade="all, delete-orphan"
     )
 
-    # +++ NEW: Define owner_id for clearer ownership +++
     owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user.id"), nullable=True)
     owner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id])
 
+    # --- NEW PERMISSION FIELDS ---
+    allow_member_edit_name: Mapped[bool] = mapped_column(default=False, nullable=False)
+    allow_member_edit_description: Mapped[bool] = mapped_column(default=False, nullable=False)
+    allow_member_manage_members: Mapped[bool] = mapped_column(default=False, nullable=False)
+    # --- END NEW PERMISSION FIELDS ---
 
     @property
     def avatar(self, size=128): # This property should likely just return self.avatar_url or default
         return self.avatar_url if self.avatar_url else f'https://www.gravatar.com/avatar/{md5(str(self.id).lower().encode("utf-8")).hexdigest()}?d=identicon&s={size}'
 
 
-    # +++ MODIFIED to_dict METHOD +++
-    def to_dict(self, include_nodes=True, include_members=False): # Added include_members
+    def to_dict(self, include_nodes=True, include_members=False, current_user_id_param=None):
         data = {
             "id": self.id,
             "name": self.name,
-            "avatar_url": self.avatar_url or url_for('static', filename='img/default-group-avatar.png'), # Use direct or default
-            "description": self.about, # Changed 'about' to 'description' for frontend consistency
-            "owner_id": self.owner_id # Include owner_id
+            "avatar_url": self.avatar_url or url_for('static', filename='img/default-group-avatar.png'),
+            "description": self.about,
+            "owner_id": self.owner_id,
+            # --- INCLUDE NEW PERMISSIONS ---
+            "allow_member_edit_name": self.allow_member_edit_name,
+            "allow_member_edit_description": self.allow_member_edit_description,
+            "allow_member_manage_members": self.allow_member_manage_members,
+            "is_current_user_owner": False # Default
         }
+        if current_user_id_param is not None and self.owner_id == current_user_id_param:
+            data["is_current_user_owner"] = True
+        # --- END INCLUDE NEW PERMISSIONS ---
 
         if include_nodes:
-            data["nodes"] = [node.to_dict(include_events=False) for node in self.nodes] # Typically don't need events here
+            data["nodes"] = [node.to_dict(include_events=False) for node in self.nodes]
 
         if include_members:
             data['members'] = []
-            # Ensure members are loaded if lazy='dynamic'. If lazy='joined' or default, they are likely already loaded.
-            # If self.members is a query, use .all()
             members_list = self.members if not hasattr(self.members, 'all') else self.members.all()
             for member_assoc in members_list:
                 member_user = member_assoc.user
                 if member_user:
+                    # Use the is_current_user_owner determined above for the group owner,
+                    # then check member_assoc.is_owner for individual member ownership (though this is less common if group has one owner)
                     is_owner_flag = (self.owner_id == member_user.id) if self.owner_id else False
-                    # A simpler owner check if you made the first member the owner during creation:
-                    # if not self.owner_id and self.members and self.members[0].user_id == member_user.id:
-                    #    is_owner_flag = True
-
                     data['members'].append({
-                        'user_id': member_user.id, # Changed from 'id' to 'user_id' for clarity
+                        'user_id': member_user.id,
                         'username': member_user.username,
                         'avatar_url': member_user.avatar(40),
-                        'is_owner': is_owner_flag
+                        'is_owner': is_owner_flag # This reflects if THIS member is THE group owner
                     })
         return data
 
@@ -254,7 +261,17 @@ class Event(db.Model):
     image_url: Mapped[str] = mapped_column(String(255), nullable=True)
     cost_display: Mapped[str] = mapped_column(String(50), nullable=True) # User-facing display string
     cost_value: Mapped[Optional[Float]] = mapped_column(Float, nullable=True) # Actual numeric cost for calculations
-    node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id"), nullable=True)
+    is_cost_split: Mapped[bool] = mapped_column(default=False, nullable=False) # NEW for cost splitting
+    
+    # Provide explicit names for ForeignKey constraints to aid Alembic, especially in batch mode
+    node_id: Mapped[Optional[int]] = mapped_column(ForeignKey("nodes.id", name="fk_event_node_id_nodes"), nullable=True)
+    creator_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user.id", name="fk_event_creator_id_user"), nullable=True) # Store who created event
+    
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[creator_id])
+
+    # Event-specific edit permissions (for non-creator/non-group-owner members if allowed)
+    allow_others_edit_title: Mapped[bool] = mapped_column(default=False, nullable=False)
+    allow_others_edit_details: Mapped[bool] = mapped_column(default=False, nullable=False) # Covers desc, loc, date, cost
 
     # Relationships
     node: Mapped[Optional["Node"]] = relationship("Node", back_populates="events") # Optional if node_id can be null
@@ -262,10 +279,7 @@ class Event(db.Model):
     attendees: Mapped[List["EventRSVP"]] = relationship("EventRSVP", back_populates="event", cascade="all, delete-orphan")
     guests: Mapped[List["InvitedGuest"]] = relationship("InvitedGuest", back_populates="event")
 
-    # --- MODIFIED to_dict ---
     def to_dict(self, current_user_id=None):
-        """Serializes the Event object to a dictionary, optionally including the
-           RSVP status for the specified user and group information."""
         data = {
             "id": self.id,
             "title": self.title,
@@ -276,28 +290,32 @@ class Event(db.Model):
             "image_url": self.image_url,
             "cost_display": self.cost_display,
             "cost_value": self.cost_value,
+            "is_cost_split": self.is_cost_split, # NEW
             "node_id": self.node_id,
+            "creator_id": self.creator_id, # NEW
+            "allow_others_edit_title": self.allow_others_edit_title, # NEW
+            "allow_others_edit_details": self.allow_others_edit_details, # NEW
             "current_user_rsvp_status": None,
-            "group_id": None,       # Initialize group_id
-            "group_name": None      # Initialize group_name
+            "group_id": None,
+            "group_name": None,
+            "is_current_user_creator": False, # NEW
+            "is_current_user_group_owner": False # NEW
         }
 
         if current_user_id is not None:
-            # No need to import EventRSVP here if it's already defined in the same file
-            # from app.models import EventRSVP # This is fine if EventRSVP is in app.models
             my_rsvp = db.session.execute(
                 db.select(EventRSVP).filter_by(event_id=self.id, user_id=current_user_id)
             ).scalar_one_or_none()
-
             if my_rsvp:
                 data['current_user_rsvp_status'] = my_rsvp.status
+            if self.creator_id == current_user_id:
+                data['is_current_user_creator'] = True
 
-        # Add group information if the event is associated with a node and group
         if self.node and self.node.group:
             data['group_id'] = self.node.group.id
             data['group_name'] = self.node.group.name
-        # If self.node is None, group_id and group_name will remain None
-
+            if current_user_id is not None and self.node.group.owner_id == current_user_id:
+                data['is_current_user_group_owner'] = True
         return data
     
 class GroupMember(db.Model):
@@ -386,6 +404,4 @@ class InsightPanel(db.Model):
 
     def __repr__(self):
         return f"<InsightPanel {self.id} (User: {self.user_id}, Type: {self.analysis_type}, Order: {self.display_order})>"
-
-
-# --- END OF FILE models.py ---
+# --- END OF FILE app/models.py ---
