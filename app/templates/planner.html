@@ -160,7 +160,7 @@
                     <div class="insight-panel glassy"
                         data-panel-id="{{ panel.id }}"
                         data-analysis-type="{{ panel.analysis_type | e }}"
-                        data-configuration="{{ panel.configuration | tojson | safe if panel.configuration else '{}' }}"
+                        data-configuration='{{ panel.configuration | tojson | safe if panel.configuration else "{}" }}'
                         data-title="{{ (panel.title or (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first).title if (available_analyses | selectattr('id', 'equalto', panel.analysis_type) | first) else 'Analysis') | e }}">
 
                         <button class="panel-action-btn panel-config-toggle-btn" aria-label="Toggle Configuration" title="Configure Panel">

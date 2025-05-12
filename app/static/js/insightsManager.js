@@ -641,7 +641,7 @@ async function setupEventListeners() {
             } else {
                 try {
                     configObject = JSON.parse(rawConfigString);
-                } catch (e) {
+                } catch (e) { 
                     console.error(`[Insights V32.13] Panel ${panelIdStr} (setupEventListeners): Error parsing panel.dataset.configuration: "${rawConfigString}". Error: ${e.message}. Falling back to default_config.`);
                     configObject = analysisDetails?.default_config || {};
                     panel.dataset.configuration = JSON.stringify(configObject); // Correct dataset with valid default
