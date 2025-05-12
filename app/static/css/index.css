@@ -438,15 +438,37 @@
     opacity: 0.;
 }
 
-.feature-section-white {
-    background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-    padding: 4rem 2rem;
-    margin: 4rem auto;
+.feature-section {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  padding: 4rem 2rem;
+  margin: 4rem auto;
+    
+  }
+
+  .easier-section {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .easier-section img {
+    max-width: 100%;
+    max-height: 450px;
+    border-radius: 1rem; /* soft rounded corners */
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25); /* subtle shadow */
+    object-fit: contain; /* clean fit without distortion */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    align-items: center;
   }
   
-  .feature-section-white h2::after {
+  .easier-section img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  }
+
+  
+  .feature-section h2::after {
     content: "";
     display: block;
     height: 3px;
@@ -456,6 +478,25 @@
     border-radius: 2px;
   }
 
+  .section-header {
+    position: relative;
+    display: inline-block;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+  
+  .section-header::after {
+    content: "";
+    display: block;
+    height: 3px;
+    width: 60px;
+    margin: 8px auto 0;
+    background-color: #0d6efd; /* Same blue underline */
+    border-radius: 2px;
+  }
+  
+
+  
   .tab-pane {
     display: none;
   }
@@ -463,35 +504,57 @@
     display: block;
   }
 
+  .btn-group {
+    display: flex;
+    width: 25%; /* Ensure it stretches across the parent */
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  
   .btn-tab {
+    flex: 1; /* Make each tab fill equally */
+    justify-content: center; /* Center text since you're using flex */
     background-color: transparent;
     color: #333;
     font-weight: 500;
-    padding: 0.75rem 2.5rem;
-    margin: 0 0.25rem;
+    padding: 0.75rem 1rem;
+    margin: 0; /* Remove margin so there's no gap between buttons */
     border: none;
-    border-radius: 999px;
+    border-radius: 0; /* Prevent overlap weirdness */
     transition: all 0.2s ease;
-    min-width: 120px;
+    min-width: 0; /* Allow shrinking if needed */
     text-align: center;
+    display: flex;
+    align-items: center;
   }
   
+  
   .btn-tab.active {
-    background-color: #0d6efd;
+    background-color: #464646;
     color: #fff;
   }
 
   .tab-pane img {
-  max-width: 100%;
-  max-height: 300px;
-  object-fit: contain;
-}
-
-.tab-pane img {
+    background: rgba(255, 255, 255, 0.05);  /* Translucent frame */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
+    padding: 0.5rem;
     max-width: 100%;
     max-height: 300px;
-    object-fit: contain;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
+
+  .tab-pane img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  }
+  
+.tab-pane-heading {
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.5px;
+  font-size: 1.75rem;
+}
+
 
   .fixed-tab-height {
     min-height: 500px; /* Set to your tallest tab */
