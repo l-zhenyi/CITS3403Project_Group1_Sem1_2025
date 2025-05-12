@@ -73,12 +73,12 @@
                     class="screenshot-image">
             </div>
         </div>
-        <section class="feature-section-white py-5 fade-up-on-scroll">
+        <div class="feature-section py-5 fade-up-on-scroll">
             <div class="container">
 
                 <div class="text-center mb-5">
-                    <h2 class="fw-bold">Features</h2>
-                    <p class="text-muted">Discover how Plannit makes planning events effortless</p>
+                    <h2 class="fw-bold">FEATURES</h2>
+                    <p class="text-light">Discover how Plannit makes planning events effortless</p>
                     <div class="btn-group bg-light rounded-pill mt-3 shadow-sm" role="group">
                         <button class="tab-btn btn-tab active" data-tab="tab-plan">Plan</button>
                         <button class="tab-btn btn-tab" data-tab="tab-vote">Split</button>
@@ -93,12 +93,12 @@
                     <div class="tab-pane active" id="tab-plan">
                         <div class="row align-items-center">
                             <div class="col-md-6">
-                                <h3 class="fw-bold text-dark mb-3">Effortless Event Planning</h3>
-                                <p class="fst-italic text-muted mb-3">
+                                <h3 class="tab-pane-heading mb-3">Effortless Event Planning</h3>
+                                <p class="fst-italic text-light mb-3">
                                     From casual hangouts to professional meetups, Plannit allows planning events simple
                                     and stress free.
                                 </p>
-                                <ul class="list-unstyled text-secondary">
+                                <ul class="list-unstyled text-white mb-3">
                                     <li><i class="bi bi-check2 text-primary me-2"></i> Create events with titles,
                                         descriptions, and group invites</li>
                                     <li><i class="bi bi-check2 text-primary me-2"></i> Real time group chat and media
@@ -116,12 +116,12 @@
                     <div class="tab-pane" id="tab-vote">
                         <div class="row align-items-center">
                             <div class="col-md-6">
-                                <h3 class="fw-bold text-dark mb-3">Transparent Cost Splitting</h3>
-                                <p class="fst-italic text-muted mb-3">
+                                <h3 class="tab-pane-heading mb-3">Transparent Cost Splitting</h3>
+                                <p class="fst-italic text-light mb-3">
                                     Make group payments with built in tools that calculates and divide costs
                                     automatically.
                                 </p>
-                                <ul class="list-unstyled text-secondary">
+                                <ul class="list-unstyled text-white">
                                     <li><i class="bi bi-check2 text-primary me-2"></i> Log shared expenses and assign
                                         contributions</li>
                                     <li><i class="bi bi-check2 text-primary me-2"></i> Automatically calculate who owes
@@ -140,12 +140,12 @@
                     <div class="tab-pane" id="tab-track">
                         <div class="row align-items-center">
                             <div class="col-md-6">
-                                <h3 class="fw-bold text-dark mb-3">Track Participation and Group Progress</h3>
-                                <p class="fst-italic text-muted mb-3">
+                                <h3 class="tab-pane-heading mb-3">Track Participation and Group Progress</h3>
+                                <p class="fst-italic text-light mb-3">
                                     Stay informed and in control with transparent cost sharing and participation
                                     insights.
                                 </p>
-                                <ul class="list-unstyled text-secondary">
+                                <ul class="list-unstyled text-white">
                                     <li><i class="bi bi-check2 text-primary me-2"></i> Track attendance and engagement
                                         in real time</li>
                                     <li><i class="bi bi-check2 text-primary me-2"></i> Monitor RSVP responses in real
@@ -163,31 +163,31 @@
 
                 </div>
             </div>
-        </section>
-        <div class="bg-white py-5" id="white_container">
+        </div>
+        <div class="easier-section" id="white_container">
             <div class="container">
                 <div class="row align-items-center">
-
+                    <div class="text-center mb-5">
+                        <h2 class="section-header">WHY PLANNIT</h2>
+                        </div>
                     <div class="col-lg-6 fade-left">
-                        <h2 class="text-black fw-bold mb-4" style="text-shadow: none;">Plannit Makes Life Easier</h2>
+                        <h2 class="tab-pane-heading mb-4">Plannit Makes Life Easier</h2>
                         <ul class="list-unstyled">
-                            <li class="mb-2"><i class="bi bi-tags"></i> Reduce planning stress and keep
+                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Reduce planning stress and keep
                                 everyone aligned</li>
-                            <li class="mb-2"><i class="bi bi-tags"></i> Plan your events with built-in tools
+                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Plan your events with built-in tools
                             </li>
-                            <li class="mb-2"><i class="bi bi-tags"></i> Transparent split cost</li>
+                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Transparent split cost</li>
                         </ul>
                         <button type="button" onclick="location.href='{{ url_for('create_group') }}'"
                             class="btn btn-primary mt-3">
                             Create a new group
                         </button>
                     </div>
-
-                    <div class="col-lg-6 text-center position-relative scale-in">
-                        <img src="https://a.storyblok.com/f/252228/762x508/e14ec69236/how-to-start-a-conversation-in-english-a-guide-to-small-talk.webp/m/3840x2560/filters:blur(0)"
+                    
+                    <div class="col-lg-6 text-center scale-in">
+                        <img src="{{ url_for('static', filename='images/index-page/easier.webp') }}"
                             class="img-fluid rounded" alt="Collaboration">
-                        <i class="bi bi-play-fill fs-2 text-white"></i>
-                        </button>
                     </div>
                 </div>
             </div>
