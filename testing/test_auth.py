@@ -61,12 +61,16 @@ class AuthTests(unittest.TestCase):
         self.driver.find_element(By.NAME, 'password').send_keys(password)
         self.driver.find_element(By.NAME, 'submit').click()
 
-        # Wait for welcome message
-        welcome_header = wait.until(EC.presence_of_element_located((By.TAG_NAME, 'h1')))
-        self.assertEqual(welcome_header.text, f'Welcome, {unique_username}')
+        # Wait for the welcome message to appear on the home page
+        welcome_header = wait.until(
+            EC.presence_of_element_located((By.TAG_NAME, 'h1'))
+        )
+
+        # Confirm it displays the expected greeting
+        self.assertEqual(welcome_header.text.strip(), f"Welcome, {unique_username}")
 
         self.assertIn('Logout', self.driver.page_source)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)
