@@ -131,16 +131,19 @@ class GroupTests(unittest.TestCase):
         post_input = self.driver.find_element(By.NAME, "post")
         post_input.send_keys(post_content)
         # Wait for the "Send" button to be clickable
-        send_button = WebDriverWait(self.driver, 10).until(
+        # Wait for the button to be present and clickable
+        end_button = WebDriverWait(self.driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//button[@type='submit' and contains(text(), 'Send')]"))
         )
 
-        # Scroll the "Send" button into view
-        self.driver.execute_script("arguments[0].scrollIntoView(true);", send_button)
+        # Scroll into view
+        self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", end_button)
 
-        # Optionally, you can add a small delay to ensure the button is fully in view before clicking
-        # Click the "Send" button
-        send_button.click()
+        # Optionally wait a bit for animation/visibility if needed
+        WebDriverWait(self.driver, 2).until(EC.visibility_of(end_button))
+
+        # Click the button
+        end_button.click()
 
         # Wait for the post to appear in the feed
         wait.until(EC.presence_of_element_located((By.XPATH, f"//*[contains(text(), '{post_content}')]")))
