@@ -7,50 +7,52 @@
 {% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-7">
-            <div class="bg-light p-5 shadow rounded-4">
-                <h2 class="mb-4 fw-bold">
-                    <i class="bi bi-people-fill me-2"></i>Create A New Group
-                </h2>
-                {% if form.errors %}
-                    <div class="alert alert-danger">
-                        <ul class="mb-0">
-                        {% for field, errors in form.errors.items() %}
-                            {% for error in errors %}
-                                <li><strong>{{ field.capitalize() }}:</strong> {{ error }}</li>
+<div class="glass-dark-wrapper py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                <div class="glass-card p-5">
+                    <h2 class="mb-4 fw-bold text-white">
+                        <i class="bi bi-people-fill me-2 text-primary"></i>Create A New Group
+                    </h2>
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                            {% for field, errors in form.errors.items() %}
+                                {% for error in errors %}
+                                    <li><strong>{{ field.capitalize() }}:</strong> {{ error }}</li>
+                                {% endfor %}
                             {% endfor %}
-                        {% endfor %}
-                        </ul>
-                    </div>
-                {% endif %}
+                            </ul>
+                        </div>
+                    {% endif %}
 
-                <form method="POST" enctype="multipart/form-data" novalidate>
-                    {{ form.hidden_tag() }}
+                    <form method="POST" enctype="multipart/form-data" novalidate>
+                        {{ form.hidden_tag() }}
 
-                    <div class="mb-3">
-                        <label for="{{ form.name.id }}" class="form-label">Group Name</label>
-                        {{ form.name(class_="form-control", placeholder="e.g., Agile Group Project") }}
-                        {% for error in form.name.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
+                        <div class="mb-3">
+                            <label for="{{ form.name.id }}" class="form-label text-light">Group Name</label>
+                            {{ form.name(class_="form-control", placeholder="e.g., Agile Group Project") }}
+                            {% for error in form.name.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
 
-                    <div class="mb-3">
-                        <label for="{{ form.about.id }}" class="form-label">About</label>
-                        {{ form.about(class_="form-control", rows=4, placeholder="What is this group about?") }}
-                        {% for error in form.about.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
+                        <div class="mb-3">
+                            <label for="{{ form.about.id }}" class="form-label text-light">About</label>
+                            {{ form.about(class_="form-control", rows=4, placeholder="What is this group about?") }}
+                            {% for error in form.about.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
 
-                    <div class="text-end">
-                        <button type="submit" class="btn btn-secondary">
-                            <i class="bi bi-check2-circle me-1"></i> Create Group
-                        </button>
-                    </div>
-                </form>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary create-button">
+                                <i class="bi bi-check2-circle me-1"></i> Create Group
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
