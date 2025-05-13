@@ -75,21 +75,8 @@ def before_request():
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
-@login_required
 def index():
-    form = PostForm()
-    if form.validate_on_submit():
-        post = Post(body=form.post.data, author=current_user)
-        db.session.add(post)
-        db.session.commit()
-        flash('Your post is now live!')
-        return redirect(url_for('index'))
-
-    page = request.args.get('page', 1, type=int)
-    groups = Group.query.join(GroupMember).filter(GroupMember.user_id == current_user.id).all()
-
-    return render_template('index.html', title='Home', form=form,
-                           groups=groups, user=current_user)
+        return render_template('index.html', title='Home')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -335,10 +322,6 @@ def planner():
          # Add options like load_only or joinedload if fetching related data
      ).order_by(Group.name).all()
 
-    for group in user_groups:
-        print(f"Group ID: {group.id}, Avatar URL: {group.avatar}")  # Log the avatar URL
-        group.avatar_url = group.avatar  # Access the property directly
-
     available_analyses_list = list(AVAILABLE_ANALYSES.values())
     is_mobile_on_load = 'Mobi' in request.headers.get('User-Agent', '')
 
@@ -348,8 +331,7 @@ def planner():
         groups=user_groups, # For configuring panels - frontend needs to populate group dropdown
         is_mobile_on_load=is_mobile_on_load,
         available_analyses=available_analyses_list,
-        user_panels=user_panels,
-        group = group
+        user_panels=user_panels
     )
 
 # ... (Rest of routes.py: edit_profile, user, follow, unfollow, group routes, message routes, search, API routes up to Insights Panel API) ...
