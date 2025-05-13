@@ -3,14 +3,15 @@
 {% block head %}
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/edit_profile.css') }}" type="text/css">
 {% endblock %}
 
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
-            <div class="bg-white p-5 rounded-4 shadow-lg">
-                <h3 class="mb-4 text-dark fw-bold">
+            <div class="glass-card p-4 p-md-5">
+                <h3 class="mb-4 text-white fw-bold">
                     <i class="bi bi-person-lines-fill me-2 text-primary"></i> Edit Your Profile
                 </h3>
 
@@ -18,7 +19,7 @@
                     {{ form.hidden_tag() }}
 
                     <div class="mb-4">
-                        <label for="{{ form.username.id }}" class="form-label fw-semibold">
+                        <label for="{{ form.username.id }}" class="form-label fw-semibold text-light">
                             Username
                         </label>
                         {{ form.username(class_="form-control", placeholder="Enter your username") }}
@@ -28,7 +29,7 @@
                     </div>
 
                     <div class="mb-4">
-                        <label for="{{ form.about_me.id }}" class="form-label fw-semibold">
+                        <label for="{{ form.about_me.id }}" class="form-label fw-semibold text-light">
                             About Me
                         </label>
                         {{ form.about_me(class_="form-control", rows=4, placeholder="Tell us about yourself...") }}
