@@ -47,8 +47,8 @@
                 {% set is_active = loop.first and not is_mobile_on_load %}
                 <li class="group-item {% if is_active %}active{% endif %}" data-group-id="{{ group.id | e }}"
                     data-group-name="{{ group.name | e }}"
-                    data-group-avatar="{{ group.avatar_url or url_for('static', filename='img/default-group-avatar.png') | e }}">
-                    <img src="{{ group.avatar_url or url_for('static', filename='img/default-group-avatar.png') | e }}"
+                    data-group-avatar="{{ group.avatar }}">
+                    <img src="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') | e }}"
                         alt="{{ group.name | e }} Avatar" class="group-avatar">
                     <div class="group-info">
                         <span class="group-name">{{ group.name | e }}</span>
@@ -63,8 +63,10 @@
                 {% endif %}
             </ul>
             <button class="add-new-group-button-fixed" id="add-new-group-button">
+                <a href="{{ url_for('create_group') }}" style="text-decoration: none; color: inherit;">
                 <span class="add-new-group-icon">+</span>
                 <span class="add-new-group-text">Create New Group</span>
+                </a>
             </button>
         </aside>
 
@@ -76,7 +78,7 @@
                     <button class="icon-button back-button" aria-label="Back to groups">
                         <i class="fas fa-arrow-left"></i> {# Changed to Font Awesome icon #}
                     </button>
-                    <img src="{{ url_for('static', filename='img/default-group-avatar.png') }}"
+                    <img src="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') }}"
                         alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
                     <span class="active-group-name" id="active-group-name">Select a Group</span>
                     <button class="icon-button settings-button" id="active-group-settings-button"
@@ -299,7 +301,7 @@
         </div>
     </div>
 
-    <div id="create-group-modal" class="modal-backdrop" style="display: none;">
+    <!-- <div id="create-group-modal" class="modal-backdrop" style="display: none;">
         <div class="modal-content glassy create-group-modal-content">
             <button class="modal-close-btn" id="create-group-modal-close-btn-x"
                 aria-label="Close create group dialog"><i class="fas fa-times"></i></button>
@@ -338,7 +340,7 @@
                     <button type="submit" class="button primary" id="create-group-save-btn">Create Group</button>
                 </div>
             </form>
-        </div>
+        </div> -->
     </div>
 
     <div id="group-settings-modal" class="modal-backdrop" style="display: none;">
@@ -510,6 +512,8 @@
             </form>
         </div>
     </div>
+
+    
 </main>
 
 {% endblock %}
@@ -540,4 +544,6 @@
 <script type="module" src="{{ url_for('static', filename='js/search.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/insightsManager.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+
 {% endblock %}
