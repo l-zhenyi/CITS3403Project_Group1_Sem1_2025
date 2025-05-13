@@ -335,6 +335,10 @@ def planner():
          # Add options like load_only or joinedload if fetching related data
      ).order_by(Group.name).all()
 
+    for group in user_groups:
+        print(f"Group ID: {group.id}, Avatar URL: {group.avatar}")  # Log the avatar URL
+        group.avatar_url = group.avatar  # Access the property directly
+
     available_analyses_list = list(AVAILABLE_ANALYSES.values())
     is_mobile_on_load = 'Mobi' in request.headers.get('User-Agent', '')
 
@@ -344,7 +348,8 @@ def planner():
         groups=user_groups, # For configuring panels - frontend needs to populate group dropdown
         is_mobile_on_load=is_mobile_on_load,
         available_analyses=available_analyses_list,
-        user_panels=user_panels
+        user_panels=user_panels,
+        group = group
     )
 
 # ... (Rest of routes.py: edit_profile, user, follow, unfollow, group routes, message routes, search, API routes up to Insights Panel API) ...
