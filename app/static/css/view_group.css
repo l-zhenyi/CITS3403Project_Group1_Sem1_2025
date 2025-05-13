@@ -127,3 +127,20 @@
     border-color: #6ea8fe;
     box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.2);
 }
+
+.message-feed {
+    scroll-behavior: smooth;
+}
+
+.glass-wrapper {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    max-width: 75%;       
+    width: 100%;            
+    padding: 2rem;          
+    margin: 0 auto;         
+}
+
