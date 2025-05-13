@@ -130,7 +130,16 @@ class GroupTests(unittest.TestCase):
         post_content = "This is a test post for the group."
         post_input = self.driver.find_element(By.NAME, "post")
         post_input.send_keys(post_content)
-        send_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit' and contains(text(), 'Send')]")))
+        # Wait for the "Send" button to be clickable
+        send_button = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[@type='submit' and contains(text(), 'Send')]"))
+        )
+
+        # Scroll the "Send" button into view
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", send_button)
+
+        # Optionally, you can add a small delay to ensure the button is fully in view before clicking
+        # Click the "Send" button
         send_button.click()
 
         # Wait for the post to appear in the feed
@@ -179,8 +188,17 @@ class GroupTests(unittest.TestCase):
         post_content_member = "This is a member post for the group."
         post_input = self.driver.find_element(By.NAME, "post")
         post_input.send_keys(post_content_member)  
-        send_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit' and contains(text(), 'Send')]")))
-        send_button.click()
+
+        send_button2 = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[@type='submit' and contains(text(), 'Send')]"))
+        )
+
+        # Scroll the "Send" button into view
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", send_button2)
+
+        # Optionally, you can add a small delay to ensure the button is fully in view before clicking
+        # Click the "Send" button
+        send_button2.click()
 
         # Wait for the post to appear in the feed
         wait.until(EC.presence_of_element_located((By.XPATH, f"//*[contains(text(), '{post_content_member}')]")))
