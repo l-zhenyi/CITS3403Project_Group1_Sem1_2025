@@ -2,7 +2,7 @@
 
 from flask import render_template, redirect, url_for, flash, request, session, jsonify, abort
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm, HandleFriendRequestForm, SendFriendRequestForm, AddMemberForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm, HandleFriendRequestForm, SendFriendRequestForm, AddMemberForm, RemoveFriendForm
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest, InsightPanel
 from urllib.parse import urlparse
@@ -160,6 +160,12 @@ def friends():
     friends = current_user.friends
     sent_requests = {r.receiver.id for r in current_user.sent_requests}
 
+    remove_friend_forms = {}
+    for friend in current_user.friends:
+        form = RemoveFriendForm()
+        form.friend_id.data = friend.id
+        remove_friend_forms[friend.id] = form
+
     return render_template(
         'friends.html',
         search_results=search_results,
@@ -169,6 +175,7 @@ def friends():
         received_requests=received_requests,
         friends=friends,
         sent_requests=sent_requests,
+        remove_friend_forms=remove_friend_forms
     )
 
 
@@ -269,24 +276,24 @@ def add_friend():
 @app.route('/remove_friend', methods=['POST'])
 @login_required
 def remove_friend():
-    friend_id = request.form.get('friend_id')
-    if not friend_id:
-        flash('Invalid friend ID.', 'danger')
-        return redirect(url_for('friends'))
+    form = RemoveFriendForm()
 
-    # Find the user by ID
-    friend_user = User.query.get(friend_id)
-    if not friend_user:
-        flash('User not found.', 'danger')
-        return redirect(url_for('friends'))
+    if form.validate_on_submit():
+        friend_id = form.friend_id.data
+        friend_user = User.query.get(friend_id)
 
-    # Remove the friend
-    if current_user.is_friend(friend_user):
-        current_user.remove_friend(friend_user)
-        db.session.commit()
-        flash(f'{friend_user.username} has been removed from your friends list.', 'success')
+        if not friend_user:
+            flash('User not found.', 'danger')
+            return redirect(url_for('friends'))
+
+        if current_user.is_friend(friend_user):
+            current_user.remove_friend(friend_user)
+            db.session.commit()
+            flash(f'{friend_user.username} has been removed from your friends list.', 'success')
+        else:
+            flash(f'{friend_user.username} is not in your friends list.', 'info')
     else:
-        flash(f'{friend_user.username} is not in your friends list.', 'info')
+        flash('Invalid form submission.', 'danger')
 
     return redirect(url_for('friends'))
 
