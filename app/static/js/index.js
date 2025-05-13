@@ -51,3 +51,57 @@ document.addEventListener("DOMContentLoaded", () => {
     const carousel = document.querySelector(".carousel");
     if (carousel) observer.observe(carousel);
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+    const fadeEl = document.querySelector('.fade-up-on-scroll');
+  
+    if (fadeEl) {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            fadeEl.classList.add('visible');
+            observer.unobserve(fadeEl); // Run once
+          }
+        });
+      }, { threshold: 0.1 });
+  
+      observer.observe(fadeEl);
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const tabPanes = document.querySelectorAll(".tab-pane");
+  
+    tabButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-tab");
+  
+        // Toggle button styles
+        tabButtons.forEach(btn => btn.classList.remove("active"));
+        button.classList.add("active");
+  
+        // Toggle tab pane visibility
+        tabPanes.forEach(pane => {
+          pane.classList.remove("active");
+          if (pane.id === targetId) {
+            pane.classList.add("active");
+          }
+        });
+      });
+    });
+  });
+  
+  document.addEventListener("DOMContentLoaded", () => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+  
+    document.querySelectorAll('.fade-left, .scale-in').forEach(el => observer.observe(el));
+  });
+  
