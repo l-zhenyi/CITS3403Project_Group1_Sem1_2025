@@ -22,12 +22,12 @@
                         <a href="{{ url_for('login') }}">Login</a>
                   {% else %}
                         <a href="{{ url_for('user', username=current_user.username) }}">Profile</a>
-                        <a href="{{ url_for('logout') }}">Logout</a>
                         <a href="{{ url_for('messages') }}"> {{ ('Messages') }} </a>
+                        <a href="{{ url_for('friends') }}">Friends</a>
+                        <a href="{{ url_for('planner') }}">Planner</a>
+                        <a href="{{ url_for('explore') }}">Explore</a>
+                          <a href="{{ url_for('logout') }}">Logout</a>
                   {% endif %}
-                  <a href="{{ url_for('planner') }}">Planner</a>
-                  <a href="{{ url_for('explore') }}">Explore</a>
-                  <a href="{{ url_for('friends') }}">Friends</a>
             </nav>
 
             <div class="top-nav-right">
@@ -37,14 +37,6 @@
                       <button class="icon-button search-toggle-btn" id="search-toggle-btn" aria-label="Toggle search" aria-expanded="false">🔍</button>
                   </div>
                   {# --- END Search Widget --- #}
-
-                  {# --- Other Icons (keep as needed) --- #}
-                  {# <a href="{{ url_for('login') }}" class="icon-button">🔑</a> #}
-                  <a href="{{ url_for('profile') }}" class="icon-button">👤</a>
-                  {# {% if current_user.is_authenticated %} #}
-                  {# This logout button is redundant if you have one in top-nav-left #}
-                  {# <a id="logout-button" href="{{ url_for('logout') }}">Logout</a> #}
-                  {# {% endif %} #}
             </div>
       </header>
       {% endif %}
