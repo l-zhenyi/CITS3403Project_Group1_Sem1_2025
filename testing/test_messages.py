@@ -7,6 +7,10 @@ import uuid, time
 from app import app, db
 from app.models import User
 
+# Run in terminal with command: 
+'''
+python -m unittest testing.test_message
+'''
 
 class MessageFlowTests(unittest.TestCase):
     @classmethod
