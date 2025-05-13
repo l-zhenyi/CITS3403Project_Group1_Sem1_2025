@@ -8,6 +8,7 @@
 {% endblock %}
 
 {% block content %}
+<div class="glass-wrapper mx-auto my-4 p-4">
 <div class="container group-page my-4">
     <div class="card group-header shadow-sm mb-4">
         <div class="card-body d-flex flex-column flex-md-row align-items-md-center">
@@ -15,7 +16,7 @@
             <div class="flex-grow-1">
                 <div class="d-flex justify-content-between flex-wrap align-items-center">
                     <h2 class="mb-1">{{ group.name }}</h2>
-                    <a href="{{ url_for('add_members', group_id=group.id) }}" class="btn btn-outline-primary btn-sm">
+                    <a href="{{ url_for('add_members', group_id=group.id) }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-person-plus"></i> Add Members
                     </a>
                 </div>
@@ -47,10 +48,10 @@
         <div class="messages-list">
             {% for post in posts %}
             <div class="message-bubble {% if post.author.username == current_user.username %}own{% endif %}">
-                <div class="message-author">
+                <div class="message-author {% if post.author.username == current_user.username %}author-sent{% else %}author-received{% endif %}">
                     <strong>{{ post.author.username }}</strong>
-                    <span class="text-muted small"> — {{ post.timestamp.strftime('%b %d, %H:%M') }}</span>
-                </div>
+                    <span class="timestamp"> — {{ post.timestamp.strftime('%b %d, %H:%M') }}</span>
+                </div>                
                 <div class="message-body">
                     {{ post.body }}
                 </div>
@@ -76,6 +77,7 @@
         </div>
     </form>
     {% endif %}
+</div>
 </div>
 
 

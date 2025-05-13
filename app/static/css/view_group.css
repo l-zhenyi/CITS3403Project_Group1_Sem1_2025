@@ -6,16 +6,23 @@
 }
 
 .group-header {
-    border-radius: 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    color: white;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif
 }
 
 .messages-section {
     height: 60vh;
-    background: #fafafa;
+    background: rgba(255,255,255,0.1);
+    box-shadow: rgba(0,0,0,0.3);
     display: flex;
     flex-direction: column;
     border-radius: 10px;
     overflow: hidden;
+    backdrop-filter: blur(12px); 
 }
 
 .message-feed {
@@ -34,24 +41,32 @@
 }
 
 .message-bubble {
-    background: #ffffff;
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 1rem;
     padding: 0.6rem 1rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    max-width: 75%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    max-width: 50%;
     font-size: 0.95rem;
     line-height: 1.4;
+    color:rgba(255, 255, 255, 0.9);
 }
 
 .message-bubble.own {
-    background: #d1e7dd;
+    background: #b3ffdd4f;
     align-self: flex-end;
+    color:rgba(22, 22, 22, 0.8);
 }
 
-.message-author {
-    font-size: 0.85rem;
-    color: #afafaf;
-    margin-bottom: 0.2rem;
+.author-sent {
+    color: #000000a1;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.author-received {
+    color: #ffffff;
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
 
 .message-body {
@@ -59,8 +74,7 @@
 }
 
 .message-input-box {
-    border-top: 2px solid #4892f3;
-    background: #f1f1f1;
+    background: rgba(255,255,255,0.2);
     padding: 1rem;
     z-index: 1;
 }
@@ -84,3 +98,49 @@
 .messages-section.animate-down {
     animation: slideContainerDown 0.8s ease-out;
 }
+
+.timestamp {
+    color: #ffffffe1;
+    font-size: 0.8rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+}
+
+.message-input-box textarea {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    color: #ffffff;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.message-input-box textarea::placeholder {
+    color: #cccccc;
+    font-style: italic;
+}
+
+.message-input-box textarea:focus {
+    outline: none;
+    border-color: #6ea8fe;
+    box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.2);
+}
+
+.message-feed {
+    scroll-behavior: smooth;
+}
+
+.glass-wrapper {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    max-width: 75%;       
+    width: 100%;            
+    padding: 2rem;          
+    margin: 0 auto;         
+}
+
