@@ -22,8 +22,8 @@
                                     <span>{{ friend.username }}</span>
                                 </a>
                                 <form action="{{ url_for('remove_friend') }}" method="POST" class="inline-form">
-                                    <input type="hidden" name="friend_id" value="{{ friend.id }}">
-                                    <button type="submit" class="btn btn-danger">Remove</button>
+                                    {{ remove_friend_forms[friend.id].hidden_tag() }}
+                                    {{ remove_friend_forms[friend.id].submit(class="btn btn-danger") }}
                                 </form>
                             </li>
                         {% endfor %}
