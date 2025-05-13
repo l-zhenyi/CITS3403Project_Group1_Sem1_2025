@@ -23,7 +23,7 @@
                     <div class="col-lg-6 hero-text slide-in-bottom">
                         <h1 class="display-4 fw-bold mb-3" id="hero-heading">Smart Tools to Plan Better</h1>
                         <p class="lead mb-4">Plan, vote, and coordinate in one go.</p>
-                        <a href="#description-section" class="btn btn-primary btn-lg me-3">Get Started</a>
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-3">Get Started</a>
                     </div>
 
                     <div class="col-lg-6 text-center">
@@ -179,10 +179,6 @@
                             </li>
                             <li class="text-light mb-2"><i class="bi bi-tags"></i> Transparent split cost</li>
                         </ul>
-                        <button type="button" onclick="location.href='{{ url_for('create_group') }}'"
-                            class="btn btn-primary mt-3">
-                            Create a new group
-                        </button>
                     </div>
                     
                     <div class="col-lg-6 text-center scale-in">
