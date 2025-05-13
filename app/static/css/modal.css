@@ -1,19 +1,17 @@
 /* --- START OF FILE static/css/modal.css --- */
 
-/* ... (All previous CSS up to the .modal-header styles) ... */
-/* This comment is a placeholder, the actual content starts below */
-
 .modal-backdrop {
     position: fixed;
     inset: 0;
     background-color: rgba(30, 30, 35, 0.65);
     backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-    z-index: 1000;
+    -webkit-backdrop-filter: blur(20px) saturate(150%); /* Safari */
+    z-index: 1050; /* Ensure modals are above other content like context menus */
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 30px;
+    padding: 20px; /* Padding around the centered dialog */
+    box-sizing: border-box;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
@@ -25,23 +23,35 @@
     transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 
+.modal-dialog { /* New generic wrapper for centering and max-width */
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 600px; /* Default max-width, can be overridden */
+    max-height: calc(100vh - 40px); /* Ensure it doesn't overflow viewport */
+    margin: auto; /* Additional centering assurance */
+}
+
 .modal-content {
     position: relative;
     background: rgba(140, 140, 145, 0.7); /* Main modal glass */
     backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%); /* Safari */
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 18px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
     padding: 25px 35px;
-    width: calc(100% - 60px);
-    height: calc(100% - 60px);
+    width: 100%; /* Fill modal-dialog */
+    /* height: calc(100% - 60px); /* This was for event details, make more flexible */
+    max-height: 100%; /* Allow content to determine height, up to modal-dialog's max-height */
     overflow: hidden; /* Clips content, .modal-body handles internal scroll */
     display: flex;
     flex-direction: column;
     color: #f0f0f5;
     transform: scale(0.95);
     transition: transform 0.3s ease, opacity 0.3s ease;
+    flex-grow: 1; /* Allow content to grow if dialog is flex container */
+    min-height: 0; /* For flex children */
 }
 
 .modal-backdrop.visible .modal-content {
@@ -60,7 +70,7 @@
     cursor: pointer;
     padding: 0 5px;
     line-height: 1;
-    z-index: 10; /* Above other modal content */
+    z-index: 10;
     transition: color 0.2s ease, transform 0.2s ease;
 }
 .modal-close-btn:hover {
@@ -76,48 +86,44 @@
     padding-bottom: 18px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 25px;
-    flex-shrink: 0; /* Prevent header from shrinking */
+    flex-shrink: 0;
 }
 
-.modal-event-image-small {
+.modal-event-image-small { /* Specific to event details modal */
     width: 55px;
     height: 55px;
     border-radius: 50%;
     object-fit: cover;
     border: 1px solid rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.1); /* Placeholder bg */
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
-.modal-title-group {
+.modal-title-group { /* Specific to event details modal */
     flex-grow: 1;
-    min-width: 0; /* CRITICAL for flex children that might overflow */
-                 /* This allows #modal-event-title to be constrained by max-width */
+    min-width: 0;
 }
-
-.modal-header h2, #modal-event-title {
+.modal-title-text { /* Generic title text for modals */
     margin: 0 0 3px 0;
     font-size: 1.7rem;
     font-weight: 600;
     color: #fff;
     line-height: 1.2;
-    /* Text overflow handling for the static title */
-    white-space: nowrap; /* Keep title on one line if static */
-    overflow: hidden;    /* Hide overflow */
-    text-overflow: ellipsis; /* Add ... if too long */
-    /* Max-width will be applied to .editable-field version below */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.modal-header p {
+
+.modal-header p { /* Sub-text in header, e.g., group name */
     margin: 0;
     font-size: 0.95rem;
     color: #c5c5cc;
 }
 #modal-group-name {
     font-weight: 500;
-    /* Add text overflow if group name can also be long */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 250px; /* Example */
+    max-width: 250px;
 }
 
 /* Modal Body */
@@ -126,8 +132,8 @@
     flex-grow: 1;
     gap: 35px;
     overflow-y: auto;
-    padding: 5px 10px 5px 10px;
-    min-height: 0; /* CRITICAL for flex children that can shrink */
+    padding: 5px 10px 5px 10px; /* Default padding */
+    min-height: 0;
 }
 .modal-body::-webkit-scrollbar { width: 8px; }
 .modal-body::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px; }
@@ -136,6 +142,18 @@
 .modal-body { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.08); }
 
 
+/* Modal Footer */
+.modal-footer {
+    padding-top: 18px;
+    margin-top: 25px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* --- Event Details Modal Specific Column Layout --- */
 .modal-col {
     display: flex;
     flex-direction: column;
@@ -153,7 +171,7 @@
     padding-left: 35px;
 }
 
-.modal-detail-section h3 {
+.modal-detail-section h3 { /* For sections like "Event Information", "Attendees" */
     font-size: 1.15rem;
     font-weight: 500;
     color: #fff;
@@ -163,13 +181,13 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.modal-detail-grid {
+.modal-detail-grid { /* For Date/Location/Cost grid */
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 18px;
 }
 
-.detail-item {
+.detail-item { /* Individual item in the grid */
     background: rgba(255, 255, 255, 0.05);
     padding: 10px 12px;
     border-radius: 8px;
@@ -182,16 +200,12 @@
     margin-bottom: 4px;
     font-weight: 500;
 }
-
-/* Base style for the value part of a detail item */
 .detail-item span:not(.detail-label) {
     font-size: 0.95rem;
     color: #f0f0f5;
-    display: block; /* Consistent layout, also helps editable-field */
-    line-height: 1.4; /* For consistency between display and edit (input) */
+    display: block;
+    line-height: 1.4;
 }
-
-/* Apply ellipsis for detail item values ONLY when NOT editing */
 .detail-item span:not(.detail-label):not(.is-editing-field) {
     white-space: nowrap;
     overflow: hidden;
@@ -229,10 +243,9 @@
     flex-grow: 1;
 }
 
-
-/* --- Styles for Editable Fields (Consistent Outline) --- */
+/* --- Styles for Editable Fields --- */
 .editable-field {
-    position: relative; /* For positioning of ::before, ::after, or child action buttons */
+    position: relative;
     cursor: pointer;
     display: block;
     border-radius: 6px;
@@ -240,36 +253,25 @@
     outline-offset: 5px;
     transition: outline-color 0.2s ease-out;
 }
-
 .editable-field:focus, .editable-field:focus-visible {
     outline-color: transparent !important;
 }
-
-/* Ensure editable fields DON'T clip their absolutely positioned children (like action buttons) when editing */
 .editable-field.is-editing-field {
     overflow: visible !important;
 }
-
-
-/* Specific display types AND CONSTRAINTS */
 #modal-event-title.editable-field {
     display: block;
-    max-width: calc(100% - 30px); /* Adjust if close button or other elements are factors */
+    max-width: calc(100% - 30px);
 }
 #modal-description-wrapper.editable-field {
     display: flex; flex-direction:column;
 }
 .detail-item span.editable-field { display: block; }
-
-
 .editable-field:hover:not(.is-editing-field),
-.is-editing-field { /* This rule now only controls outline, not overflow */
+.is-editing-field {
     outline-color: rgba(255, 255, 255, 0.40);
 }
-.is-editing-field {
-    cursor: default;
-}
-
+.is-editing-field { cursor: default; }
 
 .editable-input-wrapper {
     position: relative;
@@ -277,7 +279,6 @@
     height: 100%;
     display: flex;
 }
-
 .editable-input {
     flex-grow: 1;
     width: 100%;
@@ -288,168 +289,29 @@
     background-color: transparent;
     resize: none !important;
     box-sizing: border-box;
-    padding: 6px 8px; /* Default padding, will be overridden by specifics below */
+    padding: 6px 8px;
 }
-.editable-input:focus {
-    outline: none;
-}
+.editable-input:focus { outline: none; }
 
-/* Specific internal padding for inputs to make space for action buttons */
-#modal-event-title.is-editing-field .editable-input {
-    font-size: 1.7rem;
-    font-weight: 600;
-    line-height: 1.2;
-    padding-top: 0;
-    padding-right: 75px; /* Space for buttons (approx 62px buttons + 10px offset + buffer) */
-    padding-bottom: 0;
-    padding-left: 2px;
-}
+#modal-event-title.is-editing-field .editable-input { font-size: 1.7rem; font-weight: 600; line-height: 1.2; padding-top: 0; padding-right: 75px; padding-bottom: 0; padding-left: 2px; }
+#modal-description-wrapper.is-editing-field .editable-input { font-size: 0.95rem; line-height: 1.65; padding-top: 8px; padding-right: 75px; padding-bottom: 45px; padding-left: 10px; }
+.detail-item span.is-editing-field .editable-input { font-size: 0.95rem; line-height: 1.4; padding-top: 2px; padding-right: 70px; padding-bottom: 2px; padding-left: 4px; }
 
-#modal-description-wrapper.is-editing-field .editable-input { /* The textarea */
-    font-size: 0.95rem;
-    line-height: 1.65;
-    padding-top: 8px;    /* Original padding */
-    padding-right: 75px; /* Space for buttons (approx 62px + 10px offset + buffer) */
-    padding-bottom: 45px;/* Space for buttons (28px height + 10px bottom offset + buffer) */
-    padding-left: 10px;  /* Original padding */
-}
+.editable-actions-container { position: absolute; top: 50%; transform: translateY(-50%); right: 8px; display: flex; gap: 6px; z-index: 5; }
+#modal-description-wrapper.is-editing-field .editable-actions-container { top: auto; bottom: 10px; right: 10px; transform: none; }
+#modal-event-title.is-editing-field .editable-actions-container { right: 10px; }
 
-.detail-item span.is-editing-field .editable-input {
-    font-size: 0.95rem;   /* Matches display font-size */
-    line-height: 1.4;     /* Matches display line-height */
-    padding-top: 2px;
-    padding-right: 70px;  /* Space for buttons (approx 62px + 8px offset) */
-    padding-bottom: 2px;
-    padding-left: 4px;
-}
-
-
-/* Container for Save/Cancel buttons */
-.editable-actions-container {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    right: 8px; /* Default right offset */
-    display: flex;
-    gap: 6px;
-    z-index: 5;
-}
-#modal-description-wrapper.is-editing-field .editable-actions-container {
-    top: auto;
-    bottom: 10px;
-    right: 10px;
-    transform: none;
-}
-#modal-event-title.is-editing-field .editable-actions-container {
-    right: 10px;
-}
-
-/* Action Buttons Styling */
-.edit-action-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    cursor: pointer;
-    transition: all 0.15s ease-in-out;
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.85);
-    text-shadow: none;
-
-    background: rgba(140, 140, 145, 0.35);
-    backdrop-filter: blur(8px) saturate(140%);
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-}
-.edit-action-button:hover {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.4);
-    background: rgba(150, 150, 155, 0.45);
-    transform: scale(1.08) translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.18);
-}
-.edit-action-button:active {
-    transform: scale(1.02) translateY(0px);
-    background: rgba(130, 130, 135, 0.4);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-}
-
-.edit-save-btn.is-loading {
-    color: transparent !important;
-    pointer-events: none;
-    position: relative;
-    background: rgba(150, 150, 155, 0.6);
-}
-.edit-save-btn.is-loading::after {
-    content: ''; display: block;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: rgba(255,255,255,0.9);
-    animation: spin 0.7s linear infinite;
-    position: absolute; top: 50%; left: 50%;
-    margin-top: -7px; margin-left: -7px;
-}
+.edit-action-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; transition: all 0.15s ease-in-out; font-size: 14px; color: rgba(255, 255, 255, 0.85); text-shadow: none; background: rgba(140, 140, 145, 0.35); backdrop-filter: blur(8px) saturate(140%); -webkit-backdrop-filter: blur(8px) saturate(140%); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.edit-action-button:hover { color: #fff; border-color: rgba(255, 255, 255, 0.4); background: rgba(150, 150, 155, 0.45); transform: scale(1.08) translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.18); }
+.edit-action-button:active { transform: scale(1.02) translateY(0px); background: rgba(130, 130, 135, 0.4); box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+.edit-save-btn.is-loading { color: transparent !important; pointer-events: none; position: relative; background: rgba(150, 150, 155, 0.6); }
+.edit-save-btn.is-loading::after { content: ''; display: block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); border-top-color: rgba(255,255,255,0.9); animation: spin 0.7s linear infinite; position: absolute; top: 50%; left: 50%; margin-top: -7px; margin-left: -7px; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.edit-error-message { position: absolute; bottom: -20px; left: 0; width: 100%; color: #ff8a80; font-size: 0.8rem; text-align: center; animation: fadeInSoft 0.3s ease-out; }
+@keyframes fadeInSoft { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+.editable-input.input-error-glow { box-shadow: 0 0 0 2px rgba(255, 100, 100, 0.5) !important; }
 
-.edit-error-message {
-    position: absolute;
-    bottom: -20px;
-    left: 0;
-    width: 100%;
-    color: #ff8a80;
-    font-size: 0.8rem;
-    text-align: center;
-    animation: fadeInSoft 0.3s ease-out;
-}
-@keyframes fadeInSoft {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.editable-input.input-error-glow {
-    box-shadow: 0 0 0 2px rgba(255, 100, 100, 0.5) !important;
-}
-
-
-@media (max-width: 768px) {
-    .modal-content { padding: 20px 20px; width: calc(100% - 20px); height: calc(100% - 20px); }
-    .modal-body { padding: 3px 5px; }
-    #modal-description-wrapper { min-height: 80px; margin: 3px; outline-offset: 2px; }
-    #modal-event-description { padding: 6px 8px; }
-
-    .editable-field { outline-offset: 3px; }
-
-    #modal-event-title.is-editing-field .editable-input,
-    .modal-header h2, #modal-event-title { font-size: 1.4rem; }
-
-    /* Responsive padding adjustments for inputs */
-    #modal-event-title.is-editing-field .editable-input {
-        /* padding-top, padding-bottom, padding-left are inherited (0,0,2px) */
-        padding-right: 65px; /* Space for smaller buttons (approx 56px + 4px offset + buffer) */
-    }
-
-    #modal-description-wrapper.is-editing-field .editable-input {
-        /* Original responsive padding: 6px 8px; padding-bottom: 30px; */
-        padding-top: 6px;
-        padding-right: 65px;  /* Space for smaller buttons */
-        padding-bottom: 36px; /* Space for smaller buttons (26px height + 5px bottom offset + buffer) */
-        padding-left: 8px;
-    }
-
-    .detail-item span.is-editing-field .editable-input {
-        /* padding-top, padding-bottom, padding-left are inherited (2px,2px,4px) */
-        padding-right: 65px; /* Space for smaller buttons */
-    }
-
-    .editable-actions-container { right: 4px; gap: 4px; }
-    #modal-description-wrapper.is-editing-field .editable-actions-container { bottom: 5px; right: 5px; }
-    /* #modal-event-title .editable-actions-container right offset remains 4px due to general rule */
-    .edit-action-button { width: 26px; height: 26px; font-size: 13px; }
-}
-
+/* RSVP & Attendee Styles */
 .rsvp-button-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
 .rsvp-btn { flex-grow: 1; padding: 10px 15px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 10px; background-color: rgba(255, 255, 255, 0.08); color: #e0e0e5; font-size: 0.9rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease; min-width: 90px; }
 .rsvp-btn:hover { background-color: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.35); }
@@ -480,400 +342,257 @@
 #event-details-modal .status-pill.status-unknown { background-color: rgba(108, 117, 125, 0.8); }
 #attendee-list-message, #attendee-loading-indicator { font-size: 0.9rem; color: rgba(255, 255, 255, 0.6); text-align: center; padding: 15px; }
 
-.modal-footer { padding-top: 18px; margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.2); display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0; }
-.admin-action-btn { padding: 9px 18px; border-radius: 12px; cursor: pointer; font-weight: 500; color: #f0f0f5; background-color: rgba(255, 255, 255, 0.15); border: none; transition: background-color 0.2s ease, transform 0.1s ease; text-shadow: none; text-align: center; text-decoration: none; }
-.admin-action-btn:hover { background-color: rgba(255, 255, 255, 0.25); }
-.admin-action-btn:active { transform: scale(0.97); }
-.admin-action-btn.delete-btn { background-color: rgba(220, 53, 69, 0.7); border: none; color: #fff; }
-.admin-action-btn.delete-btn:hover { background-color: rgba(220, 53, 69, 0.9); }
-
-/* In modal.css or your main stylesheet */
-#cost-interpretation-helper-dynamic {
-    /* Position, left, top, width are set by JavaScript to place it under the cost input.
-       JavaScript will set position: absolute; and append to document.body */
-    box-sizing: border-box; /* IMPORTANT: So JS width includes padding/border */
-
-    padding: 8px 12px; /* Reduced padding for a "shorter" feel */
-    border-radius: 8px; /* Adjusted radius */
-
-    background: rgba(255, 255, 255, 0.08); /* Glassy background */
-    backdrop-filter: blur(1px) saturate(160%);
-    -webkit-backdrop-filter: blur(1px) saturate(160%);
-
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-
-    color: #e0e0e5;
-    font-size: 0.8em; /* Smaller font size */
-    line-height: 1.4;   /* Tighter line height */
-    text-align: center; /* JS also sets this, but good to have as default */
-
-    z-index: 1060; /* Ensure it's above modal content */
-
-    opacity: 0;
-    /* Animate only vertical position; horizontal is set by JS */
-    transform: translateY(5px); /* Start slightly below its final JS-calculated top position */
-    transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
-                transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    pointer-events: none;
-    /* Optional: If you want a minimum sensible width even if input is tiny */
-    /* min-width: 160px; */
-}
-
-#cost-interpretation-helper-dynamic.visible {
-    opacity: 1;
-    transform: translateY(0); /* Move to its final JS-calculated top position */
-    pointer-events: auto;
-}
-
-#cost-interpretation-helper-dynamic strong {
-    color: #fff;
-    font-weight: 600;
-}
-
-#cost-interpretation-helper-dynamic em {
-    font-style: italic;
-    opacity: 0.8;
-}
-
-/* --- Form Based Modals Common Styles (Group Create/Settings, Event Create) --- */
+/* --- General Form Based Modals (Create Group/Event, Settings) --- */
+/* Max width for these types of modals */
 .create-group-modal-content,
 .group-settings-modal-content,
-.event-creation-modal-content { /* Added event-creation-modal-content */
+.event-creation-modal-content,
+#share-panel-modal .modal-content { /* Added Share Panel */
     max-width: 580px;
-    /* Height is auto based on content or constrained by general .modal-content rules */
 }
+/* Ensure these modals are not full height by default unless content pushes them */
+#create-group-modal .modal-dialog,
+#group-settings-modal .modal-dialog,
+#event-creation-modal .modal-dialog,
+#share-panel-modal .modal-dialog {
+    max-height: 90vh; /* Or a fixed px value like 700px */
+}
+#create-group-modal .modal-content,
+#group-settings-modal .modal-content,
+#event-creation-modal .modal-content,
+#share-panel-modal .modal-content {
+     height: auto; /* Let content dictate height up to max-height of dialog */
+}
+
 
 .create-group-modal-content > form,
 .group-settings-modal-content > form,
-.event-creation-modal-content > form { /* Added event-creation-modal-content */
+.event-creation-modal-content > form,
+#share-panel-modal form { /* Added Share Panel */
     flex-grow: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Parent form should hide overflow, body will scroll */
+    overflow: hidden;
 }
 
 .create-group-modal-content > form > .modal-body,
 .group-settings-modal-content > form > .modal-body,
-.event-creation-modal-content > form > .modal-body { /* Added event-creation-modal-content */
+.event-creation-modal-content > form > .modal-body,
+#share-panel-modal .modal-body { /* Added Share Panel */
     flex-grow: 1;
     min-height: 0;
-    overflow-y: auto; /* This is where the scroll happens */
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 15px; /* Gap between form-sections */
-    padding-right: 10px; /* Add some padding to avoid scrollbar overlap if items are full width */
-    padding-left: 5px;
+    gap: 15px;
+    padding: 10px 15px 10px 10px; /* Adjusted padding for scrollbar */
 }
 
-/* Ensure .modal-body specific scrollbar styling applies to these form modals too */
+/* Scrollbar styling for form modal bodies */
 .create-group-modal-content > form > .modal-body::-webkit-scrollbar,
 .group-settings-modal-content > form > .modal-body::-webkit-scrollbar,
-.event-creation-modal-content > form > .modal-body::-webkit-scrollbar { width: 8px; }
+.event-creation-modal-content > form > .modal-body::-webkit-scrollbar,
+#share-panel-modal .modal-body::-webkit-scrollbar { width: 8px; }
 
 .create-group-modal-content > form > .modal-body::-webkit-scrollbar-track,
 .group-settings-modal-content > form > .modal-body::-webkit-scrollbar-track,
-.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px; }
+.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-track,
+#share-panel-modal .modal-body::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 10px; }
 
 .create-group-modal-content > form > .modal-body::-webkit-scrollbar-thumb,
 .group-settings-modal-content > form > .modal-body::-webkit-scrollbar-thumb,
-.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-thumb,
+#share-panel-modal .modal-body::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.35); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
 
 .create-group-modal-content > form > .modal-body::-webkit-scrollbar-thumb:hover,
 .group-settings-modal-content > form > .modal-body::-webkit-scrollbar-thumb:hover,
-.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
+.event-creation-modal-content > form > .modal-body::-webkit-scrollbar-thumb:hover,
+#share-panel-modal .modal-body::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.5); }
 
-
-.create-group-modal-content > form > .modal-footer,
-.group-settings-modal-content > form > .modal-footer,
-.event-creation-modal-content > form > .modal-footer { /* Added event-creation-modal-content */
-    flex-shrink: 0;
-}
-
-
-.create-group-modal-content .form-group,
-.group-settings-modal-content .form-group,
-.event-creation-modal-content .form-group { /* Added event-creation-modal-content */
-    margin-bottom: 0;
-}
-.form-section { /* General for all modals using this structure */
+/* Form Section, Group, Labels, Inputs */
+.form-section {
     padding-bottom: 15px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     margin-bottom: 15px;
 }
-.form-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
+.form-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.form-group { margin-bottom: 0; } /* Removed default margin, handled by .form-section */
+.form-section .form-group:not(:last-child) { margin-bottom: 18px; }
+
+.form-group label, .form-section > label { /* Catch top-level labels in form-section too */
+    display: block; margin-bottom: 6px; font-weight: 500; color: #e0e0e5;
+}
+.permission-checkbox-input.modal-checkbox + label,
+.radio-group label { /* Style for radio button labels */
+    font-weight: normal; color: #d0d0d5; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.permission-checkbox-input.modal-checkbox,
+.radio-group input[type="radio"] { /* Style for checkboxes and radios */
+    width: 16px; height: 16px; accent-color: #79a6ff; cursor: pointer; margin-right: 0; vertical-align: middle;
 }
 
-/* Remove bottom margin from last form-group inside a form-section if there are multiple */
-.create-group-modal-content .form-section .form-group:not(:last-child),
-.group-settings-modal-content .form-section .form-group:not(:last-child),
-.event-creation-modal-content .form-section .form-group:not(:last-child) {
-    margin-bottom: 18px;
-}
+.modal-input, .modal-textarea { width: 100%; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; background-color: rgba(255, 255, 255, 0.1); color: #fff; font-size: 1rem; box-sizing: border-box; transition: border-color 0.2s ease, background-color 0.2s ease; }
+.modal-input:focus, .modal-textarea:focus { outline: none; border-color: rgba(138, 180, 248, 0.7); background-color: rgba(255, 255, 255, 0.15); }
+.modal-input:disabled, .modal-textarea:disabled { background-color: rgba(255, 255, 255, 0.05) !important; color: rgba(255, 255, 255, 0.4) !important; cursor: not-allowed !important; border-color: rgba(255, 255, 255, 0.15) !important; }
+.permission-checkbox-input.modal-checkbox:disabled + label,
+.radio-group input[type="radio"]:disabled + label { color: rgba(224, 224, 229, 0.5) !important; cursor: not-allowed !important; }
+.permission-checkbox-input.modal-checkbox:disabled,
+.radio-group input[type="radio"]:disabled { cursor: not-allowed !important; accent-color: rgba(121, 166, 255, 0.5); }
 
-.form-group label, /* General label styling */
-.create-group-modal-content .form-group label, /* Keep specific for now */
-.group-settings-modal-content .form-group label,
-.event-creation-modal-content .form-group label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 500;
-    color: #e0e0e5;
-}
-.permission-checkbox-input.modal-checkbox + label { /* For permission checkboxes specifically */
-    font-weight: normal; /* Make labels for checkboxes normal weight */
-    color: #d0d0d5;
-    display: inline-flex; /* Align checkbox and label nicely */
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-.permission-checkbox-input.modal-checkbox {
-    width: 16px;
-    height: 16px;
-    accent-color: #79a6ff;
-    cursor: pointer;
-    margin-right: 0; /* Remove any specific margin from friend checkbox */
-}
+.section-disabled { opacity: 0.6; pointer-events: none; }
+.section-disabled .friends-list-scroll-container, .section-disabled .modal-input { background-color: rgba(0,0,0, 0.05) !important; }
+.modal-textarea { resize: vertical; min-height: 80px; }
+.event-creation-modal-content #new-event-description { min-height: 100px; }
 
+.friend-search-input { margin-bottom: 10px; }
+.members-list-scroll-container, .friends-list-scroll-container, .modal-list-container /* For Share Modal */ { max-height: 150px; overflow-y: auto; padding: 8px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; background-color: rgba(0,0,0, 0.1); margin-top: 5px; }
+.members-list-scroll-container ul, .friends-list-scroll-container ul, .modal-list-container ul { list-style: none; padding: 0; margin: 0; }
+.member-item, .friend-item-to-add { display: flex; align-items: center; padding: 8px 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.member-item:last-child, .friend-item-to-add:last-child { border-bottom: none; }
+.member-avatar-small, .friend-avatar-small { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; object-fit: cover; flex-shrink: 0; }
+.member-name, .friend-item-to-add label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d0d0d5; }
+.friend-item-to-add input[type="checkbox"].modal-checkbox { margin-right: 12px; width: 18px; height: 18px; accent-color: #79a6ff; flex-shrink: 0; }
+.friend-item-to-add label { display: flex; align-items: center; font-weight: normal; color: #ccc; cursor: pointer; flex-grow: 1; }
+.friend-item-to-add label:hover span { color: #fff; }
 
-.modal-input, /* General modal input styles */
-.modal-textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    font-size: 1rem;
-    box-sizing: border-box;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
-}
+.loading-message, .no-members-message, .no-friends-message, .modal-list-container .loading-message { color: #aaa; font-style: italic; text-align: center; padding: 10px 0; }
+.modal-error-message, .error-message-banner /* for Share Modal */ { color: #ff8a8a; margin-top: 10px; font-size: 0.9rem; min-height: 1.2em; text-align: center; }
+.modal-error-message:not(:empty), .error-message-banner:not(:empty) { margin-bottom: 10px; }
 
+h4 { font-size: 1.05rem; font-weight: 500; color: #e0e0e5; margin-top: 15px; margin-bottom: 8px; padding-bottom: 5px; }
+.group-settings-modal-content h4 small, .event-creation-modal-content h4 small { font-size: 0.8em; font-weight: normal; color: #b0b0b5; }
+.form-section:first-of-type h4 { margin-top: 0; }
 
-.modal-input:focus,
-.modal-textarea:focus {
-    outline: none;
-    border-color: rgba(138, 180, 248, 0.7);
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-/* --- Styles for disabled inputs/textareas --- */
-.modal-input:disabled,
-.modal-textarea:disabled {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    color: rgba(255, 255, 255, 0.4) !important;
-    cursor: not-allowed !important;
-    border-color: rgba(255, 255, 255, 0.15) !important;
-}
-
-.permission-checkbox-input.modal-checkbox:disabled + label {
-    color: rgba(224, 224, 229, 0.5) !important; /* Lighter than input text */
-    cursor: not-allowed !important;
-}
-.permission-checkbox-input.modal-checkbox:disabled {
-    cursor: not-allowed !important;
-    accent-color: rgba(121, 166, 255, 0.5); /* Faded accent */
-}
-
-.section-disabled {
-    opacity: 0.6;
-    pointer-events: none; /* Prevents interaction with children */
-}
-.section-disabled .friends-list-scroll-container,
-.section-disabled .modal-input { /* Further dim disabled sections' interactive elements */
-    background-color: rgba(0,0,0, 0.05) !important;
-}
-
-
-.modal-textarea { /* General */
-    resize: vertical;
-    min-height: 80px;
-}
-/* For event description, make it a bit taller by default */
-.event-creation-modal-content #new-event-description {
-    min-height: 100px; /* Slightly taller for event description */
-}
-
-
-.friend-search-input { /* Used in Create Group and Group Settings */
-    margin-bottom: 10px;
-}
-
-.members-list-scroll-container,
-.friends-list-scroll-container {
-    max-height: 150px; /* This max-height is fine for these internal lists */
-    overflow-y: auto;
-    padding: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    background-color: rgba(0,0,0, 0.1);
-    margin-top: 5px;
-}
-
-.members-list-scroll-container ul,
-.friends-list-scroll-container ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.member-item,
-.friend-item-to-add {
-    display: flex;
-    align-items: center;
-    padding: 8px 5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.member-item:last-child,
-.friend-item-to-add:last-child {
-    border-bottom: none;
-}
-
-.member-avatar-small,
-.friend-avatar-small {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    margin-right: 10px;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.member-name,
-.friend-item-to-add label span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #d0d0d5;
-}
-
-.friend-item-to-add input[type="checkbox"].modal-checkbox {
-    margin-right: 12px;
-    width: 18px;
-    height: 18px;
-    accent-color: #79a6ff;
-    flex-shrink: 0;
-}
-.friend-item-to-add label {
-    display: flex;
-    align-items: center;
-    font-weight: normal;
-    color: #ccc;
-    cursor: pointer;
-    flex-grow: 1;
-}
-.friend-item-to-add label:hover span {
-    color: #fff;
-}
-
-.loading-message,
-.no-members-message,
-.no-friends-message {
-    color: #aaa;
-    font-style: italic;
-    text-align: center;
-    padding: 10px 0;
-}
-
-.modal-error-message { /* General for all modals */
-    color: #ff8a8a;
-    margin-top: 10px; /* Space above if it appears */
-    font-size: 0.9rem;
-    min-height: 1.2em; /* Prevent layout jump */
-    text-align: center; /* Center error messages */
-}
-.modal-error-message:not(:empty) {
-    margin-bottom: 10px; /* Space below if it has content, relevant for forms */
-}
-/* Specific placement for error message in simple forms like node creation */
-.modal-content-small .modal-body .modal-error-message {
-    margin-top: 5px; /* Less space in small modals */
-    margin-bottom: 0; /* No space needed below if footer is next */
-}
-
-
-h4 { /* General h4 inside modals */
-    font-size: 1.05rem;
-    font-weight: 500;
-    color: #e0e0e5;
-    margin-top: 15px;
-    margin-bottom: 8px;
-    padding-bottom: 5px;
-}
-.group-settings-modal-content h4 small,
-.event-creation-modal-content h4 small { /* Small text in h4 */
-    font-size: 0.8em;
-    font-weight: normal;
-    color: #b0b0b5;
-}
-.form-section:first-of-type h4 { /* No top margin for first h4 in a form section */
-    margin-top: 0;
-}
-
-
-.members-list-scroll-container::-webkit-scrollbar,
-.friends-list-scroll-container::-webkit-scrollbar {
-    width: 6px;
-}
-.members-list-scroll-container::-webkit-scrollbar-track,
-.friends-list-scroll-container::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
-    border-radius: 3px;
-}
-.members-list-scroll-container::-webkit-scrollbar-thumb,
-.friends-list-scroll-container::-webkit-scrollbar-thumb {
-    background-color: rgba(255,255,255,0.2);
-    border-radius: 3px;
-}
-.members-list-scroll-container::-webkit-scrollbar-thumb:hover,
-.friends-list-scroll-container::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(255,255,255,0.3);
-}
-
-.badge.owner-badge {
-    margin-left: auto;
-    padding: 3px 8px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    background-color: rgba(255, 193, 7, 0.7);
-    color: #333;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
+.members-list-scroll-container::-webkit-scrollbar, .friends-list-scroll-container::-webkit-scrollbar, .modal-list-container::-webkit-scrollbar { width: 6px; }
+.members-list-scroll-container::-webkit-scrollbar-track, .friends-list-scroll-container::-webkit-scrollbar-track, .modal-list-container::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+.members-list-scroll-container::-webkit-scrollbar-thumb, .friends-list-scroll-container::-webkit-scrollbar-thumb, .modal-list-container::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); border-radius: 3px; }
+.members-list-scroll-container::-webkit-scrollbar-thumb:hover, .friends-list-scroll-container::-webkit-scrollbar-thumb:hover, .modal-list-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.3); }
+.badge.owner-badge { margin-left: auto; padding: 3px 8px; font-size: 0.75rem; font-weight: 500; background-color: rgba(255, 193, 7, 0.7); color: #333; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
 
 /* --- Node Creation Modal (Small) --- */
-.modal-content-small {
-    max-width: 380px; /* Smallest width */
-    height: auto; /* Auto height based on content */
-    padding: 20px 25px; /* Reduced padding */
+.modal-backdrop-small .modal-dialog { /* Target dialog for small backdrop */
+    max-width: 380px;
 }
-.modal-content-small .modal-header {
-    margin-bottom: 20px; /* Slightly less margin after header */
-    padding-bottom: 12px;
+.modal-content-small { /* Applied to .modal-content within .modal-dialog */
+    /* max-width is handled by .modal-dialog */
+    height: auto;
+    padding: 20px 25px;
 }
-.modal-content-small .modal-header h2 {
-    font-size: 1.4rem; /* Smaller title */
+.modal-content-small .modal-header { margin-bottom: 20px; padding-bottom: 12px; }
+.modal-content-small .modal-header h2 { font-size: 1.4rem; }
+.modal-content-small .modal-body { padding: 0; gap: 10px; overflow-y: visible; }
+.modal-content-small .form-section { padding-bottom: 10px; margin-bottom: 10px; }
+.modal-content-small .modal-footer { margin-top: 20px; padding-top: 12px; }
+.modal-content-small .modal-error-message { margin-top: 5px; margin-bottom: 0; }
+
+
+/* Day Events Modal */
+.day-events-modal { position: fixed; inset: 0; background-color: rgba(30, 30, 35, 0.65); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s; }
+.day-events-modal.visible { opacity: 1; visibility: visible; transition-delay: 0s; }
+.day-events-modal .modal-content { max-width: 450px; width: 100%; background: rgba(60, 60, 70, 0.85); backdrop-filter: blur(25px) saturate(160%); -webkit-backdrop-filter: blur(25px) saturate(160%); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 20px 25px; box-shadow: 0 6px 25px rgba(0,0,0,0.25); transform: scale(0.95); transition: transform 0.3s ease; overflow: hidden; display: flex; flex-direction: column; }
+.day-events-modal.visible .modal-content { transform: scale(1); }
+.day-events-modal #day-events-modal-title { font-size: 1.3rem; color: #fff; margin-bottom: 15px; text-align: center; }
+.day-events-modal .day-event-list { list-style: none; padding: 0; margin: 0; max-height: 350px; overflow-y: auto; }
+.day-events-modal .day-event-list::-webkit-scrollbar { width: 6px; }
+.day-events-modal .day-event-list::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.25); border-radius: 3px; }
+.day-events-modal .day-event-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: background-color 0.15s ease; border-radius: 6px; }
+.day-events-modal .day-event-item:last-child { border-bottom: none; }
+.day-events-modal .day-event-item:hover { background-color: rgba(255,255,255,0.1); }
+.day-events-modal .day-event-title { font-weight: 500; color: #e8e8ed; flex-grow: 1; margin-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-events-modal .day-event-group { font-size: 0.8rem; color: #b0b0b8; margin-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; text-align: right;}
+.day-events-modal .day-event-time { font-size: 0.85rem; color: #c8c8d0; white-space: nowrap; }
+
+#cost-interpretation-helper-dynamic { position: fixed; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(1px) saturate(160%); -webkit-backdrop-filter: blur(1px) saturate(160%); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); color: #e0e0e5; font-size: 0.8em; line-height: 1.4; text-align: center; z-index: 1060; opacity: 0; transform: translateY(5px); transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: none; }
+#cost-interpretation-helper-dynamic.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+#cost-interpretation-helper-dynamic strong { color: #fff; font-weight: 600; }
+#cost-interpretation-helper-dynamic em { font-style: italic; opacity: 0.8; }
+
+/* Location Map Floating Panel */
+.location-map-floating-panel {
+    position: fixed; /* JS will set left/top */
+    z-index: 1055; /* Below interpretation helper but above other modal content */
+    background-color: rgba(60, 60, 70, 0.85); /* Match day events modal */
+    backdrop-filter: blur(25px) saturate(160%);
+    -webkit-backdrop-filter: blur(25px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.25);
+    color: #e0e0e5;
+    /* width is set by JS */
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none; /* Initially */
 }
-.modal-content-small .modal-body {
-    padding: 0; /* Remove body padding, form-section will handle it */
-    gap: 10px; /* Less gap if multiple items directly in body */
-    overflow-y: visible; /* Usually not needed for small modals */
+.location-map-floating-panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
 }
-.modal-content-small .form-section {
-    padding-bottom: 10px;
-    margin-bottom: 10px;
+.location-map-floating-panel .leaflet-container {
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
 }
-.modal-content-small .modal-footer {
-    margin-top: 20px;
-    padding-top: 12px;
+.map-status-text {
+    font-size: 0.8em;
+    color: #b0b0b8;
+    margin-top: 8px;
+    display: block;
+    text-align: center;
+}
+.map-status-text span { /* For OpenStreetMap credit */
+    opacity: 0.7;
 }
 
-/* --- End of Specific Modal Size/Layouts --- */
+@media (max-width: 768px) {
+    .modal-content { padding: 20px 20px; }
+    .modal-body { padding: 3px 5px; gap: 20px; flex-direction: column; }
+    .modal-col-rsvps { border-left: none; padding-left: 0; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px; }
+    #modal-description-wrapper { min-height: 80px; margin: 3px; outline-offset: 2px; }
+    #modal-event-description { padding: 6px 8px; }
+    .editable-field { outline-offset: 3px; }
+    #modal-event-title.is-editing-field .editable-input, .modal-header h2, #modal-event-title { font-size: 1.4rem; }
+    #modal-event-title.is-editing-field .editable-input { padding-right: 65px; }
+    #modal-description-wrapper.is-editing-field .editable-input { padding-top: 6px; padding-right: 65px; padding-bottom: 36px; padding-left: 8px; }
+    .detail-item span.is-editing-field .editable-input { padding-right: 65px; }
+    .editable-actions-container { right: 4px; gap: 4px; }
+    #modal-description-wrapper.is-editing-field .editable-actions-container { bottom: 5px; right: 5px; }
+    .edit-action-button { width: 26px; height: 26px; font-size: 13px; }
+
+    /* Adjust form-based modals for smaller screens */
+    .create-group-modal-content,
+    .group-settings-modal-content,
+    .event-creation-modal-content,
+    #share-panel-modal .modal-content {
+        padding: 20px;
+    }
+    .create-group-modal-content > form > .modal-body,
+    .group-settings-modal-content > form > .modal-body,
+    .event-creation-modal-content > form > .modal-body,
+    #share-panel-modal .modal-body {
+        padding: 10px 5px; /* Less horizontal padding */
+    }
+    .modal-content-small { padding: 15px; }
+    .day-events-modal .modal-content { padding: 15px 20px; }
+}
+
+/* Buttons (shared by multiple modals) */
+.button.primary-button {
+    background-color: #0284C7; /* Example primary color */
+    color: white;
+}
+.button.primary-button:hover {
+    background-color: #0369A1;
+}
+.button.secondary-button {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #f0f0f5;
+}
+.button.secondary-button:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
 
 /* --- END OF FILE static/css/modal.css --- */

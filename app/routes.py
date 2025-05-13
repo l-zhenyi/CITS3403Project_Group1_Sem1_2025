@@ -4,7 +4,7 @@ from flask import render_template, redirect, url_for, flash, request, session, j
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, CreateGroupForm, MessageForm, HandleFriendRequestForm, SendFriendRequestForm, AddMemberForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest, InsightPanel
+from app.models import User, Group, GroupMember, Event, EventRSVP, Node, Post, Message, InvitedGuest, FriendRequest, InsightPanel, SharedInsightPanel
 from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta
 from dateutil.parser import isoparse # Make sure this is imported
@@ -1301,11 +1301,364 @@ def api_search_users():
 @app.route('/api/insights/panels', methods=['GET'])
 @login_required
 def get_insight_panels():
-    panels_query = db.select(InsightPanel)\
+    # User's own panels
+    own_panels_query = db.select(InsightPanel)\
         .where(InsightPanel.user_id == current_user.id)\
         .order_by(InsightPanel.display_order)
-    panels = db.session.scalars(panels_query).all()
-    return jsonify([panel.to_dict() for panel in panels])
+    own_panels = db.session.scalars(own_panels_query).all()
+    
+    panels_data = [panel.to_dict() for panel in own_panels]
+
+    # Panels shared with the user
+    shared_instances_query = db.select(SharedInsightPanel)\
+        .where(SharedInsightPanel.recipient_id == current_user.id)\
+        .options(
+            joinedload(SharedInsightPanel.original_panel).joinedload(InsightPanel.user), # Eager load original panel and its owner
+            joinedload(SharedInsightPanel.sharer) # Eager load the sharer's user details
+        )\
+        .order_by(SharedInsightPanel.shared_at.desc()) # Or some other order
+    
+    shared_instances = db.session.scalars(shared_instances_query).unique().all()
+
+    for shared_instance in shared_instances:
+        # Use the new method to merge and prepare data
+        panels_data.append(shared_instance.to_dict_for_recipient())
+        
+    # Sort combined list if necessary, e.g., by a common 'effective_display_order' or 'title'
+    # For now, user's panels first, then shared ones.
+
+    return jsonify(panels_data)
+
+@app.route('/api/insights/panels/<int:panel_id>/share', methods=['POST'])
+@login_required
+def share_insight_panel(panel_id):
+    panel_to_share = db.session.get(InsightPanel, panel_id)
+    if not panel_to_share:
+        return jsonify({"error": "Panel not found"}), 404
+    if panel_to_share.user_id != current_user.id:
+        return jsonify({"error": "You can only share your own panels"}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid request body"}), 400
+
+    recipient_user_ids = data.get('recipient_user_ids')
+    access_mode = data.get('access_mode') # 'fixed' or 'dynamic'
+    # This is the sharer's current view configuration when they click "share" for fixed mode
+    current_config_for_fixed_share = data.get('current_config_for_fixed_share') 
+
+    if not isinstance(recipient_user_ids, list) or not recipient_user_ids:
+        return jsonify({"error": "recipient_user_ids must be a non-empty list"}), 400
+    if access_mode not in ['fixed', 'dynamic']:
+        return jsonify({"error": "Invalid access_mode. Must be 'fixed' or 'dynamic'"}), 400
+    if access_mode == 'fixed' and not isinstance(current_config_for_fixed_share, dict):
+        return jsonify({"error": "current_config_for_fixed_share is required for 'fixed' access_mode"}), 400
+
+    shared_count = 0
+    errors = []
+
+    for recipient_id_str in recipient_user_ids:
+        try:
+            recipient_id = int(recipient_id_str)
+            if recipient_id == current_user.id:
+                errors.append(f"Cannot share panel with yourself (ID: {recipient_id}).")
+                continue
+            
+            recipient_user = db.session.get(User, recipient_id)
+            if not recipient_user:
+                errors.append(f"Recipient user with ID {recipient_id} not found.")
+                continue
+
+            # Check if already shared with this recipient
+            existing_share = db.session.scalar(
+                db.select(SharedInsightPanel).filter_by(
+                    original_panel_id=panel_to_share.id,
+                    recipient_id=recipient_id
+                )
+            )
+            
+            shared_config_payload = None
+            if access_mode == 'fixed':
+                shared_config_payload = {
+                    "group_id": current_config_for_fixed_share.get("group_id", "all"),
+                    "startDate": current_config_for_fixed_share.get("startDate"),
+                    "endDate": current_config_for_fixed_share.get("endDate")
+                }
+            elif access_mode == 'dynamic':
+                 # For dynamic, store the group context from the sharer's original panel config
+                 # or their current_config_for_fixed_share if they want to fix the group for dynamic shares.
+                 # Let's use current_config_for_fixed_share.group_id for consistency.
+                group_id_for_dynamic = "all" # Default if not specified
+                if current_config_for_fixed_share and 'group_id' in current_config_for_fixed_share:
+                    group_id_for_dynamic = current_config_for_fixed_share['group_id']
+                
+                shared_config_payload = {
+                    "group_id": group_id_for_dynamic 
+                    # startDate and endDate are not fixed for dynamic, so not stored here.
+                    # Recipient will use their own.
+                }
+
+
+            if existing_share:
+                # Update existing share
+                existing_share.access_mode = access_mode
+                existing_share.shared_config = shared_config_payload
+                existing_share.shared_at = datetime.now(timezone.utc)
+                errors.append(f"Updated existing share for panel {panel_to_share.id} with user {recipient_user.username}.")
+            else:
+                # Create new share
+                new_share = SharedInsightPanel(
+                    original_panel_id=panel_to_share.id,
+                    sharer_id=current_user.id,
+                    recipient_id=recipient_id,
+                    access_mode=access_mode,
+                    shared_config=shared_config_payload
+                )
+                db.session.add(new_share)
+            
+            shared_count += 1
+        except ValueError:
+            errors.append(f"Invalid recipient ID format: {recipient_id_str}.")
+        except Exception as e:
+            errors.append(f"Error processing recipient {recipient_id_str}: {str(e)}")
+            app.logger.error(f"Error sharing panel {panel_to_share.id} with {recipient_id_str}: {e}")
+
+    if shared_count > 0:
+        db.session.commit()
+    
+    response_message = f"Successfully processed {shared_count} shares."
+    if errors:
+        response_message += " Errors: " + "; ".join(errors)
+        return jsonify({"message": response_message, "errors": errors}), 207 # Multi-Status
+    
+    return jsonify({"message": response_message, "shared_count": shared_count}), 200
+
+
+@app.route('/api/analysis/data/<analysis_type>', methods=['GET'])
+@login_required
+def get_analysis_data(analysis_type):
+    panel_id_arg = request.args.get('panel_id', type=int) # Original panel ID (owned by user)
+    shared_instance_id_arg = request.args.get('shared_instance_id', type=int) # ID from SharedInsightPanel table
+
+    user_for_data_context = current_user # By default, use the logged-in user's data
+    base_config_from_db = {} # The panel's saved configuration
+    
+    # Configuration from recipient's interaction (for dynamic shared panels)
+    recipient_start_date_str = request.args.get('startDate')
+    recipient_end_date_str = request.args.get('endDate')
+    # recipient_group_id_str = request.args.get('group_id') # Group for shared dynamic is fixed by sharer.
+
+    # Final config to be used for data fetching
+    active_config_for_query = {}
+
+
+    if shared_instance_id_arg:
+        shared_instance = db.session.get(SharedInsightPanel, shared_instance_id_arg)
+        if not shared_instance or shared_instance.recipient_id != current_user.id:
+            return jsonify({"error": "Shared panel not found or not authorized"}), 404
+        if shared_instance.original_panel.analysis_type != analysis_type:
+            return jsonify({"error": "Analysis type mismatch for shared panel"}), 400
+
+        user_for_data_context = shared_instance.sharer # Data comes from the sharer
+        base_config_from_db = shared_instance.original_panel.configuration or {}
+        
+        active_config_for_query = base_config_from_db.copy() # Start with original panel's config
+
+        if shared_instance.access_mode == 'fixed':
+            # Override with the fixed shared config
+            if shared_instance.shared_config:
+                active_config_for_query.update(shared_instance.shared_config)
+        elif shared_instance.access_mode == 'dynamic':
+            # Group is fixed by sharer's shared_config
+            if shared_instance.shared_config and 'group_id' in shared_instance.shared_config:
+                active_config_for_query['group_id'] = shared_instance.shared_config['group_id']
+            
+            # Time period is dynamic, based on recipient's request
+            active_config_for_query['startDate'] = recipient_start_date_str
+            active_config_for_query['endDate'] = recipient_end_date_str
+            # If recipient doesn't send dates, it will effectively be 'all_time' for the sharer's data
+            # or whatever the base_config_from_db had for dates if not cleared by `None` values.
+            if not recipient_start_date_str and not recipient_end_date_str:
+                 active_config_for_query['time_period'] = 'all_time' # Default to all time if no dates
+                 active_config_for_query.pop('startDate', None)
+                 active_config_for_query.pop('endDate', None)
+            else:
+                 active_config_for_query['time_period'] = 'custom'
+
+
+    elif panel_id_arg:
+        panel = db.session.get(InsightPanel, panel_id_arg)
+        if not panel or panel.user_id != current_user.id:
+            return jsonify({"error": "Panel not found or not authorized"}), 404
+        if panel.analysis_type != analysis_type:
+             return jsonify({"error": "Analysis type mismatch for panel"}), 400
+        
+        user_for_data_context = current_user
+        base_config_from_db = panel.configuration or {}
+        active_config_for_query = base_config_from_db.copy() # For owned panels, active config is saved config
+    
+    else: # No panel_id or shared_instance_id, use defaults for the type
+        analysis_details = get_analysis_details(analysis_type)
+        if not analysis_details: return jsonify({"error": f"Analysis type '{analysis_type}' not defined."}), 404
+        active_config_for_query = analysis_details.get('default_config', {}).copy()
+        user_for_data_context = current_user # Default to current user's data
+
+
+    # --- Now, use user_for_data_context and active_config_for_query to fetch data ---
+    if analysis_type == 'spending-by-category':
+        # ... (existing spending-by-category logic) ...
+        # IMPORTANT: Replace all `user.` with `user_for_data_context.`
+        # Replace `config.get(...)` with `active_config_for_query.get(...)`
+
+        time_period_str = active_config_for_query.get('time_period', 'all_time')
+        start_date_str = active_config_for_query.get('startDate') 
+        end_date_str = active_config_for_query.get('endDate')    
+        
+        raw_group_id_filter = active_config_for_query.get('group_id', 'all')
+        
+        group_id_to_filter = 'all' 
+        specific_group_name_for_title = None
+
+        if raw_group_id_filter != 'all':
+            try:
+                gid_int = int(raw_group_id_filter)
+                # Check membership against user_for_data_context (the sharer if shared)
+                group_for_filter = db.session.get(Group, gid_int)
+                if group_for_filter and is_group_member(user_for_data_context.id, gid_int): # Check against sharer's membership
+                    group_id_to_filter = gid_int
+                    specific_group_name_for_title = group_for_filter.name
+                else:
+                    app.logger.warning(f"Data context user {user_for_data_context.id} tried to filter spending by group {gid_int} they are not a member of. Defaulting to 'all'.")
+            except ValueError:
+                app.logger.warning(f"Invalid group_id '{raw_group_id_filter}' in spending config. Defaulting to 'all'.")
+        
+        final_start_date = None
+        final_end_date = None
+        date_filter_title_part = "All Time"
+
+        if start_date_str and end_date_str: # These are from active_config_for_query
+            try:
+                final_start_date = isoparse(start_date_str).replace(tzinfo=timezone.utc)
+                final_end_date = (isoparse(end_date_str) + timedelta(days=1) - timedelta(microseconds=1)).replace(tzinfo=timezone.utc)
+                date_filter_title_part = f"{final_start_date.strftime('%b %d, %Y')} - {isoparse(end_date_str).strftime('%b %d, %Y')}"
+            except (ValueError, TypeError) as e:
+                app.logger.warning(f"Invalid custom date range: {start_date_str} - {end_date_str}. Error: {e}. Falling back.")
+                final_start_date = None; final_end_date = None
+        
+        if not final_start_date and time_period_str != 'custom': # Fallback to time_period_str if custom range invalid or not set
+            if time_period_str == 'last_month':
+                final_start_date = datetime.now(timezone.utc) - timedelta(days=30)
+                date_filter_title_part = "Last Month"
+            elif time_period_str == 'last_year':
+                final_start_date = datetime.now(timezone.utc) - timedelta(days=365)
+                date_filter_title_part = "Last Year"
+        
+        rsvpd_attending_event_ids_stmt = db.select(EventRSVP.event_id)\
+            .where(EventRSVP.user_id == user_for_data_context.id)\
+            .where(EventRSVP.status == 'attending')
+        rsvpd_attending_event_ids = db.session.scalars(rsvpd_attending_event_ids_stmt).all()
+
+        if not rsvpd_attending_event_ids:
+            panel_context_title = ""
+            if shared_instance_id_arg and shared_instance:
+                panel_context_title = f" (Shared by {shared_instance.sharer.username})"
+
+            response_data = {
+                "analysis_type": analysis_type,
+                "title": f"Attended Event Spending by Category (No events attended by {user_for_data_context.username}){panel_context_title}",
+                "data": [], 
+                "config_used": active_config_for_query # Send back the config that was used for this query
+            }
+            return jsonify(response_data)
+        
+        group_accessible_stmt = db.select(Event.id).distinct()\
+            .join(Node, Event.node_id == Node.id)\
+            .join(Group, Node.group_id == Group.id)\
+            .join(GroupMember, Group.id == GroupMember.group_id)\
+            .where(GroupMember.user_id == user_for_data_context.id)\
+            .where(Event.id.in_(rsvpd_attending_event_ids))
+        
+        if group_id_to_filter != 'all': 
+            group_accessible_stmt = group_accessible_stmt.where(Group.id == group_id_to_filter)
+        
+        group_accessible_event_ids_sq = group_accessible_stmt.subquery()
+
+        invited_accessible_stmt = db.select(Event.id).distinct()\
+            .join(InvitedGuest, Event.id == InvitedGuest.event_id)\
+            .where(InvitedGuest.email == user_for_data_context.email)\
+            .where(Event.id.in_(rsvpd_attending_event_ids))
+
+        if group_id_to_filter != 'all': # Filter by group if a specific group is selected
+            invited_accessible_stmt = invited_accessible_stmt\
+                .join(Node, Event.node_id == Node.id) \
+                .where(Node.group_id == group_id_to_filter)
+                
+        invited_event_ids_sq = invited_accessible_stmt.subquery()
+
+        final_event_ids_to_sum_stmt = db.select(Event.id).distinct()\
+            .where(
+                or_( # Use or_() for OR condition
+                    Event.id.in_(db.select(group_accessible_event_ids_sq.c.id)),
+                    Event.id.in_(db.select(invited_event_ids_sq.c.id))
+                )
+            )
+        final_event_ids_to_sum = db.session.scalars(final_event_ids_to_sum_stmt).all()
+        
+        if not final_event_ids_to_sum:
+            title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else f"(All Groups for {user_for_data_context.username})"
+            panel_context_title = ""
+            if shared_instance_id_arg and shared_instance:
+                panel_context_title = f" (Shared by {shared_instance.sharer.username})"
+
+            response_data = {
+                "analysis_type": analysis_type,
+                "title": f"Attended Event Spending by Category {title_group_part} (No matching events){panel_context_title}",
+                "data": [], 
+                "config_used": active_config_for_query
+            }
+            return jsonify(response_data)
+
+        stmt = db.select(
+                Node.label.label('category'),
+                func.sum(Event.cost_value).label('total_cost')
+            ).select_from(Event) \
+            .join(Node, Event.node_id == Node.id) \
+            .where(Event.id.in_(final_event_ids_to_sum)) \
+            .where(Event.cost_value.isnot(None)) \
+            .where(Event.cost_value > 0)
+
+        if final_start_date:
+            stmt = stmt.where(Event.date >= final_start_date)
+        if final_end_date:
+            stmt = stmt.where(Event.date <= final_end_date)
+        
+        stmt = stmt.group_by(Node.label).order_by(func.sum(Event.cost_value).desc())
+        
+        results = db.session.execute(stmt).all()
+
+        analysis_data = [
+            {"category": row.category, "amount": round(row.total_cost or 0, 2)}
+            for row in results
+        ]
+        
+        title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else f"(All Groups for {user_for_data_context.username})"
+        final_report_title = f"Attended Event Spending {title_group_part} - {date_filter_title_part}"
+
+        if shared_instance_id_arg and shared_instance:
+            final_report_title += f" (Shared by {shared_instance.sharer.username})"
+
+        if not analysis_data:
+            final_report_title += " (No Data)"
+
+        response_data = {
+            "analysis_type": analysis_type,
+            "title": final_report_title,
+            "data": analysis_data,
+            "config_used": active_config_for_query
+        }
+        return jsonify(response_data)
+    else:
+        return jsonify({"error": f"Analysis type '{analysis_type}' not implemented or not configured correctly."}), 404
 
 @app.route('/api/insights/panels', methods=['POST'])
 @login_required
@@ -1426,174 +1779,6 @@ def delete_insight_panel(panel_id):
     db.session.delete(panel)
     db.session.commit()
     return jsonify({"success": True, "message": "Panel deleted successfully."})
-
-# --- Analysis Data Endpoint (Example: Spending) ---
-@app.route('/api/analysis/data/<analysis_type>', methods=['GET'])
-@login_required
-def get_analysis_data(analysis_type):
-    panel_id = request.args.get('panel_id', type=int)
-    panel = None
-    config = {}
-    user = current_user 
-
-    if panel_id:
-        panel = db.session.get(InsightPanel, panel_id)
-
-    if panel and panel.user_id == user.id and panel.analysis_type == analysis_type:
-        config = panel.configuration or {}
-    else:
-        analysis_details = get_analysis_details(analysis_type)
-        config = analysis_details.get('default_config', {}).copy() if analysis_details else {}
-        # If panel_id was provided but panel not found or mismatched, log warning.
-        if panel_id and (not panel or panel.user_id != user.id or panel.analysis_type != analysis_type):
-            app.logger.warning(f"Panel ID {panel_id} provided for analysis {analysis_type} "
-                               f"but panel not found, mismatched, or not owned by user {user.id}. Using default config.")
-
-
-    if analysis_type == 'spending-by-category':
-        time_period_str = config.get('time_period', 'all_time') # from simple dropdown
-        start_date_str = config.get('startDate') # from range slider
-        end_date_str = config.get('endDate')     # from range slider
-        
-        raw_group_id_filter = config.get('group_id', 'all')
-        
-        group_id_to_filter = 'all' 
-        specific_group_name_for_title = None
-
-        if raw_group_id_filter != 'all':
-            try:
-                gid_int = int(raw_group_id_filter)
-                group_for_filter = db.session.get(Group, gid_int)
-                if group_for_filter and is_group_member(user.id, gid_int):
-                    group_id_to_filter = gid_int
-                    specific_group_name_for_title = group_for_filter.name
-                else:
-                    app.logger.warning(f"User {user.id} tried to filter spending by group {gid_int} they are not a member of. Defaulting to 'all'.")
-            except ValueError:
-                app.logger.warning(f"Invalid group_id '{raw_group_id_filter}' in spending config. Defaulting to 'all'.")
-
-        # --- Date Range Logic ---
-        final_start_date = None
-        final_end_date = None
-        date_filter_title_part = "All Time"
-
-        if start_date_str and end_date_str:
-            try:
-                final_start_date = isoparse(start_date_str).replace(tzinfo=timezone.utc)
-                # For end_date, make it inclusive of the whole day
-                final_end_date = (isoparse(end_date_str) + timedelta(days=1) - timedelta(microseconds=1)).replace(tzinfo=timezone.utc)
-                date_filter_title_part = f"{final_start_date.strftime('%b %d, %Y')} - {isoparse(end_date_str).strftime('%b %d, %Y')}"
-            except (ValueError, TypeError) as e:
-                app.logger.warning(f"Invalid custom date range: {start_date_str} - {end_date_str}. Error: {e}. Falling back.")
-                final_start_date = None
-                final_end_date = None
-        
-        if not final_start_date: # Fallback to time_period_str if custom range invalid or not set
-            if time_period_str == 'last_month':
-                final_start_date = datetime.now(timezone.utc) - timedelta(days=30)
-                date_filter_title_part = "Last Month"
-            elif time_period_str == 'last_year':
-                final_start_date = datetime.now(timezone.utc) - timedelta(days=365)
-                date_filter_title_part = "Last Year"
-            # 'all_time' means final_start_date remains None
-        # --- End Date Range Logic ---
-        
-        rsvpd_attending_event_ids_stmt = db.select(EventRSVP.event_id)\
-            .where(EventRSVP.user_id == user.id)\
-            .where(EventRSVP.status == 'attending')
-        rsvpd_attending_event_ids = db.session.scalars(rsvpd_attending_event_ids_stmt).all()
-
-        if not rsvpd_attending_event_ids:
-            response_data = {
-                "analysis_type": analysis_type,
-                "title": f"Attended Event Spending by Category (No events attended)",
-                "data": [], 
-                "config_used": config
-            }
-            return jsonify(response_data)
-        
-        group_accessible_stmt = db.select(Event.id).distinct()\
-            .join(Node, Event.node_id == Node.id)\
-            .join(Group, Node.group_id == Group.id)\
-            .join(GroupMember, Group.id == GroupMember.group_id)\
-            .where(GroupMember.user_id == user.id)\
-            .where(Event.id.in_(rsvpd_attending_event_ids))
-        
-        if group_id_to_filter != 'all': 
-            group_accessible_stmt = group_accessible_stmt.where(Group.id == group_id_to_filter)
-        
-        group_accessible_event_ids_sq = group_accessible_stmt.subquery()
-
-        invited_accessible_stmt = db.select(Event.id).distinct()\
-            .join(InvitedGuest, Event.id == InvitedGuest.event_id)\
-            .where(InvitedGuest.email == user.email)\
-            .where(Event.id.in_(rsvpd_attending_event_ids))
-
-        if group_id_to_filter != 'all':
-            invited_accessible_stmt = invited_accessible_stmt\
-                .join(Node, Event.node_id == Node.id) \
-                .where(Node.group_id == group_id_to_filter)
-                
-        invited_event_ids_sq = invited_accessible_stmt.subquery()
-
-        final_event_ids_to_sum_stmt = db.select(Event.id).distinct()\
-            .where(
-                or_(
-                    Event.id.in_(db.select(group_accessible_event_ids_sq.c.id)),
-                    Event.id.in_(db.select(invited_event_ids_sq.c.id))
-                )
-            )
-        final_event_ids_to_sum = db.session.scalars(final_event_ids_to_sum_stmt).all()
-        
-        if not final_event_ids_to_sum:
-            title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else "(All Accessible Groups)"
-            response_data = {
-                "analysis_type": analysis_type,
-                "title": f"Attended Event Spending by Category {title_group_part} (No matching events)",
-                "data": [], 
-                "config_used": config
-            }
-            return jsonify(response_data)
-
-        stmt = db.select(
-                Node.label.label('category'),
-                func.sum(Event.cost_value).label('total_cost')
-            ).select_from(Event) \
-            .join(Node, Event.node_id == Node.id) \
-            .where(Event.id.in_(final_event_ids_to_sum)) \
-            .where(Event.cost_value.isnot(None)) \
-            .where(Event.cost_value > 0)
-
-        if final_start_date:
-            stmt = stmt.where(Event.date >= final_start_date)
-        if final_end_date:
-            stmt = stmt.where(Event.date <= final_end_date)
-        
-        stmt = stmt.group_by(Node.label).order_by(func.sum(Event.cost_value).desc())
-        
-        results = db.session.execute(stmt).all()
-
-        analysis_data = [
-            {"category": row.category, "amount": round(row.total_cost or 0, 2)}
-            for row in results
-        ]
-        
-        title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else "(All User's Groups)"
-        final_report_title = f"Attended Event Spending {title_group_part} - {date_filter_title_part}"
-        if not analysis_data:
-            final_report_title += " (No Data)"
-
-
-        response_data = {
-            "analysis_type": analysis_type,
-            "title": final_report_title,
-            "data": analysis_data,
-            "config_used": config # Send back the config that was used
-        }
-        return jsonify(response_data)
-
-    else:
-        return jsonify({"error": f"Analysis type '{analysis_type}' not implemented or not configured correctly."}), 404
 
 
 # --- Endpoint for All User Events (Calendar/List View) ---

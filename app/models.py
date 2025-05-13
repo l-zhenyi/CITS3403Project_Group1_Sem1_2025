@@ -388,6 +388,7 @@ class InsightPanel(db.Model):
 
     # Relationship back to User
     user: Mapped["User"] = relationship("User", back_populates="insight_panels")
+    shares_received: Mapped[List["SharedInsightPanel"]] = relationship("SharedInsightPanel", back_populates="original_panel", cascade="all, delete-orphan")
 
     def to_dict(self):
         """Serializes the InsightPanel object to a dictionary."""
@@ -398,10 +399,67 @@ class InsightPanel(db.Model):
             "title": self.title,
             "description": self.description,
             "display_order": self.display_order,
-            "configuration": self.configuration # Will be dict or None if using JSON type
-            # "configuration": json.loads(self.configuration) if self.configuration else None # If using Text type
+            "configuration": self.configuration 
         }
 
     def __repr__(self):
         return f"<InsightPanel {self.id} (User: {self.user_id}, Type: {self.analysis_type}, Order: {self.display_order})>"
+    
+class SharedInsightPanel(db.Model):
+    __tablename__ = "shared_insight_panel"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    original_panel_id: Mapped[int] = mapped_column(ForeignKey("insight_panel.id", name="fk_shared_original_panel_id"), nullable=False)
+    sharer_id: Mapped[int] = mapped_column(ForeignKey("user.id", name="fk_shared_sharer_id"), nullable=False)
+    recipient_id: Mapped[int] = mapped_column(ForeignKey("user.id", name="fk_shared_recipient_id"), nullable=False)
+    shared_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    access_mode: Mapped[str] = mapped_column(String(20), nullable=False)  # 'fixed' or 'dynamic'
+    
+    # Stores the configuration (especially group_id, startDate, endDate) that was active
+    # when the panel was shared in 'fixed' mode.
+    # For 'dynamic' mode, this might store the initial group_id context from the sharer.
+    shared_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    original_panel: Mapped["InsightPanel"] = relationship("InsightPanel", back_populates="shares_received")
+    sharer: Mapped["User"] = relationship("User", foreign_keys=[sharer_id], backref="panels_shared_by_me")
+    recipient: Mapped["User"] = relationship("User", foreign_keys=[recipient_id], backref="panels_shared_with_me")
+
+    __table_args__ = (db.UniqueConstraint('original_panel_id', 'recipient_id', name='_original_panel_recipient_uc'),)
+
+    def to_dict_for_recipient(self):
+        """Prepares data for the recipient, merging with original panel details."""
+        original_panel_data = self.original_panel.to_dict()
+        # Override title with original panel's title, recipient doesn't set this
+        original_panel_data['title'] = self.original_panel.title 
+        
+        # Specific fields for the shared instance
+        original_panel_data.update({
+            "shared_instance_id": self.id, # Distinguish from original_panel.id on frontend
+            "original_panel_id_ref": self.original_panel_id, # Reference to the actual panel
+            "is_shared": True,
+            "sharer_id": self.sharer_id,
+            "sharer_username": self.sharer.username,
+            "shared_at": self.shared_at.isoformat() if self.shared_at else None,
+            "access_mode": self.access_mode,
+            # The shared_config itself is crucial for frontend to setup controls
+            # and for backend to correctly fetch data for 'fixed' mode.
+            "current_config_for_display": self.shared_config # This is the key config for display/control setup
+        })
+        # The recipient doesn't directly use the original_panel's saved 'configuration' for display.
+        # They use 'shared_config' for fixed mode, or their own transient filters for dynamic mode.
+        # So, remove original_panel.configuration from the dict sent to recipient to avoid confusion.
+        if 'configuration' in original_panel_data and self.access_mode == 'fixed':
+            # For fixed, the shared_config IS the configuration.
+             original_panel_data['configuration'] = self.shared_config
+        elif 'configuration' in original_panel_data and self.access_mode == 'dynamic':
+             # For dynamic, the recipient starts with shared_config's group, but can change time.
+             # The base 'configuration' is still from original panel for non-overridden parts.
+             # We'll let frontend handle initial state from current_config_for_display.
+             # To be safe, ensure `configuration` field has the dynamic base settings
+             original_panel_data['configuration'] = self.original_panel.configuration.copy() if self.original_panel.configuration else {}
+             if self.shared_config and 'group_id' in self.shared_config:
+                 original_panel_data['configuration']['group_id'] = self.shared_config['group_id']
+
+
+        return original_panel_data
 # --- END OF FILE app/models.py ---
