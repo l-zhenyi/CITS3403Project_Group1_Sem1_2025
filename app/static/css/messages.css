@@ -1,5 +1,6 @@
 .chat-container {
-    width: 1200px;
+    max-width: 1200px;
+    width: 100%;
     margin: 5rem auto 2rem auto;
     padding: 2rem;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -11,9 +12,50 @@
     transition: opacity 1.0s ease-out, transform 1.0s ease-out;
 }
 
-#title {
-    color:white;
+@media (max-width: 768px) {
+    .chat-container {
+        padding: 1rem;
+        margin: 2rem 1rem;
+    }
+
+    .chat-message {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .chat-message img {
+        margin-bottom: 0.5rem;
+    }
+
+    .message-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .pager {
+        flex-direction: column;
+        gap: 1rem;
+    }
 }
+
+.sender-name {
+    font-size: 1rem;
+}
+
+.timestamp {
+    font-size: 0.75rem;
+}
+
+
+#title {
+    color: white;
+    font-weight: 700;
+    font-size: 2rem; /* adjust as needed */
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9); /* stronger and more visible */
+    letter-spacing: 0.5px;
+    margin-bottom: 1.5rem;
+}
+
 
 .chat-container.fade-in {
     opacity: 1;
