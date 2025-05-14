@@ -131,88 +131,45 @@
     background-color: rgba(140, 140, 145, 0.6);
     /* Base glass color */
     backdrop-filter: blur(30px) saturate(140%);
+    -webkit-backdrop-filter: blur(30px) saturate(140%); /* Safari */
     box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
     /* Inner shadow */
 }
 
-/* --- Update View Switching CSS --- */
-
-/* Default: Show Groups View */
-.planner-pane:not(.calendar-view-active):not(.events-view-active) .group-list-area {
-    /* Handled by desktop/mobile rules */
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.planner-pane:not(.calendar-view-active):not(.events-view-active) .event-collage-area {
-    /* Handled by desktop/mobile rules */
-    display: block;
-    /* Ensure block layout for children */
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.planner-pane:not(.calendar-view-active):not(.events-view-active) .calendar-view,
-.planner-pane:not(.calendar-view-active):not(.events-view-active) .events-view {
-    display: none;
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* Active Calendar View */
-.planner-pane.calendar-view-active .group-list-area,
-.planner-pane.calendar-view-active .event-collage-area,
-.planner-pane.calendar-view-active .events-view {
-    display: none !important;
-    flex: 0 0 0 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-.planner-pane.calendar-view-active .calendar-view {
-    display: flex;
-    flex-grow: 1;
-    opacity: 1;
-    pointer-events: auto;
-}
-
-/* Active Events View */
-.planner-pane.events-view-active .group-list-area,
-.planner-pane.events-view-active .event-collage-area,
-.planner-pane.events-view-active .calendar-view {
-    display: none !important;
-    flex: 0 0 0 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-.planner-pane.events-view-active .events-view {
-    display: flex;
-    /* Use flex column */
-    flex-grow: 1;
-    opacity: 1;
-    pointer-events: auto;
-}
-
-
 
 /* ==========================================================================
-        Scrollbar Styling (Webkit)
-        ========================================================================== */
+    Scrollbar Styling (Webkit) - Applied to specific scrollable areas
+    ========================================================================== */
 
 .group-list-area::-webkit-scrollbar,
-.event-collage-area::-webkit-scrollbar {
+.event-collage-area::-webkit-scrollbar,
+.calendar-view::-webkit-scrollbar, /* For calendar view container if it scrolls */
+.events-view::-webkit-scrollbar,   /* For events view container if it scrolls */
+.insights-view::-webkit-scrollbar, /* For insights view container if it scrolls */
+.insights-grid-container::-webkit-scrollbar, /* For insights grid specifically */
+.palette-scroll-container::-webkit-scrollbar /* For analysis palette */
+ {
     width: 8px;
 }
 
 .group-list-area::-webkit-scrollbar-track,
-.event-collage-area::-webkit-scrollbar-track {
+.event-collage-area::-webkit-scrollbar-track,
+.calendar-view::-webkit-scrollbar-track,
+.events-view::-webkit-scrollbar-track,
+.insights-view::-webkit-scrollbar-track,
+.insights-grid-container::-webkit-scrollbar-track,
+.palette-scroll-container::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.08);
     border-radius: 10px;
 }
 
 .group-list-area::-webkit-scrollbar-thumb,
-.event-collage-area::-webkit-scrollbar-thumb {
+.event-collage-area::-webkit-scrollbar-thumb,
+.calendar-view::-webkit-scrollbar-thumb,
+.events-view::-webkit-scrollbar-thumb,
+.insights-view::-webkit-scrollbar-thumb,
+.insights-grid-container::-webkit-scrollbar-thumb,
+.palette-scroll-container::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.35);
     border-radius: 10px;
     border: 2px solid transparent;
@@ -221,28 +178,101 @@
 }
 
 .group-list-area::-webkit-scrollbar-thumb:hover,
-.event-collage-area::-webkit-scrollbar-thumb:hover {
+.event-collage-area::-webkit-scrollbar-thumb:hover,
+.calendar-view::-webkit-scrollbar-thumb:hover,
+.events-view::-webkit-scrollbar-thumb:hover,
+.insights-view::-webkit-scrollbar-thumb:hover,
+.insights-grid-container::-webkit-scrollbar-thumb:hover,
+.palette-scroll-container::-webkit-scrollbar-thumb:hover {
     background-color: rgba(255, 255, 255, 0.5);
 }
+
+/* Firefox Scrollbar (Basic) */
+.group-list-area,
+.event-collage-area,
+.calendar-view,
+.events-view,
+.insights-view,
+.insights-grid-container,
+.palette-scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.08);
+}
+
+
+/* ==========================================================================
+       View Switching Logic - Base & Active States
+       ========================================================================== */
+
+/* Hide all specific view content by default */
+.planner-pane > .group-list-area,
+.planner-pane > .event-collage-area,
+.planner-pane > .calendar-view,
+.planner-pane > .events-view,
+.planner-pane > .insights-view {
+    display: none;
+    flex-grow: 0; /* Don't take space when hidden */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-out; /* Smooth fade */
+}
+
+/* --- Groups View (Default) --- */
+.planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .group-list-area {
+    display: block; /* or flex if it needs flex properties */
+    flex: 0 0 340px; /* Desktop width */
+    opacity: 1;
+    pointer-events: auto;
+}
+.planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area {
+    display: flex; /* Use flex for its children like active-group-header */
+    flex-direction: column; /* Stack header and viewport */
+    flex-grow: 1;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* --- Calendar View Active --- */
+.planner-pane.calendar-view-active .calendar-view {
+    display: flex; /* Use flex for its internal layout */
+    flex-direction: column; /* Stack header and grid */
+    flex-grow: 1;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* --- Events View Active --- */
+.planner-pane.events-view-active .events-view {
+    display: flex; /* Use flex for its internal layout */
+    flex-direction: column; /* Stack filter bar and list */
+    flex-grow: 1;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* --- Insights View Active --- */
+.planner-pane.insights-view-active .insights-view {
+    display: flex; /* This is key for palette and grid-container to sit side-by-side */
+    flex-grow: 1;
+    opacity: 1;
+    pointer-events: auto;
+    overflow: hidden; /* Prevent palette content from overflowing pane */
+}
+
 
 /* ==========================================================================
        Responsive Overrides
        ========================================================================== */
 
 @media (min-width: 769px) {
-    .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.mobile-event-view-active) .group-list-area {
-        flex: 0 0 340px;
-        display: block;
+    /* Desktop: Default view is groups list + collage */
+    .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .group-list-area {
+        flex: 0 0 340px; /* Fixed width for group list */
+        display: block; /* Ensure it's visible */
     }
-
-    .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.mobile-event-view-active) .event-collage-area {
-        flex-grow: 1;
-        display: block;
-    }
-
-    .planner-pane:not(.calendar-view-active) .calendar-view,
-    .planner-pane:not(.events-view-active) .events-view {
-        display: none;
+    .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area {
+        flex-grow: 1; /* Collage takes remaining space */
+        display: flex; /* Ensure it's visible and flex for children */
     }
 }
 
@@ -296,8 +326,38 @@
         border-radius: 12px;
     }
 
+    /* Mobile: Default view is ONLY group list */
+    .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .group-list-area {
+        display: block; /* Show group list */
+        flex-grow: 1;   /* Takes full width/height */
+        flex-basis: 100%; /* Ensure it takes full space */
+    }
+    .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area {
+        display: none; /* Hide collage area by default on mobile */
+    }
+
+    /* Mobile: When a group is selected, collage area becomes active */
+    .planner-pane.mobile-event-view-active .group-list-area {
+        display: none !important; /* Hide group list */
+    }
+    .planner-pane.mobile-event-view-active .event-collage-area {
+        display: flex !important; /* Show collage area */
+        flex-direction: column;
+        flex-grow: 1;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+    .planner-pane.mobile-event-view-active .calendar-view,
+    .planner-pane.mobile-event-view-active .events-view,
+    .planner-pane.mobile-event-view-active .insights-view {
+        display: none !important; /* Hide other views */
+    }
+
+
+    /* Ensure active calendar/events/insights views take full width on mobile */
     .planner-pane.calendar-view-active .calendar-view,
-    .planner-pane.events-view-active .events-view {
+    .planner-pane.events-view-active .events-view,
+    .planner-pane.insights-view-active .insights-view {
         display: flex !important;
         flex: 1 1 auto !important;
         opacity: 1 !important;
@@ -305,6 +365,10 @@
     }
 }
 
+
+/* ==========================================================================
+       Context Menu Styling (Keep as is or adjust)
+       ========================================================================== */
 .context-menu {
     position: absolute;
     background: rgba(30, 30, 35, 0.95);
@@ -312,10 +376,11 @@
     border-radius: 10px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.25);
     padding: 8px 0;
-    z-index: 9999;
+    z-index: 9999; /* Ensure it's above planner content but below modals */
     min-width: 180px;
-    backdrop-filter: blur(10px);
-    font-family: 'Inter', sans-serif;
+    backdrop-filter: blur(10px) saturate(150%);
+    -webkit-backdrop-filter: blur(10px) saturate(150%); /* Safari */
+    font-family: 'Inter', sans-serif; /* Example: Using Inter */
 }
 
 .context-menu-option {
