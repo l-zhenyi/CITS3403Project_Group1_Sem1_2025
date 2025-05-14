@@ -15,6 +15,10 @@ const PREVIEW_HIDE_DELAY = 150, PREVIEW_GAP_TO_RIGHT = 12, VIEWPORT_PADDING = 15
 const SCROLL_THRESHOLD = 40, SCROLL_SPEED_MULTIPLIER = 0.15, API_BASE = '/api', CHART_ANIMATION_DURATION = 400, DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 let chartInDraggedElement = null;
 
+// --- Module-scoped variable for the debounced resize handler ---
+let _debouncedResizeHandler = null;
+
+
 // --- Helper Functions ---
 function generateUniqueId(prefix = 'panel') { return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`; }
 
@@ -63,7 +67,6 @@ async function addPanelToServer(analysisType, config = {}) { return await fetchA
 async function removePanelFromServer(panelIdInt) { return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'DELETE' }); }
 async function updatePanelOrderOnServer(panelIdInts) { return await fetchApi(`${API_BASE}/insights/panels/order`, { method: 'PUT', body: { panel_ids: panelIdInts } }); }
 async function updatePanelConfigurationOnServer(panelIdInt, newConfig) {
-    // console.log(`[Insights PATCH] Panel ${panelIdInt}: Sending config:`, JSON.parse(JSON.stringify(newConfig))); // Less verbose
     return await fetchApi(`${API_BASE}/insights/panels/${panelIdInt}`, { method: 'PATCH', body: { configuration: newConfig } });
 }
 
@@ -87,7 +90,7 @@ async function fetchAnalysisData(analysisType, idForApi, isSharedApiCall, recipi
          if (panelIdNum && !isNaN(panelIdNum)) {
             queryParams.append('panel_id', panelIdNum);
          } else if (idForApi && !String(idForApi).startsWith('temp-')) {
-            console.warn(`fetchAnalysisData called for non-shared panel with non-numeric, non-temp id: ${idForApi}`);
+            // console.warn(`fetchAnalysisData called for non-shared panel with non-numeric, non-temp id: ${idForApi}`);
          }
     }
 
@@ -95,7 +98,6 @@ async function fetchAnalysisData(analysisType, idForApi, isSharedApiCall, recipi
     if (queryString) {
         url += `?${queryString}`;
     }
-    // console.log(`[Insights GET] fetchAnalysisData URL: ${url}`); // Less verbose
     return await fetchApi(url);
 }
 async function fetchUserGroups() { if (userGroupsCache.length > 0) return userGroupsCache; try { const groups = await fetchApi('/api/groups'); userGroupsCache = groups || []; return userGroupsCache; } catch (error) { console.error("Failed to fetch user groups:", error); return []; } }
@@ -188,7 +190,7 @@ function createInsightPanelElement(panelData, isForPaletteDragClone = false) {
         ${shareButtonHtml}`;
 
     if (showControls) {
-        makePanelDraggable(panel); 
+        // makePanelDraggable is called after all panels are in DOM in init for consistency
         if (shareButtonHtml) { 
             const shareBtn = panel.querySelector('.panel-share-btn');
             if (shareBtn) {
@@ -590,126 +592,205 @@ function makePanelDraggable(panelElement) { panelElement.removeEventListener('po
 function handlePaletteToggle(forceState=null) { if (!palette || !paletteToggleBtn || !insightsView) return; hidePalettePreview(); let shouldCollapse = forceState === 'close' || (forceState === null && !palette.classList.contains('collapsed')); palette.classList.toggle('collapsed', shouldCollapse); insightsView.classList.toggle('palette-collapsed', shouldCollapse); updateToggleButtonIcon(); setTimeout(() => { calculateGridCellLayout(); Object.values(activeChartInstances).forEach(chart => { if (chart?.resize) try { chart.resize(); } catch(e){} }); }, parseFloat(getComputedStyle(palette).transitionDuration || '0.3s')*1000 + 50); }
 function updateToggleButtonIcon() { if (!palette || !paletteToggleBtn) return; const icon = paletteToggleBtn.querySelector('i'); if (!icon) return; const isMobile = window.innerWidth <= 768; const isCollapsed = palette.classList.contains('collapsed'); icon.className = `fas ${isMobile ? (isCollapsed ? 'fa-chevron-up':'fa-chevron-down') : (isCollapsed ? 'fa-chevron-right':'fa-chevron-left')}`; paletteToggleBtn.setAttribute('aria-label', isCollapsed ? 'Expand Palette' : 'Collapse Palette'); }
 
-// --- Initialization ---
-async function setupEventListeners() {
-    if (!insightsView) { return; }
+export async function initInsightsManager() {
+    console.log("%c[Insights] initInsightsManager - START (v5 - Resize Handler Fix)", "background-color: #FFD700; color: black; font-weight:bold;");
+    insightsView = document.getElementById('insights-view'); 
+    insightsGridContainer = document.getElementById('insights-grid-container');
+    insightsGrid = document.getElementById('insights-grid');
+    palette = document.getElementById('analysis-palette');
+    paletteHeader = document.getElementById('palette-header');
+    paletteToggleBtn = document.getElementById('palette-toggle-btn');
+    paletteScrollContainer = document.getElementById('palette-scroll-container');
+    emptyMessage = document.getElementById('insights-empty-message');
+    palettePreviewContainer = document.getElementById('palette-preview-container');
+
+    if (typeof wNumb === 'function') { 
+        try { sliderNumberFormatter = wNumb({ decimals: 0 }); } 
+        catch (e) { console.error("[Init] wNumb error:", e); sliderNumberFormatter = { to:v=>String(Math.round(parseFloat(v))), from:v=>parseFloat(v) }; } 
+    } else { 
+        console.warn("[Init] wNumb missing."); sliderNumberFormatter = { to:v=>String(Math.round(parseFloat(v))), from:v=>parseFloat(v) }; 
+    }
+
+    let criticalElementsFound = true; 
+    const elementsToCheck = { insightsView, insightsGridContainer, insightsGrid, palette, paletteHeader, paletteToggleBtn, paletteScrollContainer, emptyMessage, palettePreviewContainer }; 
+    for (const [name, el] of Object.entries(elementsToCheck)) { 
+        if (!el) { console.error(`[Init] Missing element: ${name}`); criticalElementsFound = false; } 
+    } 
+    if (!criticalElementsFound) { 
+        if(insightsGrid) insightsGrid.innerHTML = '<p class="error-message" style="text-align:center;padding:20px;">Insights UI critical elements missing. Cannot initialize.</p>';
+        alert("Insights UI init error: Critical elements missing."); 
+        return; 
+    }
+    if (typeof Chart === 'undefined') console.error("[Init] Chart.js missing."); 
+    if (typeof noUiSlider === 'undefined') console.warn("[Init] noUiSlider missing.");
+
+    isDragging = false; 
+    if(draggedElement) { draggedElement.remove(); draggedElement = null; } 
+    document.querySelectorAll('.dragging-placeholder.drop-slot-indicator').forEach(el => el.remove()); 
+    document.removeEventListener('pointermove', onPointerMove); 
+    document.removeEventListener('pointerup', onPointerUp); 
+    document.removeEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
+    activeChartInstances = {};
+
+    if (paletteHeader && !paletteHeader._eventListenersAttached) {
+        paletteHeader.addEventListener('click', e => { if (!e.target.closest('.palette-toggle-btn, .add-analysis-btn')) handlePaletteToggle(); });
+        paletteHeader._eventListenersAttached = true;
+    }
+    if (paletteToggleBtn && !paletteToggleBtn._eventListenersAttached) {
+        paletteToggleBtn.addEventListener('click', e => { e.stopPropagation(); handlePaletteToggle(); });
+        paletteToggleBtn._eventListenersAttached = true;
+    }
+    if (paletteScrollContainer && !paletteScrollContainer._eventListenersAttached) {
+        paletteScrollContainer.addEventListener('pointerdown', onPointerDown);
+        paletteScrollContainer.addEventListener('mouseover', e => { if (!isDragging && !palette?.classList.contains('collapsed') && window.innerWidth>768) { const item = e.target.closest('.palette-item'); if(item) showPalettePreview(item); }});
+        paletteScrollContainer.addEventListener('mouseout', e => { if(!isDragging){ const item=e.target.closest('.palette-item'); if(item && !item.contains(e.relatedTarget) && !palettePreviewContainer?.contains(e.relatedTarget)) scheduleHidePalettePreview(); }});
+        paletteScrollContainer.addEventListener('click', async e => { 
+            const addBtn = e.target.closest('.add-analysis-btn'); 
+            if (addBtn && !isDragging) { 
+                e.stopPropagation(); 
+                const item = addBtn.closest('.palette-item'); 
+                if (item?.dataset.analysisType) { 
+                    const { analysisType } = item.dataset; 
+                    const analysisDetails = getAnalysisDetails(analysisType); 
+                    const initialConfig = analysisDetails?.default_config || {}; 
+                    addBtn.disabled=true; addBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i>'; 
+                    try { 
+                        const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig); 
+                        if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed."); 
+                        const panelDataForCreation = { 
+                            id: String(newPanelDataFromServer.id), 
+                            analysis_type: newPanelDataFromServer.analysis_type || analysisType, 
+                            title: newPanelDataFromServer.title || item.dataset.title || analysisDetails?.title || 'Analysis', 
+                            configuration: newPanelDataFromServer.configuration || initialConfig, 
+                            is_shared: false 
+                        }; 
+                        const newEl = createInsightPanelElement(panelDataForCreation, false); 
+                        makePanelDraggable(newEl);
+                        const targetIndex = insightsGrid.children.length - (emptyMessage?.parentElement === insightsGrid ? 1 : 0); 
+                        insertElementAtIndex(newEl, targetIndex ); 
+                        _initializePanelConfigurationControls(newEl, panelDataForCreation); 
+                        await loadPanelContent(newEl, false); 
+                        checkGridEmpty(); 
+                        calculateGridCellLayout(); 
+                        const panelElementsAfterAdd = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)')); 
+                        const panelDbIdsToOrder = panelElementsAfterAdd.filter(p => p.dataset.isShared !== 'true' && p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id)); 
+                        if (panelDbIdsToOrder.length > 0) await updatePanelOrderOnServer(panelDbIdsToOrder); 
+                        setTimeout(() => newEl?.scrollIntoView({behavior:'smooth',block:'nearest'}), 150); 
+                    } catch (err) { 
+                        alert(`Failed to add panel: ${err.message}`); 
+                    } finally { 
+                        addBtn.disabled=false; addBtn.innerHTML='+'; 
+                    } 
+                } 
+            } 
+        });
+        paletteScrollContainer._eventListenersAttached = true;
+    }
+    if(palettePreviewContainer && !palettePreviewContainer._eventListenersAttached) {
+        palettePreviewContainer.addEventListener('mouseleave', e => { if (!e.relatedTarget || !e.relatedTarget.closest('.palette-item')) scheduleHidePalettePreview(); });
+        palettePreviewContainer.addEventListener('mouseenter', cancelHidePreview);
+        palettePreviewContainer._eventListenersAttached = true;
+    }
+    if (insightsGrid && !insightsGrid._eventListenersAttached) {
+        insightsGrid.addEventListener('click', handleGridAction);
+        insightsGrid._eventListenersAttached = true;
+    }
     if (!getComputedStyle(document.documentElement).getPropertyValue('--panel-margin')) {
         document.documentElement.style.setProperty('--panel-margin', '12px');
     }
 
-    paletteHeader?.addEventListener('click', e => { if (!e.target.closest('.palette-toggle-btn, .add-analysis-btn')) handlePaletteToggle(); });
-    paletteToggleBtn?.addEventListener('click', e => { e.stopPropagation(); handlePaletteToggle(); });
-
-    if (paletteScrollContainer) {
-        paletteScrollContainer.addEventListener('pointerdown', onPointerDown);
-        paletteScrollContainer.addEventListener('mouseover', e => { if (!isDragging && !palette?.classList.contains('collapsed') && window.innerWidth>768) { const item = e.target.closest('.palette-item'); if(item) showPalettePreview(item); }});
-        paletteScrollContainer.addEventListener('mouseout', e => { if(!isDragging){ const item=e.target.closest('.palette-item'); if(item && !item.contains(e.relatedTarget) && !palettePreviewContainer?.contains(e.relatedTarget)) scheduleHidePalettePreview(); }});
-        paletteScrollContainer.addEventListener('click', async e => { const addBtn = e.target.closest('.add-analysis-btn'); if (addBtn && !isDragging) { e.stopPropagation(); const item = addBtn.closest('.palette-item'); if (item?.dataset.analysisType) { const { analysisType } = item.dataset; const analysisDetails = getAnalysisDetails(analysisType); const initialConfig = analysisDetails?.default_config || {}; addBtn.disabled=true; addBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i>'; try { const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig); if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed."); const panelDataForCreation = { id: String(newPanelDataFromServer.id), analysis_type: newPanelDataFromServer.analysis_type || analysisType, title: newPanelDataFromServer.title || item.dataset.title || analysisDetails?.title || 'Analysis', configuration: newPanelDataFromServer.configuration || initialConfig, is_shared: false }; const newEl = createInsightPanelElement(panelDataForCreation, false); const targetIndex = insightsGrid.children.length - (emptyMessage?.parentElement === insightsGrid ? 1 : 0); insertElementAtIndex(newEl, targetIndex ); _initializePanelConfigurationControls(newEl, panelDataForCreation); await loadPanelContent(newEl, false); checkGridEmpty(); calculateGridCellLayout(); const panelElementsAfterAdd = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)')); const panelDbIdsToOrder = panelElementsAfterAdd.filter(p => p.dataset.isShared !== 'true' && p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-')).map(p => parseInt(p.dataset.panelId)).filter(id => !isNaN(id)); if (panelDbIdsToOrder.length > 0) await updatePanelOrderOnServer(panelDbIdsToOrder); setTimeout(() => newEl?.scrollIntoView({behavior:'smooth',block:'nearest'}), 150); } catch (err) { alert(`Failed to add panel: ${err.message}`); } finally { addBtn.disabled=false; addBtn.innerHTML='+'; } } } });
+    // Correctly handle debounced resize handler
+    if (_debouncedResizeHandler) { // If a previous one exists, remove it
+      window.removeEventListener('resize', _debouncedResizeHandler);
     }
-    palettePreviewContainer?.addEventListener('mouseleave', e => { if (!e.relatedTarget || !e.relatedTarget.closest('.palette-item')) scheduleHidePalettePreview(); });
-    palettePreviewContainer?.addEventListener('mouseenter', cancelHidePreview);
+    _debouncedResizeHandler = debounce(() => { 
+        hidePalettePreview(); 
+        calculateGridCellLayout(); 
+        updateToggleButtonIcon(); 
+        Object.values(activeChartInstances).forEach(chart => { if (chart?.resize) try { chart.resize(); } catch(e){} }); 
+    }, 250);
+    window.addEventListener('resize', _debouncedResizeHandler);
 
-    if (insightsGrid) {
-        insightsGrid.addEventListener('click', handleGridAction); 
-        
-        const existingPanelElements = insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)');
-        const initPromises = [];
-        
-        const panelDataList = Array.from(existingPanelElements).map(panelEl => {
-            const analysisDetailsForDefault = getAnalysisDetails(panelEl.dataset.analysisType);
-            const originalConfig = JSON.parse(panelEl.dataset.configuration || JSON.stringify(analysisDetailsForDefault?.default_config || {}));
-            let current_config_for_display = null;
-            if (panelEl.dataset.isShared === 'true') {
-                current_config_for_display = {
-                    group_id: panelEl.dataset.sharedConfigGroupId || 'all',
-                    startDate: panelEl.dataset.sharedConfigStartDate || null,
-                    endDate: panelEl.dataset.sharedConfigEndDate || null,
-                };
-            }
-            return { 
-                id: panelEl.dataset.panelId, 
-                analysis_type: panelEl.dataset.analysisType,
-                title: panelEl.dataset.staticTitle,
-                configuration: originalConfig, 
-                is_shared: panelEl.dataset.isShared === 'true',
-                shared_instance_id: panelEl.dataset.sharedInstanceId,
-                access_mode: panelEl.dataset.accessMode,
-                sharer_username: panelEl.dataset.sharerUsername,
-                current_config_for_display: current_config_for_display 
-            };
-        });
 
-        for (const panelData of panelDataList) {
-            const panelElement = insightsGrid.querySelector(`.insight-panel[data-panel-instance-key="${getPanelInstanceKey(panelData)}"]`);
-            if (!panelElement) {
-                console.warn("Could not find panel element for instance key:", getPanelInstanceKey(panelData));
-                continue;
-            }
-            makePanelDraggable(panelElement);
-            // Attach share button listener for pre-rendered owned panels
-            if (!panelData.is_shared) { 
-                const shareBtn = panelElement.querySelector('.panel-share-btn');
-                if (shareBtn && !shareBtn._clickHandler) { 
-                     const shareModalOpener = (e) => {
-                        e.stopPropagation();
-                        openSharePanelModal(panelElement);
-                    };
-                    shareBtn.addEventListener('click', shareModalOpener);
-                    shareBtn._clickHandler = shareModalOpener;
-                }
-            }
-            
-            _initializePanelConfigurationControls(panelElement, panelData); 
-            
-            let initialRecipientConfig = null;
-            if (panelData.is_shared && panelData.access_mode === 'dynamic') {
-                try { initialRecipientConfig = JSON.parse(panelElement.dataset.recipientChosenConfig || 'null'); } catch(e){}
-            }
-            initPromises.push(loadPanelContent(panelElement, false, initialRecipientConfig));
-        }
-        try {
-            await Promise.all(initPromises);
-            console.log("[Init] Existing panels initialization complete.");
-             existingPanelElements.forEach(panel => {
-                 if (!panel.dataset.panelInstanceKey?.startsWith('temp-')) {
-                     _updatePanelConfigSummary(panel); 
-                 }
-             });
-        } catch(initError) {
-             console.error("[Init] Error during initial panel loading:", initError);
-        }
+    if(insightsGridContainer && !insightsGridContainer._scrollListenerAttached) {
+        insightsGridContainer.addEventListener('scroll', debounce(() => { if (!isDragging) hidePalettePreview(); }, 100));
+        insightsGridContainer._scrollListenerAttached = true;
     }
-    window.addEventListener('resize', debounce(() => { hidePalettePreview(); calculateGridCellLayout(); updateToggleButtonIcon(); Object.values(activeChartInstances).forEach(chart => { if (chart?.resize) try { chart.resize(); } catch(e){} }); }, 250));
-    insightsGridContainer?.addEventListener('scroll', debounce(() => { if (!isDragging) hidePalettePreview(); }, 100));
-}
-
-export async function initInsightsManager() {
-    console.log("%c[Insights] initInsightsManager - START (Share Panel v3 - Listener Fix)", "background-color: yellow; color: black; font-weight:bold;");
-    insightsView = document.getElementById('insights-view'); insightsGridContainer = document.getElementById('insights-grid-container'); insightsGrid = document.getElementById('insights-grid'); palette = document.getElementById('analysis-palette'); paletteHeader = document.getElementById('palette-header'); paletteToggleBtn = document.getElementById('palette-toggle-btn'); paletteScrollContainer = document.getElementById('palette-scroll-container'); emptyMessage = document.getElementById('insights-empty-message'); palettePreviewContainer = document.getElementById('palette-preview-container');
-
-    if (typeof wNumb === 'function') { try { sliderNumberFormatter = wNumb({ decimals: 0 }); } catch (e) { console.error("[Init] wNumb error:", e); sliderNumberFormatter = { to:v=>String(Math.round(parseFloat(v))), from:v=>parseFloat(v) }; } }
-    else { console.warn("[Init] wNumb missing."); sliderNumberFormatter = { to:v=>String(Math.round(parseFloat(v))), from:v=>parseFloat(v) }; }
-
-    let criticalElementsFound = true; const elementsToCheck = { insightsView, insightsGridContainer, insightsGrid, palette, paletteHeader, paletteToggleBtn, paletteScrollContainer, emptyMessage, palettePreviewContainer }; for (const [name, el] of Object.entries(elementsToCheck)) { if (!el) { console.error(`[Init] Missing element: ${name}`); criticalElementsFound = false; } } if (!criticalElementsFound) { alert("Insights UI init error."); return; }
-    if (typeof Chart === 'undefined') console.error("[Init] Chart.js missing."); if (typeof noUiSlider === 'undefined') console.warn("[Init] noUiSlider missing.");
-
-    isDragging = false; if(draggedElement) { draggedElement.remove(); draggedElement = null; } document.querySelectorAll('.dragging-placeholder.drop-slot-indicator').forEach(el => el.remove()); document.removeEventListener('pointermove', onPointerMove); document.removeEventListener('pointerup', onPointerUp); document.removeEventListener('contextmenu', preventContextMenuDuringDrag, {capture:true});
 
     try {
         await fetchUserGroups(); 
-        calculateGridCellLayout();
-        await setupEventListeners(); 
+
+        console.log("[Insights Init] Fetching panels from /api/insights/panels...");
+        const panelsJSON = await fetchApi(`${API_BASE}/insights/panels`);
+        if (!Array.isArray(panelsJSON)) {
+            throw new Error("Received invalid panel data from server (expected an array).");
+        }
+        console.log(`[Insights Init] Received ${panelsJSON.length} panel(s) data:`, panelsJSON);
+
+        if(insightsGrid) {
+            insightsGrid.innerHTML = ''; 
+            if (panelsJSON.length === 0) {
+                if(emptyMessage) insightsGrid.appendChild(emptyMessage); 
+            } else {
+                 if(emptyMessage && emptyMessage.parentElement === insightsGrid) emptyMessage.remove(); 
+            }
+        } else {
+            throw new Error("Insights grid element not found. Cannot render panels.");
+        }
+        
+        const panelElementsCreated = [];
+        if (panelsJSON.length > 0) {
+            panelsJSON.forEach(panelData => {
+                const panelElement = createInsightPanelElement(panelData, false); 
+                if (panelElement) {
+                    insightsGrid.appendChild(panelElement);
+                    panelElementsCreated.push(panelElement); 
+                } else {
+                    console.error("[Insights Init] Failed to create panel element for data:", panelData);
+                }
+            });
+        }
+        
+        calculateGridCellLayout(); 
+        
+        const initPromises = panelElementsCreated.map(panelEl => {
+            const panelDataForInit = panelsJSON.find(pd => getPanelInstanceKey(pd) === panelEl.dataset.panelInstanceKey);
+            if (!panelDataForInit) {
+                console.error(`Could not find original panelData for instance key ${panelEl.dataset.panelInstanceKey} during init.`);
+                return Promise.resolve(); 
+            }
+            makePanelDraggable(panelEl); 
+            _initializePanelConfigurationControls(panelEl, panelDataForInit); 
+            let initialRecipientConfig = null;
+            if (panelDataForInit.is_shared && panelDataForInit.access_mode === 'dynamic') {
+                try { initialRecipientConfig = JSON.parse(panelEl.dataset.recipientChosenConfig || 'null'); } catch(e){}
+            }
+            return loadPanelContent(panelEl, false, initialRecipientConfig);
+        });
+
+        await Promise.all(initPromises);
+        console.log("[Insights Init] Dynamically created panels initialized and content loaded.");
+
+        panelElementsCreated.forEach(panelEl => {
+             if (!panelEl.dataset.panelInstanceKey?.startsWith('temp-')) {
+                 _updatePanelConfigSummary(panelEl); 
+             }
+         });
+        
         checkGridEmpty();
         hidePalettePreview();
         if (palette) insightsView.classList.toggle('palette-collapsed', palette.classList.contains('collapsed'));
         updateToggleButtonIcon();
-        console.log("%c[Insights] initInsightsManager - Initialized Successfully (Share Panel v3 - Listener Fix)", "background-color: lightgreen; color: black; font-weight:bold;");
+        console.log("%c[Insights] initInsightsManager - Initialized Successfully (v5 - Resize Handler Fix)", "background-color: lightgreen; color: black; font-weight:bold;");
     } catch (error) {
         console.error("%c[Insights] initInsightsManager - FAILED:", "background-color: red; color: white; font-weight:bold;", error);
-        alert("Insights initialization failed.");
+        if(insightsGrid) insightsGrid.innerHTML = `<p class="error-message" style="text-align:center;padding:20px;">Could not load insights panels. Error: ${error.message}</p>`;
+        else if (insightsView) insightsView.innerHTML = `<p class="error-message" style="text-align:center;padding:20px;">Insights view critical error. Error: ${error.message}</p>`;
     }
 }
+// Removed: insightsManager._debouncedResizeHandler = null; // This was incorrect.
 
 // Analysis Type Definitions
 function getAnalysisDetails(analysisTypeId) { const localAvailableAnalyses = { "spending-by-category": { id: "spending-by-category", title: "💸 Spending by Category", description: "Total attended event costs grouped by node/category.", preview_title: "Spending by Category", preview_image_filename: null, preview_description: "Visualizes where your event budget went, categorized by the event's assigned node. Filters apply.", placeholder_html: `<div class='loading-placeholder' style='text-align: center; padding: 20px; color: #aaa;'><i class='fas fa-chart-pie fa-2x'></i><p style='margin-top: 10px;'>Loading spending data...</p></div>`, default_config: { time_period: "all_time", group_id: "all", startDate: null, endDate: null } } }; return localAvailableAnalyses[analysisTypeId]; }
+
 // --- END OF FILE insightsManager.js ---

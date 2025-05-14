@@ -153,86 +153,10 @@
             </aside>
             <div class="insights-grid-container" id="insights-grid-container">
                 <div class="insights-grid" id="insights-grid">
-                    {# --- Pre-rendered Insight Panels (MODIFIED STRUCTURE for owned and shared) --- #}
-                    {% if user_panels %} {# user_panels now contains both owned and shared panel data dicts #}
-                    {% for panel_data in user_panels %}
-                        {% set is_shared_panel = panel_data.is_shared | default(false) %}
-                        {% set panel_instance_key_raw = ("shared-" ~ panel_data.shared_instance_id) if is_shared_panel else panel_data.id %}
-                        {% set panel_instance_key_sanitized = panel_instance_key_raw | string | replace('.', '-') | replace(' ', '-') %} {# Basic sanitize for ID use #}
-                        {% set original_panel_id_for_dataset = panel_data.id if not is_shared_panel else panel_data.original_panel_id_ref %}
-                        {% set default_config_for_type = (available_analyses | selectattr('id', 'equalto', panel_data.analysis_type) | first).default_config if (available_analyses | selectattr('id', 'equalto', panel_data.analysis_type) | first) else {} %}
-                        {% set original_panel_configuration = panel_data.configuration | default(default_config_for_type) %}
-
-                    <div class="insight-panel glassy"
-                         data-panel-id="{{ original_panel_id_for_dataset }}"
-                         data-panel-instance-key="{{ panel_instance_key_raw }}"
-                         data-analysis-type="{{ panel_data.analysis_type | e }}"
-                         data-static-title="{{ panel_data.title | e }}"
-                         data-configuration='{{ original_panel_configuration | tojson | safe }}'
-                         {% if is_shared_panel %}
-                         data-is-shared="true"
-                         data-access-mode="{{ panel_data.access_mode | e }}"
-                         data-sharer-username="{{ panel_data.sharer_username | e }}"
-                         data-shared-instance-id="{{ panel_data.shared_instance_id | e }}"
-                         data-shared-config-group-id="{{ (panel_data.current_config_for_display.group_id if panel_data.current_config_for_display else 'all') | e }}"
-                         data-shared-config-start-date="{{ (panel_data.current_config_for_display.startDate if panel_data.current_config_for_display and panel_data.current_config_for_display.startDate else '') | e }}"
-                         data-shared-config-end-date="{{ (panel_data.current_config_for_display.endDate if panel_data.current_config_for_display and panel_data.current_config_for_display.endDate else '') | e }}"
-                         data-recipient-chosen-config='{{ ({"group_id": (panel_data.current_config_for_display.group_id if panel_data.current_config_for_display else "all"), "startDate": none, "endDate": none, "time_period": "all_time"})|tojson|safe }}'
-                         {% endif %}
-                         >
-
-                        <button class="panel-action-btn panel-config-toggle-btn" aria-label="Toggle Configuration" title="Configure Panel">
-                            <i class="fas fa-cog"></i>
-                        </button>
-                        <button class="panel-action-btn panel-close-btn" aria-label="Remove Panel" title="Remove Panel">
-                            <i class="fas fa-times"></i>
-                        </button>
-
-                        <div class="panel-config-area">
-                            <div class="panel-config-controls">
-                                <div class="config-group-selector">
-                                    <label for="group-select-{{ panel_instance_key_sanitized }}">Filter by Group:</label>
-                                    <select id="group-select-{{ panel_instance_key_sanitized }}" name="group_id">
-                                        <option value="all">All My Groups</option>
-                                    </select>
-                                </div>
-                                <div class="config-time-selector">
-                                    <label for="time-slider-{{ panel_instance_key_sanitized }}">Filter by Time Period:</label>
-                                    <div id="time-slider-{{ panel_instance_key_sanitized }}" class="time-range-slider-placeholder"></div>
-                                    <div id="time-slider-display-{{ panel_instance_key_sanitized }}" class="time-slider-display">Loading range...</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="panel-main-content-wrapper">
-                            <h3 class="panel-dynamic-title">
-                                {{ panel_data.title | e }}
-                            </h3>
-                            <div class="panel-config-summary">
-                                {% if is_shared_panel %}
-                                    {{ panel_data.access_mode | capitalize }} View
-                                {% else %}
-                                    Loading configuration...
-                                {% endif %}
-                            </div>
-                            <div class="panel-content">
-                                <div class="placeholder-chart">
-                                    <div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {% if not is_shared_panel %}
-                        <button class="panel-action-btn panel-share-btn" aria-label="Share Panel" title="Share Panel"><i class="fas fa-share-alt"></i></button>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                    {% endif %}
-                    {# End of Pre-rendered Panels #}
-
-                    <p class="insights-empty-message" id="insights-empty-message"
-                        style="display: {{ 'block' if not user_panels else 'none' }};">
-                        Add analyses from the palette or drag existing ones to rearrange.
+                    {# --- Insight Panels will be dynamically loaded here by insightsManager.js --- #}
+                    {# --- The static Jinja loop for user_panels has been REMOVED --- #}
+                    <p class="insights-empty-message" id="insights-empty-message" style="display: block;">
+                        Loading insights...
                     </p>
                 </div>
             </div>
@@ -529,7 +453,7 @@
         </div>
     </div>
 
-    <!-- Share Panel Modal (Corrected Structure) -->
+    <!-- Share Panel Modal -->
     <div id="share-panel-modal" class="modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="share-panel-modal-title">
         <div class="modal-dialog">
             <div class="modal-content glassy">
