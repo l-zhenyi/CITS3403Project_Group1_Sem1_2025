@@ -10,16 +10,16 @@
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
-            <div class="bg-white shadow-lg rounded-4 p-4 message-form-container">
-                <h3 class="mb-4 text-dark fw-bold">
-                    <i class="bi bi-envelope-paper-fill me-2 text-primary"></i> Send Message to <span class="text-muted">{{ recipient }}</span>
+            <div class="glassy-container p-4 message-form-container">
+                <h3 class="mb-4 text-light fw-bold">
+                    <i class="bi bi-envelope-paper-fill me-2 text-primary"></i> Send Message to <span class="text-light">{{ recipient }}</span>
                 </h3>
                 <form method="POST" action="">
                     {{ form.hidden_tag() }}
 
                     <div class="mb-3">
                         <label for="{{ form.message.id }}" class="form-label fw-semibold">Your Message</label>
-                        {{ form.message(class_="form-control", placeholder="Type something nice...", rows=5) }}
+                        {{ form.message(class_="form-control", placeholder="Type your message here...", rows=5) }}
                         {% for error in form.message.errors %}
                             <div class="text-danger small mt-1">[{{ error }}]</div>
                         {% endfor %}
