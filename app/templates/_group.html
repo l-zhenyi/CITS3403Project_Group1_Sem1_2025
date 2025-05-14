@@ -2,6 +2,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/_group.css') }}" type="text/css">
 {% endblock %}
 
+{% block content %}
+
 {% if current_user.groups.count() > 0 %}
 <div class="group-container">
     <ul class="group-list">
@@ -42,3 +44,5 @@
 {% else %}
 <p class="no-groups-message">You are not part of any groups yet.</p>
 {% endif %}
+
+{% endblock %}
