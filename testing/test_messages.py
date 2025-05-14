@@ -12,6 +12,9 @@ from app.models import User
 python -m unittest testing.test_messages
 '''
 
+# Scenario:
+# You send a message to your friend.
+# Your friend receives the message.
 class MessageFlowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
