@@ -14,6 +14,11 @@ from app.models import User
 python -m unittest testing.test_friends
 '''
 
+# Scenario: 
+# You search for User B and send them a friend request.
+# User B accepts your friend request.
+# You don't want to be friends with User B anymore, so you remove them.
+# You want to be friends with User B again, so you send them a friend request but User B rejects it.
 class FriendTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -66,7 +71,7 @@ class FriendTests(unittest.TestCase):
         search_input.send_keys(self.user_b_username)
         search_input.send_keys(Keys.RETURN)
     
-        # Click "Add Friend" next to User B
+        # Click "Send Friend Request" next to User B
         wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[contains(text(), 'Send Friend Request')]"))).click()
         self.logout()
         time.sleep(1)
