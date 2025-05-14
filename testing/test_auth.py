@@ -12,6 +12,9 @@ from app import app, db
 python -m unittest testing.test_auth
 '''
 
+# Scenario: 
+# You forget to register and try to login.
+# Hence, you remember to register an account and login.
 class AuthTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
