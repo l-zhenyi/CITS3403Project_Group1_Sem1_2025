@@ -3,12 +3,16 @@
     margin: 5rem auto 2rem auto;
     padding: 2rem;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f9f9f9;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     border-radius: 12px;
-    box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
     overflow: auto;
     opacity: 0;
     transition: opacity 1.0s ease-out, transform 1.0s ease-out;
+}
+
+#title {
+    color:white;
 }
 
 .chat-container.fade-in {
@@ -31,22 +35,15 @@
     display: flex;
     gap: 1rem;
     align-items: flex-start;
-    background-color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
     padding: 1rem;
     border-radius: 10px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
-.chat-message.sent {
-    align-self: flex-end;
-    background-color: #e6f3ff;
-}
-
 .chat-message.received {
-    align-self: flex-start;
-    background-color: #f1f1f1;
+    background: rgba(41, 41, 41, 0.2);
 }
-
 .chat-message.received:hover {
     transform: scale(1.015);
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
@@ -71,16 +68,16 @@
 
 .sender-name {
     font-weight: bold;
-    color: #1a1a1a;
+    color: #ffffff;
 }
 
 .timestamp {
     font-size: 0.8rem;
-    color: #888;
+    color: #ffffff;
 }
 
 .message-body {
-    color: #333;
+    color: #ffffff;
     font-size: 1rem;
     line-height: 1.5;
     white-space: pre-wrap;

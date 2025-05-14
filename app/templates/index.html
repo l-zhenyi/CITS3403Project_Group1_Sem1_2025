@@ -17,11 +17,29 @@
     <div class="glassy dashboard-pane"> {# Add specific pane class, remove inline styles #}
         {# Use current_user if using Flask-Login, check authentication #}
         <h1>Welcome, {{ current_user.username if current_user.is_authenticated else 'Guest' }}</h1>
+        <div class="bg-white py-5" id="white_container">
+            <section class="hero-section container py-5 d-flex align-items-center">
+                <div class="row align-items-center justify-content-between w-100">
+                    <div class="col-lg-6 hero-text slide-in-bottom">
+                        <h1 class="display-4 fw-bold mb-3" id="hero-heading">Smart Tools to Plan Better</h1>
+                        <p class="lead mb-4">Plan, vote, and coordinate in one go.</p>
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-3">Get Started</a>
+                    </div>
+
+                    <div class="col-lg-6 text-center">
+                        <img src="{{ url_for('static', filename='images/index-page/teamwork.jpg') }}"
+                            alt="Team Collaboration" class="img-fluid hero-illustration scale-down">
+                    </div>
+
+                </div>
+            </section>
+        </div>
+
         <hr class="content-divider"> {# Use class for styling #}
 
         <h2>Your Groups</h2>
         <div class="flex-container">
-            <div class="glassy dashboard-pane description"> {# Add specific class for intro #}
+            <div class="glassy dashboard-pane description" id="description-section"> {# Add specific class for intro #}
                 <h3>Plannit: Events Made Effortless</h3>
                 <p>Want to collaborate with others effortless? Plannit is your ultimate hub for effortless
                     group event planning and collaboration. Whether you're organizing casual meetups, weekend getaways,
@@ -55,18 +73,126 @@
                     class="screenshot-image">
             </div>
         </div>
-        <br>
-        <br>
-        <br>
-        <br>
-        <div class="bg-white py-5" id="white_container">
+        <div class="feature-section py-5 fade-up-on-scroll">
+            <div class="container">
+
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold">FEATURES</h2>
+                    <p class="text-light">Discover how Plannit makes planning events effortless</p>
+                    <div class="btn-group bg-light rounded-pill mt-3 shadow-sm" role="group">
+                        <button class="tab-btn btn-tab active" data-tab="tab-plan">Plan</button>
+                        <button class="tab-btn btn-tab" data-tab="tab-vote">Split</button>
+                        <button class="tab-btn btn-tab" data-tab="tab-track">Track</button>
+                    </div>
+                </div>
+
+
+                <div class="tab-content fixed-height">
+
+
+                    <div class="tab-pane active" id="tab-plan">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h3 class="tab-pane-heading mb-3">Effortless Event Planning</h3>
+                                <p class="fst-italic text-light mb-3">
+                                    From casual hangouts to professional meetups, Plannit allows planning events simple
+                                    and stress free.
+                                </p>
+                                <ul class="list-unstyled text-white mb-3">
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> Create events with titles,
+                                        descriptions, and group invites</li>
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> Real time group chat and media
+                                        sharing</li>
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> Smart calendar integration</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6 text-center">
+                                <img src="{{ url_for('static', filename='images/index-page/planning.webp') }}"
+                                    alt="Planning Feature" class="img-fluid">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="tab-vote">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h3 class="tab-pane-heading mb-3">Transparent Cost Splitting</h3>
+                                <p class="fst-italic text-light mb-3">
+                                    Make group payments with built in tools that calculates and divide costs
+                                    automatically.
+                                </p>
+                                <ul class="list-unstyled text-white">
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> Log shared expenses and assign
+                                        contributions</li>
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> Automatically calculate who owes
+                                        how much</li>
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> View a clear breakdown of all
+                                        group costs</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6 text-center">
+                                <img src="{{ url_for('static', filename='images/index-page/split.avif') }}"
+                                    alt="Voting Feature" class="img-fluid">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="tab-track">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h3 class="tab-pane-heading mb-3">Track Participation and Group Progress</h3>
+                                <p class="fst-italic text-light mb-3">
+                                    Stay informed and in control with transparent cost sharing and participation
+                                    insights.
+                                </p>
+                                <ul class="list-unstyled text-white">
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> Track attendance and engagement
+                                        in real time</li>
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> Monitor RSVP responses in real
+                                        time</li>
+                                    <li><i class="bi bi-check2 text-primary me-2"></i> Track active members that's
+                                        attending</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6 text-center">
+                                <img src="{{ url_for('static', filename='images/index-page/track.png') }}"
+                                    alt="Tracking Feature" class="img-fluid">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="easier-section" id="white_container">
             <div class="container">
                 <div class="row align-items-center">
-        <p>
-            {% include '_group.html' %}
-        </p>
+                    <div class="text-center mb-5">
+                        <h2 class="section-header">WHY PLANNIT</h2>
+                        </div>
+                    <div class="col-lg-6 fade-left">
+                        <h2 class="tab-pane-heading mb-4">Plannit Makes Life Easier</h2>
+                        <ul class="list-unstyled">
+                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Reduce planning stress and keep
+                                everyone aligned</li>
+                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Plan your events with built-in tools
+                            </li>
+                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Transparent split cost</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="col-lg-6 text-center scale-in">
+                        <img src="{{ url_for('static', filename='images/index-page/easier.webp') }}"
+                            class="img-fluid rounded" alt="Collaboration">
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <br>
+        <div class="text-center mb-5">
+            <h2>Reviews</h2>
+        </div>
         <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
             <div class="carousel-inner">
 
@@ -251,21 +377,23 @@
                 <span class="visually-hidden">Next</span>
             </button>
         </div>
-
-    </div> {# End dashboard-pane #}
-</div> {# End dashboard-container #}
-
-<footer class="main-footer">
-    <div class="footer-content">
-        <p>Copyright &copy; 2025 Plannit. All rights reserved.</p>
-        <p class="footer-tagline">Plan better. Together.</p>
-        <div class="footer-social mb-3">
-            <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-twitter-x"></i></a>
-            <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-facebook"></i></a>
-            <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-instagram"></i></a>
-            <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-linkedin"></i></a>
-        </div>
+        <footer class="main-footer">
+            <div class="footer-content">
+                <p>Copyright &copy; 2025 Plannit. All rights reserved.</p>
+                <p class="footer-tagline">Plan better. Together.</p>
+                <div class="footer-social mb-3">
+                    <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-twitter-x"></i></a>
+                    <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-facebook"></i></a>
+                    <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-instagram"></i></a>
+                    <a href="{{ url_for('index') }}" class="social-icon"><i class="bi bi-linkedin"></i></a>
+                </div>
+            </div>
+        </footer>
     </div>
-</footer>
+</div>
+
+{# End dashboard-pane #}
+{# End dashboard-container #}
+
 
 {% endblock %}

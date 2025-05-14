@@ -77,3 +77,7 @@ class HandleFriendRequestForm(FlaskForm):
 class AddMemberForm(FlaskForm):
     username = StringField('Friend Username', validators=[DataRequired()])
     submit = SubmitField('Add to Group')
+
+class RemoveFriendForm(FlaskForm):
+    friend_id = HiddenField(validators=[DataRequired()])
+    submit = SubmitField('Remove')

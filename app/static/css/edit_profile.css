@@ -1,11 +1,45 @@
-body {
-    background: linear-gradient(to right, #eef2f3, #8e9eab);
-    min-height: 100vh;
+.glass-card {
+    background-color: rgba(255, 255, 255, 0.01);
+    backdrop-filter: blur(25px);
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    margin-top: 5rem;
+    animation: fadeIn 0.6s ease;
 }
 
-.glass-card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(8px);
-    border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.form-control,
+textarea.form-control {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border-radius: 12px;
+    backdrop-filter: blur(6px);
+    padding: 0.75rem 1rem;
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.form-control:focus {
+    background: rgba(255, 255, 255, 0.5);
+    border-color: #6ea8fe;
+    box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.2);
+    outline: none;
+}
+
+.btn-primary {
+    background: rgb(14, 102, 235);
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary:hover {
+    background-color: #478df7;
 }

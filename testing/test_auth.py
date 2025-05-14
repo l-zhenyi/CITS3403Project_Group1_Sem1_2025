@@ -35,6 +35,8 @@ class AuthTests(unittest.TestCase):
         self.driver.find_element(By.NAME, 'username').send_keys('invaliduser')
         self.driver.find_element(By.NAME, 'password').send_keys('wrongpass')
         self.driver.find_element(By.NAME, 'submit').click()
+        wait = WebDriverWait(self.driver, 10)
+        wait.until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '.flash-messages li'), 'Invalid username or password'))
         self.assertIn('Invalid username or password', self.driver.page_source)
 
     def test_register_and_login(self):
@@ -52,8 +54,9 @@ class AuthTests(unittest.TestCase):
         self.driver.find_element(By.XPATH, "//button[text()='Register']").click()
 
         # Wait for registration success message
-        wait.until(EC.text_to_be_present_in_element((By.TAG_NAME, 'body'), f'Account created for {unique_username}!'))
+        wait.until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '.flash-messages li'), f'Account created for {unique_username}!'))
         self.assertIn(f'Account created for {unique_username}!', self.driver.page_source)
+
 
         # Login
         self.driver.get(f'{self.base_url}/login')
@@ -61,12 +64,16 @@ class AuthTests(unittest.TestCase):
         self.driver.find_element(By.NAME, 'password').send_keys(password)
         self.driver.find_element(By.NAME, 'submit').click()
 
-        # Wait for welcome message
-        welcome_header = wait.until(EC.presence_of_element_located((By.TAG_NAME, 'h1')))
-        self.assertEqual(welcome_header.text, f'Welcome, {unique_username}')
+        # Wait for the welcome message to appear on the home page
+        welcome_header = wait.until(
+            EC.presence_of_element_located((By.TAG_NAME, 'h1'))
+        )
+
+        # Confirm it displays the expected greeting
+        self.assertEqual(welcome_header.text.strip(), f"Welcome, {unique_username}")
 
         self.assertIn('Logout', self.driver.page_source)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)
