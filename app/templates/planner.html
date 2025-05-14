@@ -48,7 +48,7 @@
                 <li class="group-item {% if is_active %}active{% endif %}" data-group-id="{{ group.id | e }}"
                     data-group-name="{{ group.name | e }}"
                     data-group-avatar="{{ group.avatar }}">
-                    <img src="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') | e }}"
+                    <img src="{{ url_for('static', filename='img/default-group-avatar.png') | e }}"
                         alt="{{ group.name | e }} Avatar" class="group-avatar">
                     <div class="group-info">
                         <span class="group-name">{{ group.name | e }}</span>
@@ -77,7 +77,7 @@
                     <button class="icon-button back-button" aria-label="Back to groups">
                         <i class="fas fa-arrow-left"></i>
                     </button>
-                    <img src="{{ group.avatar or url_for('static', filename='img/default-group-avatar.png') }}"
+                    <img src="{{ url_for('static', filename='img/default-group-avatar.png') }}"
                         alt="Active Group Avatar" class="group-avatar-small" id="active-group-avatar">
                     <span class="active-group-name" id="active-group-name">Select a Group</span>
                     <button class="icon-button settings-button" id="active-group-settings-button"
