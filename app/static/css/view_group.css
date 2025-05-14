@@ -1,3 +1,12 @@
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;  /* Full height of the viewport */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Enable vertical scrolling for the entire page */
+}
+
 .group-avatar {
     width: 70px;
     height: 70px;

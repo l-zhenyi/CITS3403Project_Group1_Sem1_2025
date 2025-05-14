@@ -84,9 +84,10 @@ function handleFriendSearch() {
     );
     populateFriendsList(filteredFriends);
 }
-
+let isCreateGroupModalInitialized = false;
 export function openCreateGroupModal() {
-    if (!createGroupModal) return;
+     if (isCreateGroupModalInitialized) return; // Prevent reinitialization
+    isCreateGroupModalInitialized = true;
 
     if (createGroupForm) createGroupForm.reset(); // Resets input fields
     if (groupNameInput) groupNameInput.value = ''; // Explicit clear
@@ -247,6 +248,14 @@ export function setupCreateGroupModal() {
             closeCreateGroupModal();
         }
     });
+
+    document.querySelectorAll('.group-avatar').forEach(avatar => {
+    console.log('Avatar src before:', avatar.src);
+    if (!avatar.src || avatar.src.includes('default-group-avatar.png')) {
+        avatar.src = avatar.dataset.groupAvatar || avatar.src;
+    }
+    console.log('Avatar src after:', avatar.src);
+});
 
     console.log("Create Group Modal setup complete.");
 }
