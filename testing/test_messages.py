@@ -9,7 +9,7 @@ from app.models import User
 
 # Run in terminal with command: 
 '''
-python -m unittest testing.test_message
+python -m unittest testing.test_messages
 '''
 
 class MessageFlowTests(unittest.TestCase):

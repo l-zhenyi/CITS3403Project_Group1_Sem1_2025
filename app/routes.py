@@ -75,25 +75,13 @@ def before_request():
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
-@login_required
 def index():
-    form = PostForm()
-    if form.validate_on_submit():
-        post = Post(body=form.post.data, author=current_user)
-        db.session.add(post)
-        db.session.commit()
-        flash('Your post is now live!')
-        return redirect(url_for('index'))
-
-    page = request.args.get('page', 1, type=int)
-    groups = Group.query.join(GroupMember).filter(GroupMember.user_id == current_user.id).all()
-
-    return render_template('index.html', title='Home', form=form,
-                           groups=groups, user=current_user)
+        return render_template('index.html', title='Home')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
+        flash("You are already logged in!", "info")
         return redirect(url_for('index'))
     form = LoginForm()
     if form.validate_on_submit():
