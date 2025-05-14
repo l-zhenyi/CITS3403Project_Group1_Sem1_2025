@@ -13,6 +13,10 @@ from app.models import User
 python -m unittest testing.test_group
 '''
 
+# Scenario: 
+# You create a new group and add a friend as a member.
+# You post in the group. The group member, your friend, can see the post.
+# The group member, your friend, can also post in the group.
 class GroupTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
