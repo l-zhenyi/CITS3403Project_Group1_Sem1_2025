@@ -34,12 +34,14 @@
             </nav>
 
             <div class="top-nav-right">
+                   {% if current_user.is_authenticated %}
                   {# --- NEW Search Widget --- #}
                   <div class="search-widget" id="search-widget">
                       <input type="search" id="user-search-input" class="search-input" placeholder="Search users..." autocomplete="off">
                       <button class="icon-button search-toggle-btn" id="search-toggle-btn" aria-label="Toggle search" aria-expanded="false">🔍</button>
                   </div>
                   {# --- END Search Widget --- #}
+                  {% endif %}
             </div>
       </header>
       {% endif %}

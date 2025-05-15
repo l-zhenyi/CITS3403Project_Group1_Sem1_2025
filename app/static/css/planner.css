@@ -136,6 +136,9 @@
     /* Inner shadow */
 }
 
+.button {
+    color: dimgray;
+}
 
 /* ==========================================================================
     Scrollbar Styling (Webkit) - Applied to specific scrollable areas
