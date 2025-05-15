@@ -1,5 +1,5 @@
 # Plannit
-### Created for CITS3403 Semester 1 2025
+#### Created for CITS3403 Semester 1 2025
 ## Application Purpose, Use and Design
 Our all-in-one platform empowers you to stay connected and organized with ease. Add friends, create and manage groups, share posts, send direct messages, plan events, and track shared expenses — all in one seamless experience. Whether for personal use or group coordination, our app brings clarity, convenience, and connection to every interaction.
 
