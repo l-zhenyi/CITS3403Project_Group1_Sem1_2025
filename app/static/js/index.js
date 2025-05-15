@@ -1,107 +1,198 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("visible");
-          observer.unobserve(entry.target); 
+  // Create a single IntersectionObserver for all animation effects
+  const animationObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("visible");
+        // Only unobserve if it's not a repeated animation
+        if (!entry.target.dataset.repeat) {
+          animationObserver.unobserve(entry.target);
         }
-      });
-    }, {
-      threshold: 0.1
+      }
     });
-  
-    document.querySelectorAll('.slide-in').forEach(el => observer.observe(el));
+  }, {
+    threshold: 0.15,
+    rootMargin: "0px 0px -50px 0px"  // Trigger slightly before elements come into view
   });
   
-  document.addEventListener("DOMContentLoaded", () => {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add("visible");
-                observer.unobserve(entry.target); 
-            }
-        });
-    }, {
-        threshold: 0.1
-    });
-
-    // Apply to all .fade-up elements
-    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-    const observer = new IntersectionObserver((entries, obs) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const cards = entry.target.querySelectorAll(".carousel-item.active .card");
-
-                cards.forEach((card, index) => {
-                    setTimeout(() => {
-                        card.classList.add("visible");
-                    }, index * 200); // stagger by 200ms
-                });
-
-                obs.unobserve(entry.target);
-            }
-        });
-    }, {
-        threshold: 0.1
-    });
-
-    const carousel = document.querySelector(".carousel");
-    if (carousel) observer.observe(carousel);
-});
-
-document.addEventListener("DOMContentLoaded", function () {
-    const fadeEl = document.querySelector('.fade-up-on-scroll');
+  // Target all elements with animation classes used in the HTML
+  const animatedElements = document.querySelectorAll(
+    '.slide-in-bottom, .fade-up-on-scroll, .fade-left, .scale-in, .animated-card'
+  );
   
-    if (fadeEl) {
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            fadeEl.classList.add('visible');
-            observer.unobserve(fadeEl); // Run once
-          }
-        });
-      }, { threshold: 0.1 });
-  
-      observer.observe(fadeEl);
-    }
+  // Observe all animated elements 
+  animatedElements.forEach(el => {
+    animationObserver.observe(el);
+    // Set a timeout to ensure elements become visible even if observer fails
+    setTimeout(() => {
+      if (!el.classList.contains('visible')) {
+        el.classList.add('visible');
+      }
+    }, 1000); // Fallback after 1 second
   });
 
-  document.addEventListener("DOMContentLoaded", function () {
-    const tabButtons = document.querySelectorAll(".tab-btn");
+  // Fixed tab switching functionality
+  const setupTabs = () => {
+    const tabButtons = document.querySelectorAll(".btn-tab");
     const tabPanes = document.querySelectorAll(".tab-pane");
-  
+    
+    if (tabButtons.length === 0 || tabPanes.length === 0) return;
+
     tabButtons.forEach(button => {
       button.addEventListener("click", () => {
         const targetId = button.getAttribute("data-tab");
-  
-        // Toggle button styles
-        tabButtons.forEach(btn => btn.classList.remove("active"));
+        
+        // Toggle button styles - explicitly adding/removing classes
+        tabButtons.forEach(btn => {
+          btn.classList.remove("active");
+          btn.setAttribute("aria-selected", "false");
+        });
+        
         button.classList.add("active");
-  
+        button.setAttribute("aria-selected", "true");
+
         // Toggle tab pane visibility
         tabPanes.forEach(pane => {
           pane.classList.remove("active");
+          pane.style.opacity = "0";
+          
           if (pane.id === targetId) {
-            pane.classList.add("active");
+            setTimeout(() => {
+              pane.classList.add("active");
+              setTimeout(() => {
+                pane.style.opacity = "1";
+              }, 10);
+            }, 50);
           }
         });
       });
     });
-  });
+  };
   
-  document.addEventListener("DOMContentLoaded", () => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("visible");
-          observer.unobserve(entry.target);
-        }
+  setupTabs();
+
+  // Make hero section immediately visible
+  setTimeout(() => {
+    document.querySelectorAll('.hero-section .slide-in-bottom, .hero-section .scale-down')
+      .forEach(el => el.classList.add('visible'));
+  }, 300);
+    
+  // Fixed testimonial carousel implementation
+  const setupTestimonialCarousel = () => {
+    const carousel = document.getElementById('testimonialCarousel');
+    if (!carousel) return;
+    
+    const track = carousel.querySelector('.testimonial-track');
+    if (!track) return;
+    
+    const slides = carousel.querySelectorAll('.testimonial-slide');
+    if (slides.length === 0) return;
+    
+    const prevButton = carousel.querySelector('#prevTestimonial');
+    const nextButton = carousel.querySelector('#nextTestimonial');
+    const dots = carousel.querySelectorAll('.carousel-dot');
+    
+    // Fixed calculation of slides per view and total groups
+    const slidesPerView = window.innerWidth < 768 ? 1 : 3;
+    const totalGroups = Math.ceil(slides.length / slidesPerView);
+    let currentIndex = 0;
+    
+    // Update carousel positions
+    const updateCarousel = () => {
+      // Calculate percentage to shift based on current index and slidesPerView
+      const percentageToShift = (currentIndex * 100) / slidesPerView;
+      track.style.transform = `translateX(-${percentageToShift}%)`;
+      
+      // Update active dot
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === currentIndex);
       });
-    }, { threshold: 0.1 });
+    };
+    
+    // Navigate to specific slide group
+    const goToSlide = (index) => {
+      // Bounds checking
+      if (index < 0) index = 0;
+      if (index >= totalGroups) index = 0; // Loop back to start
+      
+      currentIndex = index;
+      updateCarousel();
+    };
+    
+    // Set up button listeners
+    if (prevButton) {
+      prevButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        goToSlide(currentIndex - 1);
+        resetAutoAdvance();
+      });
+    }
+    
+    if (nextButton) {
+      nextButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        goToSlide(currentIndex + 1);
+        resetAutoAdvance();
+      });
+    }
+    
+    // Set up dot listeners
+    dots.forEach((dot, i) => {
+      dot.addEventListener('click', () => {
+        goToSlide(i);
+        resetAutoAdvance();
+      });
+    });
+    
+    // Auto-advance functionality
+    let autoAdvanceTimer;
+    
+    const startAutoAdvance = () => {
+      autoAdvanceTimer = setInterval(() => {
+        goToSlide(currentIndex + 1);
+      }, 8000);
+    };
+    
+    const resetAutoAdvance = () => {
+      clearInterval(autoAdvanceTimer);
+      startAutoAdvance();
+    };
+    
+    // Initialize the carousel
+    updateCarousel();
+    startAutoAdvance();
+    
+    // Add touch swipe support
+    let touchStartX = 0;
+    
+    carousel.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      clearInterval(autoAdvanceTimer);
+    }, { passive: true });
+    
+    carousel.addEventListener('touchend', (e) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const diff = touchStartX - touchEndX;
+      
+      if (diff > 50) { // Swipe left
+        goToSlide(currentIndex + 1);
+      } else if (diff < -50) { // Swipe right
+        goToSlide(currentIndex - 1);
+      }
+      
+      startAutoAdvance();
+    }, { passive: true });
+    
+    // Pause on hover
+    carousel.addEventListener('mouseenter', () => {
+      clearInterval(autoAdvanceTimer);
+    });
+    
+    carousel.addEventListener('mouseleave', () => {
+      startAutoAdvance();
+    });
+  };
   
-    document.querySelectorAll('.fade-left, .scale-in').forEach(el => observer.observe(el));
-  });
-  
+  // Run the carousel setup
+  setupTestimonialCarousel();
+});
