@@ -62,8 +62,10 @@ class FriendTests(unittest.TestCase):
         wait = WebDriverWait(self.driver, 10)
 
         # Step 1: Login as User A and send request to B
+        self.driver.get(f'{self.base_url}/login')
         self.login(self.user_a_username, "passwordA")
         self.driver.get(f'{self.base_url}/')
+        time.sleep(2)
         wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='Friends']"))).click()
 
         wait.until(EC.presence_of_element_located((By.ID, 'search-query')))
@@ -72,10 +74,11 @@ class FriendTests(unittest.TestCase):
         search_input.send_keys(Keys.RETURN)
     
         # Click "Send Friend Request" next to User B
+        time.sleep(2)
         wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[contains(text(), 'Send Friend Request')]"))).click()
         self.logout()
-        time.sleep(1)
-
+        self.driver.get(f'{self.base_url}/login')
+        wait = WebDriverWait(self.driver, 10)
         # Step 2: Login as User B and accept the request
         self.login(self.user_b_username, "passwordB")
         self.driver.get(f'{self.base_url}/')
@@ -86,6 +89,7 @@ class FriendTests(unittest.TestCase):
         self.logout()
 
         # Step 3: Login again as User A to verify B is friend and remove them
+        self.driver.get(f'{self.base_url}/login')
         self.login(self.user_a_username, "passwordA")
         self.driver.get(f'{self.base_url}/')
         wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='Friends']"))).click()
@@ -119,15 +123,17 @@ class FriendTests(unittest.TestCase):
         self.assertNotIn(self.user_b_username, self.driver.page_source)
 
         # Optional: log out or continue testing
-        self.logout()
+        # self.logout()
+        self.driver.get(f'{self.base_url}/logout')
 
     def test_friend_reject(self):
+        self.driver.get(f'{self.base_url}/logout')
+        self.driver.get(f'{self.base_url}/login')
         wait = WebDriverWait(self.driver, 10)
-
         # Step 1: User A sends friend request to User B
         self.login(self.user_a_username, "passwordA")
         self.driver.get(f'{self.base_url}/')
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='Friends']"))).click()
+        self.driver.get(f'{self.base_url}/friends')
 
         wait.until(EC.presence_of_element_located((By.ID, 'search-query')))
         search_input = self.driver.find_element(By.ID, 'search-query')
@@ -135,11 +141,12 @@ class FriendTests(unittest.TestCase):
         search_input.send_keys(Keys.RETURN)
 
         wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[contains(text(), 'Send Friend Request')]"))).click()
+        time.sleep(2)
         self.logout()
-
+        
         # Step 2: User B logs in and rejects the friend request
+        self.driver.get(f'{self.base_url}/login')
         self.login(self.user_b_username, "passwordB")
-        self.driver.get(f'{self.base_url}/')
         wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='Friends']"))).click()
 
         wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and @value='Reject']"))).click()
