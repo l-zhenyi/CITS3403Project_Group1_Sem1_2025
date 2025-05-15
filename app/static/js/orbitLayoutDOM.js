@@ -1,10 +1,10 @@
 // --- START OF FILE orbitLayoutDOM.js ---
-// REVISED: v24 - Dynamic Viewport Targeting for Click Zoom
+// REVISED: v28 - Property Name Fix for preClickViewportState (COMPLETE FILE)
 import { getTransformState, smoothSetTransformState, smoothZoomToRect } from './viewportManager.js';
 
 window.draggingAllowed ??= true;
 
-console.log("[OrbitLayoutDOM Strict Class v24 DynamicViewportTarget] Module Loaded.");
+console.log("[OrbitLayoutDOM Strict Class v28 PropertyNameFix] Module Loaded.");
 
 // --- Configuration ---
 const defaultConfig = {
@@ -46,12 +46,14 @@ export class OrbitLayoutManager {
     instanceId = `orbit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     _currentlyClickedPanel = null;
     _boundHandleRsvpUpdate = this._handleRsvpUpdate.bind(this);
+    _boundHandleClickAway = null; 
 
     constructor(nodeEl, eventEls, options = {}) {
         if (!nodeEl) { throw new Error(`[OrbitLayoutDOM ${this.instanceId}] ERROR: Central node element not provided.`); }
         this.nodeEl = nodeEl;
         this.eventEls = Array.isArray(eventEls) ? [...eventEls] : (eventEls instanceof NodeList ? Array.from(eventEls) : (eventEls ? [eventEls] : []));
         this.config = { ...defaultConfig, ...options };
+        this._boundHandleClickAway = null; 
         try {
             document.addEventListener('rsvpUpdated', this._boundHandleRsvpUpdate);
         } catch (e) {
@@ -67,20 +69,28 @@ export class OrbitLayoutManager {
         if (this.animationFrameId) { cancelAnimationFrame(this.animationFrameId); this.animationFrameId = null; }
 
         if (this._currentlyClickedPanel) {
-            const data = this.elementDataStore.get(this._currentlyClickedPanel);
-            if (data) this._unclickPanel(this._currentlyClickedPanel, data, false);
+            const currentPanel = this._currentlyClickedPanel; 
+            const data = this.elementDataStore.get(currentPanel);
+            if (data) {
+                this._unclickPanel(currentPanel, data, false)
+                    .catch(err => console.error(`[OrbitLayoutDOM ${this.instanceId}] Error unclicking panel during performLayout:`, err));
+            }
         }
-        this._currentlyClickedPanel = null;
 
         if (!this.nodeEl || !document.body.contains(this.nodeEl)) {
-             console.warn(`[OrbitLayoutDOM ${this.instanceId}] Layout aborted: Central node ${this.nodeEl?.id} missing or not in DOM.`);
-             // If nodeEl is gone, clean up any existing active elements tied to this instance
-             this.activeElements.forEach(el => this._removeElement(el));
+             console.warn(`[OrbitLayoutDOM ${this.instanceId}] Layout aborted: Central node ${this.nodeEl ? this.nodeEl.id : 'NO_NODE_EL'} missing or not in DOM.`);
+             this.activeElements.forEach(el => this._removeElement(el)); 
              this.activeElements.clear();
-             return;
+             return; 
         }
+        
         const container = this.nodeEl.offsetParent;
-        if (!container) { console.error(`%c[OrbitLayoutDOM ${this.instanceId}] FATAL ERROR: offsetParent for central node is null. Node ID: ${this.nodeEl.id}`, "color: red; font-weight: bold;"); return; }
+        if (!container) { 
+            console.error(`%c[OrbitLayoutDOM ${this.instanceId}] FATAL ERROR: offsetParent for central node is null. Node ID: ${this.nodeEl.id}. Aborting layout.`, "color: red; font-weight: bold;"); 
+            this.activeElements.forEach(el => this._removeElement(el));
+            this.activeElements.clear();
+            return;
+        }
 
         const nodeLayoutX = this.nodeEl.offsetLeft; const nodeLayoutY = this.nodeEl.offsetTop;
         this.nodeCenterX = nodeLayoutX + this.nodeEl.offsetWidth / 2;
@@ -92,11 +102,10 @@ export class OrbitLayoutManager {
 
         const N = this.config.N; const totalEvents = this.eventEls.length;
         if (totalEvents === 0 || N <= 0) {
-            // If there are no events, ensure any previously active elements are cleaned up.
             const oldActiveElements = new Set(this.activeElements);
             oldActiveElements.forEach(el => this._removeElement(el));
             this.activeElements.clear();
-            this._startAnimationLoop(); // Start loop if any pending cleanup might need it, or to stop it.
+            this._startAnimationLoop(); 
             return;
         }
         const numRings = Math.ceil(totalEvents / N);
@@ -130,15 +139,11 @@ export class OrbitLayoutManager {
                 if (!el) { eventIndex++; continue; }
 
                 if (!document.body.contains(el)) {
-                    console.warn(`[OrbitLayoutDOM ${this.instanceId}] Element ${el.id || 'UNIDED'} not in DOM during layout. Skipping.`);
-                    if (this.elementDataStore.has(el)) this.elementDataStore.delete(el); // Clean data if it existed
+                    if (this.elementDataStore.has(el)) this.elementDataStore.delete(el);
                     eventIndex++;
                     continue;
                 }
                 
-                if (!el._eventData || typeof el._eventData.id === 'undefined') {
-                    console.warn(`[OrbitLayoutDOM ${this.instanceId}] Element missing _eventData:`, el.id || el);
-                }
                 newActiveElements.add(el);
                 
                 const angle = startAngle + i * angleStep;
@@ -162,13 +167,13 @@ export class OrbitLayoutManager {
                 const initialFontSize = (diameter / OrbitLayoutManager.referenceDiameter) * OrbitLayoutManager.referenceFontSize;
                 el.style.fontSize = `${initialFontSize.toFixed(3)}px`;
                 
-                const eventIdNum = el._eventData?.id ? parseInt(String(el._eventData.id).split('-').pop(), 10) : null; // Handle cases like "groupid-eventid"
+                const eventIdNum = el._eventData?.id ? parseInt(String(el._eventData.id).split('-').pop(), 10) : null;
 
                 let data = this.elementDataStore.get(el);
-                if (data) { // Element is being re-laid out
+                if (data) { 
                     data.initialX = initialTargetCenterX; data.initialY = initialTargetCenterY;
                     data.initialRadius = circleRadius; data.initialWidth = diameter; data.initialHeight = diameter;
-                    if (!data.isHovered && !data.isClicked) { // Only reset if not in an active state
+                    if (!data.isHovered && !data.isClicked) { 
                         data.targetX = initialTargetCenterX; data.targetY = initialTargetCenterY;
                         data.currentX = initialTargetCenterX; data.currentY = initialTargetCenterY;
                         data.targetScale = 1; data.currentScale = 1;
@@ -177,7 +182,7 @@ export class OrbitLayoutManager {
                     data.config = this.config; data.nodeInfo = this.nodeInfo;
                     data._eventDataRef = el._eventData;
                     data.eventId = eventIdNum;
-                } else { // New element
+                } else { 
                     data = {
                         initialX: initialTargetCenterX, initialY: initialTargetCenterY,
                         initialRadius: circleRadius, initialWidth: diameter, initialHeight: diameter,
@@ -188,7 +193,7 @@ export class OrbitLayoutManager {
                         config: this.config, nodeInfo: this.nodeInfo,
                         eventId: eventIdNum,
                         _eventDataRef: el._eventData,
-                        preClickViewportState: null
+                        preClickViewportState: null 
                     };
                     this.elementDataStore.set(el, data);
                     this._ensureExpandedContentDiv(el);
@@ -201,14 +206,12 @@ export class OrbitLayoutManager {
             if (eventIndex >= totalEvents) break;
         }
 
-        // Cleanup elements that were active but are no longer in this.eventEls
         this.activeElements.forEach(oldEl => {
             if (!newActiveElements.has(oldEl)) {
                 this._removeElement(oldEl);
             }
         });
-        this.activeElements = newActiveElements; // Set to the newly processed set
-
+        this.activeElements = newActiveElements; 
         this._startAnimationLoop();
     }
 
@@ -224,9 +227,11 @@ export class OrbitLayoutManager {
             }
         }
         this.elementDataStore.delete(el);
-        if(this._currentlyClickedPanel === el) this._currentlyClickedPanel = null;
+        if(this._currentlyClickedPanel === el) {
+            this._currentlyClickedPanel = null;
+            this._removeClickAwayListener(); 
+        }
     }
-
 
     _resolveDomCollisions(elementsData) {
         const iterations = this.config.repulsionIterations;
@@ -242,27 +247,22 @@ export class OrbitLayoutManager {
                 for (let j = i + 1; j < elementsData.length; j++) {
                     const aData = elementsData[i];
                     const bData = elementsData[j];
-
                     const aRadius = aData.initialRadius * aData.targetScale;
                     const bRadius = bData.initialRadius * bData.targetScale;
                     const ax = aData.targetX; const ay = aData.targetY;
                     const bx = bData.targetX; const by = bData.targetY;
-
                     const targetDist = distance(ax, ay, bx, by);
                     const requiredDist = aRadius + bRadius + padding;
 
                     if (targetDist < requiredDist && targetDist > 0.01) {
                         const overlap = requiredDist - targetDist;
                         const angle = Math.atan2(by - ay, bx - ax);
-
                         const aIsFixed = aData.isHovered || aData.isClicked;
                         const bIsFixed = bData.isHovered || bData.isClicked;
-
                         let pushFactorA = 0.5, pushFactorB = 0.5;
                         if (aIsFixed && bIsFixed) { pushFactorA = 0; pushFactorB = 0; }
                         else if (aIsFixed) { pushFactorA = 0; pushFactorB = 1; }
                         else if (bIsFixed) { pushFactorA = 1; pushFactorB = 0; }
-
                         if (pushFactorA + pushFactorB > 0) {
                             const totalPushFactorInv = 1.0 / (pushFactorA + pushFactorB);
                             const pushX = Math.cos(angle) * overlap * totalPushFactorInv;
@@ -273,15 +273,12 @@ export class OrbitLayoutManager {
                     }
                 }
             }
-
             for (let i = 0; i < elementsData.length; i++) {
                 const elData = elementsData[i];
                 const elRadius = elData.initialRadius * elData.targetScale;
                 const elX = elData.targetX; const elY = elData.targetY;
-
                 const distFromCenter = distance(centralX, centralY, elX, elY);
                 const requiredDistFromCenter = centralRadius + elRadius + padding;
-
                 if (distFromCenter < requiredDistFromCenter && distFromCenter > 0.01) {
                     const overlap = requiredDistFromCenter - distFromCenter;
                     const angle = Math.atan2(elY - centralY, elX - centralX);
@@ -290,7 +287,6 @@ export class OrbitLayoutManager {
                 }
             }
         }
-
         const nudgeFactor = this.config.nudgeFactor;
         elementsData.forEach(data => {
             if (!data.isHovered && !data.isClicked) {
@@ -298,7 +294,6 @@ export class OrbitLayoutManager {
                 data.targetY = lerp(data.targetY, data.initialY, nudgeFactor);
             }
         });
-        
         elementsData.forEach(data => {
             const elRadius = data.initialRadius * data.targetScale;
             const dist = distance(centralX, centralY, data.targetX, data.targetY);
@@ -308,8 +303,7 @@ export class OrbitLayoutManager {
                 data.targetX = centralX + Math.cos(angle) * requiredDist;
                 data.targetY = centralY + Math.sin(angle) * requiredDist;
             } else if (dist <= 0.01 && requiredDist > 0) {
-                 data.targetX = centralX + requiredDist;
-                 data.targetY = centralY;
+                 data.targetX = centralX + requiredDist; data.targetY = centralY;
             }
         });
     }
@@ -324,20 +318,13 @@ export class OrbitLayoutManager {
             if (document.body.contains(el) && this.elementDataStore.has(el)) {
                 elementsData.push(this.elementDataStore.get(el));
             } else {
-                this._removeElement(el);
+                this._removeElement(el); 
                 this.activeElements.delete(el);
             }
         });
 
         if (elementsData.length === 0 && this.activeElements.size === 0) {
             this.isRunning = false;
-            // If a viewport dynamic target callback was associated with a panel from this instance,
-            // it should be cleared if this instance stops.
-            // However, viewportManager.currentDynamicTargetCallback is global to viewportManager.
-            // This might need a more instance-specific way if multiple OrbitLayouts use dynamic zoom.
-            // For now, we assume only one OrbitLayout controls dynamic zoom at a time.
-            // If _currentlyClickedPanel is null, then the dynamic target callback from
-            // _setupClickInteraction would return null, ending the dynamic zoom.
             return;
         }
 
@@ -347,20 +334,16 @@ export class OrbitLayoutManager {
             const el = Array.from(this.activeElements).find(element => this.elementDataStore.get(element) === data);
             if (!el) continue;
             const speed = data.config.animationSpeed;
-
             data.currentX = lerp(data.currentX, data.targetX, speed);
             data.currentY = lerp(data.currentY, data.targetY, speed);
             data.currentScale = lerp(data.currentScale, data.targetScale, speed);
-
             data.currentWidth = data.initialWidth * data.currentScale;
             data.currentHeight = data.initialHeight * data.currentScale;
-
             const currentLeft = data.currentX - data.currentWidth / 2;
             const currentTop = data.currentY - data.currentHeight / 2;
             const currentDiameter = data.currentWidth;
             const currentFontSize = (currentDiameter / OrbitLayoutManager.referenceDiameter) * OrbitLayoutManager.referenceFontSize;
             const clampedFontSize = Math.max(0.1, currentFontSize);
-
             const dx = data.targetX - data.currentX;
             const dy = data.targetY - data.currentY;
             const dScale = data.targetScale - data.currentScale;
@@ -372,7 +355,6 @@ export class OrbitLayoutManager {
                 data.currentX = data.targetX; data.currentY = data.targetY; data.currentScale = data.targetScale;
                 data.currentWidth = data.initialWidth * data.targetScale;
                 data.currentHeight = data.initialHeight * data.targetScale;
-                // Final snap, no need to update style here, will be done below
             }
             el.style.left = `${currentLeft.toFixed(3)}px`;
             el.style.top = `${currentTop.toFixed(3)}px`;
@@ -381,7 +363,6 @@ export class OrbitLayoutManager {
             el.style.transform = 'none';
             el.style.setProperty('--current-diameter', `${currentDiameter.toFixed(3)}px`);
             el.style.fontSize = `${clampedFontSize.toFixed(3)}px`;
-
             el.style.zIndex = (data.isHovered || data.isClicked) ? '10' : data.originalZIndex;
             this._updateContentVisibility(el, data.isClicked);
         }
@@ -398,13 +379,14 @@ export class OrbitLayoutManager {
             this.isRunning = true;
             this.animationFrameId = requestAnimationFrame(this._animationStep);
         } else if (this.activeElements.size === 0 && this.isRunning) {
-            // If no active elements, ensure isRunning is false.
-            // If an animationFrameId was pending, it would have cleared itself.
             this.isRunning = false;
+            if (this.animationFrameId) { 
+                cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = null;
+            }
         }
     }
 
-    // _ensureContentWrappers (same)
     _ensureContentWrappers(panel) {
         const originalContentClass = 'orbit-element-original-content'; const expandedContentClass = 'orbit-element-expanded-content';
         let originalContentWrapper = panel.querySelector(`.${originalContentClass}`);
@@ -419,15 +401,10 @@ export class OrbitLayoutManager {
             const expandedContent = panel.querySelector(`.${expandedContentClass}`);
             if (expandedContent) panel.insertBefore(originalContentWrapper, expandedContent);
             else panel.appendChild(originalContentWrapper);
-        } else {
-             let img = originalContentWrapper.querySelector('.event-image'); let overlay = originalContentWrapper.querySelector('.event-info-overlay');
-             if (!img || !overlay) console.warn(`[OrbitLayoutDOM ${this.instanceId}] Original content wrapper for panel ${panel.id} exists but lacks expected .event-image or .event-info-overlay.`);
         }
         this._ensureExpandedContentDiv(panel);
     }
 
-
-    // _ensureExpandedContentDiv (same)
    _ensureExpandedContentDiv(panel) {
         const containerClass = 'orbit-element-expanded-content'; let expandedDiv = panel.querySelector(`.${containerClass}`);
         if (!expandedDiv) {
@@ -437,8 +414,7 @@ export class OrbitLayoutManager {
             if (initialStatus === 'attending') { statusClass = 'status-attending'; statusText = 'Attending'; }
             else if (initialStatus === 'maybe') { statusClass = 'status-maybe'; statusText = 'Maybe'; }
             else if (initialStatus === 'declined') { statusClass = 'status-declined'; statusText = 'Declined'; }
-            else if (initialStatus === null) { statusClass = 'status-cleared'; statusText = 'Cleared'; } // Assuming null means cleared
-            
+            else if (initialStatus === null) { statusClass = 'status-cleared'; statusText = 'Cleared'; } 
             let formattedDate = "Date Placeholder";
             if (event.date) {
                 try {
@@ -446,9 +422,8 @@ export class OrbitLayoutManager {
                     if (!isNaN(dateObj.getTime())) {
                         formattedDate = dateObj.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
                     }
-                } catch (e) { console.warn("Error formatting date for panel:", event.date, e); }
+                } catch (e) { /* ignore */ }
             }
-
             const eventData = { title: event.title || "Event Title Placeholder", date: formattedDate, location: event.location || "Location Placeholder", statusClass: statusClass, statusText: statusText, logoUrl: event.image_url || null, details: event.description || "No extra details available.", cost: event.cost_display || null, id: event.id || '' };
             expandedDiv.innerHTML = `
             <div class="expanded-grid-container-v2">
@@ -465,17 +440,16 @@ export class OrbitLayoutManager {
                     if (eventId && panelEventData) {
                         const openModalEvent = new CustomEvent('openEventModalRequest', { detail: { eventData: panelEventData }, bubbles: true, composed: true });
                         document.dispatchEvent(openModalEvent);
-                    } else console.warn(`[OrbitLayoutDOM ${this.instanceId}] 'More Info' button clicked, but event ID or panel._eventData missing. Event ID: ${eventId}, Panel Data:`, panelEventData);
+                    } else console.warn(`[OrbitLayoutDOM ${this.instanceId}] 'More Info' button clicked, but event ID or panel._eventData missing.`);
                 };
-                moreInfoButton.addEventListener('click', buttonClickListener); moreInfoButton._clickListener = buttonClickListener; // Store for potential cleanup
+                moreInfoButton.addEventListener('click', buttonClickListener); moreInfoButton._clickListener = buttonClickListener; 
             }
         }
-        if (expandedDiv.style.display !== 'none') expandedDiv.style.display = 'none'; // Ensure hidden initially
+        if (expandedDiv.style.display !== 'none') expandedDiv.style.display = 'none';
         expandedDiv.classList.remove('visible');
         return expandedDiv;
     }
 
-    // _updateContentVisibility (same)
     _updateContentVisibility(panel, showExpanded) {
         const expandedDiv = panel.querySelector('.orbit-element-expanded-content'); const originalContentDiv = panel.querySelector('.orbit-element-original-content');
         const originalDisplay = 'flex'; const expandedDisplay = 'flex'; let changed = false;
@@ -493,49 +467,73 @@ export class OrbitLayoutManager {
             if (expandedDiv.classList.contains('visible') !== showExpanded) {
                  if (showExpanded) { if (!changed) requestAnimationFrame(() => { requestAnimationFrame(() => { expandedDiv.classList.add('visible'); }); });}
                  else expandedDiv.classList.remove('visible');
-                 changed = true;
-             }
+            }
         }
     }
 
-
-    // _setupHoverInteraction (same)
     _setupHoverInteraction(panel) {
         const listenerFlag = '_orbitHoverListenersAttached_v15';
         if (panel[listenerFlag]) return;
-        const handlePointerEnter = (event) => {
+        const handlePointerEnter = () => {
             const data = this.elementDataStore.get(panel);
             if (!data || data.isClicked || data.isHovered) return;
             data.isHovered = true; data.targetScale = data.config.hoverScale;
             this._startAnimationLoop();
         };
-        const handlePointerLeave = (event) => {
+        const handlePointerLeave = () => {
             const data = this.elementDataStore.get(panel); if (!data) return;
-            let needsAnim = false;
             if (data.isHovered) {
                 data.isHovered = false;
-                if (!data.isClicked) { data.targetScale = 1; needsAnim = true; }
+                if (!data.isClicked) { data.targetScale = 1; this._startAnimationLoop(); }
             }
-            if (needsAnim) this._startAnimationLoop();
         };
         panel.addEventListener('pointerenter', handlePointerEnter); panel.addEventListener('pointerleave', handlePointerLeave);
         panel[listenerFlag] = { enter: handlePointerEnter, leave: handlePointerLeave };
         if (!panel._orbitCleanups) panel._orbitCleanups = new Map();
-        const cleanupFunc = () => { panel.removeEventListener('pointerenter', handlePointerEnter); panel.removeEventListener('pointerleave', handlePointerLeave); delete panel[listenerFlag]; };
-        panel._orbitCleanups.set(this, cleanupFunc);
+        panel._orbitCleanups.set(this, () => { 
+            panel.removeEventListener('pointerenter', handlePointerEnter); 
+            panel.removeEventListener('pointerleave', handlePointerLeave); 
+            delete panel[listenerFlag]; 
+        });
     }
 
+    _addClickAwayListener() {
+        if (this._boundHandleClickAway) this._removeClickAwayListener();
+        this._boundHandleClickAway = this._handleClickAway.bind(this); 
+        document.documentElement.addEventListener('click', this._boundHandleClickAway, true); 
+    }
+
+    _removeClickAwayListener() {
+        if (this._boundHandleClickAway) {
+            document.documentElement.removeEventListener('click', this._boundHandleClickAway, true);
+            this._boundHandleClickAway = null;
+        }
+    }
+
+    _handleClickAway(event) {
+        if (!this._currentlyClickedPanel || this._currentlyClickedPanel.contains(event.target)) return;
+        const panelToUnclick = this._currentlyClickedPanel; 
+        const data = this.elementDataStore.get(panelToUnclick);
+        if (data) {
+            Promise.resolve().then(() => this._unclickPanel(panelToUnclick, data, true))
+            .catch(err => console.error(`[OrbitLayoutDOM ${this.instanceId}] Error in _handleClickAway's _unclickPanel promise:`, err));
+        } else {
+            this._removeClickAwayListener(); 
+            this._currentlyClickedPanel = null; window.draggingAllowed = true;
+        }
+    }
 
     async _setupClickInteraction(panel) {
-        const clickListenerFlag = '_orbitClickListenersAttached_v15_dynamicZoom'; // New flag version
+        const clickListenerFlag = '_orbitClickListenersAttached_v18_propFix'; 
         if (panel[clickListenerFlag]) return;
 
         const handleClick = async (event) => {
-            event.stopPropagation();
+            event.stopPropagation(); 
             if (event.target.closest('.more-info button.info-button')) return;
 
             const data = this.elementDataStore.get(panel);
-            if ((!window.draggingAllowed && !(data && data.isClicked)) || !data) return;
+            if (!data) { console.error(`[OrbitLayoutDOM ${this.instanceId}] handleClick: No data for panel ${panel.id}.`); return; }
+            if (!window.draggingAllowed && !data.isClicked) return;
 
             if (data.isClicked) {
                 await this._unclickPanel(panel, data, true);
@@ -544,222 +542,155 @@ export class OrbitLayoutManager {
                     const otherData = this.elementDataStore.get(this._currentlyClickedPanel);
                     if (otherData) await this._unclickPanel(this._currentlyClickedPanel, otherData, true);
                 }
+                data.preClickViewportState = getTransformState(); // Returns {panX, panY, scale}
+                // console.log(`[OrbitLayoutDOM ${this.instanceId}] SAVED preClickState for ${panel.id}: panX=${typeof data.preClickViewportState.panX}, panY=${typeof data.preClickViewportState.panY}, scale=${typeof data.preClickViewportState.scale}`); 
+                data.targetScale = data.config.clickScale; data.targetX = data.initialX; data.targetY = data.initialY;
+                data.isClicked = true; data.isHovered = false; 
+                this._currentlyClickedPanel = panel; window.draggingAllowed = false; 
+                this._addClickAwayListener(); this._startAnimationLoop(); 
 
-                data.preClickViewportState = getTransformState(); // Store current viewport
-
-                // Set panel's animation targets
-                data.targetScale = data.config.clickScale;
-                data.targetX = data.initialX; // Target the original orbital slot (might get repelled)
-                data.targetY = data.initialY;
-                data.isClicked = true;
-                data.isHovered = false;
-                this._currentlyClickedPanel = panel;
-                window.draggingAllowed = false;
-
-                // Start panel's own animation (scaling, moving, and collision resolution)
-                this._startAnimationLoop();
-
-                // Define the callback for dynamic viewport targeting
                 const getDynamicTargetRect = () => {
-                    if (this._currentlyClickedPanel !== panel || !this.elementDataStore.has(panel)) {
-                        return null; // Panel unclicked or removed, stop dynamic targeting
-                    }
-                    const currentPanelData = this.elementDataStore.get(panel);
-                    if (!currentPanelData.isClicked) return null; // No longer clicked
-
-                    const panelDOMWidth = currentPanelData.initialWidth * currentPanelData.targetScale; // targetScale is clickScale
-                    const panelDOMHeight = currentPanelData.initialHeight * currentPanelData.targetScale;
-
-                    return {
-                        x: currentPanelData.targetX - panelDOMWidth / 2,   // Use current targetX/Y
-                        y: currentPanelData.targetY - panelDOMHeight / 2,  // which is updated by collision
-                        width: panelDOMWidth,
-                        height: panelDOMHeight
-                    };
+                    if (this._currentlyClickedPanel !== panel || !this.elementDataStore.has(panel)) return null;
+                    const d = this.elementDataStore.get(panel); if (!d.isClicked) return null; 
+                    const w = d.initialWidth*d.targetScale; const h = d.initialHeight*d.targetScale;
+                    return {x:d.targetX-w/2, y:d.targetY-h/2, width:w, height:h};
                 };
-
-                // Initial rect for viewport (might be slightly off from final due to immediate collision)
-                const initialPanelFutureDOMWidth = data.initialWidth * data.config.clickScale;
-                const initialPanelFutureDOMHeight = data.initialHeight * data.config.clickScale;
-                const initialTargetRectForViewport = {
-                    x: data.initialX - initialPanelFutureDOMWidth / 2,
-                    y: data.initialY - initialPanelFutureDOMHeight / 2,
-                    width: initialPanelFutureDOMWidth,
-                    height: initialPanelFutureDOMHeight
-                };
-
-                // Initiate viewport zoom with the dynamic callback
-                await smoothZoomToRect(
-                    initialTargetRectForViewport, // Provide an initial target
-                    data.config.clickToFillPadding,
-                    data.config.zoomDuration,
-                    getDynamicTargetRect             // Pass the callback here
-                );
+                const iW = data.initialWidth*data.config.clickScale; const iH = data.initialHeight*data.config.clickScale;
+                await smoothZoomToRect({x:data.initialX-iW/2, y:data.initialY-iH/2, width:iW, height:iH}, 
+                    data.config.clickToFillPadding, data.config.zoomDuration, getDynamicTargetRect);
             }
-            // Ensure animation loop continues if panel is still animating or needs final snap
-            this._startAnimationLoop();
+            this._startAnimationLoop(); 
         };
 
         panel.addEventListener('click', handleClick);
         panel[clickListenerFlag] = handleClick;
         if (!panel._orbitCleanups) panel._orbitCleanups = new Map();
-        const cleanupFunc = () => { panel.removeEventListener('click', handleClick); delete panel[clickListenerFlag]; };
-        panel._orbitCleanups.set(this, cleanupFunc);
+        panel._orbitCleanups.set(this, () => { panel.removeEventListener('click', handleClick); delete panel[clickListenerFlag]; });
     }
 
     async _unclickPanel(panel, data, animateViewport = true) {
-        if (!panel || !data || !data.isClicked) return false;
-
-        data.targetScale = 1;
-        data.targetX = data.initialX; // Target back to its base orbital position
-        data.targetY = data.initialY;
-        data.isClicked = false; // Mark as unclicked *before* viewport animation
-
-        const duration = animateViewport ? data.config.zoomDuration : 0;
-        
-        // If dynamic zoom was active for this panel, its callback will now return null,
-        // causing smoothZoomToRect to finish. Then smoothSetTransformState will take over.
-        await smoothSetTransformState(data.preClickViewportState || { x: 0, y: 0, s: 1.0 }, duration);
-        data.preClickViewportState = null;
-
-        window.draggingAllowed = true;
-        
-        if (this._currentlyClickedPanel === panel) {
-            this._currentlyClickedPanel = null;
+        if (!panel || !data) {
+            if (this._currentlyClickedPanel === panel && panel) { 
+                this._removeClickAwayListener(); this._currentlyClickedPanel = null; window.draggingAllowed = true;
+            } return false;
         }
-        this._startAnimationLoop(); // Ensure panel animates back
+        const wasActive = (this._currentlyClickedPanel === panel);
+        data.isClicked = false; 
+        if (wasActive) { this._currentlyClickedPanel = null; this._removeClickAwayListener(); }
+        window.draggingAllowed = true; 
+        data.targetScale = 1; data.targetX = data.initialX; data.targetY = data.initialY;
+        
+        const duration = animateViewport ? data.config.zoomDuration : 0;
+        if (data.preClickViewportState && 
+            typeof data.preClickViewportState.panX === 'number' &&
+            typeof data.preClickViewportState.panY === 'number' &&
+            typeof data.preClickViewportState.scale === 'number') {
+            const stateToRestore = {
+                x: data.preClickViewportState.panX, y: data.preClickViewportState.panY, s: data.preClickViewportState.scale
+            };
+            // console.log(`[OLM] TYPEOF stateToRestore for smoothSet: x=${typeof stateToRestore.x}, y=${typeof stateToRestore.y}, s=${typeof stateToRestore.s}`);
+            try { await smoothSetTransformState(stateToRestore, duration); } 
+            catch (error) { console.error(`[OLM] Error restoring viewport:`, error); }
+            data.preClickViewportState = null; 
+        } else {
+            if (data.preClickViewportState) { /* console.warn(`[OLM] Invalid preClickState for ${panel.id}:`, data.preClickViewportState); */ }
+            if (animateViewport && wasActive) { await smoothSetTransformState({ x: 0, y: 0, s: 1.0 }, duration); }
+            if (data.preClickViewportState) data.preClickViewportState = null;
+        }
+        this._startAnimationLoop(); 
         return true;
     }
 
-    _handleRsvpUpdate(event) { // Same as before
+    _handleRsvpUpdate(event) { 
         const { eventId, newStatus } = event.detail;
-        if (typeof eventId !== 'number') { // Ensure eventId is a number for strict comparison
-            console.warn(`[OrbitLayoutDOM ${this.instanceId}] Received rsvpUpdated event with non-numeric eventId. Detail:`, event.detail); return;
-        }
-        for (const panel of this.activeElements) {
-            const data = this.elementDataStore.get(panel);
-            if (data && data.eventId === eventId) {
-                const expandedDiv = panel.querySelector('.orbit-element-expanded-content');
-                const statusContainer = expandedDiv ? expandedDiv.querySelector('.event-status') : null;
-                const statusPill = statusContainer ? statusContainer.querySelector('.status-pill') : null;
-                if (statusContainer && statusPill) {
-                    let statusClass = 'status-unknown'; let statusText = 'RSVP?';
-                    if (newStatus === 'attending') { statusClass = 'status-attending'; statusText = 'Attending'; }
-                    else if (newStatus === 'maybe') { statusClass = 'status-maybe'; statusText = 'Maybe'; }
-                    else if (newStatus === 'declined') { statusClass = 'status-declined'; statusText = 'Declined'; }
-                    else if (newStatus === null) { statusClass = 'status-cleared'; statusText = 'Cleared'; }
-                    statusContainer.className = `grid-item event-status ${statusClass}`; statusPill.textContent = statusText;
-                    if (panel._eventData) panel._eventData.current_user_rsvp_status = newStatus;
-                } else console.warn(`[OrbitLayoutDOM ${this.instanceId}] Could not find status pill/container elements for event ${eventId} on panel ${panel.id}.`);
-                break;
+        const numericEventId = typeof eventId === 'number' ? eventId : parseInt(String(eventId).split('-').pop(), 10);
+        if (isNaN(numericEventId) ) { console.warn(`[OLM] Invalid eventId in rsvpUpdated:`, event.detail); return; }
+        for (const p of this.activeElements) {
+            const d = this.elementDataStore.get(p);
+            if (d && d.eventId === numericEventId) {
+                const expDiv = p.querySelector('.orbit-element-expanded-content');
+                const statC = expDiv ? expDiv.querySelector('.event-status') : null;
+                const statP = statC ? statC.querySelector('.status-pill') : null;
+                if (statC && statP) {
+                    let sC='status-unknown'; let sT='RSVP?';
+                    if(newStatus==='attending'){sC='status-attending';sT='Attending';}
+                    else if(newStatus==='maybe'){sC='status-maybe';sT='Maybe';}
+                    else if(newStatus==='declined'){sC='status-declined';sT='Declined';}
+                    else if(newStatus===null){sC='status-cleared';sT='Cleared';}
+                    statC.className=`grid-item event-status ${sC}`;statP.textContent=sT;
+                    if(p._eventData)p._eventData.current_user_rsvp_status=newStatus;
+                } break;
             }
         }
     }
 
-    _cleanupInstance(keepNodeEl = false) { // Same as before
+    _cleanupInstance(keepNodeEl = false) { 
         this.isRunning = false;
         if (this.animationFrameId) { cancelAnimationFrame(this.animationFrameId); this.animationFrameId = null; }
+        this._removeClickAwayListener(); 
         if (this._currentlyClickedPanel) {
-            const data = this.elementDataStore.get(this._currentlyClickedPanel);
-            const resetState = (data && data.preClickViewportState) ? data.preClickViewportState : { x: 0, y: 0, s: 1.0 };
-            smoothSetTransformState(resetState, 0); // Immediate reset
-            if (data) data.preClickViewportState = null;
+            const p = this._currentlyClickedPanel; const d = this.elementDataStore.get(p);
+            if (d && d.preClickViewportState && typeof d.preClickViewportState.panX === 'number') {
+                smoothSetTransformState({x:d.preClickViewportState.panX, y:d.preClickViewportState.panY, s:d.preClickViewportState.scale},0);
+                d.preClickViewportState = null;
+            } else { smoothSetTransformState({x:0,y:0,s:1.0},0); }
         }
         this._currentlyClickedPanel = null;
-
-        const elementsToClean = new Set(this.activeElements);
-        elementsToClean.forEach(el => {
-            const expandedDiv = el.querySelector('.orbit-element-expanded-content');
-            if (expandedDiv && expandedDiv.parentElement === el) {
-                const moreInfoButton = expandedDiv.querySelector('.info-button');
-                if (moreInfoButton && moreInfoButton._clickListener) {
-                    moreInfoButton.removeEventListener('click', moreInfoButton._clickListener);
-                    delete moreInfoButton._clickListener;
-                }
-                try { el.removeChild(expandedDiv); } catch (e) { /* ignore if already gone */ }
-            }
-            const originalContent = el.querySelector('.orbit-element-original-content');
-            if (originalContent) { originalContent.style.display = ''; originalContent.classList.remove('hidden'); }
-            el.style.cssText = ''; el.style.removeProperty('--current-diameter');
-
-            this._removeElement(el); // Use helper for cleanup map
+        this.activeElements.forEach(el => {
+            const ed = el.querySelector('.orbit-element-expanded-content');
+            if(ed && ed.parentElement === el){ const btn=ed.querySelector('.info-button'); if(btn && btn._clickListener){btn.removeEventListener('click',btn._clickListener); delete btn._clickListener;} try{el.removeChild(ed);}catch(e){}}
+            const oc = el.querySelector('.orbit-element-original-content'); if(oc){oc.style.display=''; oc.classList.remove('hidden');}
+            el.style.cssText=''; el.style.removeProperty('--current-diameter');
+            this._removeElement(el); 
         });
         this.activeElements.clear();
         if (!keepNodeEl) { this.nodeEl = null; this.eventEls = []; this.nodeInfo = {}; }
     }
 
-    async unclickActivePanel() { // Same as before
+    async unclickActivePanel() { 
         if (!this._currentlyClickedPanel) return false;
-        const panel = this._currentlyClickedPanel;
-        const data = this.elementDataStore.get(panel);
-        if (panel && data && data.isClicked) {
-            await this._unclickPanel(panel, data, true);
-            return true;
-        }
-        // Fallback safety
-        const resetState = (data && data.preClickViewportState) ? data.preClickViewportState : { x: 0, y: 0, s: 1.0 };
-        await smoothSetTransformState(resetState, data ? data.config.zoomDuration : defaultConfig.zoomDuration);
-        if (data) {
-            data.isClicked = false;
-            data.preClickViewportState = null;
-        }
-        this._currentlyClickedPanel = null;
-        window.draggingAllowed = true;
-        this._startAnimationLoop();
+        const p = this._currentlyClickedPanel; const d = this.elementDataStore.get(p);
+        if (p && d) { await this._unclickPanel(p, d, true); return true; }
+        const rS = (d && d.preClickViewportState && typeof d.preClickViewportState.panX === 'number') ? 
+            {x:d.preClickViewportState.panX, y:d.preClickViewportState.panY, s:d.preClickViewportState.scale} : {x:0,y:0,s:1.0};
+        await smoothSetTransformState(rS, d ? d.config.zoomDuration : defaultConfig.zoomDuration);
+        if(d){d.isClicked=false; d.preClickViewportState=null;}
+        this._currentlyClickedPanel=null; this._removeClickAwayListener(); window.draggingAllowed=true; this._startAnimationLoop();
         return false;
     }
 
-    updateLayout(newEventEls = null) { // Same as before, uses performLayout which is updated
+    updateLayout(newEventEls = null) { 
         this.isRunning = false;
         if (this.animationFrameId) { cancelAnimationFrame(this.animationFrameId); this.animationFrameId = null; }
-        if (this._currentlyClickedPanel) {
-            const data = this.elementDataStore.get(this._currentlyClickedPanel);
-            if (data) this._unclickPanel(this._currentlyClickedPanel, data, false); // No viewport animation
-        }
-        this._currentlyClickedPanel = null;
-        
-        const newElementsArray = newEventEls === null ? this.eventEls : (Array.isArray(newEventEls) ? [...newEventEls] : (newEventEls instanceof NodeList ? Array.from(newEventEls) : (newEventEls ? [newEventEls] : [])));
-        
-        // Update internal list before calling performLayout
-        this.eventEls = newElementsArray.filter(el => el instanceof HTMLElement); // Basic validation
-
-        this.performLayout(); // performLayout now handles diffing and cleanup
+        const newEls = newEventEls === null ? this.eventEls : (Array.isArray(newEventEls) ? [...newEventEls] : (newEventEls instanceof NodeList ? Array.from(newEventEls) : (newEventEls ? [newEventEls] : [])));
+        this.eventEls = newEls.filter(el => el instanceof HTMLElement); 
+        this.performLayout(); 
     }
 
-    updateConfiguration(newOptions) { // Same as before
-        if (!this.nodeEl && this.activeElements.size === 0 && this.eventEls.length === 0) { console.warn(`[OrbitLayoutDOM ${this.instanceId}] Attempted to update configuration on likely destroyed or uninitialized instance.`); return; }
-        const oldCentralRadius = this.config.centralRadius; const oldHoverScale = this.config.hoverScale; const oldClickScale = this.config.clickScale;
+    updateConfiguration(newOptions) { 
+        if (!this.nodeEl && this.activeElements.size === 0 && this.eventEls.length === 0) { return; }
+        const oldCR = this.config.centralRadius; const oldHS = this.config.hoverScale; const oldCS = this.config.clickScale;
         this.config = { ...this.config, ...newOptions };
-        if ('centralRadius' in newOptions && this.nodeInfo && oldCentralRadius !== this.config.centralRadius && this.nodeEl && document.body.contains(this.nodeEl)) {
-            const autoRadius = Math.max(this.nodeEl.offsetWidth, this.nodeEl.offsetHeight) / 2;
-            this.centralNodeCollisionRadius = Math.max(autoRadius, this.config.centralRadius || 0);
+        if ('centralRadius' in newOptions && this.nodeInfo && oldCR !== this.config.centralRadius && this.nodeEl && document.body.contains(this.nodeEl)) {
+            const aR = Math.max(this.nodeEl.offsetWidth, this.nodeEl.offsetHeight)/2;
+            this.centralNodeCollisionRadius = Math.max(aR, this.config.centralRadius||0);
             this.config.centralRadius = this.centralNodeCollisionRadius; this.nodeInfo.radius = this.centralNodeCollisionRadius;
         }
-        let scaleConfigChanged = ('hoverScale' in newOptions && oldHoverScale !== this.config.hoverScale) || ('clickScale' in newOptions && oldClickScale !== this.config.clickScale);
+        let scaleChanged = ('hoverScale' in newOptions && oldHS !== this.config.hoverScale) || ('clickScale' in newOptions && oldCS !== this.config.clickScale);
         this.activeElements.forEach(el => {
-            const data = this.elementDataStore.get(el);
-            if (data) {
-                data.config = this.config; data.nodeInfo = this.nodeInfo;
-                if (scaleConfigChanged) {
-                    if (data.isClicked) { data.targetScale = this.config.clickScale; }
-                    else if (data.isHovered) { data.targetScale = this.config.hoverScale; }
-                }
-            }
+            const d = this.elementDataStore.get(el);
+            if (d) { d.config=this.config; d.nodeInfo=this.nodeInfo; if(scaleChanged){if(d.isClicked)d.targetScale=this.config.clickScale;else if(d.isHovered)d.targetScale=this.config.hoverScale;}}
         });
-        if ('animationSpeed' in newOptions || 'repulsionPadding' in newOptions || 'repulsionIterations' in newOptions || 'nudgeFactor' in newOptions || ('centralRadius' in newOptions && oldCentralRadius !== this.config.centralRadius) || scaleConfigChanged || 'clickToFillPadding' in newOptions || 'zoomDuration' in newOptions) {
+        if (Object.keys(newOptions).some(k => ['animationSpeed','repulsionPadding','repulsionIterations','nudgeFactor','centralRadius','clickToFillPadding','zoomDuration'].includes(k)) || scaleChanged) {
             this._startAnimationLoop();
         }
     }
 
-    destroy() { // Same as before
-        const nodeDesc = this.nodeEl ? this.nodeEl.id || this.nodeEl.tagName : 'Unknown Node';
-        // console.log(`[OrbitLayoutDOM ${this.instanceId}] Destroying instance for node: ${nodeDesc}`);
-        try {
-            document.removeEventListener('rsvpUpdated', this._boundHandleRsvpUpdate);
-        } catch (e) {
-            console.error(`%c[OrbitLayoutDOM ${this.instanceId}] Error removing document listener during destroy:`, "color: red;", e);
-        }
+    destroy() { 
+        try { document.removeEventListener('rsvpUpdated', this._boundHandleRsvpUpdate); } 
+        catch (e) { console.error(`[OLM] Error removing listener:`, e); }
+        this._removeClickAwayListener(); 
         this._cleanupInstance(false);
     }
-} // End Class OrbitLayoutManager
+}
 // --- END OF FILE orbitLayoutDOM.js ---
