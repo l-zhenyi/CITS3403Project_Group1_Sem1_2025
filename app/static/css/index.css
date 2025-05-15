@@ -254,12 +254,11 @@
     margin: 0 .5em;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     border-radius: 12px;
-    overflow: hidden;
 }
 
 .card:hover {
     transform: scale(1.03);
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     z-index: 2;
 }
 
@@ -481,337 +480,165 @@
     min-height: 80vh;
     padding-top: 4rem;
     padding-bottom: 4rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  }
-  
-  .hero-text h1 {
-    color: #212529;
-    text-shadow: none;
-    font-size: 2.8rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+    background-size: 40px 40px;
+    opacity: 0.4;
+    z-index: 0;
+}
+
+.hero-text {
+    padding-left: 2.5rem; /* Move text slightly to the right */
+    position: relative;
+    z-index: 1;
+}
+
+.hero-text h1 {
+    color: #fff;
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.2);
+    font-size: 3.2rem;
     margin-bottom: 1.5rem;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.5px;
 }
 
 .hero-text .lead {
-    font-size: 1.25rem;
-    margin-bottom: 2rem;
-    color: #555;
+    font-size: 1.4rem;
+    margin-bottom: 2.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 400;
+    line-height: 1.4;
 }
-  
+
 .hero-illustration {
     max-width: 100%;
     height: auto;
     animation: floatY 3s ease-in-out infinite;
     border-radius: 15px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-}
-  
-@keyframes floatY {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0); }
-}
-
-@keyframes slideInBottom {
-    from { opacity: 0; transform: translateY(40px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  .slide-in-bottom {
-    animation: slideInBottom 1s ease-out both;
-  }
-  
-  @keyframes scaleDownFadeIn {
-    from { opacity: 0; transform: scale(1.5); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  
-  .scale-down {
-    animation: scaleDownFadeIn 1s ease-out both;
-  }
-
-#hero-heading {
-    opacity: 0.;
-}
-
-.feature-section {
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-  padding: 4rem 2rem;
-  margin: 4rem auto;
-}
-
-.feature-section .text-light {
-    font-size: 1.1rem;
-    margin-bottom: 2rem;
-}
-
-.feature-section h2 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-}
-
-.feature-section h2::after {
-    content: "";
-    display: block;
-    height: 3px;
-    width: 60px;
-    margin: 8px auto 0;
-    background-color: #0d6efd;
-    border-radius: 2px;
-}
-
-.btn-group {
-    display: flex;
-    width: auto; /* Let it size naturally */
-    max-width: 400px; /* Maximum width */
-    border-radius: 999px;
-    overflow: hidden;
-    margin: 0 auto; /* Center the button group */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-  
-.btn-tab {
-    flex: 1; /* Make each tab fill equally */
-    justify-content: center; /* Center text since you're using flex */
-    background-color: transparent;
-    color: #333;
-    font-weight: 500;
-    padding: 0.75rem 1.5rem; /* Increase horizontal padding */
-    margin: 0; /* Remove margin so there's no gap between buttons */
-    border: none;
-    border-radius: 0; /* Prevent overlap weirdness */
-    transition: all 0.3s ease; /* Smoother transition */
-    min-width: 0; /* Allow shrinking if needed */
-    text-align: center;
-    display: flex;
-    align-items: center;
-}
-
-.btn-tab.active {
-    background-color: #0d6efd; /* Use primary color for consistency */
-    color: #fff;
-    font-weight: 600;
-}
-
-.btn-tab:hover:not(.active) {
-    background-color: rgba(13, 110, 253, 0.1); /* Light highlight on hover */
-}
-
-/* Responsive adjustments for the button group */
-@media (max-width: 768px) {
-    .btn-group {
-        width: 90%; /* Wider on mobile */
-        max-width: 300px;
-    }
-    
-    .btn-tab {
-        padding: 0.6rem 1rem; /* Smaller padding on mobile */
-        font-size: 0.9rem;
-    }
-}
-
-.tab-pane {
-    display: none;
-  }
-  .tab-pane.active {
-    display: block;
-  }
-
-  .btn-group {
-    display: flex;
-    width: 25%; /* Ensure it stretches across the parent */
-    border-radius: 999px;
-    overflow: hidden;
-  }
-  
-  .btn-tab {
-    flex: 1; /* Make each tab fill equally */
-    justify-content: center; /* Center text since you're using flex */
-    background-color: transparent;
-    color: #333;
-    font-weight: 500;
-    padding: 0.75rem 1rem;
-    margin: 0; /* Remove margin so there's no gap between buttons */
-    border: none;
-    border-radius: 0; /* Prevent overlap weirdness */
-    transition: all 0.2s ease;
-    min-width: 0; /* Allow shrinking if needed */
-    text-align: center;
-    display: flex;
-    align-items: center;
-  }
-  
-  
-  .btn-tab.active {
-    background-color: #464646;
-    color: #fff;
-  }
-
-.tab-pane img {
-    background: rgba(255, 255, 255, 0.05);  /* Translucent frame */
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 1rem;
-    padding: 0.5rem;
-    max-width: 100%;
-    max-height: 300px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    object-fit: cover; /* Ensure consistent sizing */
-}
-
-.tab-pane img:hover {
-    transform: scale(1.05);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
-}
-
-.tab-pane-heading {
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-    letter-spacing: 0.5px;
-    font-size: 1.75rem;
-    color: #fff;
-    margin-bottom: 1.5rem;
-}
-
-.tab-pane .fst-italic {
-    font-size: 1.15rem;
-}
-
-.tab-pane .list-unstyled li {
-    margin-bottom: 0.75rem;
-    font-size: 1.05rem;
-}
-
-.fixed-height {
-    min-height: 400px; /* Set a consistent height for the tab content */
-}
-
-.fade-up-on-scroll {
-    opacity: 0;
-    transform: translateY(40px);
-    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
-    will-change: opacity, transform;
-}
-  
-.fade-up-on-scroll.visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-  
-.fade-left {
-    opacity: 0;
-    transform: translateX(-40px);
-    transition: all 0.8s ease;
-  }
-  .fade-left.visible {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  
-  .scale-in {
-    opacity: 0;
-    transform: scale(1.2);
-    transition: all 0.8s ease;
-  }
-  .scale-in.visible {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-/* New styling for feature list */
-.feature-list {
-    padding-left: 1.5rem;
-}
-
-.feature-list li {
-    margin-bottom: 0.7rem;
-    position: relative;
-}
-
-.feature-list li::before {
-    content: "✓";
-    position: absolute;
-    left: -1.5rem;
-    color: #0d6efd;
-    font-weight: bold;
-}
-
-/* Animation delay helper */
-.delay-200 {
-    transition-delay: 200ms;
-}
-
-/* Feature images enhancements */
-.feature-image {
-    border-radius: 12px;
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-    transition: all 0.4s ease;
-    max-height: 300px;
-    width: auto;
-}
-
-.feature-image:hover {
-    transform: scale(1.05) translateY(-10px);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    transform: perspective(1000px) rotateY(-5deg);
+    transition: all 0.5s ease;
 }
 
-/* Better styling for the feature benefits */
-.feature-benefits li {
-    padding: 10px 15px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    margin-bottom: 10px !important;
-    transition: transform 0.3s ease, background 0.3s ease;
+.hero-illustration:hover {
+    transform: perspective(1000px) rotateY(0deg) scale(1.03);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
 }
 
-.feature-benefits li:hover {
-    transform: translateX(5px);
-    background: rgba(255, 255, 255, 0.1);
+/* Custom button styles */
+.btn-outline-light-blue {
+    color: #fff;
+    background-color: #5c9eff; /* Lighter blue */
+    border-color: #5c9eff;
+    border-radius: 50px;
+    padding: 0.75rem 1.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(92, 158, 255, 0.3);
 }
 
-/* Text gradient for hero heading */
-.text-gradient {
-    background: linear-gradient(45deg, #007bff, #6610f2);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+.btn-outline-light-blue:hover {
+    background-color: #7ab0ff; /* Even lighter on hover */
+    border-color: #7ab0ff;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(92, 158, 255, 0.4);
+}
+
+/* Enhanced Why Plannit Section */
+.section-header.large-header {
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+    margin-bottom: 1.5rem;
+    position: relative;
     display: inline-block;
 }
 
-/* New CTA section */
-.cta-section {
-    background: rgba(13, 110, 253, 0.1);
-    border-radius: 16px;
-    padding: 3rem !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+.section-header.large-header::after {
+    content: "";
+    display: block;
+    height: 4px;
+    width: 80px;
+    margin: 12px auto 0;
+    background: linear-gradient(90deg, #0d6efd, #5c9eff);
+    border-radius: 2px;
 }
 
-.cta-section h2 {
-    color: #fff;
-    font-size: 2.2rem;
-    font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+/* Interactive image in easier section */
+.easier-section img.interactive {
+    border-radius: 20px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    z-index: 1;
+    transform-origin: center;
 }
 
-.cta-section .lead {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 1.2rem;
-    max-width: 700px;
-    margin: 0 auto;
+.easier-section img.interactive:hover {
+    transform: scale(1.08) translateY(-10px) rotate(2deg);
+    box-shadow: 0 25px 40px rgba(0, 0, 0, 0.3);
+    filter: brightness(1.1) contrast(1.1);
 }
 
-/* Testimonial section enhancements */
+/* ------ Fixed Testimonial Carousel Styles ------ */
+.testimonial-carousel {
+  position: relative;
+  padding: 1rem 0; /* Reduced from 2rem to 1rem */
+  overflow: hidden;
+  margin: 0 auto; /* Removed top/bottom margin, was 2rem auto */
+  max-width: 1200px;
+}
+
 .testimonial-section {
-    padding: 3rem 0;
+  padding-top: 2rem !important; /* Reduced from 4rem */
+  padding-bottom: 0 !important; /* Reduced from 1rem */
+  margin-top: 2rem !important; /* Added to reduce space from previous section */
+  margin-bottom: 2rem !important; /* Added to reduce space to next section */
 }
 
-.testimonial-section .card {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+.testimonial-container {
+  overflow: hidden;
+  margin: 0 50px;
+  position: relative;
 }
 
-.testimonial-section .card-body {
-    margin-top: auto;
+/* Compact card styling */
+.testimonial-card {
+  min-height: 200px; /* Reduced from 220px */
+  padding: 1.25rem; /* Reduced from 1.5rem */
+  margin: 0 5px;
+}
+
+/* Reduced nav spacing */
+.carousel-nav {
+  margin-top: 1rem; /* Reduced from 1.5rem */
+}
+
+/* Fix spacing between sections */
+.section-spacing {
+  margin-top: 3rem; /* Reduced from 5rem */
+  margin-bottom: 3rem; /* Reduced from 5rem */
+}
+
+/* Make easier section closer to testimonials */
+.easier-section {
+  margin-bottom: 2rem !important; /* Reduced from 4rem */
+}
+
+/* Make CTA section closer to testimonials */
+.cta-section {
+  margin-top: 3rem !important; /* Reduced from 7rem */
 }
