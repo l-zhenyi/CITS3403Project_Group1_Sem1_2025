@@ -285,11 +285,15 @@ export function openDayEventsModal(dateString, eventsForDay) {
     }
 
     dayEventsModalEl.classList.add('visible');
+    dayEventsModalEl.style.display = 'flex';
 }
 
 function closeDayEventsModal() {
     if (dayEventsModalEl) {
         dayEventsModalEl.classList.remove('visible');
+        setTimeout(() => {
+            dayEventsModalEl.style.display = 'none';
+        }, 300);
     }
 }
 
@@ -711,11 +715,13 @@ export function renderCalendar(year, month) {
             previewListContainer.classList.add('has-overflow');
         }
 
-        if (eventsOnThisDay.length > 0) {
-            cell.addEventListener('click', () => {
-                openDayEventsModal(dateStr, eventsOnThisDay);
-            });
-        }
+        // Always make the day cell clickable so the modal can open even when
+        // there are no events (the modal will simply show a "No events" message).
+        cell.addEventListener('click', () => {
+            // Re‑lookup events at click time in case eventsByDate mutates later.
+            const eventsForClick = eventsByDate[dateStr] || [];
+            openDayEventsModal(dateStr, eventsForClick);
+        });
         calendarGridEl.appendChild(cell);
     }
 

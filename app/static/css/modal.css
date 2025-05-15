@@ -358,9 +358,24 @@ h4 { font-size: 1.05rem; font-weight: 500; color: #e0e0e5; margin-top: 15px; mar
 .badge.owner-badge { margin-left: auto; padding: 3px 8px; font-size: 0.75rem; font-weight: 500; background-color: rgba(255, 193, 7, 0.7); color: #333; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
 
 /* Day Events Modal */
-.day-events-modal { position: fixed; inset: 0; background-color: rgba(30, 30, 35, 0.65); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s; }
-.day-events-modal.visible { opacity: 1; visibility: visible; transition-delay: 0s; }
-.day-events-modal .modal-content { max-width: 450px; width: 100%; background: rgba(60, 60, 70, 0.85); backdrop-filter: blur(25px) saturate(160%); -webkit-backdrop-filter: blur(25px) saturate(160%); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 20px 25px; box-shadow: 0 6px 25px rgba(0,0,0,0.25); transform: scale(0.95); transition: transform 0.3s ease; overflow: hidden; display: flex; flex-direction: column; }
+.day-events-modal { position: fixed; inset: 0; background-color: rgba(30, 30, 35, 0.65); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); z-index: 1050; display: none; align-items: center; justify-content: center; padding: 20px; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s; }
+.day-events-modal.visible { display: flex; opacity: 1; visibility: visible; transition-delay: 0s; }
+.day-events-modal .modal-content {
+    max-width: 450px;
+    width: 100%;
+    background: rgba(140, 140, 145, 0.7);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 16px;
+    padding: 20px 25px;
+    box-shadow: 0 6px 25px rgba(0,0,0,0.25);
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
 .day-events-modal.visible .modal-content { transform: scale(1); }
 .day-events-modal #day-events-modal-title { font-size: 1.3rem; color: #fff; margin-bottom: 15px; text-align: center; }
 .day-events-modal .day-event-list { list-style: none; padding: 0; margin: 0; max-height: 350px; overflow-y: auto; }
