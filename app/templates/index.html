@@ -14,12 +14,12 @@
 {% block content %}
 <div class="dashboard-container">
     <div class="glassy dashboard-pane">
+         <h1>Welcome, {{ current_user.username if current_user.is_authenticated else 'Guest' }}</h1>
         <!-- Hero section -->
         <section class="hero-section">
             <div class="container">
                 <div class="row align-items-center justify-content-between w-100">
                     <div class="col-lg-6 hero-text slide-in-bottom">
-
                         <h1 class="display-4 fw-bold mb-4 text-gradient" id="hero-heading">Smart Tools to Plan Better</h1>
                         <p class="lead mb-4 fw-medium">Plan, vote, and coordinate in one streamlined platform with our intuitive tools designed for modern teams.</p>
                         <div class="d-flex flex-wrap gap-3">
