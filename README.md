@@ -1,9 +1,9 @@
 # Plannit
-## Created for CITS3403 Semester 1 2025
-### Application Purpose, Use and Design
+### Created for CITS3403 Semester 1 2025
+## Application Purpose, Use and Design
 Our all-in-one platform empowers you to stay connected and organized with ease. Add friends, create and manage groups, share posts, send direct messages, plan events, and track shared expenses — all in one seamless experience. Whether for personal use or group coordination, our app brings clarity, convenience, and connection to every interaction.
 
-### Group Members
+## Group Members
 | UWA ID  | Name | Github username |
 | ----------- | ----------- | ----------- |
 | 24263238 | Zhen Yi Lim | l-zhenyi |
@@ -11,7 +11,7 @@ Our all-in-one platform empowers you to stay connected and organized with ease. 
 | 23970936 | Jacob Read | Consumer-of-Souls |
 | 23737821 | Aidan Kirby-Smith | Aidan-KS |
 
-### Installation and running 
+## Installation and running 
 #### **Add the following to a .flaskenv file**
 ```
 FLASK_APP=run.py
@@ -39,14 +39,14 @@ flask db upgrade
 flask run
 ```
 
-### Running tests
-#### Python Models test
+## Running tests
+### Python Models test
 In the project root dictionary, run:
 ```
 python -m unittest testing.test_models
 ```
 
-#### Selenium tests
+### Selenium tests
 Open the first terminal. In the project root dictionary, run:
  ```
 flask run
