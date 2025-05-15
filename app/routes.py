@@ -76,10 +76,7 @@ def before_request():
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
 def index():
-        if current_user.is_authenticated:
-            return redirect(url_for('planner'))
-        else:
-            return render_template('index.html', hide_nav=True, title='Home')
+    return render_template('index.html', title='Home')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
