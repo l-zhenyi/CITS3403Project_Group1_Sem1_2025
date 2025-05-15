@@ -1,0 +1,135 @@
+/* Common section styling */
+.section-container {
+    margin-bottom: 3rem;
+    border-radius: 12px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Space between sections */
+.section-spacing {
+    margin-bottom: 4rem;
+}
+
+/* Hero section specific */
+.hero-section {
+    margin-top: 1rem;
+}
+
+/* Feature section */
+.feature-section, .why-plannit-section, .testimonial-section, .cta-section {
+    position: relative;
+    background: rgba(255,255,255,0.04);
+    border-radius: 18px;
+    margin-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 24px 0 rgba(60, 80, 180, 0.07);
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+}
+
+/* Section headers */
+.section-header {
+    font-weight: 700;
+    margin-bottom: 2rem;
+    position: relative;
+    display: inline-block;
+}
+
+.section-header.large-header {
+    font-size: 2rem;
+    letter-spacing: 1px;
+}
+
+.section-header:after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -10px;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 3px;
+    background: linear-gradient(90deg, #4d7cff, #6a5acd);
+    border-radius: 3px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .section-container {
+        padding: 1.5rem;
+    }
+    
+    .section-spacing {
+        margin-bottom: 3rem;
+    }
+    
+    .section-header.large-header {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .hero-section,
+    .feature-section,
+    .why-plannit-section,
+    .testimonial-section,
+    .cta-section {
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-top: 2.2rem;
+        padding-bottom: 2.2rem;
+    }
+}
+
+.hero-section .row,
+.feature-section .row,
+.why-plannit-section .row {
+    flex-direction: row !important;
+}
+
+@media (max-width: 991.98px) {
+  .hero-section .row,
+  .feature-section .row,
+  .why-plannit-section .row {
+    flex-direction: column-reverse !important;
+  }
+  .section-image-wrapper {
+    margin-bottom: 2rem;
+  }
+}
+
+.section-image-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 220px;
+}
+
+.feature-section .tab-content {
+    margin-top: 2.5rem;
+}
+
+.why-plannit-section ul.feature-benefits {
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+}
+
+.cta-section .row {
+    justify-content: center;
+}
+
+.cta-section h2 {
+    margin-bottom: 1.5rem;
+}
+
+.cta-section p {
+    margin-bottom: 2rem;
+}
+
+.testimonial-section .testimonial-carousel {
+    margin-top: 2rem;
+}

@@ -1,0 +1,80 @@
+/* Animation styles for the index page */
+
+/* Base state for all animations - hidden */
+.fade-up-on-scroll,
+.slide-in-bottom,
+.fade-left,
+.scale-in {
+    opacity: 0;
+    transition: all 0.8s ease-out;
+}
+
+/* Feature image hover effects */
+.feature-image {
+    transition: transform 0.4s ease, box-shadow 0.4s ease, filter 0.4s ease;
+    border-radius: 8px;
+    filter: brightness(1);
+}
+
+.feature-image:hover {
+    transform: scale(1.05) translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    filter: brightness(1.1);
+}
+
+/* Fade up animation */
+.fade-up-on-scroll {
+    transform: translateY(40px);
+}
+
+.fade-up-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Slide in from bottom animation */
+.slide-in-bottom {
+    transform: translateY(40px);
+}
+
+.slide-in-bottom.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Fade in from left animation */
+.fade-left {
+    transform: translateX(-40px);
+}
+
+.fade-left.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Scale in animation */
+.scale-in {
+    transform: scale(0.9);
+}
+
+.scale-in.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Additional animation for cards if needed */
+.animated-card {
+    transform: translateY(30px);
+}
+
+.animated-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered animation delays */
+.delay-100 { transition-delay: 100ms; }
+.delay-200 { transition-delay: 200ms; }
+.delay-300 { transition-delay: 300ms; }
+.delay-400 { transition-delay: 400ms; }
+.delay-500 { transition-delay: 500ms; }
