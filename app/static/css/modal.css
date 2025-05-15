@@ -29,7 +29,9 @@
     width: 100%;
     max-width: 600px; /* DEFAULT max-width for most modals */
     max-height: calc(100vh - 40px);
+    overflow-y: auto;   /* allow the whole dialog to scroll if necessary */
     margin: auto;
+    min-height: 0;
 }
 
 /* --- SPECIFIC STYLING FOR EVENT DETAILS MODAL DIALOG TO BE LARGER --- */
@@ -60,15 +62,25 @@
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
     padding: 25px 35px;
     width: 100%;
-    max-height: 100%;
-    overflow: hidden;
+    max-height: calc(100vh - 80px); /* keep entire modal on‑screen with room for padding */
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;    /* include padding/border in the set height */
     color: #f0f0f5;
     transform: scale(0.95);
     transition: transform 0.3s ease, opacity 0.3s ease;
     flex-grow: 1;
     min-height: 0;
+    max-height: 100%;
+}
+
+/* Make any direct <form> inside a .modal-content act as a flex column so
+   its header/body/footer parts align properly and the body can scroll */
+.modal-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;            /* allow flex children to size correctly */
 }
 
 .modal-backdrop.visible .modal-content {
@@ -145,6 +157,7 @@
 /* Modal Body - GENERAL default (can be overridden) */
 .modal-body {
     flex-grow: 1; /* Allow body to take up space */
+    flex: 1 1 auto;
     overflow-y: auto; /* Add scroll if content exceeds */
     padding: 5px 10px; /* Minimal default padding */
     min-height: 0; /* Crucial for flex children */
@@ -260,10 +273,18 @@
 #group-settings-modal .modal-content,
 #event-creation-modal .modal-content,
 #share-panel-modal .modal-content {
-     height: auto; /* Let content dictate height up to max-height of dialog */
+     height: auto;
+}
+
+#group-settings-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    overflow: hidden;
 }
 
 /* Make modal-body within forms scrollable AND have single column layout */
+
 #create-group-modal .modal-body,
 #group-settings-modal .modal-body,
 #event-creation-modal .modal-body,
@@ -272,8 +293,12 @@
     flex-direction: column; /* ADDED for single column scroll */
     gap: 15px; /* ADDED for spacing between form sections */
     padding: 10px 15px 10px 10px; /* Adjusted padding for scrollbar */
-    /* flex-grow, min-height, overflow-y are inherited from general .modal-body */
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
 }
+
+
 
 /* Scrollbar styling for form modal bodies */
 #create-group-modal .modal-body::-webkit-scrollbar,
@@ -400,5 +425,15 @@ h4 { font-size: 1.05rem; font-weight: 500; color: #e0e0e5; margin-top: 15px; mar
     .day-events-modal .modal-content { padding: 15px 20px; }
 }
 
+
+/* --- Constrain form-based modal content height so body scrolls, footer remains visible --- */
+#create-group-modal .modal-content,
+#group-settings-modal .modal-content,
+#event-creation-modal .modal-content,
+#share-panel-modal .modal-content {
+    max-height: calc(90vh - 60px);
+    display: flex;
+    flex-direction: column;
+}
 
 /* --- END OF FILE static/css/modal.css --- */
