@@ -1,10 +1,9 @@
-# Application Purpose, Use and Design
-The purpose of this web application is to help users efficiently manage and split group expenses. Whether for shared housing, 
-group trips, or social gatherings, this platform allows users to easily track and manage their collective financial contributions. 
-It streamlines the process of calculating how much each individual owes or is owed, ensuring that no one is left in the dark when 
-it comes to splitting costs fairly.
+# Plannit
+## Created for CITS3403 Semester 1 2025
+### Application Purpose, Use and Design
+Our all-in-one platform empowers you to stay connected and organized with ease. Add friends, create and manage groups, share posts, send direct messages, plan events, and track shared expenses — all in one seamless experience. Whether for personal use or group coordination, our app brings clarity, convenience, and connection to every interaction.
 
-# Group Members
+### Group Members
 | UWA ID  | Name | Github username |
 | ----------- | ----------- | ----------- |
 | 24263238 | Zhen Yi Lim | l-zhenyi |
@@ -12,23 +11,50 @@ it comes to splitting costs fairly.
 | 23970936 | Jacob Read | Consumer-of-Souls |
 | 23737821 | Aidan Kirby-Smith | Aidan-KS |
 
-# Installation and running 
-```
-python3 -m venv venv
-
-# If using MacOS or Linux
-source venv/bin/activate
-# If using Winddows
-venv/Scripts/activate
-
-pip install -r requirements.txt
-flask db upgrade
-flask run
-```
-
-#### **You should also have these in a .flaskenv file**
+### Installation and running 
+#### **Add the following to a .flaskenv file**
 ```
 FLASK_APP=run.py
 FLASK_ENV=development
-SECRET_KEY=<SOME SECRET KEY OF YOUR CHOOSING>
+SECRET_KEY="<SOME SECRET KEY OF YOUR CHOOSING>"
+```
+
+#### On Windows
+```
+python3 -m venv .venv
+venv/Scripts/activate
+python -m pip install -r requirements.txt
+flask db upgrade
+```
+#### On Linux/MacOS
+```
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+flask db upgrade
+```
+
+#### Run app with
+```
+flask run
+```
+
+### Running tests
+#### Python Models test
+In the project root dictionary, run:
+```
+python -m unittest testing.test_models
+```
+
+#### Selenium tests
+Open the first terminal. In the project root dictionary, run:
+ ```
+flask run
+```
+Open a second terminal. In the project root dictionary, run these commands one at a time and observe the Selenium tests:
+```
+python -m unittest testing.test_auth
+python -m unittest testing.test_friends
+python -m unittest testing.test_group
+python -m unittest testing.test_messages
 ```
