@@ -1566,12 +1566,10 @@ def get_analysis_data(analysis_type):
         results = db.session.execute(stmt).all()
         analysis_data = [{"category": row.category, "amount": round(row.total_cost or 0, 2)} for row in results]
         
-        final_report_title = f"Attended Event Spending {title_group_part} - {date_filter_title_part}{panel_context_title_suffix}"
         if not analysis_data: final_report_title += " (No Data)"
 
         return jsonify({
             "analysis_type": analysis_type,
-            "title": final_report_title,
             "data": analysis_data,
             "config_used": active_config_for_query
         })
@@ -1596,12 +1594,10 @@ def get_analysis_data(analysis_type):
                 app.logger.warning(f"Could not parse coordinates: '{coord_str}'. Error: {e}")
                 continue
         
-        final_report_title = f"Event Location Heatmap {title_group_part} - {date_filter_title_part}{panel_context_title_suffix}"
         if not heatmap_points: final_report_title += " (No Location Data)"
 
         return jsonify({
             "analysis_type": analysis_type,
-            "title": final_report_title,
             "data": heatmap_points,
             "config_used": active_config_for_query
         })

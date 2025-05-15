@@ -26,7 +26,7 @@ let sourceIndex = -1,
 let gridRect = null,
     paletteRect = null,
     animationFrameId = null;
-let activeChartInstances = {}; // Keyed by panelInstanceKey. Stores { type: 'chartjs'/'leaflet', instance: chartOrMap }
+let activeChartInstances = {}; // Keyed by panelInstanceKey. Stores { type: 'chartjs'/'leaflet', instance: chartOrMap, layer?: leafletLayer }
 let userGroupsCache = []; // Current logged-in user's groups
 let gridCellLayout = [],
     gridComputedStyle = null,
@@ -40,7 +40,7 @@ const SCROLL_THRESHOLD = 40,
     API_BASE = '/api',
     CHART_ANIMATION_DURATION = 400,
     DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
-let chartInDraggedElement = null; // This is specifically for Chart.js instances in dragged clones from palette
+let chartInDraggedElement = null;
 
 // --- Module-scoped variable for the debounced resize handler ---
 let _debouncedResizeHandler = null;
@@ -75,6 +75,22 @@ function debounce(func, wait) {
     };
 }
 
+// Combine multiple visits to the same lat/lng (rounded to 4 dp ≈ 11 m)
+// so the heat‑map colour encodes “visit count”.
+function aggregateHeatmapData(raw) {
+    const counts = new Map();
+    raw.forEach(([lat, lng]) => {
+        const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        if (!counts.has(key)) counts.set(key, { lat: +lat, lng: +lng, value: 0 });
+        counts.get(key).value += 1;
+    });
+    const arr = [...counts.values()];
+    return {
+        data: arr,
+        max: Math.max(...arr.map(p => p.value), 1)
+    };
+}
+
 // --- API Interaction Helpers ---
 async function fetchApi(url, options = {}) {
     const defaultHeaders = {
@@ -85,7 +101,8 @@ async function fetchApi(url, options = {}) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (csrfToken) defaultHeaders['X-CSRFToken'] = csrfToken;
     }
-    options.headers = { ...defaultHeaders,
+    options.headers = {
+        ...defaultHeaders,
         ...options.headers
     };
     if (options.body && typeof options.body !== 'string') {
@@ -101,7 +118,7 @@ async function fetchApi(url, options = {}) {
             };
             try {
                 errorData = await response.json();
-            } catch (e) {}
+            } catch (e) { }
             throw new Error(errorData.error || `HTTP error ${response.status}`);
         }
         if (response.status === 204 || response.headers.get('content-length') === '0') return null;
@@ -330,7 +347,7 @@ function _updatePanelConfigSummary(panelElement, backendGeneratedTitle = null) {
         } else {
             try {
                 configSource = JSON.parse(panelElement.dataset.recipientChosenConfig || '{}');
-            } catch (e) {}
+            } catch (e) { }
             configSource.group_id = panelElement.dataset.sharedConfigGroupId || configSource.group_id || 'all';
         }
     } else {
@@ -409,7 +426,7 @@ function _handleSlideEvent(values, handle, unencoded, tap, positions, sliderInst
                 year: 'numeric',
                 timeZone: 'UTC'
             };
-            sliderDisplayElement.textContent = `${sD.toLocaleDateString(undefined,opts)} - ${eD.toLocaleDateString(undefined,opts)}`;
+            sliderDisplayElement.textContent = `${sD.toLocaleDateString(undefined, opts)} - ${eD.toLocaleDateString(undefined, opts)}`;
         } catch (e) {
             sliderDisplayElement.textContent = "Date Error";
         }
@@ -428,7 +445,7 @@ async function _handleConfigChange(panelElement, event = null) {
         if (accessMode === 'dynamic') {
             try {
                 currentConfig = JSON.parse(panelElement.dataset.recipientChosenConfig || '{}');
-            } catch (e) {}
+            } catch (e) { }
             currentConfig.group_id = panelElement.dataset.sharedConfigGroupId || currentConfig.group_id || 'all';
         } else {
             currentConfig.group_id = panelElement.dataset.sharedConfigGroupId;
@@ -439,7 +456,7 @@ async function _handleConfigChange(panelElement, event = null) {
     } else {
         try {
             currentConfig = JSON.parse(panelElement.dataset.configuration || '{}');
-        } catch (e) {}
+        } catch (e) { }
     }
 
     const idSuffix = panelInstanceKey.replace(/[^\w-]/g, '_');
@@ -534,7 +551,7 @@ function _initializePanelConfigurationControls(panelElement, panelDataForControl
         } else {
             try {
                 configForSetup = JSON.parse(panelElement.dataset.recipientChosenConfig || '{}');
-            } catch (e) {}
+            } catch (e) { }
             configForSetup.group_id = panelElement.dataset.sharedConfigGroupId || configForSetup.group_id || 'all';
         }
     } else {
@@ -576,7 +593,7 @@ function _initializePanelConfigurationControls(panelElement, panelDataForControl
     if (sliderElement && sliderDisplayElement && typeof noUiSlider !== 'undefined' && typeof sliderNumberFormatter !== 'undefined') {
         if (sliderElement.noUiSlider) try {
             sliderElement.noUiSlider.destroy();
-        } catch (e) {}
+        } catch (e) { }
 
         let minTimestamp, maxTimestamp;
         try {
@@ -601,7 +618,7 @@ function _initializePanelConfigurationControls(panelElement, panelDataForControl
                     initialStart = Math.max(minTimestamp, psd);
                     initialEnd = Math.min(maxTimestamp, ped);
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
         if (initialStart === initialEnd) {
             if (initialStart < maxTimestamp) initialEnd = Math.min(initialStart + DAY_IN_MILLISECONDS, maxTimestamp);
@@ -647,7 +664,7 @@ function _initializePanelConfigurationControls(panelElement, panelDataForControl
                     if (!Number.isFinite(s) || !Number.isFinite(e)) throw Error();
                     const sD = new Date(s),
                         eD = new Date(e);
-                    sliderDisplayElement.textContent = `${sD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})} - ${eD.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}`;
+                    sliderDisplayElement.textContent = `${sD.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })} - ${eD.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}`;
                 } catch (err) {
                     sliderDisplayElement.textContent = "Date Error";
                 }
@@ -715,14 +732,31 @@ async function loadPanelContent(panelElement, isForPaletteDragClone = false, rec
     } else if (isClone && chartInDraggedElement) {
         try {
             chartInDraggedElement.destroy();
-        } catch (e) {}
+        } catch (e) { }
         chartInDraggedElement = null;
     }
+    // Re‑use the existing Leaflet map+layer if we’re reloading the same heat‑map panel
+    let reuseExistingMap = analysisType === 'event-location-heatmap' &&
+                           activeInstanceData &&
+                           activeInstanceData.type === 'leaflet';
 
-    if (activeInstanceData) {
+    if (activeInstanceData && !reuseExistingMap) {
         try {
             if (activeInstanceData.type === 'chartjs') activeInstanceData.instance.destroy();
-            else if (activeInstanceData.type === 'leaflet') activeInstanceData.instance.remove();
+            else if (activeInstanceData.type === 'leaflet') {
+                // Full cleanup for Leaflet
+                const mapInstance = activeInstanceData.instance;
+                const mapContainerEl = mapInstance.getContainer();
+                if (mapContainerEl) {
+                    L.DomEvent.off(mapContainerEl, 'mousedown', L.DomEvent.stopPropagation);
+                    L.DomEvent.off(mapContainerEl, 'pointerdown', L.DomEvent.stopPropagation);
+                    L.DomEvent.off(mapContainerEl, 'touchstart', L.DomEvent.stopPropagation);
+                }
+                if (activeInstanceData.layer && mapInstance.hasLayer(activeInstanceData.layer)) {
+                    mapInstance.removeLayer(activeInstanceData.layer);
+                }
+                mapInstance.remove();
+            }
         } catch (e) {
             console.error("Error destroying previous instance:", e);
         }
@@ -731,7 +765,9 @@ async function loadPanelContent(panelElement, isForPaletteDragClone = false, rec
 
 
     const analysisDetails = getAnalysisDetails(analysisType);
-    contentContainer.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`;
+    if (!reuseExistingMap) {
+        contentContainer.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-spinner fa-spin fa-2x'></i><p>Loading data...</p></div>`;
+    }
     if (isClone) {
         const s = panelElement.querySelector('.panel-config-summary');
         if (s) s.textContent = "Default View";
@@ -748,6 +784,8 @@ async function loadPanelContent(panelElement, isForPaletteDragClone = false, rec
             if (typeof Chart === 'undefined') throw new Error("Chart.js library missing.");
             if (analysisResult.data.length > 0) {
                 contentContainer.innerHTML = '';
+                // Ensure interactions inside the panel work after replacing the placeholder
+                contentContainer.style.pointerEvents = 'auto';
                 const canvas = document.createElement('canvas');
                 contentContainer.appendChild(canvas);
                 const ctx = canvas.getContext('2d');
@@ -780,7 +818,7 @@ async function loadPanelContent(panelElement, isForPaletteDragClone = false, rec
                             titleColor: '#eee',
                             bodyColor: '#ddd',
                             callbacks: {
-                                label: ctxTooltip => `${ctxTooltip.label||''}: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(ctxTooltip.parsed)} (${(ctxTooltip.parsed/ctxTooltip.chart.data.datasets[0].data.reduce((a,b)=>a+b,0)*100).toFixed(1)}%)`
+                                label: ctxTooltip => `${ctxTooltip.label || ''}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(ctxTooltip.parsed)} (${(ctxTooltip.parsed / ctxTooltip.chart.data.datasets[0].data.reduce((a, b) => a + b, 0) * 100).toFixed(1)}%)`
                             }
                         }
                     }
@@ -826,54 +864,103 @@ async function loadPanelContent(panelElement, isForPaletteDragClone = false, rec
                 if (!isClone) _updatePanelConfigSummary(panelElement, "Map Library Error");
                 return;
             }
+            // Pre‑aggregate the points once so both the fast‑update and new‑map paths share it
+            const { data: heatmapData, max: heatmapMax } = aggregateHeatmapData(analysisResult.data || []);
+            // ─────────────────────────────────────────────
+            // Fast update path: re‑use existing Leaflet map
+            // ─────────────────────────────────────────────
+            if (reuseExistingMap) {
+                const map               = activeInstanceData.instance;
+                const currentHeatLayer  = activeInstanceData.layer;
 
+                currentHeatLayer.setData({ max: heatmapMax, data: heatmapData });
+
+                // Adjust view only if new data falls outside the previous bounds
+                try {
+                    // Adjust view only if new data falls outside the previous bounds
+                    const newBounds = L.latLngBounds(analysisResult.data.map(p => [p[0], p[1]]));
+                    if (newBounds.isValid()) {
+                        const prevBounds = activeInstanceData.bounds;
+                        if (!prevBounds || !prevBounds.contains(newBounds)) {
+                            map.fitBounds(newBounds, { padding:[30,30] });
+                            activeInstanceData.bounds = map.getBounds();
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+
+                map.invalidateSize();
+                return; // Done – skip the slower full‑rebuild path
+            }
             if (isClone) {
                 contentContainer.innerHTML = analysisDetails?.placeholder_html || `<div class='loading-placeholder'><i class='fas fa-map-marked-alt fa-2x'></i><p>Heatmap Preview</p></div>`;
             } else {
                 contentContainer.innerHTML = '<div class="leaflet-map-container" style="width:100%; height:100%;"></div>';
-                const mapContainer = contentContainer.querySelector('.leaflet-map-container');
-                if (!mapContainer) throw new Error("Map container not found after creation.");
+                // Re-enable pointer events (placeholder had them disabled)
+                contentContainer.style.pointerEvents = 'auto';
+                const mapContainerElement = contentContainer.querySelector('.leaflet-map-container');
+                if (!mapContainerElement) throw new Error("Map container not found after creation.");
 
-                const map = L.map(mapContainer);
+                // --- Use preferCanvas:true for faster rendering, and add worldCopyJump and inertia
+                const map = L.map(mapContainerElement, { preferCanvas:true, worldCopyJump:true, inertia:true });
+                map.once('load', () => map.invalidateSize());
+
+                const leafletContainer = map.getContainer();
+                // Prevent the grid/page from scrolling while the user zooms the map
+                L.DomEvent.on(leafletContainer, 'wheel', e => e.preventDefault(), { passive: false });
+                // CSS containment also stops scroll‑chaining in modern browsers
+                leafletContainer.style.overscrollBehavior = 'contain';
+                // Re‑enable touch/drag gestures for Leaflet – override any global `touch-action:none`
+                leafletContainer.style.touchAction = 'auto';
+                // Explicitly (re-)enable user interaction in case any other code turned it off
+                map.scrollWheelZoom.enable();
+                map.dragging.enable();
+
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 18,
                 }).addTo(map);
 
-                let currentHeatmapLayer = null; // Declare heatmapLayer here
+                // Stop default page scrolling when the wheel is used over the map, but after Leaflet processes it.
+                L.DomEvent.on(mapContainerElement, 'wheel', L.DomEvent.preventDefault, { passive: false });
 
-                if (analysisResult.data.length > 0) {
-                    const heatmapDataFormatted = analysisResult.data.map(point => ({
-                        lat: point[0],
-                        lng: point[1],
-                        value: 1
-                    }));
+                let currentHeatmapLayer = null;
 
+                if (heatmapData.length > 0) {
+                    // (heatmapData & heatmapMax already computed once above)
                     const heatmapConfig = {
-                        "radius": 0.05,
-                        "maxOpacity": .8,
-                        "scaleRadius": true,
-                        "useLocalExtrema": false,
+                        radius: 60,               // pixel radius at zoom 0; scales automatically
+                        maxOpacity: 0.85,
+                        scaleRadius: true,        // radius adjusts with zoom
+                        useLocalExtrema: true,    // re‑normalise colour scale per viewport so blobs stay visible when zoomed out
+                        minOpacity: 0.2,          // keep faint blobs visible even at low intensity
                         latField: 'lat',
                         lngField: 'lng',
-                        valueField: 'value'
+                        valueField: 'value',
+                        gradient: {
+                            0.2: '#2c7bb6',  // low visits   → cool blue
+                            0.4: '#00a6ca',
+                            0.6: '#7df9ff',
+                            0.8: '#f0f921',  // high visits → yellow
+                            1.0: '#ff0000'   // very high   → red
+                        }
                     };
 
-                    currentHeatmapLayer = new HeatmapOverlay(heatmapConfig); // Assign to the outer scoped variable
+                    currentHeatmapLayer = new HeatmapOverlay(heatmapConfig);
                     currentHeatmapLayer.setData({
-                        max: 5,
-                        data: heatmapDataFormatted
+                        max: heatmapMax,
+                        data: heatmapData
                     });
                     map.addLayer(currentHeatmapLayer);
 
+                    // --- Fit bounds to data and persist bounds for fast update path
                     try {
                         const bounds = L.latLngBounds(analysisResult.data.map(p => [p[0], p[1]]));
                         if (bounds.isValid()) {
-                            map.fitBounds(bounds, {padding: [30,30]});
-                        } else if (heatmapDataFormatted.length === 1) {
-                            map.setView([heatmapDataFormatted[0].lat, heatmapDataFormatted[0].lng], 13);
+                            map.fitBounds(bounds, { padding: [30, 30] });
+                        } else if (heatmapData.length === 1) {
+                            map.setView([heatmapData[0].lat, heatmapData[0].lng], 13);
                         } else {
-                             map.setView([20, 0], 2);
+                            map.setView([20, 0], 2);
                         }
                     } catch (e) {
                         console.warn("Error fitting map bounds, using default view.", e);
@@ -882,17 +969,18 @@ async function loadPanelContent(panelElement, isForPaletteDragClone = false, rec
                 } else {
                     map.setView([20, 0], 2);
                 }
-
-                // Store map instance and the heatmap layer (which might be null if no data)
+                // Save the bounds so we can skip refitting if future data sits inside them
                 if (!panelInstanceKey.startsWith('temp-')) {
                     activeChartInstances[panelInstanceKey] = {
                         type: 'leaflet',
                         instance: map,
-                        layer: currentHeatmapLayer // Use the correctly scoped variable
+                        layer: currentHeatmapLayer
                     };
+                    try {
+                        activeChartInstances[panelInstanceKey].bounds = map.getBounds();
+                    } catch (e) {}
                 }
-
-                setTimeout(() => map.invalidateSize(), 100);
+                // setTimeout(() => map.invalidateSize(), 100); // No longer needed, handled by map.once('load')
             }
         } else if (analysisType !== 'spending-by-category' && analysisType !== 'event-location-heatmap') {
             contentContainer.innerHTML = `<p style='text-align:center; color:orange; padding:15px 5px;'>Display not implemented for: ${analysisType}</p>`;
@@ -931,7 +1019,6 @@ function calculateGridCellLayout() {
         panelContentWidth = availableGridWidth;
     }
     panelContentWidth = Math.max(200, panelContentWidth);
-    // Using a fixed aspect ratio for slots. Actual panel content might vary.
     const panelContentHeight = panelContentWidth * 0.8;
 
     const startOffsetX = gridPadding;
@@ -1008,8 +1095,8 @@ function showPalettePreview(targetPaletteItem) {
         };
         let l = Math.max(contRect.left + VIEWPORT_PADDING, Math.min(itemRect.right + PREVIEW_GAP_TO_RIGHT, contRect.right - prevRect.width - VIEWPORT_PADDING));
         let t = Math.max(contRect.top + VIEWPORT_PADDING, Math.min(itemRect.top + (itemRect.height / 2) - (prevRect.height / 2), contRect.bottom - prevRect.height - VIEWPORT_PADDING));
-        palettePreviewContainer.style.left = `${Math.round(l-contRect.left)}px`;
-        palettePreviewContainer.style.top = `${Math.round(t-contRect.top)}px`;
+        palettePreviewContainer.style.left = `${Math.round(l - contRect.left)}px`;
+        palettePreviewContainer.style.top = `${Math.round(t - contRect.top)}px`;
         palettePreviewContainer.style.visibility = 'visible';
         palettePreviewContainer.classList.add('visible');
         palettePreviewContainer.style.opacity = '1';
@@ -1046,13 +1133,33 @@ function cancelHidePreview() {
 }
 
 function onPointerDown(event) {
-    if (event.target.closest('.panel-action-btn, .add-analysis-btn, .palette-toggle-btn, .panel-config-area, .panel-config-controls, .panel-config-controls *, .noUi-handle, .noUi-pips, .noUi-connects, .leaflet-container')) return;
-    if (event.button !== 0 || isDragging) return;
+    // 1. Exclude specific panel controls and palette elements explicitly
+    if (event.target.closest('.panel-action-btn, .add-analysis-btn, .palette-toggle-btn, .panel-config-area, .noUi-handle, .noUi-pips, .noUi-connects')) {
+        return; // Let these controls handle their own events
+    }
+
+    // 2. If it's a map panel, check if the click is inside the Leaflet container.
+    //    If so, let Leaflet handle it. (Leaflet's own stopPropagation should also assist here)
+    const panelContainingTarget = event.target.closest('.insight-panel');
+    if (panelContainingTarget && panelContainingTarget.dataset.analysisType === 'event-location-heatmap') {
+        return;
+    }
+
+    // 3. Standard drag initiation logic for panels or palette items
+    if (event.button !== 0 || isDragging) {
+        return;
+    }
+
     const panelElement = event.target.closest('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)');
     const paletteItem = event.target.closest('.palette-item');
-    if (panelElement?.dataset.panelInstanceKey && !panelElement.dataset.panelInstanceKey.startsWith('temp-')) initiateDrag(event, panelElement, 'grid');
-    else if (paletteItem && !palette?.classList.contains('collapsed') && paletteItem.dataset.analysisType) initiateDrag(event, paletteItem, 'palette');
+
+    if (panelElement?.dataset.panelInstanceKey && !panelElement.dataset.panelInstanceKey.startsWith('temp-')) {
+        initiateDrag(event, panelElement, 'grid');
+    } else if (paletteItem && !palette?.classList.contains('collapsed') && paletteItem.dataset.analysisType) {
+        initiateDrag(event, paletteItem, 'palette');
+    }
 }
+
 
 function initiateDrag(event, element, type) {
     event.preventDefault();
@@ -1107,8 +1214,8 @@ function initiateDrag(event, element, type) {
             is_shared: false
         };
         draggedElement = createInsightPanelElement(tempPanelData, true);
-        if (analysisType === 'spending-by-category') { // Only load Chart.js preview for palette drag
-            loadPanelContent(draggedElement, true).catch(err => {});
+        if (analysisType === 'spending-by-category') {
+            loadPanelContent(draggedElement, true).catch(err => { });
         }
         let cloneWidth = placeholderElement.style.width ? parseFloat(placeholderElement.style.width) : 250;
         let cloneHeight = placeholderElement.style.height ? parseFloat(placeholderElement.style.height) : 200;
@@ -1209,48 +1316,75 @@ async function onPointerUp() {
     const droppedOnPalette = currentTargetIndex === -2 && dragType === 'grid' && originalSourceElementForGridDrag;
     const droppedInsideGrid = currentTargetIndex !== -1 && currentTargetIndex !== -2 && placeholderElement?.parentElement === insightsGrid;
     let finalPanelToFocus = null;
+
     if (draggedElement) {
-        draggedElement.remove();
+        draggedElement.remove(); // Remove the visual clone from the body
         draggedElement.classList.remove('dragging-clone');
+        // Reset styles that were applied for dragging
         ['position', 'left', 'top', 'width', 'height', 'zIndex', 'pointerEvents', 'transform', 'margin', 'transition'].forEach(prop => {
             if (draggedElement.style[prop]) draggedElement.style[prop] = '';
         });
     }
-    if (dragType === 'palette' && chartInDraggedElement) try {
-        chartInDraggedElement.destroy();
-    } catch (e) {}
-    chartInDraggedElement = null;
+
+    if (dragType === 'palette' && chartInDraggedElement) { // Clean up Chart.js instance from palette clone
+        try { chartInDraggedElement.destroy(); } catch (e) { }
+        chartInDraggedElement = null;
+    }
+
     try {
         if (droppedOnPalette) {
-            const panelToRemove = originalSourceElementForGridDrag;
+            const panelToRemove = originalSourceElementForGridDrag; // This is the actual panel from the grid
             const panelInstanceKey = panelToRemove.dataset.panelInstanceKey;
             const panelDbId = parseInt(panelToRemove.dataset.panelId);
+
             if (activeChartInstances[panelInstanceKey]) {
                 const activeInstanceData = activeChartInstances[panelInstanceKey];
                 try {
-                    if (activeInstanceData.type === 'chartjs') activeInstanceData.instance.destroy();
-                    else if (activeInstanceData.type === 'leaflet') activeInstanceData.instance.remove();
-                } catch (e) {}
+                    if (activeInstanceData.type === 'chartjs') {
+                        activeInstanceData.instance.destroy();
+                    } else if (activeInstanceData.type === 'leaflet') {
+                        const mapInstance = activeInstanceData.instance;
+                        const mapContainerEl = mapInstance.getContainer();
+                        if (mapContainerEl) {
+                            L.DomEvent.off(mapContainerEl, 'mousedown', L.DomEvent.stopPropagation);
+                            L.DomEvent.off(mapContainerEl, 'pointerdown', L.DomEvent.stopPropagation);
+                            L.DomEvent.off(mapContainerEl, 'touchstart', L.DomEvent.stopPropagation);
+                        }
+                        if (activeInstanceData.layer && mapInstance.hasLayer(activeInstanceData.layer)) {
+                            mapInstance.removeLayer(activeInstanceData.layer);
+                        }
+                        mapInstance.remove();
+                    }
+                } catch (e) {
+                    console.error(`Error destroying instance for panel ${panelInstanceKey} during drop on palette:`, e);
+                }
                 delete activeChartInstances[panelInstanceKey];
             }
+
             const idSuffix = panelInstanceKey.replace(/[^\w-]/g, '_');
             const sliderEl = panelToRemove.querySelector(`#time-slider-${idSuffix}`);
-            if (sliderEl?.noUiSlider) try {
-                sliderEl.noUiSlider.destroy();
-            } catch (e) {}
+            if (sliderEl?.noUiSlider) try { sliderEl.noUiSlider.destroy(); } catch (e) { }
+
+            // panelToRemove.remove(); // The panel is already removed if it was `originalSourceElementForGridDrag` and `draggedElement`
+            // It was taken out of the grid when drag started. If placeholder is removed, it's gone.
+
             if (placeholderElement?.parentElement) placeholderElement.remove();
+
+
             if (!isNaN(panelDbId) && panelToRemove.dataset.isShared !== 'true') {
                 await removePanelFromServer(panelDbId);
             } else if (panelToRemove.dataset.isShared === 'true') {
-                console.log("Shared panel instance removed from view (client-side).");
+                console.log("Shared panel instance removed from view (client-side by dropping on palette).");
             }
         } else if (droppedInsideGrid) {
-            if (dragType === 'palette') {
-                const analysisType = draggedElement.dataset.analysisType;
+            if (dragType === 'palette') { // New panel from palette
+                const analysisType = draggedElement.dataset.analysisType; // `draggedElement` is the clone based on palette item
                 const analysisDetails = getAnalysisDetails(analysisType);
                 const initialConfig = JSON.parse(draggedElement.dataset.configuration || '{}') || analysisDetails?.default_config || {};
+
                 const newPanelDataFromServer = await addPanelToServer(analysisType, initialConfig);
-                if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed.");
+                if (!newPanelDataFromServer?.id) throw new Error("Panel creation failed on server.");
+
                 const panelDataForCreation = {
                     id: String(newPanelDataFromServer.id),
                     analysis_type: newPanelDataFromServer.analysis_type || analysisType,
@@ -1262,71 +1396,67 @@ async function onPointerUp() {
                 placeholderElement.replaceWith(finalPanelToFocus);
                 _initializePanelConfigurationControls(finalPanelToFocus, panelDataForCreation);
                 await loadPanelContent(finalPanelToFocus, false);
-            } else if (dragType === 'grid' && originalSourceElementForGridDrag) {
+            } else if (dragType === 'grid' && originalSourceElementForGridDrag) { // Existing panel moved within grid
                 finalPanelToFocus = originalSourceElementForGridDrag;
-                placeholderElement.replaceWith(finalPanelToFocus);
+                placeholderElement.replaceWith(finalPanelToFocus); // Put the original panel back
                 const panelKey = finalPanelToFocus.dataset.panelInstanceKey;
                 const activeInstanceData = activeChartInstances[panelKey];
-                if (activeInstanceData) {
+                if (activeInstanceData) { // Invalidate size after re-inserting
                     setTimeout(() => {
                         try {
                             if (activeInstanceData.type === 'chartjs' && activeInstanceData.instance.resize) activeInstanceData.instance.resize();
                             else if (activeInstanceData.type === 'leaflet' && activeInstanceData.instance.invalidateSize) activeInstanceData.instance.invalidateSize();
-                        } catch (e) {}
+                        } catch (e) { }
                     }, 50);
                 }
             }
-        } else {
+        } else { // Dropped outside grid and not on palette (e.g., invalid drop)
             if (dragType === 'grid' && originalSourceElementForGridDrag) {
+                // Put the original panel back where it started if it's not already in the DOM
                 finalPanelToFocus = originalSourceElementForGridDrag;
                 if (placeholderElement?.parentElement) placeholderElement.remove();
-                insertElementAtIndex(finalPanelToFocus, sourceIndex);
+                if (!finalPanelToFocus.parentElement) { // Only insert if not already back
+                    insertElementAtIndex(finalPanelToFocus, sourceIndex);
+                }
                 const panelKey = finalPanelToFocus.dataset.panelInstanceKey;
                 const activeInstanceData = activeChartInstances[panelKey];
-                if (activeInstanceData) {
+                if (activeInstanceData) { // Invalidate size
                     setTimeout(() => {
                         try {
                             if (activeInstanceData.type === 'chartjs' && activeInstanceData.instance.resize) activeInstanceData.instance.resize();
                             else if (activeInstanceData.type === 'leaflet' && activeInstanceData.instance.invalidateSize) activeInstanceData.instance.invalidateSize();
-                        } catch (e) {}
+                        } catch (e) { }
                     }, 50);
                 }
-            } else if (dragType === 'palette') {
+            } else if (dragType === 'palette') { // Palette item dropped in invalid location
                 if (placeholderElement?.parentElement) placeholderElement.remove();
             }
         }
+
+        // Update order on server if grid changed for persistent panels
         const panelElementsInGrid = Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)'));
         const persistentOriginalPanelIds = panelElementsInGrid
             .filter(p => p.dataset.isShared !== 'true' && p.dataset.panelId && !String(p.dataset.panelId).startsWith('temp-'))
             .map(p => parseInt(p.dataset.panelId))
             .filter(id => !isNaN(id));
+
         if (persistentOriginalPanelIds.length > 0 || (droppedOnPalette && panelElementsInGrid.length === 0 && originalSourceElementForGridDrag?.dataset.isShared !== 'true')) {
             await updatePanelOrderOnServer(persistentOriginalPanelIds);
         }
+
     } catch (apiError) {
         alert(`Error saving changes: ${apiError.message}`);
         console.error("[Drop] API or Logic Error:", apiError);
         if (placeholderElement?.parentElement) placeholderElement.remove();
         if (dragType === 'grid' && originalSourceElementForGridDrag && !originalSourceElementForGridDrag.parentElement) {
             insertElementAtIndex(originalSourceElementForGridDrag, sourceIndex);
-            try {
-                await loadPanelContent(originalSourceElementForGridDrag, false);
-                const panelKey = originalSourceElementForGridDrag.dataset.panelInstanceKey;
-                const activeInstanceData = activeChartInstances[panelKey];
-                if (activeInstanceData) {
-                    setTimeout(() => {
-                        try {
-                            if (activeInstanceData.type === 'chartjs' && activeInstanceData.instance.resize) activeInstanceData.instance.resize();
-                            else if (activeInstanceData.type === 'leaflet' && activeInstanceData.instance.invalidateSize) activeInstanceData.instance.invalidateSize();
-                        } catch (e) {}
-                    }, 50);
-                }
-            } catch (loadErr) {}
+            try { await loadPanelContent(originalSourceElementForGridDrag, false); } catch (loadErr) { }
         }
     } finally {
-        if (placeholderElement?.parentElement) placeholderElement.remove();
+        if (placeholderElement?.parentElement) placeholderElement.remove(); // Final cleanup of placeholder
         placeholderElement = null;
         isDragging = false;
+        // draggedElement was already removed from body, now nullify
         draggedElement = null;
         originalSourceElementForGridDrag = null;
         sourceIndex = -1;
@@ -1334,27 +1464,44 @@ async function onPointerUp() {
         currentTargetIndex = -1;
         gridRect = null;
         paletteRect = null;
+
         setTimeout(() => {
             calculateGridCellLayout();
             checkGridEmpty();
+            // Clean up any orphaned activeChartInstances (panels that were removed not via close button/palette drop)
             const currentPanelInstanceKeys = new Set(Array.from(insightsGrid.querySelectorAll('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)')).map(p => p.dataset.panelInstanceKey));
             Object.keys(activeChartInstances).forEach(keyStr => {
                 if (!keyStr.startsWith('temp-') && !currentPanelInstanceKeys.has(keyStr)) {
                     const activeInstanceData = activeChartInstances[keyStr];
                     try {
-                        if (activeInstanceData.type === 'chartjs') activeInstanceData.instance.destroy();
-                        else if (activeInstanceData.type === 'leaflet') activeInstanceData.instance.remove();
-                    } catch (e) {}
+                        if (activeInstanceData.type === 'chartjs') {
+                            activeInstanceData.instance.destroy();
+                        } else if (activeInstanceData.type === 'leaflet') {
+                            const mapInstance = activeInstanceData.instance;
+                            const mapContainerEl = mapInstance.getContainer();
+                            if (mapContainerEl) {
+                                L.DomEvent.off(mapContainerEl, 'mousedown', L.DomEvent.stopPropagation);
+                                L.DomEvent.off(mapContainerEl, 'pointerdown', L.DomEvent.stopPropagation);
+                                L.DomEvent.off(mapContainerEl, 'touchstart', L.DomEvent.stopPropagation);
+                            }
+                            if (activeInstanceData.layer && mapInstance.hasLayer(activeInstanceData.layer)) {
+                                mapInstance.removeLayer(activeInstanceData.layer);
+                            }
+                            mapInstance.remove();
+                        }
+                    } catch (e) {
+                        console.error(`Error destroying orphaned instance ${keyStr}:`, e);
+                    }
                     delete activeChartInstances[keyStr];
                 }
             });
         }, 50);
-        if (finalPanelToFocus?.scrollIntoView) setTimeout(() => {
-            finalPanelToFocus.scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest'
-            });
-        }, 100);
+
+        if (finalPanelToFocus?.scrollIntoView) {
+            setTimeout(() => {
+                finalPanelToFocus.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
     }
 }
 
@@ -1375,6 +1522,7 @@ function insertElementAtIndex(elementToInsert, index) {
     }
     checkGridEmpty();
 }
+
 async function handleGridAction(event) {
     const panel = event.target.closest('.insight-panel:not(.dragging-placeholder):not(.dragging-clone)');
     if (!panel || !panel.dataset.panelInstanceKey) return;
@@ -1386,19 +1534,36 @@ async function handleGridAction(event) {
 
     if (event.target.closest('.panel-close-btn')) {
         event.stopPropagation();
+
         if (activeChartInstances[panelInstanceKey]) {
             const activeInstanceData = activeChartInstances[panelInstanceKey];
             try {
-                if (activeInstanceData.type === 'chartjs') activeInstanceData.instance.destroy();
-                else if (activeInstanceData.type === 'leaflet') activeInstanceData.instance.remove();
-            } catch (e) {}
+                if (activeInstanceData.type === 'chartjs') {
+                    activeInstanceData.instance.destroy();
+                } else if (activeInstanceData.type === 'leaflet') {
+                    const mapInstance = activeInstanceData.instance;
+                    const mapContainerEl = mapInstance.getContainer();
+                    if (mapContainerEl) {
+                        L.DomEvent.off(mapContainerEl, 'mousedown', L.DomEvent.stopPropagation);
+                        L.DomEvent.off(mapContainerEl, 'pointerdown', L.DomEvent.stopPropagation);
+                        L.DomEvent.off(mapContainerEl, 'touchstart', L.DomEvent.stopPropagation);
+                    }
+                    if (activeInstanceData.layer && mapInstance.hasLayer(activeInstanceData.layer)) {
+                        mapInstance.removeLayer(activeInstanceData.layer);
+                    }
+                    mapInstance.remove();
+                }
+            } catch (e) {
+                console.error(`Error destroying instance for panel ${panelInstanceKey}:`, e);
+            }
             delete activeChartInstances[panelInstanceKey];
         }
+
         const idSuffix = panelInstanceKey.replace(/[^\w-]/g, '_');
         const sliderEl = panel.querySelector(`#time-slider-${idSuffix}`);
         if (sliderEl?.noUiSlider) try {
             sliderEl.noUiSlider.destroy();
-        } catch (e) {}
+        } catch (e) { }
 
         panel.remove();
         checkGridEmpty();
@@ -1439,7 +1604,7 @@ function handlePaletteToggle(forceState = null) {
             if (activeInstanceData?.instance) try {
                 if (activeInstanceData.type === 'chartjs' && activeInstanceData.instance.resize) activeInstanceData.instance.resize();
                 else if (activeInstanceData.type === 'leaflet' && activeInstanceData.instance.invalidateSize) activeInstanceData.instance.invalidateSize();
-            } catch (e) {}
+            } catch (e) { }
         });
     }, parseFloat(getComputedStyle(palette).transitionDuration || '0.3s') * 1000 + 50);
 }
@@ -1450,12 +1615,12 @@ function updateToggleButtonIcon() {
     if (!icon) return;
     const isMobile = window.innerWidth <= 768;
     const isCollapsed = palette.classList.contains('collapsed');
-    icon.className = `fas ${isMobile ? (isCollapsed ? 'fa-chevron-up':'fa-chevron-down') : (isCollapsed ? 'fa-chevron-right':'fa-chevron-left')}`;
+    icon.className = `fas ${isMobile ? (isCollapsed ? 'fa-chevron-up' : 'fa-chevron-down') : (isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left')}`;
     paletteToggleBtn.setAttribute('aria-label', isCollapsed ? 'Expand Palette' : 'Collapse Palette');
 }
 
 export async function initInsightsManager() {
-    console.log("%c[Insights] initInsightsManager - START (v7 - Refactor & Format)", "background-color: #FFD700; color: black; font-weight:bold;");
+    console.log("%c[Insights] initInsightsManager - START (v8 - Full Cleanup Logic)", "background-color: #FFD700; color: black; font-weight:bold;");
     insightsView = document.getElementById('insights-view');
     insightsGridContainer = document.getElementById('insights-grid-container');
     insightsGrid = document.getElementById('insights-grid');
@@ -1510,7 +1675,7 @@ export async function initInsightsManager() {
         return;
     }
     if (typeof Chart === 'undefined') console.warn("[Init] Chart.js missing (required for some analyses).");
-    if (typeof L === 'undefined' || typeof L.heatLayer === 'undefined') console.warn("[Init] Leaflet or Leaflet.heat missing (required for heatmap analysis).");
+    if (typeof L === 'undefined' || typeof HeatmapOverlay === 'undefined') console.warn("[Init] Leaflet or HeatmapOverlay missing (required for heatmap analysis).");
     if (typeof noUiSlider === 'undefined') console.warn("[Init] noUiSlider missing.");
 
     isDragging = false;
@@ -1629,7 +1794,7 @@ export async function initInsightsManager() {
                 try {
                     if (activeInstanceData.type === 'chartjs' && activeInstanceData.instance.resize) activeInstanceData.instance.resize();
                     else if (activeInstanceData.type === 'leaflet' && activeInstanceData.instance.invalidateSize) activeInstanceData.instance.invalidateSize();
-                } catch (e) {}
+                } catch (e) { }
             }
         });
     }, 250);
@@ -1691,7 +1856,7 @@ export async function initInsightsManager() {
             if (panelDataForInit.is_shared && panelDataForInit.access_mode === 'dynamic') {
                 try {
                     initialRecipientConfig = JSON.parse(panelEl.dataset.recipientChosenConfig || 'null');
-                } catch (e) {}
+                } catch (e) { }
             }
             return loadPanelContent(panelEl, false, initialRecipientConfig);
         });
@@ -1709,7 +1874,7 @@ export async function initInsightsManager() {
         hidePalettePreview();
         if (palette) insightsView.classList.toggle('palette-collapsed', palette.classList.contains('collapsed'));
         updateToggleButtonIcon();
-        console.log("%c[Insights] initInsightsManager - Initialized Successfully (v7 - Refactor & Format)", "background-color: lightgreen; color: black; font-weight:bold;");
+        console.log("%c[Insights] initInsightsManager - Initialized Successfully (v8 - Full Cleanup Logic)", "background-color: lightgreen; color: black; font-weight:bold;");
     } catch (error) {
         console.error("%c[Insights] initInsightsManager - FAILED:", "background-color: red; color: white; font-weight:bold;", error);
         if (insightsGrid) insightsGrid.innerHTML = `<p class="error-message" style="text-align:center;padding:20px;">Could not load insights panels. Error: ${error.message}</p>`;
