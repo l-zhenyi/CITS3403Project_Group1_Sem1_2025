@@ -437,12 +437,58 @@ h4 { font-size: 1.05rem; font-weight: 500; color: #e0e0e5; margin-top: 15px; mar
 #cost-interpretation-helper-dynamic strong { color: #fff; font-weight: 600; }
 #cost-interpretation-helper-dynamic em { font-style: italic; opacity: 0.8; }
 
-/* Location Map Floating Panel */
-.location-map-floating-panel { position: fixed; z-index: 1055; background-color: rgba(60, 60, 70, 0.85); backdrop-filter: blur(25px) saturate(160%); -webkit-backdrop-filter: blur(25px) saturate(160%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); color: #e0e0e5; transform: translateY(5px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
-.location-map-floating-panel.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-.location-map-floating-panel .leaflet-container { border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
-.map-status-text { font-size: 0.8em; color: #b0b0b8; margin-top: 8px; display: block; text-align: center; }
-.map-status-text span { opacity: 0.7; }
+
+/* Location Map Floating Panel - Intense Glassmorphism */
+
+
+.location-map-floating-panel {
+    position: fixed;
+    z-index: 1055;
+    background: rgba(140, 140, 145, 0.73); /* closer to modals, soft blue-grey glass */
+    backdrop-filter: blur(40px) saturate(185%);
+    -webkit-backdrop-filter: blur(40px) saturate(185%);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 18px;
+    padding: 22px 28px 18px 28px;
+    box-shadow: 0 8px 32px 0 rgba(44, 52, 98, 0.18), 0 2px 6px rgba(25, 35, 80, 0.10);
+    color: #f0f0f5;
+    font-family: inherit;
+    font-size: 1.07em;
+    min-width: 250px;
+    max-width: 97vw;
+    min-height: 100px;
+    max-height: 65vh;
+    overflow: hidden;
+}
+
+.location-map-floating-panel .leaflet-container {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 2px 8px rgba(60,70,100,0.09);
+}
+
+.location-map-floating-panel svg, 
+.location-map-floating-panel .fa,
+.location-map-floating-panel .icon {
+    filter: none; /* no neon, keep it subtle */
+}
+
+.map-status-text {
+    font-size: 0.65em;
+    color: #e0e0eb;
+    margin-top: 10px;
+    display: block;
+    text-align: center;
+    text-shadow: 0 1px 6px rgba(44, 52, 98, 0.08);
+    letter-spacing: 0.01em;
+    opacity: 0.93;
+}
+
+.map-status-text span {
+    opacity: 0.8;
+    color: #b8cbe8;
+    filter: none;
+}
 
 
 /* Responsive adjustments for modal content */
