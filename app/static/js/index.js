@@ -11,13 +11,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }, {
-    threshold: 0.1,
+    threshold: 0.15,
     rootMargin: "0px 0px -50px 0px"  // Trigger slightly before elements come into view
   });
   
-  // Target all elements with animation classes
+  // Target all elements with animation classes used in the HTML
   const animatedElements = document.querySelectorAll(
-    '.slide-in, .fade-up, .fade-up-on-scroll, .fade-left, .scale-in, .animated-card, .delay-200'
+    '.slide-in-bottom, .fade-up-on-scroll, .fade-left, .scale-in, .animated-card'
   );
   
   // Observe all animated elements 
@@ -72,8 +72,10 @@ document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
 
   // Make hero section immediately visible
-  document.querySelectorAll('.hero-section, .hero-text, .hero-illustration')
-    .forEach(el => el.classList.add('visible'));
+  setTimeout(() => {
+    document.querySelectorAll('.hero-section .slide-in-bottom, .hero-section .scale-down')
+      .forEach(el => el.classList.add('visible'));
+  }, 300);
     
   // Fixed testimonial carousel implementation
   const setupTestimonialCarousel = () => {

@@ -2,6 +2,8 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}" type="text/css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/sections.css') }}" type="text/css">
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 <script>
   // Add class to document when JavaScript is available
@@ -9,12 +11,12 @@
 </script>
 {% endblock %}
 
-
 {% block content %}
 <div class="dashboard-container">
     <div class="glassy dashboard-pane">
         <!-- Hero section -->
-            <section class="hero-section container py-5 d-flex align-items-center">
+        <section class="hero-section">
+            <div class="container">
                 <div class="row align-items-center justify-content-between w-100">
                     <div class="col-lg-6 hero-text slide-in-bottom">
                         <h1 class="display-4 fw-bold mb-4 text-gradient" id="hero-heading">Smart Tools to Plan Better</h1>
@@ -24,31 +26,29 @@
                             <a href="#feature-section" class="btn btn-outline-light-blue">Learn More</a>
                         </div>
                     </div>
-
                     <div class="col-lg-6 text-center">
                         <img src="{{ url_for('static', filename='images/index-page/teamwork.jpg') }}"
                             alt="Team Collaboration" class="img-fluid hero-illustration scale-down">
                     </div>
-
                 </div>
-            </section>
+            </div>
+        </section>
 
-        <!-- Features section - Fixed tab buttons -->
-        <div class="feature-section py-5 fade-up-on-scroll section-spacing" id="feature-section">
+        <!-- Features section -->
+        <section class="feature-section" id="feature-section">
             <div class="container">
-                <div class="text-center mb-5">
-                    <h2 class="section-header large-header">FEATURES</h2>
-                    <p class="text-light mb-4">Discover how Plannit makes planning events effortless</p>
-                    
-                    <!-- Fixed button group - simplified markup -->
-                    <div class="btn-group" role="group" aria-label="Feature tabs">
-                        <button type="button" class="btn-tab active" data-tab="tab-plan">Plan</button>
-                        <button type="button" class="btn-tab" data-tab="tab-vote">Split</button>
-                        <button type="button" class="btn-tab" data-tab="tab-track">Track</button>
+                <div class="row align-items-center justify-content-between w-100">
+                    <div class="col-12 text-center mb-5 fade-up-on-scroll">
+                        <h2 class="section-header large-header">FEATURES</h2>
+                        <p class="text-light mb-4">Discover how Plannit makes planning events effortless</p>
+                        <div class="btn-group" role="group" aria-label="Feature tabs">
+                            <button type="button" class="btn-tab active" data-tab="tab-plan">Plan</button>
+                            <button type="button" class="btn-tab" data-tab="tab-vote">Split</button>
+                            <button type="button" class="btn-tab" data-tab="tab-track">Track</button>
+                        </div>
                     </div>
                 </div>
-
-                <div class="tab-content">
+                <div class="tab-content w-100">
                     <div class="tab-pane active" id="tab-plan">
                         <div class="row align-items-center">
                             <div class="col-md-6 fade-left">
@@ -71,7 +71,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="tab-pane" id="tab-vote">
                         <div class="row align-items-center">
                             <div class="col-md-6 fade-left">
@@ -95,7 +94,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="tab-pane" id="tab-track">
                         <div class="row align-items-center">
                             <div class="col-md-6 fade-left">
@@ -119,17 +117,15 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
-        </div>
+        </section>
 
-        
         <!-- Why Plannit section -->
-        <div class="easier-section py-5 section-spacing" id="white_container">
+        <section class="why-plannit-section">
             <div class="container">
-                <div class="row align-items-center">
-                    <div class="text-center mb-5">
+                <div class="row align-items-center justify-content-between w-100">
+                    <div class="col-12 text-center mb-5 fade-up-on-scroll">
                         <h2 class="section-header large-header">WHY PLANNIT?</h2>
                     </div>
                     <div class="col-lg-6 fade-left">
@@ -142,197 +138,202 @@
                             <li class="text-light mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i> Transparent split cost</li>
                         </ul>
                     </div>
-                    
                     <div class="col-lg-6 text-center scale-in">
                         <img src="{{ url_for('static', filename='images/index-page/pie-chart.png') }}"
-                            class="img-fluid rounded shadow interactive" alt="Collaboration">
+                            class="img-fluid rounded shadow feature-image" alt="Collaboration">
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Fixed testimonial carousel section -->
-        <div class="testimonial-section py-4 fade-up-on-scroll">
-            <div class="text-center mb-3">
-                <h2 class="section-header large-header">WHAT PEOPLE SAY</h2>
-            </div>
-            
-            <div class="testimonial-carousel" id="testimonialCarousel">
-                <button class="carousel-arrow-btn prev" id="prevTestimonial">
-                    <i class="bi bi-chevron-left carousel-arrow"></i>
-                </button>
-                
-                <div class="testimonial-container">
-                    <div class="testimonial-track">
-                        <!-- Slide 1 -->
-                        <div class="testimonial-slide">
-                            <div class="testimonial-card">
-                                <p class="testimonial-content">
-                                    "Finally an app that gets group planning right.
-                                    No more 'who's bringing what' confusion or last-minute cancellations.
-                                    Plannit kept us on track for our hiking trip!"
-                                </p>
-                                <div class="testimonial-author">
-                                    <img src="{{ url_for('static', filename='images/index-page/person1.jpg') }}" 
-                                         alt="Blake Harrison" class="testimonial-avatar">
-                                    <div class="testimonial-author-info">
-                                        <span class="testimonial-author-name">Blake Harrison</span>
-                                        <div class="testimonial-rating">
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
+        <!-- Testimonial carousel section -->
+        <section class="testimonial-section fade-up-on-scroll">
+            <div class="container">
+                <div class="row align-items-center justify-content-between w-100">
+                    <div class="col-12 text-center mb-3">
+                        <h2 class="section-header large-header">WHAT PEOPLE SAY</h2>
+                    </div>
+                    <div class="testimonial-carousel w-100" id="testimonialCarousel">
+                        <button class="carousel-arrow-btn prev" id="prevTestimonial">
+                            <i class="bi bi-chevron-left carousel-arrow"></i>
+                        </button>
+                        <div class="testimonial-container">
+                            <div class="testimonial-track">
+                                <!-- Slide 1 -->
+                                <div class="testimonial-slide">
+                                    <div class="testimonial-card">
+                                        <p class="testimonial-content">
+                                            "Finally an app that gets group planning right.
+                                            No more 'who's bringing what' confusion or last-minute cancellations.
+                                            Plannit kept us on track for our hiking trip!"
+                                        </p>
+                                        <div class="testimonial-author">
+                                            <img src="{{ url_for('static', filename='images/index-page/person1.jpg') }}" 
+                                                 alt="Blake Harrison" class="testimonial-avatar">
+                                            <div class="testimonial-author-info">
+                                                <span class="testimonial-author-name">Blake Harrison</span>
+                                                <div class="testimonial-rating">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Slide 2 -->
+                                <div class="testimonial-slide">
+                                    <div class="testimonial-card">
+                                        <p class="testimonial-content">
+                                            "Planning our university club trips used to be chaotic. With
+                                            Plannit, everything is smooth from picking dates to sharing expenses. 
+                                            Love the clean, glassy design too!"
+                                        </p>
+                                        <div class="testimonial-author">
+                                            <img src="{{ url_for('static', filename='images/index-page/person2.jpg') }}" 
+                                                 alt="Soojin Kim" class="testimonial-avatar">
+                                            <div class="testimonial-author-info">
+                                                <span class="testimonial-author-name">Soojin Kim</span>
+                                                <div class="testimonial-rating">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Slide 3 -->
+                                <div class="testimonial-slide">
+                                    <div class="testimonial-card">
+                                        <p class="testimonial-content">
+                                            "Plannit turned our basketball team outings into something
+                                            effortless. No more 50 missed texts trying to set a time, 
+                                            one vote and done."
+                                        </p>
+                                        <div class="testimonial-author">
+                                            <img src="{{ url_for('static', filename='images/index-page/person3.jpg') }}" 
+                                                 alt="Marcus Brown" class="testimonial-avatar">
+                                            <div class="testimonial-author-info">
+                                                <span class="testimonial-author-name">Marcus Brown</span>
+                                                <div class="testimonial-rating">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Slide 4 -->
+                                <div class="testimonial-slide">
+                                    <div class="testimonial-card">
+                                        <p class="testimonial-content">
+                                            "Before we started using Plannit, organizing with my friends was a
+                                            nightmare. With Plannit, I could actually enjoy the day without stressing."
+                                        </p>
+                                        <div class="testimonial-author">
+                                            <img src="{{ url_for('static', filename='images/index-page/person4.jpg') }}" 
+                                                 alt="Kylie Jenner" class="testimonial-avatar">
+                                            <div class="testimonial-author-info">
+                                                <span class="testimonial-author-name">Kylie Jenner</span>
+                                                <div class="testimonial-rating">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Slide 5 -->
+                                <div class="testimonial-slide">
+                                    <div class="testimonial-card">
+                                        <p class="testimonial-content">
+                                            "Planning out a cross-country roadtrip with my mates were a
+                                            complete mess. But that's only before I used Plannit,
+                                            this app helped us to organise the trip perfectly."
+                                        </p>
+                                        <div class="testimonial-author">
+                                            <img src="{{ url_for('static', filename='images/index-page/person5.jpeg') }}" 
+                                                 alt="Mohammad Hassan" class="testimonial-avatar">
+                                            <div class="testimonial-author-info">
+                                                <span class="testimonial-author-name">Mohammad Hassan</span>
+                                                <div class="testimonial-rating">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Slide 6 -->
+                                <div class="testimonial-slide">
+                                    <div class="testimonial-card">
+                                        <p class="testimonial-content">
+                                            "For our group project, we used Plannit to schedule meetings,
+                                            assign parts of the assignment. I can't imagine the pain of doing a 
+                                            group project without it now."
+                                        </p>
+                                        <div class="testimonial-author">
+                                            <img src="{{ url_for('static', filename='images/index-page/person6.jpg') }}" 
+                                                 alt="Ayana Scott" class="testimonial-avatar">
+                                            <div class="testimonial-author-info">
+                                                <span class="testimonial-author-name">Ayana Scott</span>
+                                                <div class="testimonial-rating">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Slide 2 -->
-                        <div class="testimonial-slide">
-                            <div class="testimonial-card">
-                                <p class="testimonial-content">
-                                    "Planning our university club trips used to be chaotic. With
-                                    Plannit, everything is smooth from picking dates to sharing expenses. 
-                                    Love the clean, glassy design too!"
-                                </p>
-                                <div class="testimonial-author">
-                                    <img src="{{ url_for('static', filename='images/index-page/person2.jpg') }}" 
-                                         alt="Soojin Kim" class="testimonial-avatar">
-                                    <div class="testimonial-author-info">
-                                        <span class="testimonial-author-name">Soojin Kim</span>
-                                        <div class="testimonial-rating">
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Slide 3 -->
-                        <div class="testimonial-slide">
-                            <div class="testimonial-card">
-                                <p class="testimonial-content">
-                                    "Plannit turned our basketball team outings into something
-                                    effortless. No more 50 missed texts trying to set a time, 
-                                    one vote and done."
-                                </p>
-                                <div class="testimonial-author">
-                                    <img src="{{ url_for('static', filename='images/index-page/person3.jpg') }}" 
-                                         alt="Marcus Brown" class="testimonial-avatar">
-                                    <div class="testimonial-author-info">
-                                        <span class="testimonial-author-name">Marcus Brown</span>
-                                        <div class="testimonial-rating">
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Slide 4 -->
-                        <div class="testimonial-slide">
-                            <div class="testimonial-card">
-                                <p class="testimonial-content">
-                                    "Before we started using Plannit, organizing with my friends was a
-                                    nightmare. With Plannit, I could actually enjoy the day without stressing."
-                                </p>
-                                <div class="testimonial-author">
-                                    <img src="{{ url_for('static', filename='images/index-page/person4.jpg') }}" 
-                                         alt="Kylie Jenner" class="testimonial-avatar">
-                                    <div class="testimonial-author-info">
-                                        <span class="testimonial-author-name">Kylie Jenner</span>
-                                        <div class="testimonial-rating">
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Slide 5 -->
-                        <div class="testimonial-slide">
-                            <div class="testimonial-card">
-                                <p class="testimonial-content">
-                                    "Planning out a cross-country roadtrip with my mates were a
-                                    complete mess. But that's only before I used Plannit,
-                                    this app helped us to organise the trip perfectly."
-                                </p>
-                                <div class="testimonial-author">
-                                    <img src="{{ url_for('static', filename='images/index-page/person5.jpeg') }}" 
-                                         alt="Mohammad Hassan" class="testimonial-avatar">
-                                    <div class="testimonial-author-info">
-                                        <span class="testimonial-author-name">Mohammad Hassan</span>
-                                        <div class="testimonial-rating">
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Slide 6 -->
-                        <div class="testimonial-slide">
-                            <div class="testimonial-card">
-                                <p class="testimonial-content">
-                                    "For our group project, we used Plannit to schedule meetings,
-                                    assign parts of the assignment. I can't imagine the pain of doing a 
-                                    group project without it now."
-                                </p>
-                                <div class="testimonial-author">
-                                    <img src="{{ url_for('static', filename='images/index-page/person6.jpg') }}" 
-                                         alt="Ayana Scott" class="testimonial-avatar">
-                                    <div class="testimonial-author-info">
-                                        <span class="testimonial-author-name">Ayana Scott</span>
-                                        <div class="testimonial-rating">
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                            <i class="bi bi-star-fill"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <button class="carousel-arrow-btn next" id="nextTestimonial">
+                            <i class="bi bi-chevron-right carousel-arrow"></i>
+                        </button>
+                        <!-- Dots navigation -->
+                        <div class="carousel-nav mt-3" id="testimonialNav">
+                            <div class="carousel-dot active" data-index="0" role="button" aria-label="Page 1"></div>
+                            <div class="carousel-dot" data-index="1" role="button" aria-label="Page 2"></div>
                         </div>
                     </div>
                 </div>
-                
-                <button class="carousel-arrow-btn next" id="nextTestimonial">
-                    <i class="bi bi-chevron-right carousel-arrow"></i>
-                </button>
-                
-                <!-- Dots navigation -->
-                <div class="carousel-nav mt-3" id="testimonialNav">
-                    <div class="carousel-dot active" data-index="0" role="button" aria-label="Page 1"></div>
-                    <div class="carousel-dot" data-index="1" role="button" aria-label="Page 2"></div>
-                </div>
             </div>
-        </div>
+        </section>
 
         <!-- CTA section -->
-        <div class="cta-section text-center py-5 section-spacing fade-up-on-scroll">
-            <h2 class="mb-4">Ready to start planning better?</h2>
-            <p class="lead mb-4">Join thousands of users who are already simplifying their group events.</p>
-            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">Get Started Now</a>
-        </div>
+        <section class="cta-section fade-up-on-scroll">
+            <div class="container">
+                <div class="row align-items-center justify-content-center w-100">
+                    <div class="col-md-8">
+                        <h2 class="mb-4">Ready to start planning better?</h2>
+                        <p class="lead mb-4">Join thousands of users who are already simplifying their group events.</p>
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">Get Started Now</a>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <!-- Footer -->
         <footer class="main-footer">

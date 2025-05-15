@@ -818,3 +818,30 @@
   opacity: 1 !important;
   position: relative;
 }
+
+/* Custom Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 12px;
+    background: rgba(30, 34, 54, 0.15);
+}
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #4d7cff 0%, #6a5acd 100%);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(77, 124, 255, 0.15);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #6a5acd 0%, #4d7cff 100%);
+}
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* For Firefox */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: #4d7cff #23263a;
+}
+
+body, .dashboard-pane {
+    overflow-y: auto;
+}
