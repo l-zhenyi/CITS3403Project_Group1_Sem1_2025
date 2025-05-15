@@ -16,7 +16,7 @@ Our all-in-one platform empowers you to stay connected and organized with ease. 
 ```
 FLASK_APP=run.py
 FLASK_ENV=development
-SECRET_KEY="<SOME SECRET KEY OF YOUR CHOOSING>"
+SECRET_KEY='<SOME SECRET KEY OF YOUR CHOOSING>'
 ```
 
 #### On Windows
