@@ -26,7 +26,7 @@
                             <a href="#feature-section" class="btn btn-outline-light-blue">Learn More</a>
                         </div>
                     </div>
-                    <div class="col-lg-6 text-center">
+                    <div class="col-lg-6 section-image-wrapper text-center">
                         <img src="{{ url_for('static', filename='images/index-page/teamwork.jpg') }}"
                             alt="Team Collaboration" class="img-fluid hero-illustration scale-down">
                     </div>
@@ -65,7 +65,7 @@
                                     <li><i class="bi bi-check2-circle text-primary me-2"></i> Smart calendar integration</li>
                                 </ul>
                             </div>
-                            <div class="col-md-6 text-center scale-in">
+                            <div class="col-md-6 section-image-wrapper text-center scale-in">
                                 <img src="{{ url_for('static', filename='images/index-page/planning.webp') }}"
                                     alt="Planning Feature" class="img-fluid feature-image">
                             </div>
@@ -88,7 +88,7 @@
                                         group costs</li>
                                 </ul>
                             </div>
-                            <div class="col-md-6 text-center scale-in">
+                            <div class="col-md-6 section-image-wrapper text-center scale-in">
                                 <img src="{{ url_for('static', filename='images/index-page/split.avif') }}"
                                     alt="Voting Feature" class="img-fluid feature-image">
                             </div>
@@ -111,7 +111,7 @@
                                         attending</li>
                                 </ul>
                             </div>
-                            <div class="col-md-6 text-center scale-in">
+                            <div class="col-md-6 section-image-wrapper text-center scale-in">
                                 <img src="{{ url_for('static', filename='images/index-page/track.png') }}"
                                     alt="Tracking Feature" class="img-fluid feature-image">
                             </div>
@@ -125,9 +125,6 @@
         <section class="why-plannit-section">
             <div class="container">
                 <div class="row align-items-center justify-content-between w-100">
-                    <div class="col-12 text-center mb-5 fade-up-on-scroll">
-                        <h2 class="section-header large-header">WHY PLANNIT?</h2>
-                    </div>
                     <div class="col-lg-6 fade-left">
                         <h2 class="tab-pane-heading mb-4">Plannit Makes Life Easier</h2>
                         <ul class="list-unstyled feature-benefits">
@@ -138,7 +135,7 @@
                             <li class="text-light mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i> Transparent split cost</li>
                         </ul>
                     </div>
-                    <div class="col-lg-6 text-center scale-in">
+                    <div class="col-lg-6 section-image-wrapper text-center scale-in">
                         <img src="{{ url_for('static', filename='images/index-page/pie-chart.png') }}"
                             class="img-fluid rounded shadow feature-image" alt="Collaboration">
                     </div>
@@ -326,8 +323,8 @@
         <section class="cta-section fade-up-on-scroll">
             <div class="container">
                 <div class="row align-items-center justify-content-center w-100">
-                    <div class="col-md-8">
-                        <h2 class="mb-4">Ready to start planning better?</h2>
+                    <div class="col-md-8 text-center">
+                        <h2 class="section-header large-header mb-4">READY TO START PLANNING BETTER?</h2>
                         <p class="lead mb-4">Join thousands of users who are already simplifying their group events.</p>
                         <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">Get Started Now</a>
                     </div>
