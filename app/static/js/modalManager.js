@@ -544,12 +544,6 @@ function _makeFieldEditable(targetElement, apiFieldNameOrMode, initialData, conf
             };
 
             const textInputRect = locationTextInput.getBoundingClientRect();
-            locationMapFloatingPanel.style.position = 'fixed';
-            locationMapFloatingPanel.style.zIndex = '1055';
-            locationMapFloatingPanel.style.backgroundColor = '#fff';
-            locationMapFloatingPanel.style.border = '1px solid #ccc';
-            locationMapFloatingPanel.style.padding = '10px';
-            locationMapFloatingPanel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
             locationMapFloatingPanel.style.left = `${textInputRect.left}px`;
             locationMapFloatingPanel.style.top = `${textInputRect.bottom + 5}px`;
             locationMapFloatingPanel.style.width = `${Math.max(textInputRect.width, 350)}px`;
@@ -1018,7 +1012,7 @@ export async function openEventModal(eventData) {
     }
 
 
-    if (modalEventImage) modalEventImage.src = eventData.image_url || '/static/img/default-event-logo.png';
+    if (modalEventImage) modalEventImage.src = eventData.image_url;
     if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group';
 
     const isMember = eventData.group_id ? true : false; 

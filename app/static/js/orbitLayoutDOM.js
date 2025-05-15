@@ -427,7 +427,7 @@ export class OrbitLayoutManager {
             const eventData = { title: event.title || "Event Title Placeholder", date: formattedDate, location: event.location || "Location Placeholder", statusClass: statusClass, statusText: statusText, logoUrl: event.image_url || null, details: event.description || "No extra details available.", cost: event.cost_display || null, id: event.id || '' };
             expandedDiv.innerHTML = `
             <div class="expanded-grid-container-v2">
-              <div class="grid-item event-header"><div class="event-logo-wrapper"><img src="${eventData.logoUrl || '/static/img/default-event-logo.png'}" alt="Event Logo" class="event-logo-img"></div><div class="event-title-wrapper content-box"><div class="title-scroll">${eventData.title}</div></div></div>
+              <div class="grid-item event-header"><div class="event-logo-wrapper"><img src="${eventData.logoUrl}" alt="Event Logo" class="event-logo-img"></div><div class="event-title-wrapper content-box"><div class="title-scroll">${eventData.title}</div></div></div>
               <div class="grid-item event-status ${eventData.statusClass}"><span class="status-pill">${eventData.statusText}</span></div>
               <div class="grid-item event-timeplace content-box"><div class="timeplace-content"><p>📅 <strong>Date:</strong> ${eventData.date}</p><p>📍 <strong>Location:</strong> ${eventData.location}</p>${eventData.cost ? `<p>💲 <strong>Cost:</strong> ${eventData.cost}</p>` : ''}${eventData.details ? `<p class="extra-details">📝 ${eventData.details}</p>` : ''}</div></div>
               <div class="grid-item more-info"><button class="button info-button" data-event-id="${eventData.id}">More Info</button></div>
