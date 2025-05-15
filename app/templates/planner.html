@@ -46,8 +46,7 @@
                 {% for group in groups %}
                 {% set is_active = loop.first and not is_mobile_on_load %}
                 <li class="group-item {% if is_active %}active{% endif %}" data-group-id="{{ group.id | e }}"
-                    data-group-name="{{ group.name | e }}"
-                    data-group-avatar="{{ group.avatar }}">
+                    data-group-name="{{ group.name | e }}" data-group-avatar="{{ group.avatar }}">
                     <img src="{{ url_for('static', filename='img/default-group-avatar.png') | e }}"
                         alt="{{ group.name | e }} Avatar" class="group-avatar">
                     <div class="group-info">
@@ -169,340 +168,370 @@
     </div> <!-- End of planner-pane -->
 </main>
 <!-- MODALS START HERE -->
-    <!-- Event Details Modal -->
-    <div id="event-details-modal" class="modal-backdrop" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-content glassy">
-                <button class="modal-close-btn" aria-label="Close event details"><i class="fas fa-times"></i></button>
-                <div class="modal-header">
-                    <img id="modal-event-image-header" src="{{ url_for('static', filename='img/default-event-logo.png') }}"
-                        alt="Event Image" class="modal-event-image-small">
-                    <div class="modal-title-group">
-                        <h2 id="modal-event-title" class="modal-title-text">Event Title Placeholder</h2>
-                        <p id="modal-event-group">Part of <span id="modal-group-name">Group Name</span></p>
+<!-- Event Details Modal -->
+<div id="event-details-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content glassy">
+            <button class="modal-close-btn" aria-label="Close event details"><i class="fas fa-times"></i></button>
+            <div class="modal-header">
+                <img id="modal-event-image-header" src="{{ url_for('static', filename='img/default-event-logo.png') }}"
+                    alt="Event Image" class="modal-event-image-small">
+                <div class="modal-title-group">
+                    <h2 id="modal-event-title" class="modal-title-text">Event Title Placeholder</h2>
+                    <p id="modal-event-group">Part of <span id="modal-group-name">Group Name</span></p>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-col modal-col-details">
+                    <div class="modal-detail-section">
+                        <h3>Event Information</h3>
+                        <div class="modal-detail-grid">
+                            <div class="detail-item"><span class="detail-label">📅 Date & Time</span><span
+                                    id="modal-event-date">Not specified</span></div>
+                            <div class="detail-item"><span class="detail-label">📍 Location</span><span
+                                    id="modal-event-location">Not specified</span></div>
+                            <div class="detail-item"><span class="detail-label">💲 Cost</span><span
+                                    id="modal-event-cost">Not specified</span></div>
+                        </div>
+                    </div>
+                    <div class="modal-detail-section modal-description-section">
+                        <h3>📝 Description</h3>
+                        <div class="editable-field-wrapper" id="modal-description-wrapper">
+                            <p id="modal-event-description">No description provided.</p>
+                        </div>
+                    </div>
+                    <div class="form-section" id="event-permissions-section" style="display: none;">
+                        <h4>Event Edit Permissions <small>(Creator/Owner only)</small></h4>
+                        <div class="form-group">
+                            <input type="checkbox" id="event-allow-others-edit-title" name="allow_others_edit_title"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="event-allow-others-edit-title">Allow other group members to edit event
+                                title</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="event-allow-others-edit-details" name="allow_others_edit_details"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="event-allow-others-edit-details">Allow other group members to edit event
+                                details (date, location, cost, description)</label>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-body">
-                    <div class="modal-col modal-col-details">
-                        <div class="modal-detail-section">
-                            <h3>Event Information</h3>
-                            <div class="modal-detail-grid">
-                                <div class="detail-item"><span class="detail-label">📅 Date & Time</span><span
-                                        id="modal-event-date">Not specified</span></div>
-                                <div class="detail-item"><span class="detail-label">📍 Location</span><span
-                                        id="modal-event-location">Not specified</span></div>
-                                <div class="detail-item"><span class="detail-label">💲 Cost</span><span
-                                        id="modal-event-cost">Not specified</span></div>
-                            </div>
+                <div class="modal-col modal-col-rsvps">
+                    <div class="modal-detail-section modal-rsvp-section">
+                        <h3>Your RSVP Status</h3>
+                        <div id="modal-rsvp-controls" class="rsvp-button-group" data-event-id="">
+                            <button class="rsvp-btn rsvp-attending" data-status="attending" aria-pressed="false"><span
+                                    class="icon">✔️</span> Going</button>
+                            <button class="rsvp-btn rsvp-maybe" data-status="maybe" aria-pressed="false"><span
+                                    class="icon">❓</span> Maybe</button>
+                            <button class="rsvp-btn rsvp-declined" data-status="declined" aria-pressed="false"><span
+                                    class="icon">❌</span> Can't Go</button>
+                            <button class="rsvp-btn rsvp-remove" data-status="none" style="display: none;"
+                                aria-label="Clear RSVP"><span class="icon">🗑️</span> Clear RSVP</button>
                         </div>
-                        <div class="modal-detail-section modal-description-section">
-                            <h3>📝 Description</h3>
-                            <div class="editable-field-wrapper" id="modal-description-wrapper">
-                                <p id="modal-event-description">No description provided.</p>
-                            </div>
-                        </div>
-                        <div class="form-section" id="event-permissions-section" style="display: none;">
-                            <h4>Event Edit Permissions <small>(Creator/Owner only)</small></h4>
-                            <div class="form-group">
-                                <input type="checkbox" id="event-allow-others-edit-title" name="allow_others_edit_title"
-                                    class="permission-checkbox-input modal-checkbox">
-                                <label for="event-allow-others-edit-title">Allow other group members to edit event
-                                    title</label>
-                            </div>
-                            <div class="form-group">
-                                <input type="checkbox" id="event-allow-others-edit-details" name="allow_others_edit_details"
-                                    class="permission-checkbox-input modal-checkbox">
-                                <label for="event-allow-others-edit-details">Allow other group members to edit event
-                                    details (date, location, cost, description)</label>
-                            </div>
-                        </div>
+                        <p id="rsvp-confirmation-message" class="rsvp-message" style="display: none;"></p>
                     </div>
-                    <div class="modal-col modal-col-rsvps">
-                        <div class="modal-detail-section modal-rsvp-section">
-                            <h3>Your RSVP Status</h3>
-                            <div id="modal-rsvp-controls" class="rsvp-button-group" data-event-id="">
-                                <button class="rsvp-btn rsvp-attending" data-status="attending" aria-pressed="false"><span
-                                        class="icon">✔️</span> Going</button>
-                                <button class="rsvp-btn rsvp-maybe" data-status="maybe" aria-pressed="false"><span
-                                        class="icon">❓</span> Maybe</button>
-                                <button class="rsvp-btn rsvp-declined" data-status="declined" aria-pressed="false"><span
-                                        class="icon">❌</span> Can't Go</button>
-                                <button class="rsvp-btn rsvp-remove" data-status="none" style="display: none;"
-                                    aria-label="Clear RSVP"><span class="icon">🗑️</span> Clear RSVP</button>
-                            </div>
-                            <p id="rsvp-confirmation-message" class="rsvp-message" style="display: none;"></p>
+                    <div class="modal-detail-section modal-attendees-section">
+                        <h3>Attendees (<span id="modal-attendee-count">0</span>)</h3>
+                        <div class="attendee-list-container" id="attendee-list-container-id">
+                            <ul id="modal-attendee-list"></ul>
                         </div>
-                        <div class="modal-detail-section modal-attendees-section">
-                            <h3>Attendees (<span id="modal-attendee-count">0</span>)</h3>
-                            <div class="attendee-list-container" id="attendee-list-container-id">
-                                <ul id="modal-attendee-list"></ul>
-                            </div>
-                            <p id="attendee-list-message" style="display: none;">No one has RSVP'd yet.</p>
-                            <div id="attendee-loading-indicator"
-                                style="display: none; color: #bbb; text-align:center; padding: 15px; font-style: italic;">
-                                Loading attendees...</div>
-                        </div>
+                        <p id="attendee-list-message" style="display: none;">No one has RSVP'd yet.</p>
+                        <div id="attendee-loading-indicator"
+                            style="display: none; color: #bbb; text-align:center; padding: 15px; font-style: italic;">
+                            Loading attendees...</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
 
-    <!-- Create Group Modal -->
-    <div id="create-group-modal" class="modal-backdrop" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-content glassy create-group-modal-content">
-                <button class="modal-close-btn" id="create-group-modal-close-btn-x" aria-label="Close create group dialog"><i class="fas fa-times"></i></button>
-                <div class="modal-header">
-                    <h2 id="create-group-modal-title" class="modal-title-text">Create New Group</h2>
-                </div>
-                <form id="create-group-form">
-                    <div class="modal-body">
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="new-group-name">Group Name*</label>
-                                <input type="text" id="new-group-name" name="name" required class="modal-input">
-                          </div>
-                        </div>
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="new-group-description">Description (Optional)</label>
-                                <textarea id="new-group-description" name="description" rows="3" class="modal-textarea"></textarea>
-                            </div>
-                        </div>
-                        <div class="form-section">
-                            <div class="form-group">
-                                <h4>Add Friends to Group (Optional)</h4>
-                                <input type="text" id="modal-friend-search" placeholder="Search friends..." class="modal-input friend-search-input">
-                                <div id="modal-friends-list-container" class="friends-list-scroll-container">
-                                    <p class="loading-message">Loading friends...</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="create-group-error-message" class="modal-error-message" style="display: none;"></div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="button secondary-button" id="create-group-cancel-btn">Cancel</button>
-                        <button type="submit" class="button primary-button" id="create-group-save-btn">Create Group</button>
-                    </div>
-                </form>
+<!-- Create Group Modal -->
+<div id="create-group-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content glassy create-group-modal-content">
+            <button class="modal-close-btn" id="create-group-modal-close-btn-x"
+                aria-label="Close create group dialog"><i class="fas fa-times"></i></button>
+            <div class="modal-header">
+                <h2 id="create-group-modal-title" class="modal-title-text">Create New Group</h2>
             </div>
-        </div>
-  </div>
-
-    <!-- Group Settings Modal -->
-    <div id="group-settings-modal" class="modal-backdrop" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-content glassy group-settings-modal-content">
-                <button class="modal-close-btn" id="group-settings-modal-close-btn-x" aria-label="Close group settings dialog"><i class="fas fa-times"></i></button>
-                <div class="modal-header">
-                    <h2 id="group-settings-modal-title" class="modal-title-text">Group Settings</h2>
-                </div>
-                <form id="group-settings-form">
-                    <input type="hidden" id="settings-group-id" name="group_id">
-                    <div class="modal-body">
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="edit-group-name">Group Name*</label>
-                                <input type="text" id="edit-group-name" name="name" required class="modal-input">
-                            </div>
+            <form id="create-group-form">
+                <div class="modal-body">
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-group-name">Group Name*</label>
+                            <input type="text" id="new-group-name" name="name" required class="modal-input">
                         </div>
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="edit-group-description">Description</label>
-                                <textarea id="edit-group-description" name="description" rows="3" class="modal-textarea"></textarea>
-                            </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-group-description">Description (Optional)</label>
+                            <textarea id="new-group-description" name="description" rows="3"
+                                class="modal-textarea"></textarea>
                         </div>
-                        <div class="form-section permissions-section" style="display: none;">
-                            <h4>Member Permissions <small>(Owner only)</small></h4>
-                            <div class="form-group">
-                                <input type="checkbox" id="settings-allow-edit-name" name="allow_edit_name" class="permission-checkbox-input modal-checkbox">
-                                <label for="settings-allow-edit-name">Allow members to edit group name</label>
-                            </div>
-                            <div class="form-group">
-                                <input type="checkbox" id="settings-allow-edit-description" name="allow_edit_description" class="permission-checkbox-input modal-checkbox">
-                                <label for="settings-allow-edit-description">Allow members to edit group description</label>
-                            </div>
-                            <div class="form-group">
-                                <input type="checkbox" id="settings-allow-manage-members" name="allow_manage_members" class="permission-checkbox-input modal-checkbox">
-                                <label for="settings-allow-manage-members">Allow members to add/remove other members</label>
-                            </div>
-                        </div>
-                        <div class="form-section">
-                            <h4>Current Members</h4>
-                            <div id="current-members-list-container" class="members-list-scroll-container">
-                                <p class="loading-message">Loading members...</p>
-                            </div>
-                        </div>
-                        <div id="add-members-section-wrapper" class="form-section">
-                            <h4>Add New Members</h4>
-                            <div class="form-group">
-                                <label for="settings-modal-friend-search">Search Friends to Add</label>
-                                <input type="text" id="settings-modal-friend-search" placeholder="Search friends to add..." class="modal-input friend-search-input">
-                            </div>
-                            <div id="settings-modal-friends-to-add-list-container" class="friends-list-scroll-container">
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <h4>Add Friends to Group (Optional)</h4>
+                            <input type="text" id="modal-friend-search" placeholder="Search friends..."
+                                class="modal-input friend-search-input">
+                            <div id="modal-friends-list-container" class="friends-list-scroll-container">
                                 <p class="loading-message">Loading friends...</p>
                             </div>
                         </div>
-                        <div id="group-settings-error-message" class="modal-error-message" style="display: none;"></div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="button secondary-button" id="group-settings-cancel-btn">Cancel</button>
-                        <button type="submit" class="button primary-button" id="group-settings-save-btn">Save Changes</button>
-                    </div>
-                </form>
-            </div>
+                    <div id="create-group-error-message" class="modal-error-message" style="display: none;"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="button secondary-button" id="create-group-cancel-btn">Cancel</button>
+                    <button type="submit" class="button primary-button" id="create-group-save-btn">Create Group</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <!-- Day Events Modal -->
-    <div id="day-events-modal" class="modal-backdrop" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-content glassy">
-                <button class="modal-close-btn" id="day-events-modal-close-btn" aria-label="Close day events list"><i class="fas fa-times"></i></button>
-                <div class="modal-header">
-                    <h3 id="day-events-modal-title" class="modal-title-text">Events for Date</h3>
-                </div>
+<!-- Group Settings Modal -->
+<div id="group-settings-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content glassy group-settings-modal-content">
+            <button class="modal-close-btn" id="group-settings-modal-close-btn-x"
+                aria-label="Close group settings dialog"><i class="fas fa-times"></i></button>
+            <div class="modal-header">
+                <h2 id="group-settings-modal-title" class="modal-title-text">Group Settings</h2>
+            </div>
+            <form id="group-settings-form">
+                <input type="hidden" id="settings-group-id" name="group_id">
                 <div class="modal-body">
-                    <ul class="day-event-list" id="day-events-modal-list"></ul>
-                </div>
-                <div class="modal-footer" style="display:none"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Node Creation Modal -->
-    <div id="node-creation-modal" class="modal-backdrop modal-backdrop-small" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-content glassy modal-content-small">
-                <button class="modal-close-btn" aria-label="Close node creation dialog"><i class="fas fa-times"></i></button>
-                <div class="modal-header">
-                    <h2 id="node-creation-modal-title" class="modal-title-text">Create New Node</h2>
-                </div>
-                <form id="node-creation-form">
-                    <div class="modal-body">
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="new-node-name-input">Node Name*</label>
-                                <input type="text" id="new-node-name-input" name="node_name" required class="modal-input">
-                            </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="edit-group-name">Group Name*</label>
+                            <input type="text" id="edit-group-name" name="name" required class="modal-input">
                         </div>
-                        <div id="node-creation-error-message" class="modal-error-message" style="display: none;"></div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" id="node-creation-cancel-btn" class="button secondary-button">Cancel</button>
-                        <button type="submit" class="button primary-button">Create Node</button>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="edit-group-description">Description</label>
+                            <textarea id="edit-group-description" name="description" rows="3"
+                                class="modal-textarea"></textarea>
+                        </div>
                     </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Event Creation Modal -->
-    <div id="event-creation-modal" class="modal-backdrop" style="display: none;">
-        <div class="modal-dialog">
-            <div class="modal-content glassy event-creation-modal-content">
-                <button class="modal-close-btn" id="event-creation-modal-close-btn" aria-label="Close event creation dialog"><i class="fas fa-times"></i></button>
-                <div class="modal-header">
-                    <h2 id="event-creation-modal-title" class="modal-title-text">Create New Event</h2>
-                </div>
-                <form id="event-creation-form">
-                    <div class="modal-body">
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="new-event-title">Event Title*</label>
-                                <input type="text" id="new-event-title" name="title" required class="modal-input">
-                            </div>
+                    <div class="form-section permissions-section" style="display: none;">
+                        <h4>Member Permissions <small>(Owner only)</small></h4>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-edit-name" name="allow_edit_name"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-edit-name">Allow members to edit group name</label>
                         </div>
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="new-event-date">Date & Time*</label>
-                                <input type="datetime-local" id="new-event-date" name="date" required class="modal-input">
-                            </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-edit-description" name="allow_edit_description"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-edit-description">Allow members to edit group description</label>
                         </div>
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="new-event-location">Location</label>
-                                <input type="text" id="new-event-location" name="location" class="modal-input" placeholder="e.g., Main Hall, Online, TBD">
-                            </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="settings-allow-manage-members" name="allow_manage_members"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="settings-allow-manage-members">Allow members to add/remove other members</label>
                         </div>
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="new-event-cost">Cost</label>
-                                <input type="text" id="new-event-cost" name="cost" class="modal-input" placeholder="e.g., Free, $10, Split $50, Donation">
-                            </div>
-                        </div>
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="new-event-description">Description</label>
-                                <textarea id="new-event-description" name="description" rows="4" class="modal-textarea"></textarea>
-                            </div>
-                        </div>
-                        <div class="form-section" id="new-event-permissions-section" style="display: none;">
-                            <h4>Event Edit Permissions <small>(Group Owner Setting)</small></h4>
-                            <div class="form-group">
-                                <input type="checkbox" id="new-event-allow-others-edit-title" name="allow_others_edit_title" class="permission-checkbox-input modal-checkbox">
-                                <label for="new-event-allow-others-edit-title">Allow other group members to edit event title</label>
-                            </div>
-                            <div class="form-group">
-                                <input type="checkbox" id="new-event-allow-others-edit-details" name="allow_others_edit_details" class="permission-checkbox-input modal-checkbox">
-                                <label for="new-event-allow-others-edit-details">Allow other group members to edit event details (date, location, cost, description)</label>
-                            </div>
-                        </div>
-                        <div id="event-creation-error-message" class="modal-error-message" style="display: none;"></div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="button secondary-button" id="event-creation-cancel-btn">Cancel</button>
-                        <button type="submit" class="button primary-button" id="event-creation-save-btn">Create Event</button>
+                    <div class="form-section">
+                        <h4>Current Members</h4>
+                        <div id="current-members-list-container" class="members-list-scroll-container">
+                            <p class="loading-message">Loading members...</p>
+                        </div>
                     </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Share Panel Modal -->
-    <div id="share-panel-modal" class="modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="share-panel-modal-title">
-        <div class="modal-dialog">
-            <div class="modal-content glassy">
-                <div class="modal-header">
-                    <h3 id="share-panel-modal-title" class="modal-title-text">Share Panel: <span id="share-panel-modal-panel-name"></span></h3>
-                    <button id="share-panel-modal-close-btn-x" type="button" class="modal-close-btn" aria-label="Close">×</button>
-                </div>
-                <div class="modal-body">
-                    <form id="share-panel-form">
-                        <input type="hidden" id="share-panel-original-id-input">
-                        <div class="form-section">
-                            <label for="share-panel-friend-search">Share with Friends:</label>
-                            <input type="text" id="share-panel-friend-search" class="modal-input friend-search-input" placeholder="Search friends...">
-                            <div id="share-panel-friends-list-container" class="modal-list-container friends-list-scroll-container">
-                                <p class="loading-message">Loading friends...</p>
-                            </div>
+                    <div id="add-members-section-wrapper" class="form-section">
+                        <h4>Add New Members</h4>
+                        <div class="form-group">
+                            <label for="settings-modal-friend-search">Search Friends to Add</label>
+                            <input type="text" id="settings-modal-friend-search" placeholder="Search friends to add..."
+                                class="modal-input friend-search-input">
                         </div>
-                        <div class="form-section">
-                            <label>Access Mode:</label>
-                            <div class="radio-group">
-                                <label for="share-access-dynamic">
-                                    <input type="radio" id="share-access-dynamic" name="share_access_mode" value="dynamic" checked> Dynamic (Recipient can change time, data updates from you)
-                                </label>
-                                <label for="share-access-fixed">
-                                    <input type="radio" id="share-access-fixed" name="share_access_mode" value="fixed"> Fixed (Recipient sees data for your current time period only)
-                                </label>
-                            </div>
+                        <div id="settings-modal-friends-to-add-list-container" class="friends-list-scroll-container">
+                            <p class="loading-message">Loading friends...</p>
                         </div>
-                        <div id="share-panel-error-message" class="error-message-banner modal-error-message" style="display:none;"></div>
-                    </form>
+                    </div>
+                    <div id="group-settings-error-message" class="modal-error-message" style="display: none;"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" id="share-panel-cancel-btn" class="button secondary-button">Cancel</button>
-                    <button type="submit" id="share-panel-submit-btn" form="share-panel-form" class="button primary-button">Share</button>
+                    <button type="button" class="button secondary-button" id="group-settings-cancel-btn">Cancel</button>
+                    <button type="submit" class="button primary-button" id="group-settings-save-btn">Save
+                        Changes</button>
                 </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Day Events Modal -->
+<div id="day-events-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content glassy">
+            <button class="modal-close-btn" id="day-events-modal-close-btn" aria-label="Close day events list"><i
+                    class="fas fa-times"></i></button>
+            <div class="modal-header">
+                <h3 id="day-events-modal-title" class="modal-title-text">Events for Date</h3>
+            </div>
+            <div class="modal-body">
+                <ul class="day-event-list" id="day-events-modal-list"></ul>
+            </div>
+            <div class="modal-footer" style="display:none"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Node Creation Modal -->
+<div id="node-creation-modal" class="modal-backdrop modal-backdrop-small" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content glassy modal-content-small">
+            <button class="modal-close-btn" aria-label="Close node creation dialog"><i
+                    class="fas fa-times"></i></button>
+            <div class="modal-header">
+                <h2 id="node-creation-modal-title" class="modal-title-text">Create New Node</h2>
+            </div>
+            <form id="node-creation-form">
+                <div class="modal-body">
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-node-name-input">Node Name*</label>
+                            <input type="text" id="new-node-name-input" name="node_name" required class="modal-input">
+                        </div>
+                    </div>
+                    <div id="node-creation-error-message" class="modal-error-message" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="node-creation-cancel-btn" class="button secondary-button">Cancel</button>
+                    <button type="submit" class="button primary-button">Create Node</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Event Creation Modal -->
+<div id="event-creation-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content glassy event-creation-modal-content">
+            <button class="modal-close-btn" id="event-creation-modal-close-btn"
+                aria-label="Close event creation dialog"><i class="fas fa-times"></i></button>
+            <div class="modal-header">
+                <h2 id="event-creation-modal-title" class="modal-title-text">Create New Event</h2>
+            </div>
+            <form id="event-creation-form">
+                <div class="modal-body">
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-title">Event Title*</label>
+                            <input type="text" id="new-event-title" name="title" required class="modal-input">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-date">Date & Time*</label>
+                            <input type="datetime-local" id="new-event-date" name="date" required class="modal-input">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-location">Location</label>
+                            <input type="text" id="new-event-location" name="location" class="modal-input"
+                                placeholder="e.g., Main Hall, Online, TBD">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-cost">Cost</label>
+                            <input type="text" id="new-event-cost" name="cost" class="modal-input"
+                                placeholder="e.g., Free, $10, Split $50, Donation">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="new-event-description">Description</label>
+                            <textarea id="new-event-description" name="description" rows="4"
+                                class="modal-textarea"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-section" id="new-event-permissions-section" style="display: none;">
+                        <h4>Event Edit Permissions <small>(Group Owner Setting)</small></h4>
+                        <div class="form-group">
+                            <input type="checkbox" id="new-event-allow-others-edit-title" name="allow_others_edit_title"
+                                class="permission-checkbox-input modal-checkbox">
+                            <label for="new-event-allow-others-edit-title">Allow other group members to edit event
+                                title</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" id="new-event-allow-others-edit-details"
+                                name="allow_others_edit_details" class="permission-checkbox-input modal-checkbox">
+                            <label for="new-event-allow-others-edit-details">Allow other group members to edit event
+                                details (date, location, cost, description)</label>
+                        </div>
+                    </div>
+                    <div id="event-creation-error-message" class="modal-error-message" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="button secondary-button" id="event-creation-cancel-btn">Cancel</button>
+                    <button type="submit" class="button primary-button" id="event-creation-save-btn">Create
+                        Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Share Panel Modal -->
+<div id="share-panel-modal" class="modal-backdrop" style="display: none;" role="dialog" aria-modal="true"
+    aria-labelledby="share-panel-modal-title">
+    <div class="modal-dialog">
+        <div class="modal-content glassy">
+            <div class="modal-header">
+                <h3 id="share-panel-modal-title" class="modal-title-text">Share Panel: <span
+                        id="share-panel-modal-panel-name"></span></h3>
+                <button id="share-panel-modal-close-btn-x" type="button" class="modal-close-btn"
+                    aria-label="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="share-panel-form">
+                    <input type="hidden" id="share-panel-original-id-input">
+                    <div class="form-section">
+                        <label for="share-panel-friend-search">Share with Friends:</label>
+                        <input type="text" id="share-panel-friend-search" class="modal-input friend-search-input"
+                            placeholder="Search friends...">
+                        <div id="share-panel-friends-list-container"
+                            class="modal-list-container friends-list-scroll-container">
+                            <p class="loading-message">Loading friends...</p>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <label>Access Mode:</label>
+                        <div class="radio-group">
+                            <label for="share-access-dynamic">
+                                <input type="radio" id="share-access-dynamic" name="share_access_mode" value="dynamic"
+                                    checked> Dynamic (Recipient can change time, data updates from you)
+                            </label>
+                            <label for="share-access-fixed">
+                                <input type="radio" id="share-access-fixed" name="share_access_mode" value="fixed">
+                                Fixed (Recipient sees data for your current time period only)
+                            </label>
+                        </div>
+                    </div>
+                    <div id="share-panel-error-message" class="error-message-banner modal-error-message"
+                        style="display:none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="share-panel-cancel-btn" class="button secondary-button">Cancel</button>
+                <button type="submit" id="share-panel-submit-btn" form="share-panel-form"
+                    class="button primary-button">Share</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- MODALS END HERE -->
+<!-- MODALS END HERE -->
 
 {% endblock %}
 
@@ -510,6 +539,10 @@
 {{ super() }}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/heatmap.js/2.0.0/heatmap.min.js"
+    integrity="sha512-FpvmtV53P/z7yzv1TAIVH7PNz94EKXs5aV6ts/Zi+B/VeGU5Xwo6KIbwpTgKc0d4urD/BtkK50IC9785y68/AA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-heatmap@1.0.0/leaflet-heatmap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.js"
     integrity="sha512-g/feAizmeiVKSwvfW0Xk3ZHZqv5Zs8PEXEBKzL15pM0SevEvoX8eJ4yFWbqakvRj7vtw1Q97bLzEpG2IVWX0Mg=="
