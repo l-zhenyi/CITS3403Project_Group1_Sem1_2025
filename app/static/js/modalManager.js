@@ -1018,7 +1018,7 @@ export async function openEventModal(eventData) {
     }
 
 
-    if (modalEventImage) modalEventImage.src = eventData.image_url || '/static/img/default-event-logo.png';
+    if (modalEventImage) modalEventImage.src = eventData.image_url;
     if (modalGroupName) modalGroupName.textContent = eventData.group_name || 'Group';
 
     const isMember = eventData.group_id ? true : false; 

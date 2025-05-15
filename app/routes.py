@@ -841,6 +841,8 @@ def create_event_api(group_id):
     location_coordinates = data.get("location_coordinates")
     description = data.get("description", "").strip()
     image_url = data.get("image_url")
+    if not image_url:
+        image_url = url_for('static', filename='img/default-event-image.png')
 
     # Event-specific permissions
     allow_others_edit_title = data.get("allow_others_edit_title", False)

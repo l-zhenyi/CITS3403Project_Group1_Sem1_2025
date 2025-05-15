@@ -341,7 +341,7 @@ function createEventPanel(event) {
     panel._eventData = event; 
 
     const dateText = formatEventDateForDisplay(event.date); 
-    const imageUrl = event.image_url || '/static/img/default-event-logo.png';
+    const imageUrl = event.image_url;
 
     const originalContentWrapper = document.createElement('div');
     originalContentWrapper.className = 'orbit-element-original-content';
