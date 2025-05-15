@@ -153,3 +153,26 @@ body {
     margin: 0 auto;         
 }
 
+.pagination-nav {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.pager {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.pager-link {
+    text-decoration: none;
+    color: #007bff;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.pager-link:hover {
+    color: #0056b3;
+}
