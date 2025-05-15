@@ -42,35 +42,27 @@ document.addEventListener("DOMContentLoaded", () => {
       button.addEventListener("click", () => {
         const targetId = button.getAttribute("data-tab");
         
-        // Toggle button styles
-        tabButtons.forEach(btn => btn.classList.remove("active"));
+        // Toggle button styles - explicitly adding/removing classes
+        tabButtons.forEach(btn => {
+          btn.classList.remove("active");
+          btn.setAttribute("aria-selected", "false");
+        });
+        
         button.classList.add("active");
+        button.setAttribute("aria-selected", "true");
 
-        // Toggle tab pane visibility with transition
+        // Toggle tab pane visibility
         tabPanes.forEach(pane => {
+          pane.classList.remove("active");
+          pane.style.opacity = "0";
+          
           if (pane.id === targetId) {
-            // First hide all panes
-            tabPanes.forEach(p => {
-              p.classList.remove("active");
-              p.style.opacity = "0";
-            });
-            
-            // Then show the selected pane
             setTimeout(() => {
               pane.classList.add("active");
               setTimeout(() => {
                 pane.style.opacity = "1";
-              }, 50);
+              }, 10);
             }, 50);
-            
-            // Reset animations within the tab
-            const animatedElements = pane.querySelectorAll('.fade-left, .scale-in');
-            animatedElements.forEach(el => {
-              el.classList.remove('visible');
-              setTimeout(() => {
-                el.classList.add('visible');
-              }, 100);
-            });
           }
         });
       });
@@ -83,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll('.hero-section, .hero-text, .hero-illustration')
     .forEach(el => el.classList.add('visible'));
     
-  // Fixed and simplified testimonial carousel
+  // Fixed testimonial carousel implementation
   const setupTestimonialCarousel = () => {
     const carousel = document.getElementById('testimonialCarousel');
     if (!carousel) return;
@@ -98,19 +90,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const nextButton = carousel.querySelector('#nextTestimonial');
     const dots = carousel.querySelectorAll('.carousel-dot');
     
-    // Calculate how many slides to show per group (desktop: 3, mobile: 1)
-    const getGroupSize = () => window.innerWidth < 768 ? 1 : 3;
-    
-    // Define how slides shift - full width of visible group
-    const getShiftAmount = () => -100 * currentIndex;
-    
+    // Fixed calculation of slides per view and total groups
+    const slidesPerView = window.innerWidth < 768 ? 1 : 3;
+    const totalGroups = Math.ceil(slides.length / slidesPerView);
     let currentIndex = 0;
-    const totalGroups = Math.ceil(slides.length / getGroupSize());
     
-    // Function to update track position based on currentIndex
+    // Update carousel positions
     const updateCarousel = () => {
-      // Set transform based on current position
-      track.style.transform = `translateX(${getShiftAmount()}%)`;
+      // Calculate percentage to shift based on current index and slidesPerView
+      const percentageToShift = (currentIndex * 100) / slidesPerView;
+      track.style.transform = `translateX(-${percentageToShift}%)`;
       
       // Update active dot
       dots.forEach((dot, i) => {
@@ -118,33 +107,34 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     };
     
-    // Navigation functions
+    // Navigate to specific slide group
     const goToSlide = (index) => {
-      // Ensure index is within bounds
+      // Bounds checking
       if (index < 0) index = 0;
-      if (index >= totalGroups) index = totalGroups - 1;
+      if (index >= totalGroups) index = 0; // Loop back to start
       
       currentIndex = index;
       updateCarousel();
     };
     
-    const goToNext = () => goToSlide(currentIndex + 1);
-    const goToPrev = () => goToSlide(currentIndex - 1);
+    // Set up button listeners
+    if (prevButton) {
+      prevButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        goToSlide(currentIndex - 1);
+        resetAutoAdvance();
+      });
+    }
     
-    // Add event listeners
-    if (prevButton) prevButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      goToPrev();
-      resetAutoAdvance();
-    });
+    if (nextButton) {
+      nextButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        goToSlide(currentIndex + 1);
+        resetAutoAdvance();
+      });
+    }
     
-    if (nextButton) nextButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      goToNext();
-      resetAutoAdvance();
-    });
-    
-    // Add dot navigation
+    // Set up dot listeners
     dots.forEach((dot, i) => {
       dot.addEventListener('click', () => {
         goToSlide(i);
@@ -152,15 +142,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
     
-    // Auto-advance carousel
+    // Auto-advance functionality
     let autoAdvanceTimer;
     
     const startAutoAdvance = () => {
       autoAdvanceTimer = setInterval(() => {
-        let nextIndex = currentIndex + 1;
-        if (nextIndex >= totalGroups) nextIndex = 0;
-        goToSlide(nextIndex);
-      }, 8000); // Changed from 5000 to 8000 - wait 8 seconds between slides
+        goToSlide(currentIndex + 1);
+      }, 8000);
     };
     
     const resetAutoAdvance = () => {
@@ -168,64 +156,39 @@ document.addEventListener("DOMContentLoaded", () => {
       startAutoAdvance();
     };
     
-    // Handle window resize
-    const handleResize = () => {
-      // Re-calculate sizes based on current viewport
-      const groupSize = getGroupSize();
-      
-      // Ensure current index is still valid with new group size
-      if (currentIndex >= Math.ceil(slides.length / groupSize)) {
-        currentIndex = Math.max(0, Math.ceil(slides.length / groupSize) - 1);
-      }
-      
-      // Update carousel
-      updateCarousel();
-    };
-    
-    // Initialize carousel
+    // Initialize the carousel
     updateCarousel();
     startAutoAdvance();
     
-    // Setup resize handler
-    window.addEventListener('resize', handleResize);
-    
-    // Add keyboard navigation
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') {
-        goToPrev();
-        resetAutoAdvance();
-      } else if (e.key === 'ArrowRight') {
-        goToNext();
-        resetAutoAdvance();
-      }
-    });
-    
-    // Add touch/swipe support
+    // Add touch swipe support
     let touchStartX = 0;
-    let touchEndX = 0;
     
     carousel.addEventListener('touchstart', (e) => {
       touchStartX = e.touches[0].clientX;
+      clearInterval(autoAdvanceTimer);
     }, { passive: true });
     
     carousel.addEventListener('touchend', (e) => {
-      touchEndX = e.changedTouches[0].clientX;
+      const touchEndX = e.changedTouches[0].clientX;
+      const diff = touchStartX - touchEndX;
       
-      // Calculate swipe distance and direction
-      const swipeDistance = touchEndX - touchStartX;
-      
-      if (swipeDistance < -50) { // Swiped left
-        goToNext();
-        resetAutoAdvance();
-      } else if (swipeDistance > 50) { // Swiped right
-        goToPrev();
-        resetAutoAdvance();
+      if (diff > 50) { // Swipe left
+        goToSlide(currentIndex + 1);
+      } else if (diff < -50) { // Swipe right
+        goToSlide(currentIndex - 1);
       }
+      
+      startAutoAdvance();
     }, { passive: true });
     
-    // Pause auto-advance on hover
-    carousel.addEventListener('mouseenter', () => clearInterval(autoAdvanceTimer));
-    carousel.addEventListener('mouseleave', startAutoAdvance);
+    // Pause on hover
+    carousel.addEventListener('mouseenter', () => {
+      clearInterval(autoAdvanceTimer);
+    });
+    
+    carousel.addEventListener('mouseleave', () => {
+      startAutoAdvance();
+    });
   };
   
   // Run the carousel setup
