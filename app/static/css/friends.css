@@ -151,3 +151,19 @@ a.friend-link{
 .btn-success:hover {
     background-color: #1e7e34;
 }
+
+@keyframes slideUpFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .slide-up {
+    opacity: 0;
+    animation: slideUpFadeIn 0.8s ease-out forwards;
+  }

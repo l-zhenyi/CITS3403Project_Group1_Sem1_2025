@@ -7,3 +7,32 @@
     opacity: 1;
     transform: translatex(0);
 }
+
+.glassy-container {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    margin-top: 10rem;
+    backdrop-filter: blur(25px);
+}
+
+.form-control:focus {
+    background: rgba(255, 255, 255, 0.5);
+    border-color: #6ea8fe;
+    box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.2);
+    outline: none;
+}
+.form-control,
+textarea.form-control {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border-radius: 12px;
+    backdrop-filter: blur(6px);
+    padding: 0.75rem 1rem;
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.8);
+    font-style: italic;
+}

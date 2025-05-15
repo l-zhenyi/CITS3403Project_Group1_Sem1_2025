@@ -13,6 +13,8 @@
     max-width: 1200px;
     margin: 0 auto;
     box-sizing: border-box;
+    border-radius: 16px;
+    margin-top: 5em;
 }
 
 /* Glassy style for the main content area */
@@ -120,3 +122,35 @@
     font-size: 0.9rem;
     color: #e5e5ea;
 }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.explore-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    height: auto;
+    opacity: 0;
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.explore-card:nth-child(1) { animation-delay: 0.1s; }
+.explore-card:nth-child(2) { animation-delay: 0.2s; }
+.explore-card:nth-child(3) { animation-delay: 0.3s; }
+.explore-card:nth-child(4) { animation-delay: 0.4s; }
+
