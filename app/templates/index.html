@@ -13,14 +13,14 @@
     {# Single pane for dashboard content #}
     <div class="glassy dashboard-pane"> {# Add specific pane class, remove inline styles #}
         {# Use current_user if using Flask-Login, check authentication #}
-        <h1>Welcome, {{ current_user.username if current_user.is_authenticated else 'Guest' }}</h1>
-        <div class="bg-white py-5" id="white_container">
+        <div class="glassy py-5" id="white_container">
             <section class="hero-section container py-5 d-flex align-items-center">
                 <div class="row align-items-center justify-content-between w-100">
                     <div class="col-lg-6 hero-text slide-in-bottom">
-                        <h1 class="display-4 fw-bold mb-3" id="hero-heading">Smart Tools to Plan Better</h1>
-                        <p class="lead mb-4">Plan, vote, and coordinate in one go.</p>
+                        <h1 class="display-4 fw-bold mb-4 text-gradient" id="hero-heading">Smart Tools to Plan Better</h1>
+                        <p class="lead mb-4 fw-medium">Plan, vote, and coordinate in one streamlined platform.</p>
                         <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-3">Get Started</a>
+                        <a href="#feature-section" class="btn btn-outline-secondary btn-lg">Learn More</a>
                     </div>
 
                     <div class="col-lg-6 text-center">
@@ -34,9 +34,8 @@
 
         <hr class="content-divider"> {# Use class for styling #}
 
-        <h2>Your Groups</h2>
         <div class="flex-container">
-            <div class="glassy dashboard-pane description" id="description-section"> {# Add specific class for intro #}
+            <div class="glassy dashboard-pane description fade-up-on-scroll" id="description-section"> {# Add specific class for intro #}
                 <h3>Plannit: Events Made Effortless</h3>
                 <p>Want to collaborate with others effortless? Plannit is your ultimate hub for effortless
                     group event planning and collaboration. Whether you're organizing casual meetups, weekend getaways,
@@ -44,7 +43,7 @@
                     experience.</p><br>
 
                 <h3>Connect, Collaborate, Celebrate</h3>
-                <ul>
+                <ul class="feature-list">
                     <li>Effortless Voting: Quickly gauge group preferences and reach consensus on events.</li>
                     <li>Unified Planning: Seamlessly handle invites, shared payments, and discussions — all in one
                         intuitive platform.</li>
@@ -55,28 +54,26 @@
                 </ul>
                 <br>
                 <h3>Why Choose Plannit?</h3>
-                <ul>
+                <ul class="feature-list">
                     <li>Simplified Group Dynamics: Reduce planning stress and keep everyone aligned.</li>
                     <li>Flexible and Extensible: Grow your events with built-in tools for recurring meetups and
-                        intelligent
-                        recommendations.</li>
+                        intelligent recommendations.</li>
                     <li>Memorable Experiences: Spend more time enjoying moments, knowing everything behind-the-scenes is
                         taken care of.</li>
                 </ul>
             </div>
-            <div class="glassy dashboard-pane second-description"> {# Add specific class for intro #}
-                <h3>Screenshot</h3>
-                <img src="{{ url_for('static', filename='images/index-page/person.jpg') }}" alt="Screenshot of Plannit"
-                    class="screenshot-image">
+            <div class="glassy dashboard-pane second-description text-center fade-up-on-scroll delay-200"> {# Add specific class for intro and text-center for image #}
+                <img src="{{ url_for('static', filename='images/index-page/planner-stock.png') }}" alt="Screenshot of Plannit"
+                    class="img-fluid screenshot-image"> {# Added img-fluid for responsiveness #}
             </div>
         </div>
-        <div class="feature-section py-5 fade-up-on-scroll">
+        <div class="feature-section py-5 fade-up-on-scroll" id="feature-section">
             <div class="container">
 
                 <div class="text-center mb-5">
                     <h2 class="fw-bold">FEATURES</h2>
                     <p class="text-light">Discover how Plannit makes planning events effortless</p>
-                    <div class="btn-group bg-light rounded-pill mt-3 shadow-sm" role="group">
+                    <div class="btn-group bg-light rounded-pill mt-4 mb-4" role="group">
                         <button class="tab-btn btn-tab active" data-tab="tab-plan">Plan</button>
                         <button class="tab-btn btn-tab" data-tab="tab-vote">Split</button>
                         <button class="tab-btn btn-tab" data-tab="tab-track">Track</button>
@@ -89,71 +86,71 @@
 
                     <div class="tab-pane active" id="tab-plan">
                         <div class="row align-items-center">
-                            <div class="col-md-6">
+                            <div class="col-md-6 fade-left">
                                 <h3 class="tab-pane-heading mb-3">Effortless Event Planning</h3>
                                 <p class="fst-italic text-light mb-3">
                                     From casual hangouts to professional meetups, Plannit allows planning events simple
                                     and stress free.
                                 </p>
                                 <ul class="list-unstyled text-white mb-3">
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> Create events with titles,
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> Create events with titles,
                                         descriptions, and group invites</li>
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> Real time group chat and media
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> Real time group chat and media
                                         sharing</li>
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> Smart calendar integration</li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> Smart calendar integration</li>
                                 </ul>
                             </div>
-                            <div class="col-md-6 text-center">
+                            <div class="col-md-6 text-center scale-in">
                                 <img src="{{ url_for('static', filename='images/index-page/planning.webp') }}"
-                                    alt="Planning Feature" class="img-fluid">
+                                    alt="Planning Feature" class="img-fluid feature-image">
                             </div>
                         </div>
                     </div>
 
                     <div class="tab-pane" id="tab-vote">
                         <div class="row align-items-center">
-                            <div class="col-md-6">
+                            <div class="col-md-6 fade-left">
                                 <h3 class="tab-pane-heading mb-3">Transparent Cost Splitting</h3>
                                 <p class="fst-italic text-light mb-3">
                                     Make group payments with built in tools that calculates and divide costs
                                     automatically.
                                 </p>
                                 <ul class="list-unstyled text-white">
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> Log shared expenses and assign
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> Log shared expenses and assign
                                         contributions</li>
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> Automatically calculate who owes
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> Automatically calculate who owes
                                         how much</li>
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> View a clear breakdown of all
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> View a clear breakdown of all
                                         group costs</li>
                                 </ul>
                             </div>
-                            <div class="col-md-6 text-center">
+                            <div class="col-md-6 text-center scale-in">
                                 <img src="{{ url_for('static', filename='images/index-page/split.avif') }}"
-                                    alt="Voting Feature" class="img-fluid">
+                                    alt="Voting Feature" class="img-fluid feature-image">
                             </div>
                         </div>
                     </div>
 
                     <div class="tab-pane" id="tab-track">
                         <div class="row align-items-center">
-                            <div class="col-md-6">
+                            <div class="col-md-6 fade-left">
                                 <h3 class="tab-pane-heading mb-3">Track Participation and Group Progress</h3>
                                 <p class="fst-italic text-light mb-3">
                                     Stay informed and in control with transparent cost sharing and participation
                                     insights.
                                 </p>
                                 <ul class="list-unstyled text-white">
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> Track attendance and engagement
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> Track attendance and engagement
                                         in real time</li>
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> Monitor RSVP responses in real
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> Monitor RSVP responses in real
                                         time</li>
-                                    <li><i class="bi bi-check2 text-primary me-2"></i> Track active members that's
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i> Track active members that's
                                         attending</li>
                                 </ul>
                             </div>
-                            <div class="col-md-6 text-center">
+                            <div class="col-md-6 text-center scale-in">
                                 <img src="{{ url_for('static', filename='images/index-page/track.png') }}"
-                                    alt="Tracking Feature" class="img-fluid">
+                                    alt="Tracking Feature" class="img-fluid feature-image">
                             </div>
                         </div>
                     </div>
@@ -161,7 +158,7 @@
                 </div>
             </div>
         </div>
-        <div class="easier-section" id="white_container">
+        <div class="easier-section py-5" id="white_container">
             <div class="container">
                 <div class="row align-items-center">
                     <div class="text-center mb-5">
@@ -169,188 +166,189 @@
                         </div>
                     <div class="col-lg-6 fade-left">
                         <h2 class="tab-pane-heading mb-4">Plannit Makes Life Easier</h2>
-                        <ul class="list-unstyled">
-                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Reduce planning stress and keep
+                        <ul class="list-unstyled feature-benefits">
+                            <li class="text-light mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i> Reduce planning stress and keep
                                 everyone aligned</li>
-                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Plan your events with built-in tools
+                            <li class="text-light mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i> Plan your events with built-in tools
                             </li>
-                            <li class="text-light mb-2"><i class="bi bi-tags"></i> Transparent split cost</li>
+                            <li class="text-light mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i> Transparent split cost</li>
                         </ul>
                     </div>
                     
                     <div class="col-lg-6 text-center scale-in">
                         <img src="{{ url_for('static', filename='images/index-page/easier.webp') }}"
-                            class="img-fluid rounded" alt="Collaboration">
+                            class="img-fluid rounded shadow" alt="Collaboration">
                     </div>
                 </div>
             </div>
         </div>
 
-        <br>
-        <div class="text-center mb-5">
-            <h2>Reviews</h2>
-        </div>
-        <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
-            <div class="carousel-inner">
+        <div class="testimonial-section py-5 fade-up-on-scroll">
+            <div class="text-center mb-5">
+                <h2 class="section-header">WHAT PEOPLE SAY</h2>
+            </div>
+            <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
 
-                <!-- Slide 1 -->
-                <div class="carousel-item active">
-                    <div class="row justify-content-center">
+                    <!-- Slide 1 -->
+                    <div class="carousel-item active">
+                        <div class="row justify-content-center">
 
-                        <div class="col-md-4">
-                            <div class="card animated-card">
-                                <div class="display-2 text-body-tertiary">
-                                    <i class="bi bi-quote"></i>
-                                </div>
-                                <p class="card-text">"Finally an app that gets group planning right.
-                                    No more 'who's bringing what' confusion or last-minute cancellations.
-                                    Plannit kept us on track for our hiking tripe!</p>
-                                <div class="card-body review-footer">
-                                    <img src="{{ url_for('static', filename='images/index-page/person1.jpg') }}"
-                                        class="card-img-top img-fluid" alt="Reviewer's image">
-                                    <div class="reviewer-info">
-                                        <h5 class="card-title">Blake Harrison</h5>
-                                        <div class="star-rating">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
+                            <div class="col-md-4">
+                                <div class="card animated-card">
+                                    <div class="display-2 text-body-tertiary text-center">
+                                        <i class="bi bi-quote"></i>
+                                    </div>
+                                    <p class="card-text">"Finally an app that gets group planning right.
+                                        No more 'who's bringing what' confusion or last-minute cancellations.
+                                        Plannit kept us on track for our hiking tripe!</p>
+                                    <div class="card-body review-footer">
+                                        <img src="{{ url_for('static', filename='images/index-page/person1.jpg') }}"
+                                            class="card-img-top img-fluid" alt="Reviewer's image">
+                                        <div class="reviewer-info">
+                                            <h5 class="card-title">Blake Harrison</h5>
+                                            <div class="star-rating">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
 
-                        <div class="col-md-4">
-                            <div class="card animated-card">
-                                <div class="display-2 text-body-tertiary">
-                                    <i class="bi bi-quote"></i>
-                                </div>
-                                <p class="card-text">"Planning our university club trips used to be chaotic. With
-                                    Plannit, everything is smooth
-                                    from picking dates to sharing expenses. Love the clean, glassy design too!"
-                                </p>
-                                <div class="card-body review-footer">
-                                    <img src="{{ url_for('static', filename='images/index-page/person2.jpg') }}"
-                                        class="card-img-top img-fluid" alt="Reviewer's image">
-                                    <div class="reviewer-info">
-                                        <h5 class="card-title">Soojin Kim</h5>
-                                        <div class="star-rating">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
+                            <div class="col-md-4">
+                                <div class="card animated-card">
+                                    <div class="display-2 text-body-tertiary text-center">
+                                        <i class="bi bi-quote"></i>
+                                    </div>
+                                    <p class="card-text">"Planning our university club trips used to be chaotic. With
+                                        Plannit, everything is smooth
+                                        from picking dates to sharing expenses. Love the clean, glassy design too!"
+                                    </p>
+                                    <div class="card-body review-footer">
+                                        <img src="{{ url_for('static', filename='images/index-page/person2.jpg') }}"
+                                            class="card-img-top img-fluid" alt="Reviewer's image">
+                                        <div class="reviewer-info">
+                                            <h5 class="card-title">Soojin Kim</h5>
+                                            <div class="star-rating">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-md-4">
-                            <div class="card animated-card">
-                                <div class="display-2 text-body-tertiary">
-                                    <i class="bi bi-quote"></i>
-                                </div>
-                                <p class="card-text">"Plannit turned our basketball team outings into something
-                                    effortless.
-                                    No more 50 missed texts trying to set a time, one vote and done."</p>
-                                <div class="card-body review-footer">
-                                    <img src="{{ url_for('static', filename='images/index-page/person3.jpg') }}"
-                                        class="card-img-top img-fluid" alt="Reviewer's image">
-                                    <div class="reviewer-info">
-                                        <h5 class="card-title">Marcus Brown</h5>
-                                        <div class="star-rating">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
+                            <div class="col-md-4">
+                                <div class="card animated-card">
+                                    <div class="display-2 text-body-tertiary text-center">
+                                        <i class="bi bi-quote"></i>
+                                    </div>
+                                    <p class="card-text">"Plannit turned our basketball team outings into something
+                                        effortless.
+                                        No more 50 missed texts trying to set a time, one vote and done."</p>
+                                    <div class="card-body review-footer">
+                                        <img src="{{ url_for('static', filename='images/index-page/person3.jpg') }}"
+                                            class="card-img-top img-fluid" alt="Reviewer's image">
+                                        <div class="reviewer-info">
+                                            <h5 class="card-title">Marcus Brown</h5>
+                                            <div class="star-rating">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                    </div> <!-- End row -->
-                </div>
+                        </div> <!-- End row -->
+                    </div>
 
-                <!-- Slide 2 -->
-                <div class="carousel-item">
-                    <div class="row justify-content-center">
-                        <div class="col-md-4">
-                            <div class="card">
-                                <div class="display-2 text-body-tertiary">
-                                    <i class="bi bi-quote"></i>
-                                </div>
-                                <p class="card-text">"Before we started using Plannit, organizing with my friends was a
-                                    nightmare. With Plannit,
-                                    I could actually enjoy the day without stressing."
+                    <!-- Slide 2 -->
+                    <div class="carousel-item">
+                        <div class="row justify-content-center">
+                            <div class="col-md-4">
+                                <div class="card glassy">
+                                    <div class="display-2 text-body-tertiary text-center">
+                                        <i class="bi bi-quote"></i>
+                                    </div>
+                                    <p class="card-text">"Before we started using Plannit, organizing with my friends was a
+                                        nightmare. With Plannit,
+                                        I could actually enjoy the day without stressing."
 
-                                </p>
-                                <div class="card-body review-footer">
-                                    <img src="{{ url_for('static', filename='images/index-page/person4.jpg') }}"
-                                        class="card-img-top img-fluid" alt="Reviewer's image">
-                                    <div class="reviewer-info">
-                                        <h5 class="card-title">Kylie Jenner</h5>
-                                        <div class="star-rating">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
+                                    </p>
+                                    <div class="card-body review-footer">
+                                        <img src="{{ url_for('static', filename='images/index-page/person4.jpg') }}"
+                                            class="card-img-top img-fluid" alt="Reviewer's image">
+                                        <div class="reviewer-info">
+                                            <h5 class="card-title">Kylie Jenner</h5>
+                                            <div class="star-rating">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-md-4">
-                            <div class="card">
-                                <div class="display-2 text-body-tertiary">
-                                    <i class="bi bi-quote"></i>
-                                </div>
-                                <p class="card-text">"Planning out a cross-country roadtrip with my mates were a
-                                    complete mess. But that's only before I used Plannit,
-                                    this app helped us to organise the trip perfectly."</p>
-                                <div class="card-body review-footer">
-                                    <img src="{{ url_for('static', filename='images/index-page/person5.jpeg') }}"
-                                        class="card-img-top img-fluid" alt="Reviewer's image">
-                                    <div class="reviewer-info">
-                                        <h5 class="card-title">Mohammad Hassan</h5>
-                                        <div class="star-rating">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
+                            <div class="col-md-4">
+                                <div class="card glassy">
+                                    <div class="display-2 text-body-tertiary text-center">
+                                        <i class="bi bi-quote"></i>
+                                    </div>
+                                    <p class="card-text">"Planning out a cross-country roadtrip with my mates were a
+                                        complete mess. But that's only before I used Plannit,
+                                        this app helped us to organise the trip perfectly."</p>
+                                    <div class="card-body review-footer">
+                                        <img src="{{ url_for('static', filename='images/index-page/person5.jpeg') }}"
+                                            class="card-img-top img-fluid" alt="Reviewer's image">
+                                        <div class="reviewer-info">
+                                            <h5 class="card-title">Mohammad Hassan</h5>
+                                            <div class="star-rating">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-md-4">
-                            <div class="card">
-                                <div class="display-2 text-body-tertiary">
-                                    <i class="bi bi-quote"></i>
-                                </div>
-                                <p class="card-text">"For our group project, we used Plannit to schedule meetings,
-                                    assign parts of the assignment.
-                                    I can't imagine the pain of doing a group project without it now. "</p>
-                                <div class="card-body review-footer">
-                                    <img src="{{ url_for('static', filename='images/index-page/person6.jpg') }}"
-                                        class="card-img-top img-fluid" alt="Reviewer's image">
-                                    <div class="reviewer-info">
-                                        <h5 class="card-title">Ayana Scott</h5>
-                                        <div class="star-rating">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
+                            <div class="col-md-4">
+                                <div class="card glassy">
+                                    <div class="display-2 text-body-tertiary text-center">
+                                        <i class="bi bi-quote"></i>
+                                    </div>
+                                    <p class="card-text">"For our group project, we used Plannit to schedule meetings,
+                                        assign parts of the assignment.
+                                        I can't imagine the pain of doing a group project without it now. "</p>
+                                    <div class="card-body review-footer">
+                                        <img src="{{ url_for('static', filename='images/index-page/person6.jpg') }}"
+                                            class="card-img-top img-fluid" alt="Reviewer's image">
+                                        <div class="reviewer-info">
+                                            <h5 class="card-title">Ayana Scott</h5>
+                                            <div class="star-rating">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -358,22 +356,28 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Carousel Controls -->
+                <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControls"
+                    data-bs-slide="prev">
+                    <i class="bi bi-arrow-left-square-fill fs-1 carousel-arrow"></i>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+
+                <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControls"
+                    data-bs-slide="next">
+                    <i class="bi bi-arrow-right-square-fill fs-1 carousel-arrow"></i>
+                    <span class="visually-hidden">Next</span>
+                </button>
             </div>
-
-            <!-- Carousel Controls -->
-            <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControls"
-                data-bs-slide="prev">
-                <i class="bi bi-arrow-left-square-fill fs-1 carousel-arrow"></i>
-                <span class="visually-hidden">Previous</span>
-            </button>
-
-            </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControls"
-                data-bs-slide="next">
-                <i class="bi bi-arrow-right-square-fill fs-1 carousel-arrow"></i>
-                <span class="visually-hidden">Next</span>
-            </button>
         </div>
+
+        <div class="cta-section text-center py-5 my-5 fade-up-on-scroll">
+            <h2 class="mb-4">Ready to start planning better?</h2>
+            <p class="lead mb-4">Join thousands of users who are already simplifying their group events.</p>
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">Get Started Now</a>
+        </div>
+
         <footer class="main-footer">
             <div class="footer-content">
                 <p>Copyright &copy; 2025 Plannit. All rights reserved.</p>

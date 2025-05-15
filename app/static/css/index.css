@@ -167,32 +167,133 @@
     }
 }
 
-.main-footer {
+.flex-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 2rem;
     width: 100%;
-    background: rgba(255, 255, 255, 0.1); /* glassy white tint */
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(40px); /* Safari support */
-    color: #e5e5e5;
-    padding: 20px 0;
-    text-align: center;
-    font-size: 0.95rem;
-    margin-top: 40px;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-  }
-  
-
-.footer-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 15px;
 }
 
-.footer-tagline {
-    font-family: sans-serif;
-    font-style: italic;
-    color: #aaa;
-    margin-top: 5px;
+.dashboard-pane.description,
+.second-description {
+    flex: 1 1 45%; 
+    min-width: 300px;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dashboard-pane.description:hover,
+.second-description:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.second-description {
+    margin-left: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.second-description img {
+    max-width: 100%;
+    border-radius: 12px;
+    transition: transform 0.4s ease;
+}
+
+.second-description img:hover {
+    transform: scale(1.03);
+}
+
+@media (max-width: 768px) {
+    .flex-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .dashboard-pane.description,
+    .second-description {
+        width: 100%;
+        margin-left: 0;
+        margin-bottom: 1.5rem;
+    }
+}
+
+.review-footer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.review-footer img {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+}
+
+.reviewer-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.card-title {
+   font-weight:800;
+}
+
+.card-text {
+    padding: 0 1.25rem 1rem; 
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.card {
+    margin: 0 .5em;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25);
+    z-index: 2;
+}
+
+.btn.btn-primary.btn-lg {
+    transition: all 0.3s ease;
+    font-weight: bold;
+    padding: 0.75rem 1.75rem;
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+    border: none;
+}
+  
+.btn.btn-primary.btn-lg:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(13, 110, 253, 0.4);
+}
+
+.btn.btn-primary.btn-lg:active {
+    transform: translateY(1px);
+}
+
+.main-footer {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(40px);
+    color: #e5e5e5;
+    padding: 30px 0;
+    text-align: center;
+    font-size: 1rem;
+    margin-top: 60px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.05);
+    border-radius: 20px 20px 0 0;
 }
 
 /* --- Responsive adjustments for carousel slides --- */
@@ -380,36 +481,32 @@
     min-height: 80vh;
     padding-top: 4rem;
     padding-bottom: 4rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   }
   
   .hero-text h1 {
     color: #212529;
     text-shadow: none;
-  }
-  
-  .hero-illustration {
-    max-width: 100%;
-    height: auto;
-    animation: floatUp 1s ease-out;
-  }
-  
-  @keyframes floatUp {
-    from {
-      opacity: 0;
-      transform: translateY(50px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-.hero-illustration {
-  max-width: 100%;
-  height: auto;
-  animation: floatY 3s ease-in-out infinite;
+    font-size: 2.8rem;
+    margin-bottom: 1.5rem;
 }
 
+.hero-text .lead {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+    color: #555;
+}
+  
+.hero-illustration {
+    max-width: 100%;
+    height: auto;
+    animation: floatY 3s ease-in-out infinite;
+    border-radius: 15px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+}
+  
 @keyframes floatY {
   0% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
@@ -444,31 +541,19 @@
   border-radius: 10px;
   padding: 4rem 2rem;
   margin: 4rem auto;
-    
-  }
+}
 
-  .easier-section {
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  }
+.feature-section .text-light {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
 
-  .easier-section img {
-    max-width: 100%;
-    max-height: 450px;
-    border-radius: 1rem; /* soft rounded corners */
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25); /* subtle shadow */
-    object-fit: contain; /* clean fit without distortion */
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    align-items: center;
-  }
-  
-  .easier-section img:hover {
-    transform: scale(1.02);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
-  }
+.feature-section h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
 
-  
-  .feature-section h2::after {
+.feature-section h2::after {
     content: "";
     display: block;
     height: 3px;
@@ -476,28 +561,59 @@
     margin: 8px auto 0;
     background-color: #0d6efd;
     border-radius: 2px;
-  }
+}
 
-  .section-header {
-    position: relative;
-    display: inline-block;
+.btn-group {
+    display: flex;
+    width: auto; /* Let it size naturally */
+    max-width: 400px; /* Maximum width */
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 0 auto; /* Center the button group */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+  
+.btn-tab {
+    flex: 1; /* Make each tab fill equally */
+    justify-content: center; /* Center text since you're using flex */
+    background-color: transparent;
+    color: #333;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem; /* Increase horizontal padding */
+    margin: 0; /* Remove margin so there's no gap between buttons */
+    border: none;
+    border-radius: 0; /* Prevent overlap weirdness */
+    transition: all 0.3s ease; /* Smoother transition */
+    min-width: 0; /* Allow shrinking if needed */
+    text-align: center;
+    display: flex;
+    align-items: center;
+}
+
+.btn-tab.active {
+    background-color: #0d6efd; /* Use primary color for consistency */
     color: #fff;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-  }
-  
-  .section-header::after {
-    content: "";
-    display: block;
-    height: 3px;
-    width: 60px;
-    margin: 8px auto 0;
-    background-color: #0d6efd; /* Same blue underline */
-    border-radius: 2px;
-  }
-  
+    font-weight: 600;
+}
 
-  
-  .tab-pane {
+.btn-tab:hover:not(.active) {
+    background-color: rgba(13, 110, 253, 0.1); /* Light highlight on hover */
+}
+
+/* Responsive adjustments for the button group */
+@media (max-width: 768px) {
+    .btn-group {
+        width: 90%; /* Wider on mobile */
+        max-width: 300px;
+    }
+    
+    .btn-tab {
+        padding: 0.6rem 1rem; /* Smaller padding on mobile */
+        font-size: 0.9rem;
+    }
+}
+
+.tab-pane {
     display: none;
   }
   .tab-pane.active {
@@ -534,7 +650,7 @@
     color: #fff;
   }
 
-  .tab-pane img {
+.tab-pane img {
     background: rgba(255, 255, 255, 0.05);  /* Translucent frame */
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 1rem;
@@ -542,38 +658,48 @@
     max-width: 100%;
     max-height: 300px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  .tab-pane img:hover {
-    transform: scale(1.02);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
-  }
-  
-.tab-pane-heading {
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-  letter-spacing: 0.5px;
-  font-size: 1.75rem;
+    object-fit: cover; /* Ensure consistent sizing */
 }
 
+.tab-pane img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
 
-  .fixed-tab-height {
-    min-height: 500px; /* Set to your tallest tab */
-    transition: all 0.3s ease;
-  }
+.tab-pane-heading {
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.5px;
+    font-size: 1.75rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+}
 
-  .fade-up-on-scroll {
+.tab-pane .fst-italic {
+    font-size: 1.15rem;
+}
+
+.tab-pane .list-unstyled li {
+    margin-bottom: 0.75rem;
+    font-size: 1.05rem;
+}
+
+.fixed-height {
+    min-height: 400px; /* Set a consistent height for the tab content */
+}
+
+.fade-up-on-scroll {
     opacity: 0;
     transform: translateY(40px);
     transition: opacity 0.8s ease-out, transform 0.8s ease-out;
     will-change: opacity, transform;
-  }
+}
   
-  .fade-up-on-scroll.visible {
+.fade-up-on-scroll.visible {
     opacity: 1;
     transform: translateY(0);
-  }
+}
   
-  .fade-left {
+.fade-left {
     opacity: 0;
     transform: translateX(-40px);
     transition: all 0.8s ease;
@@ -592,4 +718,100 @@
     opacity: 1;
     transform: scale(1);
   }
-  
+
+/* New styling for feature list */
+.feature-list {
+    padding-left: 1.5rem;
+}
+
+.feature-list li {
+    margin-bottom: 0.7rem;
+    position: relative;
+}
+
+.feature-list li::before {
+    content: "✓";
+    position: absolute;
+    left: -1.5rem;
+    color: #0d6efd;
+    font-weight: bold;
+}
+
+/* Animation delay helper */
+.delay-200 {
+    transition-delay: 200ms;
+}
+
+/* Feature images enhancements */
+.feature-image {
+    border-radius: 12px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    transition: all 0.4s ease;
+    max-height: 300px;
+    width: auto;
+}
+
+.feature-image:hover {
+    transform: scale(1.05) translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Better styling for the feature benefits */
+.feature-benefits li {
+    padding: 10px 15px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 10px !important;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.feature-benefits li:hover {
+    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Text gradient for hero heading */
+.text-gradient {
+    background: linear-gradient(45deg, #007bff, #6610f2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+}
+
+/* New CTA section */
+.cta-section {
+    background: rgba(13, 110, 253, 0.1);
+    border-radius: 16px;
+    padding: 3rem !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.cta-section h2 {
+    color: #fff;
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.cta-section .lead {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.2rem;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Testimonial section enhancements */
+.testimonial-section {
+    padding: 3rem 0;
+}
+
+.testimonial-section .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.testimonial-section .card-body {
+    margin-top: auto;
+}
