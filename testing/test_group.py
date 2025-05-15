@@ -16,7 +16,7 @@ python -m unittest testing.test_group
 # Scenario: 
 # You create a new group and add a friend as a member.
 # You post in the group. The group member, your friend, can see the post.
-# The group member, your friend, can also post in the group.
+# The new group member, your friend, makes a post in the group.
 class GroupTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -221,7 +221,7 @@ class GroupTests(unittest.TestCase):
 
         # Wait for the post to appear in the feed
         wait.until(EC.presence_of_element_located((By.XPATH, f"//*[contains(text(), '{post_content_member}')]")))
-
+        time.sleep(2) # Needed to add this or it sometimes wouldn't work
         # Step 8: Verify member's post appears in the group feed
         try:
             post_element_member = wait.until(EC.presence_of_element_located(
