@@ -1,3 +1,10 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto; /* Enable vertical scrolling */
+}
+
 .message-form-container {
     opacity: 0;
     transform: translateX(-40px);
