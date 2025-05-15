@@ -15,6 +15,7 @@
     box-sizing: border-box;
     border-radius: 16px;
     margin-top: 5em;
+    overflow-y: auto;
 }
 
 /* Glassy style for the main content area */
