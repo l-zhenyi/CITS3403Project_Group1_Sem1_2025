@@ -27,67 +27,6 @@ function generateUniqueId(prefix = 'item') {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 }
 
-// addGroup function seems fine, no changes needed for this issue.
-export async function addGroup(name, avatarUrl, makeActive = false) {
-    // ... (existing code) ...
-    if (!name) return null;
-
-    const defaultAvatar = avatarUrl || `https://via.placeholder.com/40/cccccc/FFFFFF?text=${name[0].toUpperCase()}`;
-
-    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-    const headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    };
-    if (csrfTokenMeta) {
-        headers['X-CSRFToken'] = csrfTokenMeta.getAttribute('content');
-    } else {
-        console.warn("CSRF token meta tag not found. addGroup POST request may fail.");
-    }
-
-    // 🔁 Call your Flask API
-    const res = await fetch('/api/groups', {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({ name, avatar_url: defaultAvatar })
-    });
-
-    if (!res.ok) {
-        alert("Failed to create group.");
-        return null;
-    }
-
-    const newGroup = await res.json();
-    newGroup.events = [];
-
-    groupsData.push(newGroup);
-
-    const groupListUL = document.querySelector('.group-list-area ul');
-    const li = document.createElement('li');
-    li.classList.add('group-item');
-    li.dataset.groupId = newGroup.id;
-    li.dataset.groupName = newGroup.name;
-    li.dataset.groupAvatar = newGroup.avatar_url;
-
-    li.innerHTML = `
-        <img src="${newGroup.avatar_url}" alt="${newGroup.name} Avatar" class="group-avatar">
-        <div class="group-info">
-            <span class="group-name">${newGroup.name}</span>
-            <span class="group-stats">0 upcoming events</span>
-        </div>
-    `;
-    // Click handling for new group items is best done by the main.js listener on groupListUL
-
-    if(groupListUL) groupListUL.appendChild(li);
-    // If makeActive is true, the new group LI should be clicked by the caller (e.g., groupModalManager)
-    // to ensure consistent activation logic from main.js
-    // if (makeActive && typeof li.click === 'function') li.click();
-
-
-    return newGroup;
-}
-
-
 export function hookEventFilterBar() {
     const filterPillsContainer = document.querySelector('.event-filter-bar');
     if (!filterPillsContainer) {
