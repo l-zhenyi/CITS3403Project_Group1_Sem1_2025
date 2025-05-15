@@ -63,6 +63,7 @@ class MessageFlowTests(unittest.TestCase):
         message_text = "Hello from User A to User B!"
 
         # Step 1: Log in as User A
+        self.driver.get(f'{self.base_url}/login')
         self.login(self.user_a_username, "passwordA")
 
         # Step 2: Click on "Friends" link in the navbar
@@ -102,6 +103,8 @@ class MessageFlowTests(unittest.TestCase):
 
         # Step 8: Log out
         self.logout()
+
+        self.driver.get(f'{self.base_url}/login')
 
         # Step 9: Log in as User B
         self.login(self.user_b_username, "passwordB")
