@@ -438,7 +438,7 @@ h4 { font-size: 1.05rem; font-weight: 500; color: #e0e0e5; margin-top: 15px; mar
 #cost-interpretation-helper-dynamic em { font-style: italic; opacity: 0.8; }
 
 /* Location Map Floating Panel */
-.location-map-floating-panel { position: fixed; z-index: 1055; background-color: rgba(60, 60, 70, 0.85); backdrop-filter: blur(25px) saturate(160%); -webkit-backdrop-filter: blur(25px) saturate(160%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); color: #e0e0e5; opacity: 0; transform: translateY(5px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
+.location-map-floating-panel { position: fixed; z-index: 1055; background-color: rgba(60, 60, 70, 0.85); backdrop-filter: blur(25px) saturate(160%); -webkit-backdrop-filter: blur(25px) saturate(160%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); color: #e0e0e5; transform: translateY(5px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
 .location-map-floating-panel.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .location-map-floating-panel .leaflet-container { border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
 .map-status-text { font-size: 0.8em; color: #b0b0b8; margin-top: 8px; display: block; text-align: center; }
