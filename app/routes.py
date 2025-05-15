@@ -579,7 +579,7 @@ def create_group_api():
 
     final_avatar_url = avatar_url
     if not final_avatar_url and name.strip():
-        final_avatar_url = f"https://via.placeholder.com/40/cccccc/FFFFFF?text={name.strip()[0].upper()}"
+        final_avatar_url = url_for('static', filename='img/default-group-avatar.png')
 
     group = Group(name=name.strip(),
                   avatar_url=final_avatar_url,
