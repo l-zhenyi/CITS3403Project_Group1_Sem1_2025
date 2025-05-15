@@ -383,36 +383,117 @@
     background: rgba(0, 0, 0, 0.45); /* Make overlay darker on hover */
 }
 
-
-/* Event Node Styling */
+/* Updated Event Node - Apple-like Glassmorphism */
 .event-node {
     position: absolute;
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: rgba(90, 150, 210, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.6);
-    color: #fff;
-    font-weight: 600;
+    color: #f5f7fa; /* Light text, good for glass */
+    font-weight: 500;
     text-align: center;
     line-height: 120px;
-    font-size: 1.1rem;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(15px) saturate(120%);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    font-size: 1.05rem;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.25); /* Slightly crisper shadow */
+    
+    background: rgba(200, 205, 215, 0.12); /* Lighter, cool translucent background */
+    /* Alternative for ultra-clear: background: rgba(255, 255, 255, 0.08); */
+
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    
+    box-shadow:
+        /* Outer shadow for depth */
+        0 10px 25px rgba(0, 0, 0, 0.15),
+        /* Inner top highlight (like light from above) */
+        inset 0 1.2px 1.2px rgba(255, 255, 255, 0.6),
+        /* Subtle inner bottom shadow for contour */
+        inset 0 -0.8px 0.8px rgba(0, 0, 0, 0.12);
+
     pointer-events: auto;
     cursor: grab;
     user-select: none;
     z-index: 5;
-    transition: box-shadow 0.3s ease, opacity 0.3s ease;
+    overflow: hidden; /* Crucial for clipping pseudo-elements */
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
 }
+
+/* Subtle inner frosting/texture - gives depth to the glass */
+.event-node::before {
+    content: '';
+    position: absolute;
+    inset: 0; 
+    border-radius: inherit;
+    /* Soft inner glow using a radial gradient for diffusion */
+    background: radial-gradient(ellipse at 60% 40%, rgba(255, 255, 255, 0.06) 0%, transparent 70%);
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 0; 
+    transition: opacity 0.3s ease, background 0.3s ease;
+}
+
+/* Soft surface sheen/highlight - more diagonal */
+.event-node::after {
+    content: '';
+    position: absolute;
+    top: 5%; 
+    left: -10%; /* Start slightly off-canvas for diagonal entry */
+    width: 100%; 
+    height: 50%; 
+    background: linear-gradient(
+        135deg, /* Diagonal angle (e.g., top-left to bottom-right) */
+        rgba(255, 255, 255, 0.0) 5%,
+        rgba(255, 255, 255, 0.18) 30%, /* Main sheen */
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.0) 75%
+    );
+    /* Organic shape for the highlight */
+    border-radius: 70% 30% 80% 20% / 60% 50% 50% 40%; 
+    opacity: 0.45; 
+    filter: blur(12px); /* Softer, more diffused glint */
+    pointer-events: none;
+    z-index: 1; 
+    transform: rotate(-25deg) scale(1.1); /* More pronounced rotation and slight scale */
+    transition: opacity 0.3s ease, background 0.3s ease, transform 0.3s ease;
+}
+
+.event-node:hover {
+    background: rgba(210, 215, 225, 0.18); /* Lighter on hover */
+    border-color: rgba(255, 255, 255, 0.4); 
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.18), 
+        inset 0 1.8px 1.8px rgba(255, 255, 255, 0.7),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.15);
+}
+
+.event-node:hover::before {
+    opacity: 0.9;
+    background: radial-gradient(ellipse at 60% 40%, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+}
+
+.event-node:hover::after {
+    opacity: 0.6; 
+    transform: rotate(-22deg) scale(1.15); /* Glint reacts subtly */
+     background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.0) 5%,
+        rgba(255, 255, 255, 0.22) 30%, /* Brighter glint on hover */
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.0) 75%
+    );
+}
+
 
 .event-node.dragging {
     cursor: grabbing;
-    opacity: 0.9;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    opacity: 0.95;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
     z-index: 1000;
+    transform: scale(1.05);
 }
+
 
 /* ---------------------------------------------- */
 /* Expanded Content Styles (Inside Event Panel)   */

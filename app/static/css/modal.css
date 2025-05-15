@@ -29,7 +29,9 @@
     width: 100%;
     max-width: 600px; /* DEFAULT max-width for most modals */
     max-height: calc(100vh - 40px);
+    overflow-y: auto;   /* allow the whole dialog to scroll if necessary */
     margin: auto;
+    min-height: 0;
 }
 
 /* --- SPECIFIC STYLING FOR EVENT DETAILS MODAL DIALOG TO BE LARGER --- */
@@ -60,15 +62,25 @@
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
     padding: 25px 35px;
     width: 100%;
-    max-height: 100%;
-    overflow: hidden;
+    max-height: calc(100vh - 80px); /* keep entire modal on‑screen with room for padding */
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;    /* include padding/border in the set height */
     color: #f0f0f5;
     transform: scale(0.95);
     transition: transform 0.3s ease, opacity 0.3s ease;
     flex-grow: 1;
     min-height: 0;
+    max-height: 100%;
+}
+
+/* Make any direct <form> inside a .modal-content act as a flex column so
+   its header/body/footer parts align properly and the body can scroll */
+.modal-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;            /* allow flex children to size correctly */
 }
 
 .modal-backdrop.visible .modal-content {
@@ -145,6 +157,7 @@
 /* Modal Body - GENERAL default (can be overridden) */
 .modal-body {
     flex-grow: 1; /* Allow body to take up space */
+    flex: 1 1 auto;
     overflow-y: auto; /* Add scroll if content exceeds */
     padding: 5px 10px; /* Minimal default padding */
     min-height: 0; /* Crucial for flex children */
@@ -260,10 +273,18 @@
 #group-settings-modal .modal-content,
 #event-creation-modal .modal-content,
 #share-panel-modal .modal-content {
-     height: auto; /* Let content dictate height up to max-height of dialog */
+     height: auto;
+}
+
+#group-settings-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    overflow: hidden;
 }
 
 /* Make modal-body within forms scrollable AND have single column layout */
+
 #create-group-modal .modal-body,
 #group-settings-modal .modal-body,
 #event-creation-modal .modal-body,
@@ -272,8 +293,12 @@
     flex-direction: column; /* ADDED for single column scroll */
     gap: 15px; /* ADDED for spacing between form sections */
     padding: 10px 15px 10px 10px; /* Adjusted padding for scrollbar */
-    /* flex-grow, min-height, overflow-y are inherited from general .modal-body */
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
 }
+
+
 
 /* Scrollbar styling for form modal bodies */
 #create-group-modal .modal-body::-webkit-scrollbar,
@@ -332,21 +357,79 @@ h4 { font-size: 1.05rem; font-weight: 500; color: #e0e0e5; margin-top: 15px; mar
 .members-list-scroll-container::-webkit-scrollbar-thumb:hover, .friends-list-scroll-container::-webkit-scrollbar-thumb:hover, .modal-list-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.3); }
 .badge.owner-badge { margin-left: auto; padding: 3px 8px; font-size: 0.75rem; font-weight: 500; background-color: rgba(255, 193, 7, 0.7); color: #333; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* Day Events Modal */
-.day-events-modal { position: fixed; inset: 0; background-color: rgba(30, 30, 35, 0.65); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s; }
-.day-events-modal.visible { opacity: 1; visibility: visible; transition-delay: 0s; }
-.day-events-modal .modal-content { max-width: 450px; width: 100%; background: rgba(60, 60, 70, 0.85); backdrop-filter: blur(25px) saturate(160%); -webkit-backdrop-filter: blur(25px) saturate(160%); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 20px 25px; box-shadow: 0 6px 25px rgba(0,0,0,0.25); transform: scale(0.95); transition: transform 0.3s ease; overflow: hidden; display: flex; flex-direction: column; }
-.day-events-modal.visible .modal-content { transform: scale(1); }
-.day-events-modal #day-events-modal-title { font-size: 1.3rem; color: #fff; margin-bottom: 15px; text-align: center; }
-.day-events-modal .day-event-list { list-style: none; padding: 0; margin: 0; max-height: 350px; overflow-y: auto; }
-.day-events-modal .day-event-list::-webkit-scrollbar { width: 6px; }
-.day-events-modal .day-event-list::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.25); border-radius: 3px; }
-.day-events-modal .day-event-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: background-color 0.15s ease; border-radius: 6px; }
-.day-events-modal .day-event-item:last-child { border-bottom: none; }
-.day-events-modal .day-event-item:hover { background-color: rgba(255,255,255,0.1); }
-.day-events-modal .day-event-title { font-weight: 500; color: #e8e8ed; flex-grow: 1; margin-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.day-events-modal .day-event-group { font-size: 0.8rem; color: #b0b0b8; margin-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; text-align: right;}
-.day-events-modal .day-event-time { font-size: 0.85rem; color: #c8c8d0; white-space: nowrap; }
+
+/* Day Events Modal (now standardized) */
+#day-events-modal .modal-dialog {
+    max-width: 450px;
+}
+#day-events-modal .modal-content {
+    padding: 20px 25px;
+    min-height: 0;
+}
+#day-events-modal .modal-header {
+    justify-content: center;
+}
+#day-events-modal .modal-title-text {
+    font-size: 1.3rem;
+    text-align: center;
+}
+#day-events-modal .modal-body {
+    padding: 0 10px 10px 10px;
+}
+.day-event-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 350px;
+    overflow-y: auto;
+}
+.day-event-list::-webkit-scrollbar {
+    width: 6px;
+}
+.day-event-list::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.25);
+    border-radius: 3px;
+}
+.day-event-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border-radius: 6px;
+}
+.day-event-item:last-child {
+    border-bottom: none;
+}
+.day-event-item:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+.day-event-title {
+    font-weight: 500;
+    color: #e8e8ed;
+    flex-grow: 1;
+    margin-right: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.day-event-group {
+    font-size: 0.8rem;
+    color: #b0b0b8;
+    margin-right: 10px;
+    max-width: 100px;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.day-event-time {
+    font-size: 0.85rem;
+    color: #c8c8d0;
+    white-space: nowrap;
+}
 
 /* Cost Interpretation Helper */
 #cost-interpretation-helper-dynamic { position: fixed; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(1px) saturate(160%); -webkit-backdrop-filter: blur(1px) saturate(160%); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); color: #e0e0e5; font-size: 0.8em; line-height: 1.4; text-align: center; z-index: 1060; opacity: 0; transform: translateY(5px); transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: none; }
@@ -354,12 +437,58 @@ h4 { font-size: 1.05rem; font-weight: 500; color: #e0e0e5; margin-top: 15px; mar
 #cost-interpretation-helper-dynamic strong { color: #fff; font-weight: 600; }
 #cost-interpretation-helper-dynamic em { font-style: italic; opacity: 0.8; }
 
-/* Location Map Floating Panel */
-.location-map-floating-panel { position: fixed; z-index: 1055; background-color: rgba(60, 60, 70, 0.85); backdrop-filter: blur(25px) saturate(160%); -webkit-backdrop-filter: blur(25px) saturate(160%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); color: #e0e0e5; opacity: 0; transform: translateY(5px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
-.location-map-floating-panel.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-.location-map-floating-panel .leaflet-container { border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
-.map-status-text { font-size: 0.8em; color: #b0b0b8; margin-top: 8px; display: block; text-align: center; }
-.map-status-text span { opacity: 0.7; }
+
+/* Location Map Floating Panel - Intense Glassmorphism */
+
+
+.location-map-floating-panel {
+    position: fixed;
+    z-index: 1055;
+    background: rgba(140, 140, 145, 0.73); /* closer to modals, soft blue-grey glass */
+    backdrop-filter: blur(40px) saturate(185%);
+    -webkit-backdrop-filter: blur(40px) saturate(185%);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 18px;
+    padding: 22px 28px 18px 28px;
+    box-shadow: 0 8px 32px 0 rgba(44, 52, 98, 0.18), 0 2px 6px rgba(25, 35, 80, 0.10);
+    color: #f0f0f5;
+    font-family: inherit;
+    font-size: 1.07em;
+    min-width: 250px;
+    max-width: 97vw;
+    min-height: 100px;
+    max-height: 65vh;
+    overflow: hidden;
+}
+
+.location-map-floating-panel .leaflet-container {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 2px 8px rgba(60,70,100,0.09);
+}
+
+.location-map-floating-panel svg, 
+.location-map-floating-panel .fa,
+.location-map-floating-panel .icon {
+    filter: none; /* no neon, keep it subtle */
+}
+
+.map-status-text {
+    font-size: 0.65em;
+    color: #e0e0eb;
+    margin-top: 10px;
+    display: block;
+    text-align: center;
+    text-shadow: 0 1px 6px rgba(44, 52, 98, 0.08);
+    letter-spacing: 0.01em;
+    opacity: 0.93;
+}
+
+.map-status-text span {
+    opacity: 0.8;
+    color: #b8cbe8;
+    filter: none;
+}
 
 
 /* Responsive adjustments for modal content */
@@ -400,5 +529,15 @@ h4 { font-size: 1.05rem; font-weight: 500; color: #e0e0e5; margin-top: 15px; mar
     .day-events-modal .modal-content { padding: 15px 20px; }
 }
 
+
+/* --- Constrain form-based modal content height so body scrolls, footer remains visible --- */
+#create-group-modal .modal-content,
+#group-settings-modal .modal-content,
+#event-creation-modal .modal-content,
+#share-panel-modal .modal-content {
+    max-height: calc(90vh - 60px);
+    display: flex;
+    flex-direction: column;
+}
 
 /* --- END OF FILE static/css/modal.css --- */

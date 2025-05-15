@@ -59,6 +59,16 @@
         {% else %}
         <p class="text-muted">No messages yet. Start the conversation!</p>
         {% endif %}
+        <div class="pagination-nav">
+        <ul class="pager">
+            {% if prev_url %}
+            <li><a class="pager-link" href="{{ prev_url }}">← Newer messages</a></li>
+            {% endif %}
+            {% if next_url %}
+            <li><a class="pager-link" href="{{ next_url }}">Older messages →</a></li>
+            {% endif %}
+        </ul>
+    </div>
     </div>
 
     {% if form %}

@@ -70,6 +70,7 @@ class GroupTests(unittest.TestCase):
         group_about = self.group_about  # Use the class attribute
 
         # Step 1: Log in as the test user
+        self.driver.get(f'{self.base_url}/login')
         self.login(self.test_username, "testpassword")
 
         # Step 2: Go to user profile and navigate to the create group page
@@ -85,6 +86,8 @@ class GroupTests(unittest.TestCase):
         form = self.driver.find_element(By.TAG_NAME, 'form')
         form.submit()
 
+        time.sleep(2) # FireFox test won't work unless it has this
+        
         # Step 5: Wait for the group page to load by checking for the group name in <h2>
         wait.until(EC.presence_of_element_located((By.TAG_NAME, 'h2')))
         group_header = self.driver.find_element(By.TAG_NAME, 'h2')
@@ -151,12 +154,18 @@ class GroupTests(unittest.TestCase):
 
         # Wait for the post to appear in the feed
         wait.until(EC.presence_of_element_located((By.XPATH, f"//*[contains(text(), '{post_content}')]")))
+        time.sleep(2)
         self.driver.get(f'{self.base_url}/logout')
+
+        self.driver.get(f'{self.base_url}/login')
+
+        wait.until(EC.presence_of_element_located((By.NAME, "username")))
 
     def test_member_user_access_and_post_in_group(self):
         wait = WebDriverWait(self.driver, 10)
 
         # Step 1: Log in as member_user
+        self.driver.get(f'{self.base_url}/login')
         self.login(self.member_username, "memberpassword")
 
         # Step 2: Navigate to profile and click on the group link
@@ -173,20 +182,23 @@ class GroupTests(unittest.TestCase):
         # Step 4: Click the group link to access the group page
         group_link.click()
 
-        # Step 5: Verify that the group page loads by checking for the group name in the header
-        # group_header = wait.until(EC.presence_of_element_located((By.TAG_NAME, 'h3')))
-        # self.assertEqual(group_header.text, group_name)
-
-        # Optionally, verify the group description appears
-        # group_description = self.driver.find_element(By.CLASS_NAME, 'group-description')
-        # self.assertIn("This is a test group created via Selenium.", group_description.text)
 
         # Step 6: Verify the post made by the test user appears in the feed
         post_content = "This is a test post for the group."
+        time.sleep(2)
         try:
             # Wait until the post content is inside a message-body
-            post_element = wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='message-body'][contains(text(), '{post_content}')]")))
+            post_element = wait.until(EC.presence_of_element_located(
+                (By.XPATH, f"//div[@class='message-body'][contains(text(), '{post_content}')]")
+            ))
+
+            # Scroll it into view using JavaScript
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", post_element)
+
+            # Now assert it contains the expected text
             self.assertIn(post_content, post_element.text)
+
+
         except Exception as e:
             self.fail(f"Post with content '{post_content}' was not found: {e}")
 
