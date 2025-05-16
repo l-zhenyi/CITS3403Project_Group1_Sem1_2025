@@ -1369,18 +1369,23 @@ def share_insight_panel(panel_id):
 @app.route('/api/analysis/data/<analysis_type>', methods=['GET'])
 @login_required
 def get_analysis_data(analysis_type):
-    panel_id_arg = request.args.get('panel_id', type=int) 
-    shared_instance_id_arg = request.args.get('shared_instance_id', type=int) 
+    panel_id_arg = request.args.get('panel_id', type=int)
+    shared_instance_id_arg = request.args.get('shared_instance_id', type=int)
 
-    user_for_data_context = current_user 
-    base_config_from_db = {} 
-    
+    user_for_data_context = current_user
+    base_config_from_db = {}
+
     recipient_start_date_str = request.args.get('startDate')
     recipient_end_date_str = request.args.get('endDate')
-    
-    active_config_for_query = {}
 
-    shared_instance_for_title = None # To hold the shared instance if used
+    active_config_for_query = {}
+    # shared_instance_for_title = None # No longer needed for constructing the main title
+
+    # Determine analysis base title early
+    analysis_details = get_analysis_details(analysis_type)
+    if not analysis_details:
+        return jsonify({"error": f"Analysis type '{analysis_type}' not defined."}), 404
+    base_analysis_title = analysis_details['title'] # This is the "normal name"
 
     if shared_instance_id_arg:
         shared_instance = db.session.get(SharedInsightPanel, shared_instance_id_arg)
@@ -1389,11 +1394,11 @@ def get_analysis_data(analysis_type):
         if shared_instance.original_panel.analysis_type != analysis_type:
             return jsonify({"error": "Analysis type mismatch for shared panel"}), 400
 
-        user_for_data_context = shared_instance.sharer 
+        user_for_data_context = shared_instance.sharer
         base_config_from_db = shared_instance.original_panel.configuration or {}
-        shared_instance_for_title = shared_instance # For title generation later
-        
-        active_config_for_query = base_config_from_db.copy() 
+        # shared_instance_for_title = shared_instance # Keep if FE needs to know it's shared
+
+        active_config_for_query = base_config_from_db.copy()
 
         if shared_instance.access_mode == 'fixed':
             if shared_instance.shared_config:
@@ -1401,11 +1406,11 @@ def get_analysis_data(analysis_type):
         elif shared_instance.access_mode == 'dynamic':
             if shared_instance.shared_config and 'group_id' in shared_instance.shared_config:
                 active_config_for_query['group_id'] = shared_instance.shared_config['group_id']
-            
+
             active_config_for_query['startDate'] = recipient_start_date_str
             active_config_for_query['endDate'] = recipient_end_date_str
             if not recipient_start_date_str and not recipient_end_date_str:
-                 active_config_for_query['time_period'] = 'all_time' 
+                 active_config_for_query['time_period'] = 'all_time'
                  active_config_for_query.pop('startDate', None)
                  active_config_for_query.pop('endDate', None)
             else:
@@ -1417,25 +1422,23 @@ def get_analysis_data(analysis_type):
             return jsonify({"error": "Panel not found or not authorized"}), 404
         if panel.analysis_type != analysis_type:
              return jsonify({"error": "Analysis type mismatch for panel"}), 400
-        
+
         user_for_data_context = current_user
         base_config_from_db = panel.configuration or {}
-        active_config_for_query = base_config_from_db.copy() 
-    
-    else: 
-        analysis_details = get_analysis_details(analysis_type)
-        if not analysis_details: return jsonify({"error": f"Analysis type '{analysis_type}' not defined."}), 404
-        active_config_for_query = analysis_details.get('default_config', {}).copy()
-        user_for_data_context = current_user 
+        active_config_for_query = base_config_from_db.copy()
 
-    # --- Common Filter Logic ---
+    else: # This case is for palette items or temporary panels not yet saved
+        active_config_for_query = analysis_details.get('default_config', {}).copy()
+        user_for_data_context = current_user
+
+    # --- Common Filter Logic (remains largely the same for data querying) ---
     time_period_str = active_config_for_query.get('time_period', 'all_time')
-    start_date_str = active_config_for_query.get('startDate') 
-    end_date_str = active_config_for_query.get('endDate')    
+    start_date_str = active_config_for_query.get('startDate')
+    end_date_str = active_config_for_query.get('endDate')
     raw_group_id_filter = active_config_for_query.get('group_id', 'all')
-    
-    group_id_to_filter = 'all' 
-    specific_group_name_for_title = None
+
+    group_id_to_filter = 'all'
+    # specific_group_name_for_title = None # Not directly used for the main title anymore
 
     if raw_group_id_filter != 'all':
         try:
@@ -1443,58 +1446,44 @@ def get_analysis_data(analysis_type):
             group_for_filter = db.session.get(Group, gid_int)
             if group_for_filter and is_group_member(user_for_data_context.id, gid_int):
                 group_id_to_filter = gid_int
-                specific_group_name_for_title = group_for_filter.name
             else:
                 app.logger.warning(f"Data context user {user_for_data_context.id} tried to filter by group {gid_int} they are not a member of or doesn't exist for them. Defaulting to 'all'.")
         except ValueError:
             app.logger.warning(f"Invalid group_id '{raw_group_id_filter}' in config. Defaulting to 'all'.")
-    
+
     final_start_date = None
     final_end_date = None
-    date_filter_title_part = "All Time"
 
     if start_date_str and end_date_str:
         try:
             final_start_date = isoparse(start_date_str).replace(tzinfo=timezone.utc)
             final_end_date = (isoparse(end_date_str) + timedelta(days=1) - timedelta(microseconds=1)).replace(tzinfo=timezone.utc)
-            date_filter_title_part = f"{final_start_date.strftime('%b %d, %Y')} - {isoparse(end_date_str).strftime('%b %d, %Y')}"
         except (ValueError, TypeError) as e:
             app.logger.warning(f"Invalid custom date range: {start_date_str} - {end_date_str}. Error: {e}. Falling back.")
             final_start_date = None; final_end_date = None
-    
-    if not final_start_date and time_period_str != 'custom': 
+
+    if not final_start_date and time_period_str != 'custom':
         if time_period_str == 'last_month':
             final_start_date = datetime.now(timezone.utc) - timedelta(days=30)
-            date_filter_title_part = "Last Month"
         elif time_period_str == 'last_year':
             final_start_date = datetime.now(timezone.utc) - timedelta(days=365)
-            date_filter_title_part = "Last Year"
-    
+
     rsvpd_attending_event_ids_stmt = db.select(EventRSVP.event_id)\
         .where(EventRSVP.user_id == user_for_data_context.id)\
         .where(EventRSVP.status == 'attending')
     rsvpd_attending_event_ids = db.session.scalars(rsvpd_attending_event_ids_stmt).all()
 
-    title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else f"(All Groups for {user_for_data_context.username})"
-    panel_context_title_suffix = ""
-    if shared_instance_for_title:
-        panel_context_title_suffix = f" (Shared by {shared_instance_for_title.sharer.username})"
-
-
     if not rsvpd_attending_event_ids:
-        no_data_title = ""
-        if analysis_type == 'spending-by-category':
-            no_data_title = f"Attended Event Spending by Category {title_group_part} (No events attended by {user_for_data_context.username}){panel_context_title_suffix}"
-        elif analysis_type == 'event-location-heatmap':
-            no_data_title = f"Event Location Heatmap {title_group_part} (No events attended by {user_for_data_context.username}){panel_context_title_suffix}"
-        
         return jsonify({
             "analysis_type": analysis_type,
-            "title": no_data_title,
-            "data": [], 
+            "title": base_analysis_title, # Use simple base title
+            "data": [],
             "config_used": active_config_for_query
         })
-    
+
+    # SQL queries for group_accessible_event_ids_sq, invited_event_ids_sq,
+    # and final_event_ids_to_query_stmt remain the same as before.
+    # ...
     group_accessible_stmt = db.select(Event.id).distinct()\
         .join(Node, Event.node_id == Node.id)\
         .join(Group, Node.group_id == Group.id)\
@@ -1515,7 +1504,7 @@ def get_analysis_data(analysis_type):
     if group_id_to_filter != 'all': 
         invited_accessible_stmt = invited_accessible_stmt\
             .join(Node, Event.node_id == Node.id, isouter=True) \
-            .where( # Event must either have no node or belong to the filtered group if it has a node
+            .where( 
                 or_(Event.node_id.is_(None), Node.group_id == group_id_to_filter)
             )
             
@@ -1529,29 +1518,26 @@ def get_analysis_data(analysis_type):
             )
         )
     
-    # Apply date filters to the final set of event IDs
     if final_start_date:
         final_event_ids_to_query_stmt = final_event_ids_to_query_stmt.where(Event.date >= final_start_date)
     if final_end_date:
         final_event_ids_to_query_stmt = final_event_ids_to_query_stmt.where(Event.date <= final_end_date)
 
     final_event_ids_list = db.session.scalars(final_event_ids_to_query_stmt).all()
-    
-    if not final_event_ids_list:
-        no_match_title = ""
-        if analysis_type == 'spending-by-category':
-            no_match_title = f"Attended Event Spending by Category {title_group_part} (No matching events for filters){panel_context_title_suffix}"
-        elif analysis_type == 'event-location-heatmap':
-            no_match_title = f"Event Location Heatmap {title_group_part} (No matching events for filters){panel_context_title_suffix}"
+    # ...
 
+    if not final_event_ids_list:
         return jsonify({
             "analysis_type": analysis_type,
-            "title": no_match_title,
-            "data": [], 
+            "title": base_analysis_title, # Use simple base title
+            "data": [],
             "config_used": active_config_for_query
         })
 
     # --- Analysis Specific Logic ---
+    # The title sent back will be the base_analysis_title.
+    # The frontend can decide if it needs to add "(No Data)" based on the data array.
+
     if analysis_type == 'spending-by-category':
         stmt = db.select(
                 Node.label.label('category'),
@@ -1566,10 +1552,9 @@ def get_analysis_data(analysis_type):
         results = db.session.execute(stmt).all()
         analysis_data = [{"category": row.category, "amount": round(row.total_cost or 0, 2)} for row in results]
         
-        if not analysis_data: final_report_title += " (No Data)"
-
         return jsonify({
             "analysis_type": analysis_type,
+            "title": base_analysis_title, # Use simple base title
             "data": analysis_data,
             "config_used": active_config_for_query
         })
@@ -1587,17 +1572,14 @@ def get_analysis_data(analysis_type):
                 lat_str, lng_str = coord_str.split(',')
                 lat = float(lat_str.strip())
                 lng = float(lng_str.strip())
-                # For Leaflet.heat, data can be [lat, lng] or [lat, lng, intensity]
-                # Using fixed intensity for now, so just [lat, lng] is fine.
                 heatmap_points.append([lat, lng]) 
             except (ValueError, AttributeError) as e:
                 app.logger.warning(f"Could not parse coordinates: '{coord_str}'. Error: {e}")
                 continue
         
-        if not heatmap_points: final_report_title += " (No Location Data)"
-
         return jsonify({
             "analysis_type": analysis_type,
+            "title": base_analysis_title, # Use simple base title
             "data": heatmap_points,
             "config_used": active_config_for_query
         })
