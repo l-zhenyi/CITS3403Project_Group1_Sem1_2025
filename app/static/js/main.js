@@ -2,7 +2,7 @@
 
 // --- Imports ---
 import { loadGroups, groupsData, parseHash, updateHash, loadAllUserEventsAndProcess, allEventsData, eventsByDate } from './dataHandle.js';
-import { renderGroupEvents, showContextMenu, openDayEventsModal, renderAllEventsList, renderCalendar, hideContextMenu } from './eventRenderer.js'; // Added hideContextMenu
+import { renderGroupEvents, showContextMenu, openDayEventsModal, renderAllEventsList, renderCalendar, hideContextMenu, adjustEventTileSizesIfNeeded } from './eventRenderer.js'; // Added hideContextMenu and adjustEventTileSizesIfNeeded
 import { setupViewSwitching, switchView, hookCalendarNavigation, goBackToGroupList, getCalendarDate } from './viewManager.js';
 import { hookEventFilterBar } from './eventActions.js';
 import { setupModal as setupEventDetailsModal, openEventModal } from './modalManager.js';
@@ -195,7 +195,11 @@ async function setupPlannerView() {
                      if(activeGroupSettingsButton) activeGroupSettingsButton.style.display = 'none';
                  }
             }
+        } else if (plannerPane?.classList.contains('events-view-active')) {
+            // If not a mobile/desktop switch, but still a resize, and events view is active
+            adjustEventTileSizesIfNeeded();
         }
+         // If any other view needs resize adjustments, add them here
     }, 250));
 
     document.addEventListener('openEventModalRequest', (event) => {
@@ -252,7 +256,7 @@ async function setupPlannerView() {
 
         if (plannerPane?.classList.contains('events-view-active')) {
             let currentFilter = eventListFilterBar?.querySelector('.filter-pill.active')?.dataset.filter || 'upcoming';
-            renderAllEventsList(currentFilter);
+            renderAllEventsList(currentFilter); // This will also call adjustEventTileSizesIfNeeded
         }
         if (plannerPane?.classList.contains('calendar-view-active')) {
             const calDate = getCalendarDate();
