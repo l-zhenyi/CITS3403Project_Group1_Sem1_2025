@@ -132,7 +132,7 @@
 }
 
 /* ==========================================================================
-    Event Collage Area (Right Pane - Desktop & Mobile Orbit View)
+    Event Collage Area (Right Pane - Desktop)
     ========================================================================== */
 .event-collage-area {
     flex-grow: 1;
@@ -140,28 +140,28 @@
     min-height: 0;
     position: relative;
     z-index: 0;
-    padding: 0; /* No padding, children manage it */
-    border-radius: 0 18px 18px 0; /* Desktop */
+    padding: 0;
+    border-radius: 0 18px 18px 0;
     overflow: hidden;
     transition: flex 0.3s ease, opacity 0.3s ease;
-    display: flex; /* MODIFIED: Make it a flex column to stack header and viewport */
-    flex-direction: column;
 }
 
 .blur-wrapper {
-    position: sticky; /* Will stick to the top of .event-collage-area */
+    position: sticky;
     top: 0;
-    /* height: 64px; Let content determine height */
+    height: 64px;
     z-index: 10;
     pointer-events: none;
     margin: 0;
-    padding: 12px; /* Padding for the header inside */
-    flex-shrink: 0; /* Header should not shrink */
+    padding: 12px;
 }
 
 .blur-overlay {
     position: absolute;
     inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     background: rgba(140, 140, 145, 1);
     backdrop-filter: blur(10px) saturate(120%);
     mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
@@ -174,7 +174,7 @@
     position: relative;
     z-index: 1;
     padding: 12px 18px;
-    margin: 0; /* Margin removed, padding of blur-wrapper handles it */
+    margin: 0 0 12px 0;
     border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: 14px;
     pointer-events: auto;
@@ -249,11 +249,12 @@
 /* Panning/Zooming Viewport */
 .collage-viewport {
     width: 100%;
-    flex-grow: 1; /* Take remaining space in .event-collage-area */
-    min-height: 0; /* For flex behavior */
-    overflow: hidden; /* This is the key clipping container for panning/zooming */
+    height: 100%;
+    /* Changed from auto to hidden to prevent scrollbars from viewport itself */
+    overflow: hidden;
     position: relative;
     cursor: grab;
+    /* Padding handled by event-panels-container or inner elements if needed */
     padding: 0;
     box-sizing: border-box;
 }
@@ -263,45 +264,49 @@
     cursor: grabbing;
 }
 
-/* Orbit Layout Container (Content that gets transformed by JS) */
+/* Orbit Layout Container */
 .event-panels-container {
-    position: relative; /* Children (.event-panel) are absolute to this */
-    width: max-content; /* Allow JS to determine effective size */
+    position: relative;
+    width: max-content;
     height: max-content;
-    min-width: 2000px; /* Default large size for orbit spread */
-    min-height: 1600px;
+    min-width: 2000px; /* Adjust as needed for your content spread */
+    min-height: 1600px; /* Adjust as needed */
     transform-origin: top left;
-    padding: 50px; /* Padding around the orbit elements */
+    /* transition: transform 0.2s ease-out; */ /* Let JS handle transform updates */
+    padding: 50px; /* Add padding to prevent cutoff at edges */
     box-sizing: border-box;
-    /* JS will apply transform: var(--viewport-transform, none); */
 }
 
 
-/* Circular Panel - Base Styles (for orbit nodes) */
+/* Circular Panel - Base Styles */
 .event-panel {
     position: absolute;
-    overflow: hidden;
+    /* Let JS set width/height initially */
+    /* No explicit width/height here */
+    overflow: hidden; /* Keep this */
     padding: 0;
     box-sizing: border-box;
-    border: 0.2em solid rgba(255, 255, 255, 0.5);
+    border: 0.2em solid rgba(255, 255, 255, 0.5); /* Relative to font-size */
     background: rgba(200, 200, 210, 0.15);
     backdrop-filter: blur(8px) saturate(120%);
-    box-shadow: 0 0.5em 1.5em rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0.5em 1.5em rgba(0, 0, 0, 0.3); /* Relative to font-size */
     cursor: pointer;
-    display: flex;
-    transition: box-shadow 0.3s ease;
-    font-size: 6px; /* Default/fallback - JS will override based on layout */
-    border-radius: 50%;
-    will-change: width, height, left, top, font-size;
+    display: flex; /* Keep flex */
+    /* align-items: center; */ /* Remove - content wrappers handle alignment */
+    /* justify-content: center; */ /* Remove */
+    transition: box-shadow 0.3s ease; /* Keep or adjust */
+    /* Base font-size set by JS */
+    font-size: 6px; /* Default/fallback - JS will override */
+    border-radius: 50%; /* JS sets this, but good default */
 }
 
 /* --- Styles for the UNCLICKED state (Original Content Wrapper) --- */
 .orbit-element-original-content {
-    position: relative;
+    position: relative; /* Needed for absolute positioning of children */
     width: 100%;
     height: 100%;
-    overflow: hidden;
-    display: flex;
+    overflow: hidden; /* Clip children to the circle */
+    display: flex; /* Use flex if needed, or just block */
     align-items: center;
     justify-content: center;
     transition: opacity 0.3s ease;
@@ -310,161 +315,480 @@
 .orbit-element-original-content.hidden {
     display: none;
     opacity: 0;
-    pointer-events: none;
+    pointer-events: none; /* Ensure it doesn't intercept events when hidden */
 }
 
 /* --- The Background Image within the Original Content --- */
 .event-panel .event-image {
     position: absolute;
-    inset: 0;
+    inset: 0; /* Fill the wrapper */
     width: 100%;
     height: 100%;
     object-fit: cover;
+    /* Transition for hover effects */
     transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), filter 0.4s ease;
-    z-index: 0;
-    transform: scale(1);
-    filter: blur(0px);
+    z-index: 0; /* Behind the overlay */
+    transform: scale(1); /* Start at normal scale */
+    filter: blur(0px); /* Start with no blur */
 }
 
 /* --- The Overlay with Info (Initially Hidden) --- */
 .event-panel .event-info-overlay {
     position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.2);
+    inset: 0; /* Fill the wrapper */
+    background: rgba(0, 0, 0, 0.2); /* Base background (slightly dark) */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     color: #fff;
     text-align: center;
-    padding: 1em;
+    padding: 1em; /* Relative to parent font-size */
     box-sizing: border-box;
-    opacity: 0;
-    z-index: 1;
+    opacity: 0; /* Hidden by default */
+    z-index: 1; /* Above the image */
+    /* Transition for hover effects */
     transition: opacity 0.3s ease, background 0.3s ease;
-    font-size: 0.85em;
-    text-shadow: 0 0 0.8em rgba(0, 0, 0, 0.6);
+    font-size: 0.85em; /* Relative to parent .event-panel font size */
+    text-shadow: 0 0 0.8em rgba(0, 0, 0, 0.6); /* Relative shadow */
 }
 
+/* Styling for text inside the overlay */
 .event-panel .event-info-overlay .event-panel-title {
     font-weight: 500;
+    /* Use em for font-size relative to overlay's font-size */
     font-size: 1.2em;
     margin-bottom: 0.3em;
-    white-space: nowrap;
+    white-space: nowrap; /* Prevent wrapping */
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
+    max-width: 100%; /* Ensure it doesn't overflow padding */
 }
 .event-panel .event-info-overlay .event-panel-date {
-    font-size: 0.9em;
+    font-size: 0.9em; /* Relative to overlay's font-size */
     opacity: 0.9;
 }
 
 
 /* --- HOVER EFFECT on the Event Panel (when NOT expanded/clicked) --- */
+/* We target the main panel hover, but apply effects to children */
+/* The JS hides .orbit-element-original-content when clicked, preventing this */
 .event-panel:hover .event-image {
-    transform: scale(1.13);
-    filter: blur(0.3em);
+    transform: scale(1.13); /* Zoom in */
+    filter: blur(0.3em); /* Apply blur (relative to font size) */
 }
 
 .event-panel:hover .event-info-overlay {
-    opacity: 1;
-    background: rgba(0, 0, 0, 0.45);
+    opacity: 1; /* Fade in overlay */
+    background: rgba(0, 0, 0, 0.45); /* Make overlay darker on hover */
 }
 
-/* Separate .event-node styles (if these are different elements from .event-panel) */
+/* Updated Event Node - Apple-like Glassmorphism */
 .event-node {
     position: absolute;
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    color: #f5f7fa;
+    color: #f5f7fa; /* Light text, good for glass */
     font-weight: 500;
     text-align: center;
     line-height: 120px;
     font-size: 1.05rem;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.25);
-    background: rgba(200, 205, 215, 0.12);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.25); /* Slightly crisper shadow */
+    
+    background: rgba(200, 205, 215, 0.12); /* Lighter, cool translucent background */
+    /* Alternative for ultra-clear: background: rgba(255, 255, 255, 0.08); */
+
     backdrop-filter: blur(22px) saturate(160%);
     -webkit-backdrop-filter: blur(22px) saturate(160%);
+    
     border: 1px solid rgba(255, 255, 255, 0.22);
+    
     box-shadow:
+        /* Outer shadow for depth */
         0 10px 25px rgba(0, 0, 0, 0.15),
+        /* Inner top highlight (like light from above) */
         inset 0 1.2px 1.2px rgba(255, 255, 255, 0.6),
+        /* Subtle inner bottom shadow for contour */
         inset 0 -0.8px 0.8px rgba(0, 0, 0, 0.12);
+
     pointer-events: auto;
     cursor: grab;
     user-select: none;
     z-index: 5;
-    overflow: hidden;
+    overflow: hidden; /* Crucial for clipping pseudo-elements */
     transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
 }
+
+/* Subtle inner frosting/texture - gives depth to the glass */
 .event-node::before {
-    content: ''; position: absolute; inset: 0; border-radius: inherit;
+    content: '';
+    position: absolute;
+    inset: 0; 
+    border-radius: inherit;
+    /* Soft inner glow using a radial gradient for diffusion */
     background: radial-gradient(ellipse at 60% 40%, rgba(255, 255, 255, 0.06) 0%, transparent 70%);
-    opacity: 0.7; pointer-events: none; z-index: 0; transition: opacity 0.3s ease, background 0.3s ease;
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 0; 
+    transition: opacity 0.3s ease, background 0.3s ease;
 }
+
+/* Soft surface sheen/highlight - more diagonal */
 .event-node::after {
-    content: ''; position: absolute; top: 5%; left: -10%; width: 100%; height: 50%;
-    background: linear-gradient( 135deg, rgba(255, 255, 255, 0.0) 5%, rgba(255, 255, 255, 0.18) 30%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.0) 75% );
-    border-radius: 70% 30% 80% 20% / 60% 50% 50% 40%; opacity: 0.45; filter: blur(12px);
-    pointer-events: none; z-index: 1; transform: rotate(-25deg) scale(1.1);
+    content: '';
+    position: absolute;
+    top: 5%; 
+    left: -10%; /* Start slightly off-canvas for diagonal entry */
+    width: 100%; 
+    height: 50%; 
+    background: linear-gradient(
+        135deg, /* Diagonal angle (e.g., top-left to bottom-right) */
+        rgba(255, 255, 255, 0.0) 5%,
+        rgba(255, 255, 255, 0.18) 30%, /* Main sheen */
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.0) 75%
+    );
+    /* Organic shape for the highlight */
+    border-radius: 70% 30% 80% 20% / 60% 50% 50% 40%; 
+    opacity: 0.45; 
+    filter: blur(12px); /* Softer, more diffused glint */
+    pointer-events: none;
+    z-index: 1; 
+    transform: rotate(-25deg) scale(1.1); /* More pronounced rotation and slight scale */
     transition: opacity 0.3s ease, background 0.3s ease, transform 0.3s ease;
 }
+
 .event-node:hover {
-    background: rgba(210, 215, 225, 0.18); border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18), inset 0 1.8px 1.8px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(0, 0, 0, 0.15);
+    background: rgba(210, 215, 225, 0.18); /* Lighter on hover */
+    border-color: rgba(255, 255, 255, 0.4); 
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.18), 
+        inset 0 1.8px 1.8px rgba(255, 255, 255, 0.7),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.15);
 }
-.event-node:hover::before { opacity: 0.9; background: radial-gradient(ellipse at 60% 40%, rgba(255, 255, 255, 0.1) 0%, transparent 70%); }
-.event-node:hover::after { opacity: 0.6; transform: rotate(-22deg) scale(1.15); background: linear-gradient( 135deg, rgba(255, 255, 255, 0.0) 5%, rgba(255, 255, 255, 0.22) 30%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.0) 75% ); }
-.event-node.dragging { cursor: grabbing; opacity: 0.95; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3); z-index: 1000; transform: scale(1.05); }
+
+.event-node:hover::before {
+    opacity: 0.9;
+    background: radial-gradient(ellipse at 60% 40%, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+}
+
+.event-node:hover::after {
+    opacity: 0.6; 
+    transform: rotate(-22deg) scale(1.15); /* Glint reacts subtly */
+     background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.0) 5%,
+        rgba(255, 255, 255, 0.22) 30%, /* Brighter glint on hover */
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.0) 75%
+    );
+}
 
 
-/* Expanded Content Styles (Inside Event Panel) */
+.event-node.dragging {
+    cursor: grabbing;
+    opacity: 0.95;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    transform: scale(1.05);
+}
+
+
+/* ---------------------------------------------- */
+/* Expanded Content Styles (Inside Event Panel)   */
+/* --- REFINED EM-BASED SCALING APPROACH ---     */
+/* ---------------------------------------------- */
+
 .orbit-element-expanded-content {
-    position: absolute; inset: 0; border-radius: 50%; overflow: hidden; display: none;
-    align-items: center; justify-content: center; box-sizing: border-box;
-    background: rgba(30, 30, 35, 0.6); backdrop-filter: blur(10px) saturate(110%);
-    -webkit-backdrop-filter: blur(10px) saturate(110%); opacity: 0; pointer-events: none;
-    transition: opacity 0.25s ease-in-out; font-size: inherit; z-index: 2;
+    position: absolute;
+    inset: 0;
+    border-radius: 50%; /* Match parent shape */
+    overflow: hidden; /* Clip content */
+    display: none; /* Initially hidden by JS */
+    /* display: flex; */ /* JS toggles this */
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    background: rgba(30, 30, 35, 0.6);
+    backdrop-filter: blur(10px) saturate(110%);
+    -webkit-backdrop-filter: blur(10px) saturate(110%);
+    opacity: 0; /* Hidden by default, controlled by .visible */
+    pointer-events: none; /* Initially non-interactive */
+    transition: opacity 0.25s ease-in-out;
+    /* Inherit the font-size calculated by JS for the parent .event-panel */
+    font-size: inherit;
+    z-index: 2; /* Ensure it's above original content */
 }
-.orbit-element-expanded-content.visible { opacity: 1; pointer-events: auto; }
+
+.orbit-element-expanded-content.visible {
+    opacity: 1;
+    pointer-events: auto; /* Make interactive when visible */
+    /* display: flex; */ /* Ensure display is set by JS _updateContentVisibility */
+}
+
+/* Container for the grid items - Use em relative to parent font-size */
 .expanded-grid-container-v2 {
-    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-    max-width: 30em; max-height: 30em; width: 100%; height: 100%;
-    padding: 1.2em 1.2em 0.8em 1.2em; gap: 0.7em; box-sizing: border-box; color: #f0f0f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    /* Max dimensions are proportional to the parent panel's font size */
+    max-width: 30em;
+    max-height: 30em;
+    width: 100%;
+    height: 100%;
+    /* Use em for padding and gap */
+    padding: 1.2em 1.2em 0.8em 1.2em;
+    /* T R B L */
+    gap: 0.7em;
+    box-sizing: border-box;
+    color: #f0f0f5;
 }
-.grid-item.event-header { display: flex; align-items: center; justify-content: center; gap: 0.6em; width: 100%; flex-shrink: 0; padding: 0; box-sizing: border-box; }
-.event-logo-wrapper { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
-.event-logo-img { width: 3.2em; height: 3.2em; border: 0.1em solid rgba(255, 255, 255, 0.4); border-radius: 50%; object-fit: cover; background: rgba(255, 255, 255, 0.1); display: block; box-sizing: border-box; }
-.event-title-wrapper { flex: 0 1 auto; min-width: 5em; overflow: hidden; display: flex; justify-content: center; align-items: center; box-sizing: border-box; }
+
+/* Header Area (Logo + Title) */
+.grid-item.event-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Center logo and title wrapper */
+    gap: 0.6em;
+    width: 100%;
+    flex-shrink: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.event-logo-wrapper {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.event-logo-img {
+    /* Use em for size and border */
+    width: 3.2em;
+    height: 3.2em;
+    border: 0.1em solid rgba(255, 255, 255, 0.4);
+    /* Border width in em */
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.1);
+    display: block;
+    box-sizing: border-box;
+    /* Include border in size */
+}
+
+.event-title-wrapper {
+    flex: 0 1 auto;
+    /* Allow shrinking but prefer auto */
+    min-width: 5em;
+    /* Keep min-width */
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    /* Center the content-box within */
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* Shared Content Box Style - Use max-content for width */
 .content-box {
-    background: rgba(255, 255, 255, 0.05); border: 0.07em solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.5em; padding: 0.3em 0.6em; width: max-content; max-width: 100%;
-    text-align: center; overflow: hidden; display: flex; align-items: center;
-    justify-content: center; min-height: 2.2em; box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.05);
+    /* Use em for border and radius */
+    border: 0.07em solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5em;
+    padding: 0.3em 0.6em;
+    /* Allow intrinsic width */
+    width: max-content;
+    /* Use content's natural width */
+    max-width: 100%;
+    /* But don't exceed parent's width */
+    text-align: center;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.2em;
+    box-sizing: border-box;
 }
-.title-scroll { white-space: nowrap; overflow-x: auto; overflow-y: hidden; padding: 0.1em 0; font-size: 1.1em; font-weight: 500; max-width: 100%; box-sizing: border-box; scrollbar-width: none; }
-.title-scroll::-webkit-scrollbar { display: none; }
-.grid-item.event-status { flex-shrink: 0; display: flex; justify-content: center; align-items: center; margin-top: -0.2em; }
-.expanded-grid-container-v2 .status-pill { padding: 0.3em 1em; border: 0.07em solid rgba(255, 255, 255, 0.2); border-radius: 9999px; font-size: 0.75em; font-weight: 500; white-space: nowrap; background: var(--status-bg, rgba(128, 128, 128, 0.7)); color: #fff; box-shadow: 0 0.1em 0.3em rgba(0, 0, 0, 0.2); box-sizing: border-box; }
-.expanded-grid-container-v2 .event-status.status-attending .status-pill { --status-bg: rgba(40, 167, 69, 0.8); }
-.expanded-grid-container-v2 .event-status.status-maybe .status-pill { --status-bg: rgba(255, 193, 7, 0.8); color: #111; }
-.expanded-grid-container-v2 .event-status.status-declined .status-pill { --status-bg: rgba(220, 53, 69, 0.8); }
-.expanded-grid-container-v2 .event-status.status-unknown .status-pill, .expanded-grid-container-v2 .event-status.status-cleared .status-pill { --status-bg: rgba(108, 117, 125, 0.8); }
-.grid-item.event-timeplace { flex-grow: 1; flex-shrink: 1; overflow: hidden; width: 100%; min-height: 2.5em; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
-.event-timeplace .content-box { padding: 0.4em 0.6em; border-width: 0.07em; height: 100%; align-items: flex-start; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent; -ms-overflow-style: none; box-sizing: border-box; }
-.event-timeplace .content-box::-webkit-scrollbar { width: 5px; }
-.event-timeplace .content-box::-webkit-scrollbar-track { background: transparent; }
-.event-timeplace .content-box::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); border-radius: 10px; border: none; }
-.timeplace-content { font-size: 0.85em; line-height: 1.3; width: 100%; text-align: center; overflow-wrap: break-word; word-break: break-word; }
-.timeplace-content p { margin-bottom: 0.3em; }
-.timeplace-content p:last-child { margin-bottom: 0; }
-.timeplace-content .extra-details { margin-top: 0.5em; font-style: italic; opacity: 0.9; }
-.grid-item.more-info { margin-top: 0; margin-bottom: -0.2em; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
-.grid-item.more-info button.button.info-button { padding: 0.4em 1.5em; border: 0.07em solid rgba(255, 255, 255, 0.3); display: inline-block; font-size: 0.8em; font-weight: 500; border-radius: 9999px; background: rgba(255, 255, 255, 0.15); color: #ffffff; text-decoration: none; min-width: 4em; text-align: center; box-sizing: border-box; transition: background-color 0.2s ease, transform 0.1s ease; cursor: pointer; }
-.grid-item.more-info button.button.info-button:hover { background: rgba(255, 255, 255, 0.25); }
-.grid-item.more-info button.button.info-button:active { transform: scale(0.96); }
+
+.title-scroll {
+    /* Base styles if it's NOT the content-box */
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.1em 0;
+    /* Minimal internal padding */
+    /* Use em for font-size, relative to inherited font size */
+    font-size: 1.1em;
+    font-weight: 500;
+    max-width: 100%;
+    box-sizing: border-box;
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.title-scroll::-webkit-scrollbar {
+    display: none;
+    /* Safari/Chrome */
+}
+
+/* Status Pill Area */
+.grid-item.event-status {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: -0.2em;
+}
+
+.expanded-grid-container-v2 .status-pill {
+    /* Use em for padding, border, shadow */
+    padding: 0.3em 1em;
+    border: 0.07em solid rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+    font-size: 0.75em;
+    /* Scales relative to parent */
+    font-weight: 500;
+    white-space: nowrap;
+    background: var(--status-bg, rgba(128, 128, 128, 0.7));
+    color: #fff;
+    box-shadow: 0 0.1em 0.3em rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+}
+
+/* Status colors */
+.expanded-grid-container-v2 .event-status.status-attending .status-pill {
+    --status-bg: rgba(40, 167, 69, 0.8);
+}
+
+.expanded-grid-container-v2 .event-status.status-maybe .status-pill {
+    --status-bg: rgba(255, 193, 7, 0.8);
+    color: #111;
+}
+
+.expanded-grid-container-v2 .event-status.status-declined .status-pill {
+    --status-bg: rgba(220, 53, 69, 0.8);
+}
+
+.expanded-grid-container-v2 .event-status.status-unknown .status-pill,
+.expanded-grid-container-v2 .event-status.status-cleared .status-pill { /* Added cleared */
+    --status-bg: rgba(108, 117, 125, 0.8);
+}
+
+/* Time/Place/Details Area */
+.grid-item.event-timeplace {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+    /* Contain the scrolling box */
+    width: 100%;
+    min-height: 2.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Center the content-box */
+    box-sizing: border-box;
+}
+
+.event-timeplace .content-box {
+    /* Inherits max-content width from base .content-box rule */
+    /* Use em for padding, border */
+    padding: 0.4em 0.6em;
+    border-width: 0.07em;
+    /* Use inherited border style */
+    height: 100%;
+    /* Fill the available flex space vertically */
+    align-items: flex-start;
+    /* Align content to top */
+    overflow-y: auto;
+    /* Enable vertical scroll */
+    scrollbar-width: thin; /* Use thin scrollbar */
+    scrollbar-color: rgba(255,255,255,0.2) transparent; /* Simple scrollbar */
+    -ms-overflow-style: none; /* IE */
+    box-sizing: border-box;
+    /* Ensure padding/border included */
+}
+
+.event-timeplace .content-box::-webkit-scrollbar {
+    width: 5px; /* Adjust width */
+}
+.event-timeplace .content-box::-webkit-scrollbar-track {
+    background: transparent;
+}
+.event-timeplace .content-box::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    border: none;
+}
+
+
+.timeplace-content {
+    font-size: 0.85em;
+    /* Scales relative to parent */
+    line-height: 1.3;
+    width: 100%;
+    /* Text fills the box */
+    text-align: center;
+    /* Help prevent overflow if a single word is too long */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    /* Stronger break */
+}
+
+.timeplace-content p {
+    margin-bottom: 0.3em;
+}
+
+.timeplace-content p:last-child {
+    margin-bottom: 0;
+}
+
+.timeplace-content .extra-details {
+    margin-top: 0.5em;
+    font-style: italic;
+    opacity: 0.9;
+}
+
+/* More Info Button Area */
+.grid-item.more-info {
+    margin-top: 0;
+    margin-bottom: -0.2em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.grid-item.more-info button.button.info-button {
+    /* Use em for padding, border */
+    padding: 0.4em 1.5em;
+    border: 0.07em solid rgba(255, 255, 255, 0.3);
+    display: inline-block;
+    font-size: 0.8em;
+    /* Scales relative to parent */
+    font-weight: 500;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    text-decoration: none;
+    min-width: 4em;
+    text-align: center;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    cursor: pointer; /* Ensure cursor indicates clickable */
+}
+
+.grid-item.more-info button.button.info-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.grid-item.more-info button.button.info-button:active {
+    transform: scale(0.96);
+}
 
 
 /* --- Mobile Specific Adjustments --- */
@@ -472,6 +796,8 @@
     .group-list-area {
         padding: 8px 8px 0 8px;
         border-radius: 12px; /* Full radius as it's the only pane or full width */
+        flex: 0 0 100%;
+        width: 100%;
     }
 
     .event-collage-area {
@@ -521,9 +847,34 @@
         font-size: 1.1rem;
     }
 
-    /* Mobile Pane Switching Logic in planner.css handles visibility.
-       These rules ensure that when a specific view is active (like calendar),
-       the group list and collage area (orbit view) are hidden. */
+    /* --------------------------------------------------------
+       Mobile view toggling between list view and event view
+       -------------------------------------------------------- */
+
+    /* Hide the event collage by default on phones */
+    .planner-pane:not(.mobile-event-view-active) .event-collage-area {
+        display: none;
+    }
+
+    /* When a group is opened (class toggled by JS), hide the list
+       and give the collage full width */
+    .planner-pane.mobile-event-view-active .group-list-area {
+        display: none;
+    }
+
+    .planner-pane.mobile-event-view-active .event-collage-area {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        width: 100%;
+    }
+
+    /* Keep the header visible while scrolling the collage */
+    .planner-pane.mobile-event-view-active .active-group-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+    }
 }
 
 
