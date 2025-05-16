@@ -68,8 +68,21 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
     border-radius: 10px; color: #ffffff; font-weight: 500;
     text-decoration: none; text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
     transition: background-color 0.2s ease, color 0.2s ease;
+    line-height: 1.2; /* Ensure consistent line height for text and icons */
 }
 .top-nav-left.desktop-nav-links a:last-child { margin-right: 0; }
+
+/* NEW: Style for icon-only links in the main desktop nav, like Home */
+/* Apply class="nav-icon-link" to the <a> tag for Home if it's icon-only */
+.top-nav-left.desktop-nav-links a.nav-icon-link {
+    padding: 8px 12px; /* Adjusted padding for a single icon */
+    font-size: 1.2em;  /* Make the icon a bit larger (will be inherited by <i>) */
+    line-height: 1;    /* Helps center the icon vertically */
+}
+.top-nav-left.desktop-nav-links a.nav-icon-link i {
+    vertical-align: middle; /* Good for icon alignment */
+}
+
 .top-nav-left.desktop-nav-links a.active {
     background-color: rgba(255, 255, 255, 0.15); color: #fff;
     font-weight: 600; text-shadow: none;
@@ -80,79 +93,93 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
 
 /* Mobile Navigation Panel (Floating Popout) */
 .mobile-nav-panel {
-    display: flex; 
+    display: flex;
     flex-direction: column;
     align-items: flex-start;
-    
-    position: fixed; /* MODIFIED: Still fixed, but we'll control height differently */
-    top: calc(var(--top-nav-height) + 15px); /* MODIFIED: Position it below the main nav bar */
-    left: 15px; /* Align with nav bar's left padding */
-    
-    width: auto; 
-    min-width: 220px; /* MODIFIED: Adjusted min-width */
-    max-width: calc(100% - 30px); /* Max width with padding on both sides */
-    
-    /* MODIFIED: Let content determine height, but set a max-height for scrolling */
-    height: auto;
-    max-height: calc(100vh - var(--top-nav-height) - 30px); /* Max height considering top/bottom spacing */
 
-    /* Glassy styles for the panel */
-    background: rgba(110, 110, 115, 0.75); /* MODIFIED: Adjusted alpha for better glass */
+    position: fixed;
+    top: calc(var(--top-nav-height) + 15px);
+    left: 15px;
+
+    width: auto;
+    min-width: 220px;
+    max-width: calc(100% - 30px);
+
+    height: auto;
+    max-height: calc(100vh - var(--top-nav-height) - 30px);
+
+    background: rgba(110, 110, 115, 0.75);
     backdrop-filter: blur(25px) saturate(160%);
     -webkit-backdrop-filter: blur(25px) saturate(160%);
     border: 1px solid rgba(255, 255, 255, 0.22);
-    
-    border-radius: 12px; /* MODIFIED: Rounded corners for floating panel look */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3); /* MODIFIED: Adjusted shadow */
-    
-    padding: 10px; /* MODIFIED: Internal padding for the panel */
-    
+
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+
+    padding: 10px;
+
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-15px) scale(0.95); /* MODIFIED: Start slightly up and smaller for pop effect */
-    transform-origin: top left; /* MODIFIED: Animation origin */
+    transform: translateY(-15px) scale(0.95);
+    transform-origin: top left;
     transition: transform 0.25s ease-out, opacity 0.25s ease-out, visibility 0s linear 0.25s;
-    z-index: 999; 
-    overflow-y: auto; 
+    z-index: 999;
+    overflow-y: auto;
 }
 
 .mobile-nav-panel.menu-open {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0) scale(1); /* MODIFIED: Final state for pop animation */
+    transform: translateY(0) scale(1);
     transition: transform 0.25s ease-out, opacity 0.25s ease-out, visibility 0s linear 0s;
 }
 
 /* Links inside the mobile panel */
 .mobile-nav-panel a {
-    width: 100%; 
-    padding: 10px 15px; /* MODIFIED: Adjusted padding */
-    margin-bottom: 5px; /* MODIFIED: Adjusted spacing */
-    border-radius: 8px; 
-    font-size: 0.95rem; /* MODIFIED: Adjusted font size */
-    color: #f0f0f5; 
-    background-color: transparent; 
+    width: 100%;
+    padding: 10px 15px;
+    margin-bottom: 5px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #f0f0f5;
+    background-color: transparent;
     text-decoration: none;
     transition: background-color 0.15s ease, color 0.15s ease;
+    display: flex; /* MODIFIED: To help align icon and text */
+    align-items: center; /* MODIFIED: To help align icon and text */
 }
 .mobile-nav-panel a:last-child { margin-bottom: 0; }
 .mobile-nav-panel a.active,
 .mobile-nav-panel a:hover {
-    background-color: rgba(255, 255, 255, 0.12); /* MODIFIED: Subtle hover */
+    background-color: rgba(255, 255, 255, 0.12);
     color: #fff;
 }
-.mobile-nav-panel a.active { 
-    font-weight: 500; /* MODIFIED: Slightly less heavy active state */
+.mobile-nav-panel a.active {
+    font-weight: 500;
     background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* NEW: Styles for icons and text within mobile navigation links */
+.mobile-nav-icon {
+    margin-right: 10px;
+    width: 1.3em; /* Consistent width for icon container */
+    text-align: center;
+    display: inline-block;
+    font-size: 1em; /* Icon size relative to link's font-size */
+    /* vertical-align: middle; -- align-items on parent <a> handles this */
+}
+.mobile-nav-text {
+    flex-grow: 1; /* Allow text to take remaining space if needed */
+    /* vertical-align: middle; -- align-items on parent <a> handles this */
 }
 
 
 /* --- Right Side of Nav Bar --- */
 .top-nav-right {
-  display: flex; align-items: center; flex-wrap: nowrap; 
-  gap: 8px; position: relative; z-index: 1000;      
+  display: flex; align-items: center; flex-wrap: nowrap;
+  gap: 8px; position: relative; z-index: 1000;
 }
-.top-nav-right .icon-button {
+.top-nav-right .icon-button { /* This is for search toggle currently */
   display: inline-flex; justify-content: center; align-items: center;
   width: 36px; height: 36px; border-radius: 50%;
   border: none; padding: 0; margin: 0;
@@ -164,20 +191,45 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
   background-color: rgba(255, 255, 255, 0.15);
 }
 
+/* NEW: Styles for the moved desktop logout icon */
+.desktop-logout-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff; /* Match color of .top-nav-left a */
+    text-decoration: none;
+    padding: 8px; /* Clickable area */
+    border-radius: 10px; /* Consistent with other nav links */
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-size: 1.2em; /* Adjust size as needed */
+    line-height: 1; /* Good for icon-only buttons */
+}
+.desktop-logout-icon:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Similar hover to .top-nav-left a */
+    /* color: #f0f0f0; */ /* Optional: if you want color to change on hover too */
+}
+.desktop-logout-icon i {
+    vertical-align: middle; /* Ensures icon is well-aligned */
+}
+
+
 /* Mobile Styles for Navigation Structure */
 @media (max-width: 768px) {
     .top-nav { padding: 8px 15px; }
     #hamburger-menu-toggle { display: flex; order: -1; }
     .top-nav-left.desktop-nav-links { display: none; }
-    /* .mobile-nav-panel visibility is controlled by .menu-open class added by JS */
     .top-nav-right .icon-button { font-size: 1.2rem; }
+    /* NEW: Ensure desktop logout icon is hidden on mobile if mobile panel has its own */
+    .desktop-logout-icon { display: none; }
 }
 
 /* Desktop Styles for Navigation Structure */
 @media (min-width: 769px) {
     #hamburger-menu-toggle { display: none; }
-    .mobile-nav-panel { display: none !important; } /* Ensure mobile panel is always hidden on desktop */
-    .top-nav-left.desktop-nav-links { display: flex; } /* Ensure desktop links are shown */
+    .mobile-nav-panel { display: none !important; }
+    .top-nav-left.desktop-nav-links { display: flex; }
+    /* NEW: Ensure desktop logout icon is shown on desktop */
+    .desktop-logout-icon { display: inline-flex; }
 }
 
 
