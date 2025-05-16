@@ -12,6 +12,9 @@ Our all-in-one platform empowers you to stay connected and organized with ease. 
 | 23737821 | Aidan Kirby-Smith | Aidan-KS |
 
 ## Installation and running 
+#### Prerequisites
+Python
+
 #### **Add the following to a .flaskenv file**
 ```
 FLASK_APP=run.py
@@ -21,7 +24,7 @@ SECRET_KEY='<SOME SECRET KEY OF YOUR CHOOSING>'
 
 #### On Windows
 ```
-python3 -m venv .venv
+python3 -m venv venv
 venv/Scripts/activate
 python -m pip install -r requirements.txt
 flask db upgrade
@@ -38,6 +41,7 @@ flask db upgrade
 ```
 flask run
 ```
+By default, the application runs on http://127.0.0.1:5000. Check your console output for the exact URL.
 
 ## Running tests
 ### Python Models test
