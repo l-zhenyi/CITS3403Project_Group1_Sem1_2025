@@ -109,7 +109,7 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
 @media (max-width: 768px) {
     .top-nav {
         padding: 8px 15px; /* Adjust padding for hamburger */
-        /* position: relative; /* Needed if .top-nav-left is absolutely positioned */
+        /* position: relative; /* Needed if .top-nav-left is absolutely positioned child */
     }
 
     #hamburger-menu-toggle {
@@ -123,47 +123,67 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
         flex-direction: column;
         align-items: flex-start; /* Align links to the left */
         position: absolute;
-        top: calc(100% + 5px); /* Position below the nav bar */
-        left: 0;
-        width: 100%;
-        background-color: rgba(100, 100, 105, 0.75); /* Slightly different glass for dropdown */
-        backdrop-filter: blur(20px) saturate(130%);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-top: none; /* Remove top border if it looks odd with nav bar */
-        border-radius: 0 0 16px 16px; /* Round bottom corners */
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        padding: 10px 0; /* Vertical padding for the dropdown items */
+        top: calc(100% + 8px); /* Position below the nav bar with a small gap */
+        left: 15px; /* Align with nav bar's left padding */
+        
+        /* MODIFIED: Set a max-width and allow auto width, not full width */
+        width: auto; 
+        min-width: 200px; /* Ensure it's not too narrow */
+        max-width: calc(100% - 30px); /* Max width with padding on both sides */
+        
+        /* MODIFIED: Apply glassy styles */
+        background: rgba(120, 120, 125, 0.65); /* Slightly more opaque for readability */
+        backdrop-filter: blur(25px) saturate(160%);
+        -webkit-backdrop-filter: blur(25px) saturate(160%);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-top: 1px solid rgba(255, 255, 255, 0.25); /* Optional: slightly stronger top border */
+        
+        border-radius: 12px; /* MODIFIED: Rounded corners for popout look */
+        box-shadow: 0 10px 25px rgba(0,0,0,0.25); /* MODIFIED: Stronger shadow for popout */
+        
+        padding: 8px; /* MODIFIED: Padding inside the glassy box */
         max-height: 0;
         opacity: 0;
         overflow: hidden;
-        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, padding-top 0.3s ease-out, padding-bottom 0.3s ease-out;
-        z-index: 999; /* Ensure it's above other content but below main modal (1050) */
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, 
+                    padding-top 0.3s ease-out, padding-bottom 0.3s ease-out,
+                    transform 0.3s ease-out; /* MODIFIED: Add transform for subtle pop */
+        transform: translateY(-10px) scale(0.98); /* MODIFIED: Initial state for pop animation */
+        z-index: 999;
     }
 
     .top-nav-left.menu-open {
-        display: flex; /* Show when active */
-        max-height: 500px; /* Large enough to fit content */
+        display: flex; 
+        max-height: 500px; 
         opacity: 1;
-        padding: 10px 0;
+        padding: 8px; /* Consistent padding when open */
+        transform: translateY(0) scale(1); /* MODIFIED: Final state for pop animation */
     }
 
     .top-nav-left a {
-        width: 100%; /* Make links full-width */
-        padding: 12px 20px; /* Adjust padding for vertical layout */
+        width: 100%; 
+        padding: 10px 15px; /* MODIFIED: Adjust padding for items within new box padding */
         margin-right: 0;
-        margin-bottom: 1px; /* Small separator */
-        border-radius: 0; /* No rounding for individual items in dropdown */
-        font-size: 1rem;
+        margin-bottom: 0; /* Links will be separated by their own background/hover */
+        border-radius: 8px; /* MODIFIED: Rounded corners for links inside */
+        font-size: 0.95rem; /* MODIFIED: Slightly smaller */
+        color: #f0f0f5; /* Ensure good contrast on glassy bg */
+        background-color: transparent; /* Ensure no default bg */
+        transition: background-color 0.15s ease, color 0.15s ease;
     }
-    .top-nav-left a:last-child {
-        margin-bottom: 0;
+    .top-nav-left a:not(:last-child) {
+        margin-bottom: 4px; /* MODIFIED: Space between items */
     }
 
+
     .top-nav-left a.active {
-        background-color: rgba(255, 255, 255, 0.25); /* Slightly more prominent active state */
+        background-color: rgba(255, 255, 255, 0.2); 
+        color: #fff;
+        font-weight: 500;
     }
      .top-nav-left a:not(.active):hover {
-        background-color: rgba(255, 255, 255, 0.2);
+        background-color: rgba(255, 255, 255, 0.12);
+        color: #fff;
     }
 
 
