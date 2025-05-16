@@ -19,15 +19,15 @@
 <body>
       {% if not hide_nav %}
       <header class="top-nav glassy">
-            {# --- NEW: Hamburger Menu Toggle Button --- #}
-            <button id="hamburger-menu-toggle" class="hamburger-menu-toggle" aria-label="Toggle navigation" aria-expanded="false">
+            {# Hamburger button now controls the separate mobile panel #}
+            <button id="hamburger-menu-toggle" class="hamburger-menu-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mobile-navigation-panel">
                   <span></span>
                   <span></span>
                   <span></span>
             </button>
-            {# --- END: Hamburger Menu Toggle Button --- #}
 
-            <nav class="top-nav-left">
+            {# This nav is for DESKTOP view #}
+            <nav class="top-nav-left desktop-nav-links">
                   <a href="{{ url_for('index') }}">Home</a>
                   {% if current_user.is_anonymous %}
                         <a href="{{ url_for('login') }}">Login</a>
@@ -43,19 +43,35 @@
 
             <div class="top-nav-right">
                    {% if current_user.is_authenticated %}
-                  {# --- NEW Search Widget --- #}
                   <div class="search-widget" id="search-widget">
                       <input type="search" id="user-search-input" class="search-input" placeholder="Search users..." autocomplete="off">
                       <button class="icon-button search-toggle-btn" id="search-toggle-btn" aria-label="Toggle search" aria-expanded="false">🔍</button>
                   </div>
-                  {# --- END Search Widget --- #}
                   {% endif %}
             </div>
       </header>
-      {% endif %}
+
+      {# NEW: Mobile Navigation Panel - Sibling to header #}
+      <nav id="mobile-navigation-panel" class="mobile-nav-panel">
+            {# Links are duplicated here for the mobile panel.
+               Alternatively, JS could populate this from the desktop nav. #}
+            <a href="{{ url_for('index') }}">Home</a>
+            {% if current_user.is_anonymous %}
+                  <a href="{{ url_for('login') }}">Login</a>
+            {% else %}
+                  <a href="{{ url_for('user', username=current_user.username) }}">Profile</a>
+                  <a href="{{ url_for('messages') }}">Messages</a>
+                  <a href="{{ url_for('friends') }}">Friends</a>
+                  <a href="{{ url_for('planner') }}">Planner</a>
+                  <a href="{{ url_for('explore') }}">Explore</a>
+                  <a href="{{ url_for('logout') }}">Logout</a>
+            {% endif %}
+      </nav>
+      {% endif %} {# End of "if not hide_nav" #}
+
       {% with messages = get_flashed_messages() %}
       {% if messages %}
-      <ul class="flash-messages"> {# Added class for styling #}
+      <ul class="flash-messages">
             {% for message in messages %}
             <li>{{ message }}</li>
             {% endfor %}
@@ -66,7 +82,6 @@
       {% block content %}{% endblock %}
 
       <div id="search-results" class="search-results-dropdown">
-          <!-- Search results will appear here -->
           <div class="search-results-placeholder">Start typing to search...</div>
       </div>
 

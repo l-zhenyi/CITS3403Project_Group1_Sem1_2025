@@ -1,13 +1,19 @@
 /* ==========================================================================
-   Base Styles & Resets (Keep as is)
+   Base Styles & Resets
    ========================================================================== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { height: 100%; scroll-behavior: smooth; }
 body { display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #f0f0f5; background-image: url('../img/bg.jpg'); background-size: cover; background-position: center center; background-attachment: fixed; z-index: 0; }
 body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10px; bottom: -10px; transform: scale(1.1); background: inherit; filter: blur(10px) saturate(50%) brightness(1.0); z-index: -1; }
 
+/* CSS variable for top nav height, JS will set this */
+:root {
+    --top-nav-height: 60px; /* Default fallback */
+}
+
+
 /* ==========================================================================
-   Utility Styles (Keep as is)
+   Utility Styles
    ========================================================================== */
 .glassy { background: rgba(140, 140, 145, 0.6); backdrop-filter: blur(30px) saturate(150%); border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
 .button { display: inline-block; padding: 9px 18px; border: none; border-radius: 12px; font-weight: 500; color: white; text-shadow: none; text-align: center; text-decoration: none; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; }
@@ -18,19 +24,19 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
 .button.decline:hover { background-color: rgba(255, 255, 255, 0.25); }
 
 /* ==========================================================================
-   Navigation Bar (.top-nav) - Incorporating Fixes & Hamburger
+   Navigation Bar (.top-nav)
    ========================================================================== */
 .top-nav {
     position: sticky; top: 10px; z-index: 1000; display: flex;
     flex-shrink: 0; width: calc(100% - 24px); max-width: 1800px;
     margin: 10px auto 0 auto; padding: 10px 24px; border-radius: 16px;
     justify-content: space-between; align-items: center;
-    /* Inherit .glassy style from HTML */
+    /* .glassy class typically applied in HTML */
 }
 
-/* Hamburger Menu Toggle Button (Mobile Only) */
+/* Hamburger Menu Toggle Button (Only visible on mobile via @media query) */
 #hamburger-menu-toggle {
-    display: none; /* Hidden by default, shown on mobile */
+    display: none;
     flex-direction: column;
     justify-content: space-around;
     width: 30px;
@@ -39,60 +45,113 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
     border: none;
     cursor: pointer;
     padding: 0;
-    z-index: 10; /* Above links if they overlap */
-    margin-right: 15px; /* Space between hamburger and first link if needed */
+    z-index: 1001; /* Higher than mobile panel */
+    margin-right: 15px;
+    position: relative;
 }
-
 #hamburger-menu-toggle span {
-    display: block;
-    width: 100%;
-    height: 3px;
-    background-color: #fff;
-    border-radius: 3px;
+    display: block; width: 100%; height: 3px;
+    background-color: #fff; border-radius: 3px;
     transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 }
-/* Hamburger to X animation */
-#hamburger-menu-toggle.active span:nth-child(1) {
-    transform: rotate(45deg) translate(6px, 6px);
-}
-#hamburger-menu-toggle.active span:nth-child(2) {
-    opacity: 0;
-}
-#hamburger-menu-toggle.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(6px, -6px);
-}
+#hamburger-menu-toggle.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
+#hamburger-menu-toggle.active span:nth-child(2) { opacity: 0; }
+#hamburger-menu-toggle.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
 
-
-.top-nav-left {
-    display: flex; /* Desktop: flex row */
+/* Desktop Navigation Links Container */
+.top-nav-left.desktop-nav-links {
+    display: flex; /* Default for desktop */
     align-items: center;
 }
-.top-nav-left a {
+.top-nav-left.desktop-nav-links a {
     display: inline-block; padding: 8px 20px; margin-right: 8px;
     border-radius: 10px; color: #ffffff; font-weight: 500;
     text-decoration: none; text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
     transition: background-color 0.2s ease, color 0.2s ease;
 }
-.top-nav-left a:last-child {
-    margin-right: 0;
-}
-.top-nav-left a.active {
+.top-nav-left.desktop-nav-links a:last-child { margin-right: 0; }
+.top-nav-left.desktop-nav-links a.active {
     background-color: rgba(255, 255, 255, 0.15); color: #fff;
     font-weight: 600; text-shadow: none;
 }
-.top-nav-left a:not(.active):hover {
+.top-nav-left.desktop-nav-links a:not(.active):hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* --- Container for Right-Side Icons/Widgets --- */
-.top-nav-right {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap; /* Keep items on one line */
-  gap: 8px;          /* Consistent spacing between items */
+/* Mobile Navigation Panel (Floating Popout) */
+.mobile-nav-panel {
+    display: flex; 
+    flex-direction: column;
+    align-items: flex-start;
+    
+    position: fixed; /* MODIFIED: Still fixed, but we'll control height differently */
+    top: calc(var(--top-nav-height) + 15px); /* MODIFIED: Position it below the main nav bar */
+    left: 15px; /* Align with nav bar's left padding */
+    
+    width: auto; 
+    min-width: 220px; /* MODIFIED: Adjusted min-width */
+    max-width: calc(100% - 30px); /* Max width with padding on both sides */
+    
+    /* MODIFIED: Let content determine height, but set a max-height for scrolling */
+    height: auto;
+    max-height: calc(100vh - var(--top-nav-height) - 30px); /* Max height considering top/bottom spacing */
+
+    /* Glassy styles for the panel */
+    background: rgba(110, 110, 115, 0.75); /* MODIFIED: Adjusted alpha for better glass */
+    backdrop-filter: blur(25px) saturate(160%);
+    -webkit-backdrop-filter: blur(25px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    
+    border-radius: 12px; /* MODIFIED: Rounded corners for floating panel look */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3); /* MODIFIED: Adjusted shadow */
+    
+    padding: 10px; /* MODIFIED: Internal padding for the panel */
+    
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-15px) scale(0.95); /* MODIFIED: Start slightly up and smaller for pop effect */
+    transform-origin: top left; /* MODIFIED: Animation origin */
+    transition: transform 0.25s ease-out, opacity 0.25s ease-out, visibility 0s linear 0.25s;
+    z-index: 999; 
+    overflow-y: auto; 
 }
 
-/* --- Base styles for ALL icon buttons (Profile, etc.) --- */
+.mobile-nav-panel.menu-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1); /* MODIFIED: Final state for pop animation */
+    transition: transform 0.25s ease-out, opacity 0.25s ease-out, visibility 0s linear 0s;
+}
+
+/* Links inside the mobile panel */
+.mobile-nav-panel a {
+    width: 100%; 
+    padding: 10px 15px; /* MODIFIED: Adjusted padding */
+    margin-bottom: 5px; /* MODIFIED: Adjusted spacing */
+    border-radius: 8px; 
+    font-size: 0.95rem; /* MODIFIED: Adjusted font size */
+    color: #f0f0f5; 
+    background-color: transparent; 
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.mobile-nav-panel a:last-child { margin-bottom: 0; }
+.mobile-nav-panel a.active,
+.mobile-nav-panel a:hover {
+    background-color: rgba(255, 255, 255, 0.12); /* MODIFIED: Subtle hover */
+    color: #fff;
+}
+.mobile-nav-panel a.active { 
+    font-weight: 500; /* MODIFIED: Slightly less heavy active state */
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+
+/* --- Right Side of Nav Bar --- */
+.top-nav-right {
+  display: flex; align-items: center; flex-wrap: nowrap; 
+  gap: 8px; position: relative; z-index: 1000;      
+}
 .top-nav-right .icon-button {
   display: inline-flex; justify-content: center; align-items: center;
   width: 36px; height: 36px; border-radius: 50%;
@@ -105,97 +164,26 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
   background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Mobile Styles for Navigation */
+/* Mobile Styles for Navigation Structure */
 @media (max-width: 768px) {
-    .top-nav {
-        padding: 8px 15px; /* Adjust padding for hamburger */
-        /* position: relative; /* Needed if .top-nav-left is absolutely positioned child */
-    }
-
-    #hamburger-menu-toggle {
-        display: flex; /* Show hamburger on mobile */
-        order: -1; /* Place it before .top-nav-left in flex order if inside .top-nav */
-    }
-
-    .top-nav-left {
-        /* Collapsed state for mobile */
-        display: none; /* Hide by default, JS will toggle */
-        flex-direction: column;
-        align-items: flex-start; /* Align links to the left */
-        position: absolute;
-        top: calc(100% + 8px); /* Position below the nav bar with a small gap */
-        left: 15px; /* Align with nav bar's left padding */
-        
-        /* MODIFIED: Set a max-width and allow auto width, not full width */
-        width: auto; 
-        min-width: 200px; /* Ensure it's not too narrow */
-        max-width: calc(100% - 30px); /* Max width with padding on both sides */
-        
-        /* MODIFIED: Apply glassy styles */
-        background: rgba(120, 120, 125, 0.65); /* Slightly more opaque for readability */
-        backdrop-filter: blur(25px) saturate(160%);
-        -webkit-backdrop-filter: blur(25px) saturate(160%);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        border-top: 1px solid rgba(255, 255, 255, 0.25); /* Optional: slightly stronger top border */
-        
-        border-radius: 12px; /* MODIFIED: Rounded corners for popout look */
-        box-shadow: 0 10px 25px rgba(0,0,0,0.25); /* MODIFIED: Stronger shadow for popout */
-        
-        padding: 8px; /* MODIFIED: Padding inside the glassy box */
-        max-height: 0;
-        opacity: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, 
-                    padding-top 0.3s ease-out, padding-bottom 0.3s ease-out,
-                    transform 0.3s ease-out; /* MODIFIED: Add transform for subtle pop */
-        transform: translateY(-10px) scale(0.98); /* MODIFIED: Initial state for pop animation */
-        z-index: 999;
-    }
-
-    .top-nav-left.menu-open {
-        display: flex; 
-        max-height: 500px; 
-        opacity: 1;
-        padding: 8px; /* Consistent padding when open */
-        transform: translateY(0) scale(1); /* MODIFIED: Final state for pop animation */
-    }
-
-    .top-nav-left a {
-        width: 100%; 
-        padding: 10px 15px; /* MODIFIED: Adjust padding for items within new box padding */
-        margin-right: 0;
-        margin-bottom: 0; /* Links will be separated by their own background/hover */
-        border-radius: 8px; /* MODIFIED: Rounded corners for links inside */
-        font-size: 0.95rem; /* MODIFIED: Slightly smaller */
-        color: #f0f0f5; /* Ensure good contrast on glassy bg */
-        background-color: transparent; /* Ensure no default bg */
-        transition: background-color 0.15s ease, color 0.15s ease;
-    }
-    .top-nav-left a:not(:last-child) {
-        margin-bottom: 4px; /* MODIFIED: Space between items */
-    }
-
-
-    .top-nav-left a.active {
-        background-color: rgba(255, 255, 255, 0.2); 
-        color: #fff;
-        font-weight: 500;
-    }
-     .top-nav-left a:not(.active):hover {
-        background-color: rgba(255, 255, 255, 0.12);
-        color: #fff;
-    }
-
-
-    /* Adjust right side if needed, e.g., if search needs to shrink */
+    .top-nav { padding: 8px 15px; }
+    #hamburger-menu-toggle { display: flex; order: -1; }
+    .top-nav-left.desktop-nav-links { display: none; }
+    /* .mobile-nav-panel visibility is controlled by .menu-open class added by JS */
     .top-nav-right .icon-button { font-size: 1.2rem; }
+}
+
+/* Desktop Styles for Navigation Structure */
+@media (min-width: 769px) {
+    #hamburger-menu-toggle { display: none; }
+    .mobile-nav-panel { display: none !important; } /* Ensure mobile panel is always hidden on desktop */
+    .top-nav-left.desktop-nav-links { display: flex; } /* Ensure desktop links are shown */
 }
 
 
 /* ==========================================================================
-   Search Widget Styles (Sexy Revision 3)
+   Search Widget Styles
    ========================================================================== */
-
 .search-widget {
   position: relative; display: flex; align-items: center;
   width: 36px; height: 36px;
@@ -244,7 +232,7 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
 }
 
 /* ==========================================================================
-   Search Results Dropdown (Darker & Matching Width)
+   Search Results Dropdown
    ========================================================================== */
 .search-results-dropdown {
   position: fixed; max-height: 300px; overflow-y: auto;
@@ -275,8 +263,9 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
 .search-result-username { font-weight: 500; font-size: 0.95em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ==========================================================================
-   Flash Messages (Keep as is or adjust)
+   Flash Messages
    ========================================================================== */
 .flash-messages { list-style: none; padding: 10px; margin: 10px auto; max-width: 600px; background-color: #e7f3fe; border: 1px solid #d0e3f0; border-radius: 4px; color: #31708f; }
 .flash-messages li { margin-bottom: 5px; }
 .flash-messages li:last-child { margin-bottom: 0; }
+/* --- END OF FILE main.css --- */

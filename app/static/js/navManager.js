@@ -1,34 +1,38 @@
 // --- START OF FILE static/js/navManager.js ---
 
-let navElement = null;
-let navToggleBtn = null;
-let navLeftLinksContainer = null;
+let navElement = null; // The main .top-nav bar
+let navToggleBtn = null; // The hamburger button
+let mobileNavPanel = null; // The new mobile panel: #mobile-navigation-panel
 let isNavManagerInitialized = false;
 
 function toggleMobileMenu() {
-    if (!navElement || !navLeftLinksContainer || !navToggleBtn) return;
+    if (!mobileNavPanel || !navToggleBtn) return;
 
-    const isExpanded = navLeftLinksContainer.classList.toggle('menu-open');
+    const isExpanded = mobileNavPanel.classList.toggle('menu-open');
     navToggleBtn.setAttribute('aria-expanded', isExpanded.toString());
     navToggleBtn.classList.toggle('active', isExpanded); // For hamburger to X icon transition
 
-    // Optional: Add/remove a class on the main nav to indicate menu is open
-    // This can be useful if the expanded menu affects other elements or requires body overflow changes.
-    navElement.classList.toggle('mobile-menu-active', isExpanded);
+    // Optional: If you want a body class to prevent scrolling when menu is open
+    document.body.classList.toggle('mobile-menu-is-active', isExpanded);
 
+    // Optional: Add listener to close menu if clicked outside
+    // For a fixed panel, clicking outside means clicking on the main content area.
+    // A full-screen overlay might be better for "click outside" if desired.
+    /*
     if (isExpanded) {
-        // Optional: Add listener to close menu if clicked outside
-        // document.addEventListener('click', handleClickOutsideMobileMenu, true);
+        document.addEventListener('click', handleClickOutsideMobileMenu, true);
     } else {
-        // document.removeEventListener('click', handleClickOutsideMobileMenu, true);
+        document.removeEventListener('click', handleClickOutsideMobileMenu, true);
     }
+    */
 }
 
-// Optional: Click outside to close
 /*
+// Optional: Click outside to close (needs careful implementation with fixed panel)
 function handleClickOutsideMobileMenu(event) {
-    if (navElement && navLeftLinksContainer.classList.contains('menu-open')) {
-        if (!navElement.contains(event.target)) {
+    if (mobileNavPanel && mobileNavPanel.classList.contains('menu-open')) {
+        // If click is not on the panel itself AND not on the toggle button
+        if (!mobileNavPanel.contains(event.target) && !navToggleBtn.contains(event.target)) {
             toggleMobileMenu(); // Close the menu
         }
     }
@@ -38,36 +42,48 @@ function handleClickOutsideMobileMenu(event) {
 export function setupMobileNav() {
     if (isNavManagerInitialized) return;
 
-    navElement = document.querySelector('.top-nav');
-    navToggleBtn = document.getElementById('hamburger-menu-toggle'); // Expecting this ID in HTML
-    navLeftLinksContainer = document.querySelector('.top-nav-left');
+    navElement = document.querySelector('.top-nav'); // Still useful for context, like getting its height
+    navToggleBtn = document.getElementById('hamburger-menu-toggle');
+    mobileNavPanel = document.getElementById('mobile-navigation-panel'); // Target the new panel
 
-    if (!navElement || !navToggleBtn || !navLeftLinksContainer) {
-        console.warn("Mobile navigation elements not found (nav, toggle button, or left links). Hamburger menu will not function.");
+    if (!navToggleBtn || !mobileNavPanel) {
+        console.warn("Mobile navigation elements not found (toggle button or mobile panel). Hamburger menu will not function.");
         return;
     }
+    // Set --top-nav-height CSS variable dynamically
+    if (navElement) {
+        const topNavHeight = navElement.offsetHeight;
+        document.documentElement.style.setProperty('--top-nav-height', `${topNavHeight}px`);
+    }
+
 
     navToggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent click from immediately closing if using click-outside
+        e.stopPropagation(); 
         toggleMobileMenu();
     });
     
-    // Close menu if a link inside it is clicked (typical behavior)
-    navLeftLinksContainer.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A' && navLeftLinksContainer.classList.contains('menu-open')) {
+    // Close menu if a link inside it is clicked
+    mobileNavPanel.addEventListener('click', (e) => {
+        if (e.target.tagName === 'A' && mobileNavPanel.classList.contains('menu-open')) {
             toggleMobileMenu();
         }
     });
 
     // Reset menu on resize to desktop
     window.addEventListener('resize', () => {
-        if (window.innerWidth > 768 && navLeftLinksContainer.classList.contains('menu-open')) {
+        // Recalculate nav height on resize for padding
+        if (navElement) {
+            const topNavHeight = navElement.offsetHeight;
+            document.documentElement.style.setProperty('--top-nav-height', `${topNavHeight}px`);
+        }
+
+        if (window.innerWidth > 768 && mobileNavPanel.classList.contains('menu-open')) {
             toggleMobileMenu(); // Close it
         }
     });
 
     isNavManagerInitialized = true;
-    console.log("Mobile navigation manager initialized.");
+    console.log("Mobile navigation manager initialized (with off-canvas panel).");
 }
 
 // --- END OF FILE static/js/navManager.js ---
