@@ -40,7 +40,7 @@ flask db upgrade
 
 #### Run app with
 ```
-flask run
+python run.py
 ```
 By default, the application runs on http://127.0.0.1:5000. Check your console output for the exact URL.
 
@@ -60,7 +60,7 @@ python -m unittest testing.test_models
 ### Selenium tests
 Open the first terminal. In the project root dictionary, run:
  ```
-flask run
+python run.py
 ```
 Open a second terminal. In the project root dictionary, run these commands one at a time and observe the Selenium tests:
 ```
