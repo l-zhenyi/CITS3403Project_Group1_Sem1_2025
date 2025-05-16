@@ -84,10 +84,16 @@ function handleFriendSearch() {
     );
     populateFriendsList(filteredFriends);
 }
-let isCreateGroupModalInitialized = false;
 export function openCreateGroupModal() {
-     if (isCreateGroupModalInitialized) return; // Prevent reinitialization
-    isCreateGroupModalInitialized = true;
+    // Add a check to ensure modal elements are available (setupCreateGroupModal should have initialized them)
+    if (!createGroupModal || !createGroupForm || !groupNameInput /* ... etc ... */) {
+        console.error("Create Group Modal elements not initialized. Setup might have failed or not run.");
+        // Potentially attempt to run setupCreateGroupModal() here if it's safe,
+        // but it's better to ensure it's called reliably elsewhere (e.g., main.js or DOMContentLoaded).
+        // Alerting the user is a fallback.
+        alert("Error: Create Group functionality is not ready. Please refresh the page or try again later.");
+        return;
+    }
 
     if (createGroupForm) createGroupForm.reset(); // Resets input fields
     if (groupNameInput) groupNameInput.value = ''; // Explicit clear
@@ -201,7 +207,12 @@ async function handleCreateGroupSubmit(event) {
     }
 }
 
+let isSetupComplete = false; // Use a different flag for setup if needed, or rely on main.js calling it once.
 export function setupCreateGroupModal() {
+    // If setupCreateGroupModal itself needs to be idempotent (callable multiple times without harm)
+    // you can add a guard here. Since main.js calls it once, it's not strictly necessary here.
+    // if (isSetupComplete) return;
+
     createGroupModal = document.getElementById('create-group-modal');
     if (!createGroupModal) {
         console.warn("Create Group Modal element (#create-group-modal) not found. Feature unavailable.");
@@ -217,6 +228,14 @@ export function setupCreateGroupModal() {
     createGroupCancelButton = createGroupModal.querySelector('#create-group-cancel-btn');
     createGroupModalCloseBtnX = createGroupModal.querySelector('#create-group-modal-close-btn-x');
     errorMessageElement = createGroupModal.querySelector('#create-group-error-message');
+
+    // This check is important to ensure all elements are found before attaching listeners.
+    if (!createGroupForm || !groupNameInput || !groupDescriptionInput || !friendSearchInput || 
+        !friendsListContainer || !createGroupSaveButton || !createGroupCancelButton || 
+        !createGroupModalCloseBtnX || !errorMessageElement) {
+        console.warn("One or more essential elements for Create Group Modal are missing. Setup incomplete.");
+        return; // Prevent attaching listeners to null elements
+    }
 
     const addNewGroupButton = document.getElementById('add-new-group-button');
     if (addNewGroupButton) {
@@ -258,5 +277,6 @@ export function setupCreateGroupModal() {
 });
 
     console.log("Create Group Modal setup complete.");
+    // isSetupComplete = true; // If using a guard for setupCreateGroupModal itself
 }
 // --- END OF FILE groupModalManager.js ---
