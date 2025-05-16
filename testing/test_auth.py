@@ -3,6 +3,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 import time
 import uuid
 from app import app, db
@@ -24,13 +25,13 @@ class AuthTests(unittest.TestCase):
             db.create_all()
 
         # Set up the Selenium WebDriver
-        options = webdriver.ChromeOptions()
+        options = webdriver.ChromeOptions() #Or webdriver.FirefoxOptions()
         # Uncomment the next line to run Chrome in headless mode (without opening a browser window)
         # options.add_argument('--headless')
         # options.add_argument('--disable-gpu') # Optional, recommended for headless on Windows
         # options.add_argument('--no-sandbox') # Optional, may be needed in some environments
         # options.add_argument('--disable-dev-shm-usage') # Optional, overcome limited resource problems
-        cls.driver = webdriver.Chrome(options=options)
+        cls.driver = webdriver.Chrome(options=options) #Or Firefox(options=options) 
         cls.driver.implicitly_wait(5)
         cls.base_url = 'http://127.0.0.1:5000' # Ensure your Flask app is running on this address and port
 

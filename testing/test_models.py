@@ -12,7 +12,7 @@ class UserModelCase(unittest.TestCase):
     def setUp(self):
         self.app_context = app.app_context()
         self.app_context.push()
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
         db.create_all()
 
     def tearDown(self):

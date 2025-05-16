@@ -40,7 +40,7 @@ class FriendTests(unittest.TestCase):
 
             db.session.commit()
 
-        cls.driver = webdriver.Chrome()
+        cls.driver = webdriver.Chrome() # Or Firefox()
         cls.driver.implicitly_wait(5)
         cls.base_url = 'http://127.0.0.1:5000'
 
