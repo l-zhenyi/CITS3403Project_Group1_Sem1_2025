@@ -247,32 +247,53 @@
 @media (max-width: 768px) {
     .calendar-view { padding: 10px; }
     .calendar-header { padding: 0 0 10px 0; margin-bottom: 10px; }
-    .calendar-month-year { font-size: 1.1rem; }
+    .calendar-month-year { font-size: 1.2rem; /* Slightly larger for clarity */ }
     .calendar-nav { width: 32px; height: 32px; line-height: 32px; font-size: 1.2rem; }
-    .calendar-days-header { font-size: 0.75rem; padding-bottom: 5px; }
-    .calendar-grid { gap: 4px; }
+    .calendar-days-header { font-size: 0.75rem; padding-bottom: 8px; /* More space */ }
+    .calendar-grid { gap: 3px; /* Slightly reduce gap if cells are small */ }
 
-    .calendar-cell { padding: 6px; border-radius: 6px; }
-    .calendar-cell .day-number { font-size: 0.8rem; margin-bottom: 2px; }
+    .calendar-cell {
+        padding: 5px; /* Slightly less padding inside cell */
+        border-radius: 6px;
+        min-height: 80px; /* MODIFIED: Ensure a minimum tap height, adjust as needed */
+    }
+    .calendar-cell .day-number {
+        font-size: 0.8rem; /* Keep reasonable */
+        margin-bottom: 2px;
+        padding: 2px 3px; /* MODIFIED: Add some padding around number */
+        /* Optional: Make it pop a bit more
+        background-color: rgba(0,0,0,0.05);
+        border-radius: 4px;
+        display: inline-block;
+        min-width: 1.6em;
+        text-align: center;
+        float: right; */
+    }
     .calendar-cell .calendar-events-preview-list {
-        gap: 2px;
-        padding-bottom: 2px;
+        gap: 1px; /* Very tight event item spacing */
+        padding-bottom: 2px; /* Minimal bottom padding */
     }
     .calendar-cell .calendar-events-preview-list.has-overflow {
+        /* MODIFIED: Slightly taller fade area for very small cells */
         mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 18px), transparent 100%);
         -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 18px), transparent 100%);
     }
-    .calendar-cell .event-dot { width: 5px; height: 5px; }
+    .calendar-cell .event-dot {
+        width: 4.5px; /* MODIFIED: Slightly smaller */
+        height: 4.5px; /* MODIFIED: Slightly smaller */
+        margin-top: 2.5px; /* MODIFIED: Adjust alignment with text */
+    }
     .calendar-cell .calendar-event-item-preview {
-        font-size: 0.68em; /* Even smaller for mobile */
-        line-height: 1.2;
-        gap: 4px;
+        font-size: 0.72em; /* MODIFIED: Slightly increased from 0.68em for readability */
+        line-height: 1.3; /* MODIFIED: Slightly more line height for small font */
+        gap: 3px; /* Tighter gap */
+        padding: 1px 0; /* Minimal vertical padding */
     }
 
     .calendar-cell .more-events-indicator {
-        bottom: 5px;
-        font-size: 0.6em;
-        padding: 2px 8px;
+        bottom: 4px; /* Adjust position */
+        font-size: 0.65em; /* Slightly larger */
+        padding: 2px 7px; /* Adjust padding */
         backdrop-filter: blur(3px);
         -webkit-backdrop-filter: blur(3px);
         box-shadow: 0 1px 3px rgba(0,0,0,0.25);
