@@ -1,5 +1,4 @@
-#Credits to https://github.com/github/gitignore/blob/main/Python.gitignore FROM HERE
-
+#Credits to https://github.com/github/gitignore/blob/main/Python.gitignore FROM Line 2 to Line 175
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -174,7 +173,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-#UNTL HERE
+#END CREDITS
 
 # Ignore editor settings
 .vscode/
