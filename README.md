@@ -58,6 +58,9 @@ python -m unittest testing.test_models
 ```
 
 ### Selenium tests
+#### Prerequisites
+These tests uses Chrome by default. To run in Firefox or another browser, update the driver setup accordingly.
+
 Open the first terminal. In the project root dictionary, run:
  ```
 python run.py
