@@ -99,7 +99,6 @@
     font-weight: 600;
     text-shadow: none;
     box-shadow: none;
-    /* Might not be needed, but ensures consistency */
 }
 
 .view-tab:not(.active):hover {
@@ -111,29 +110,18 @@
           ========================================================================== */
 
 .planner-pane {
-    /* Positioning & Box Model */
     display: flex;
-    /* Enables two-column layout */
     flex-grow: 1;
-    /* Take remaining vertical space in .planner-interface */
     min-height: 0;
-    /* Critical for flex children to scroll correctly */
     position: relative;
-    /* For potential absolute positioned children or overlays */
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 18px;
     overflow: hidden;
-    /* Clip content, children handle internal scroll */
     gap: 0;
-    /* No gap between list and content areas */
-
-    /* Visual */
     background-color: rgba(140, 140, 145, 0.6);
-    /* Base glass color */
     backdrop-filter: blur(30px) saturate(140%);
-    -webkit-backdrop-filter: blur(30px) saturate(140%); /* Safari */
+    -webkit-backdrop-filter: blur(30px) saturate(140%);
     box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
-    /* Inner shadow */
 }
 
 .button {
@@ -145,18 +133,18 @@
     ========================================================================== */
 
 .group-list-area::-webkit-scrollbar,
-.event-collage-area::-webkit-scrollbar,
-.calendar-view::-webkit-scrollbar, /* For calendar view container if it scrolls */
-.events-view::-webkit-scrollbar,   /* For events view container if it scrolls */
-.insights-view::-webkit-scrollbar, /* For insights view container if it scrolls */
-.insights-grid-container::-webkit-scrollbar, /* For insights grid specifically */
-.palette-scroll-container::-webkit-scrollbar /* For analysis palette */
+/* .event-collage-area::-webkit-scrollbar, /* Viewport handles its own scroll/pan */
+.calendar-view::-webkit-scrollbar,
+.events-view::-webkit-scrollbar,
+.insights-view::-webkit-scrollbar,
+.insights-grid-container::-webkit-scrollbar,
+.palette-scroll-container::-webkit-scrollbar
  {
     width: 8px;
 }
 
 .group-list-area::-webkit-scrollbar-track,
-.event-collage-area::-webkit-scrollbar-track,
+/* .event-collage-area::-webkit-scrollbar-track, */
 .calendar-view::-webkit-scrollbar-track,
 .events-view::-webkit-scrollbar-track,
 .insights-view::-webkit-scrollbar-track,
@@ -167,7 +155,7 @@
 }
 
 .group-list-area::-webkit-scrollbar-thumb,
-.event-collage-area::-webkit-scrollbar-thumb,
+/* .event-collage-area::-webkit-scrollbar-thumb, */
 .calendar-view::-webkit-scrollbar-thumb,
 .events-view::-webkit-scrollbar-thumb,
 .insights-view::-webkit-scrollbar-thumb,
@@ -176,12 +164,11 @@
     background-color: rgba(255, 255, 255, 0.35);
     border-radius: 10px;
     border: 2px solid transparent;
-    /* Padding around thumb */
     background-clip: content-box;
 }
 
 .group-list-area::-webkit-scrollbar-thumb:hover,
-.event-collage-area::-webkit-scrollbar-thumb:hover,
+/* .event-collage-area::-webkit-scrollbar-thumb:hover, */
 .calendar-view::-webkit-scrollbar-thumb:hover,
 .events-view::-webkit-scrollbar-thumb:hover,
 .insights-view::-webkit-scrollbar-thumb:hover,
@@ -192,7 +179,7 @@
 
 /* Firefox Scrollbar (Basic) */
 .group-list-area,
-.event-collage-area,
+/* .event-collage-area, */ /* Viewport handles its own scroll/pan */
 .calendar-view,
 .events-view,
 .insights-view,
@@ -214,52 +201,56 @@
 .planner-pane > .events-view,
 .planner-pane > .insights-view {
     display: none;
-    flex-grow: 0; /* Don't take space when hidden */
+    flex-grow: 0;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease-out; /* Smooth fade */
+    transition: opacity 0.3s ease-out, display 0s linear 0.3s; /* Delay display none */
 }
 
 /* --- Groups View (Default) --- */
 .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .group-list-area {
-    display: block; /* or flex if it needs flex properties */
+    display: block;
     flex: 0 0 340px; /* Desktop width */
     opacity: 1;
     pointer-events: auto;
+    transition-delay: 0s;
 }
 .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area {
-    display: flex; /* Use flex for its children like active-group-header */
-    flex-direction: column; /* Stack header and viewport */
+    display: flex; /* Already a flex column from its own CSS */
     flex-grow: 1;
     opacity: 1;
     pointer-events: auto;
+    transition-delay: 0s;
 }
 
 /* --- Calendar View Active --- */
 .planner-pane.calendar-view-active .calendar-view {
-    display: flex; /* Use flex for its internal layout */
-    flex-direction: column; /* Stack header and grid */
+    display: flex;
+    flex-direction: column;
     flex-grow: 1;
     opacity: 1;
     pointer-events: auto;
+    transition-delay: 0s;
 }
 
 /* --- Events View Active --- */
 .planner-pane.events-view-active .events-view {
-    display: flex; /* Use flex for its internal layout */
-    flex-direction: column; /* Stack filter bar and list */
+    display: flex;
+    flex-direction: column;
     flex-grow: 1;
     opacity: 1;
     pointer-events: auto;
+    transition-delay: 0s;
 }
 
 /* --- Insights View Active --- */
 .planner-pane.insights-view-active .insights-view {
-    display: flex; /* This is key for palette and grid-container to sit side-by-side */
+    display: flex;
     flex-grow: 1;
     opacity: 1;
     pointer-events: auto;
     overflow: hidden; /* Prevent palette content from overflowing pane */
+    transition-delay: 0s;
 }
 
 
@@ -270,94 +261,92 @@
 @media (min-width: 769px) {
     /* Desktop: Default view is groups list + collage */
     .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .group-list-area {
-        flex: 0 0 340px; /* Fixed width for group list */
-        display: block; /* Ensure it's visible */
+        flex: 0 0 340px;
+        display: block;
     }
     .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area {
-        flex-grow: 1; /* Collage takes remaining space */
-        display: flex; /* Ensure it's visible and flex for children */
+        flex-grow: 1;
+        display: flex; /* It's already flex-direction: column from its own CSS */
     }
 }
 
 @media (max-width: 768px) {
     .top-nav {
-        padding: 8px 12px;
-        width: calc(100% - 16px);
-        top: 5px;
-        margin-top: 5px;
+        padding: 8px 12px; width: calc(100% - 16px); top: 5px; margin-top: 5px;
     }
-
     .top-nav-left a {
-        padding: 6px 12px;
-        font-size: 0.9rem;
-        margin-right: 4px;
+        padding: 6px 12px; font-size: 0.9rem; margin-right: 4px;
     }
-
     .top-nav-right .icon-button {
-        font-size: 1.2rem;
-        padding: 6px;
-        margin-left: 8px;
+        font-size: 1.2rem; padding: 6px; margin-left: 8px;
     }
-
-    .planner-interface {
-        padding: 0 8px 8px;
-    }
-
+    .planner-interface { padding: 0 8px 8px; }
     .planner-header {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 10px 0;
+        flex-direction: column; align-items: flex-start; padding: 10px 0;
     }
-
-    .planner-title {
-        font-size: 1.5rem;
-    }
-
+    .planner-title { font-size: 1.5rem; }
     .view-selector {
-        width: 100%;
-        padding: 6px;
-        margin-top: 8px;
-        justify-content: flex-start;
+        width: 100%; padding: 6px; margin-top: 8px; justify-content: flex-start;
     }
-
-    .view-tab {
-        padding: 6px 14px;
-        font-size: 0.9rem;
-    }
-
-    .planner-pane {
-        border-radius: 12px;
-    }
+    .view-tab { padding: 6px 14px; font-size: 0.9rem; }
+    .planner-pane { border-radius: 12px; }
 
     /* Mobile: Default view is ONLY group list */
     .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .group-list-area {
-        display: block; /* Show group list */
-        flex-grow: 1;   /* Takes full width/height */
-        flex-basis: 100%; /* Ensure it takes full space */
-    }
-    .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area {
-        display: none; /* Hide collage area by default on mobile */
-    }
-
-    /* Mobile: When a group is selected, collage area becomes active */
-    .planner-pane.mobile-event-view-active .group-list-area {
-        display: none !important; /* Hide group list */
-    }
-    .planner-pane.mobile-event-view-active .event-collage-area {
-        display: flex !important; /* Show collage area */
-        flex-direction: column;
+        display: block;
         flex-grow: 1;
+        flex-basis: 100%;
         opacity: 1 !important;
         pointer-events: auto !important;
+        transition-delay: 0s !important;
     }
-    .planner-pane.mobile-event-view-active .calendar-view,
-    .planner-pane.mobile-event-view-active .events-view,
-    .planner-pane.mobile-event-view-active .insights-view {
-        display: none !important; /* Hide other views */
+    .planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area {
+        display: none !important; /* Explicitly hide */
+        flex-grow: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
     }
 
+    /* Mobile: When a group is selected, .event-collage-area (orbit view) becomes active */
+    .planner-pane.mobile-event-view-active .group-list-area {
+        display: none !important;
+        flex-grow: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    .planner-pane.mobile-event-view-active .event-collage-area {
+        display: flex !important; /* This is .event-collage-area from plannerGroupsArea.css */
+        /* flex-direction: column is already set in plannerGroupsArea.css */
+        flex-grow: 1 !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        overflow: hidden !important; /* Ensure it clips its children (viewport) */
+        transition-delay: 0s !important;
+    }
+    /* Ensure other primary views are hidden when mobile-event-view (orbit) is active */
+    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active) .calendar-view,
+    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active) .events-view,
+    .planner-pane.mobile-event-view-active:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active) .insights-view {
+        display: none !important;
+        flex-grow: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
 
-    /* Ensure active calendar/events/insights views take full width on mobile */
+    /* Ensure active calendar/events/insights views take full width on mobile
+       AND hide group-list and event-collage-area when these other views are active */
+    .planner-pane.calendar-view-active .group-list-area,
+    .planner-pane.calendar-view-active .event-collage-area,
+    .planner-pane.events-view-active .group-list-area,
+    .planner-pane.events-view-active .event-collage-area,
+    .planner-pane.insights-view-active .group-list-area,
+    .planner-pane.insights-view-active .event-collage-area {
+        display: none !important;
+        flex: 0 0 0 !important; /* Same as flex-grow: 0; flex-shrink: 0; flex-basis: 0; */
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
     .planner-pane.calendar-view-active .calendar-view,
     .planner-pane.events-view-active .events-view,
     .planner-pane.insights-view-active .insights-view {
@@ -365,86 +354,48 @@
         flex: 1 1 auto !important;
         opacity: 1 !important;
         pointer-events: auto !important;
+        transition-delay: 0s !important;
     }
 }
 
 
 /* ==========================================================================
-       Context Menu Styling (Keep as is or adjust)
+       Context Menu Styling
        ========================================================================== */
 .context-menu {
-    position: absolute;
-    background: rgba(30, 30, 35, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-    padding: 8px 0;
-    z-index: 9999; /* Ensure it's above planner content but below modals */
-    min-width: 180px;
-    backdrop-filter: blur(10px) saturate(150%);
-    -webkit-backdrop-filter: blur(10px) saturate(150%); /* Safari */
-    font-family: 'Inter', sans-serif; /* Example: Using Inter */
+    position: absolute; background: rgba(30, 30, 35, 0.95); border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); padding: 8px 0;
+    z-index: 9999; min-width: 180px; backdrop-filter: blur(10px) saturate(150%);
+    -webkit-backdrop-filter: blur(10px) saturate(150%); font-family: 'Inter', sans-serif;
 }
-
 .context-menu-option {
-    padding: 10px 16px;
-    color: #f0f0f5;
-    cursor: pointer;
-    transition: background 0.2s ease;
+    padding: 10px 16px; color: #f0f0f5; cursor: pointer; transition: background 0.2s ease;
+}
+.context-menu-option:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* ==========================================================================
+       Animations
+       ========================================================================== */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+.planner-interface { animation: fadeInUp 0.6s ease-out forwards; opacity: 0; }
+.planner-pane { animation: fadeInUp 0.8s ease-out forwards; opacity: 0; animation-delay: 0.2s; }
+
+/* Apply general fadeInUp to initially hidden areas that will be shown by JS */
+.group-list-area, .calendar-view, .events-view, .insights-view {
+    animation: fadeInUp 0.6s ease-out forwards; opacity: 0; animation-delay: 0.3s;
 }
 
-.context-menu-option:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
+@keyframes backgroundFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.planner-interface {
-    animation: fadeInUp 0.6s ease-out forwards;
-    opacity: 0; /* Ensures animation kicks in */
-}
-
-.planner-pane {
-    animation: fadeInUp 0.8s ease-out forwards;
-    opacity: 0;
-    animation-delay: 0.2s;
-}
-
-.group-list-area,
-.event-collage-area,
-.calendar-view,
-.events-view,
-.insights-view {
-    animation: fadeInUp 0.6s ease-out forwards;
-    opacity: 0;
-    animation-delay: 0.3s;
-}
-
-@keyframes backgroundFadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
+/* Apply fade-in specifically to the content area that becomes active,
+   after its display:flex/block is set by JS and opacity becomes 1 */
 .planner-pane.calendar-view-active .calendar-view,
 .planner-pane.events-view-active .events-view,
 .planner-pane.insights-view-active .insights-view,
-.planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area {
-    animation: backgroundFadeIn 0.5s ease-out;
+.planner-pane:not(.calendar-view-active):not(.events-view-active):not(.insights-view-active):not(.mobile-event-view-active) .event-collage-area,
+.planner-pane.mobile-event-view-active .event-collage-area {
+    animation: backgroundFadeIn 0.5s ease-out; /* This will apply when opacity becomes 1 */
 }
 
-.planner-pane {
-    transition: background-color 0.5s ease, backdrop-filter 0.5s ease;
-}
+.planner-pane { transition: background-color 0.5s ease, backdrop-filter 0.5s ease; }
