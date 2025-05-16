@@ -41,22 +41,41 @@ AVAILABLE_ANALYSES = {
         "title": "💸 Spending by Category",
         "description": "Total event costs grouped by the event's node (category). Filter by group and time period.", # MODIFIED description
         "preview_title": "Spending Example",
-        "preview_image_filename": "img/placeholder-bar-chart.png",
+        "preview_image_filename": "img/placeholder-bar-chart.png", # You'd need this image
         "preview_description": "Shows total costs for events linked to different nodes. Helps track budget allocation.",
         "placeholder_html": """
             <div class='loading-placeholder' style='text-align: center; padding: 20px; color: #aaa;'>
-                <i class='fas fa-spinner fa-spin fa-2x'></i>
+                <i class='fas fa-chart-pie fa-2x'></i>
                 <p style='margin-top: 10px;'>Loading spending data...</p>
             </div>
         """,
         "default_config": {
-            "time_period": "all_time", # Retain for backward compatibility or simple selections
+            "time_period": "all_time", 
             "group_id": "all",
-            "startDate": None, # NEW: For custom range
-            "endDate": None    # NEW: For custom range
+            "startDate": None, 
+            "endDate": None    
         }
     },
-    # ... (other analysis types if any) ...
+    "event-location-heatmap": {
+        "id": "event-location-heatmap",
+        "title": "📍 Event Location Heatmap",
+        "description": "Visualizes the geographic concentration of your attended events using a heatmap. Filters apply.",
+        "preview_title": "Location Heatmap",
+        "preview_image_filename": "img/placeholder-map-icon.png", # Create a placeholder image
+        "preview_description": "Displays a heatmap of event locations you've attended. Useful for seeing event hotspots.",
+        "placeholder_html": """
+            <div class='loading-placeholder' style='text-align: center; padding: 20px; color: #aaa;'>
+                <i class='fas fa-map-marked-alt fa-2x'></i>
+                <p style='margin-top: 10px;'>Loading event locations...</p>
+            </div>
+        """,
+        "default_config": {
+            "time_period": "all_time",
+            "group_id": "all",
+            "startDate": None,
+            "endDate": None
+        }
+    }
 }
 
 # Helper to get details for an analysis type
@@ -329,7 +348,7 @@ def planner():
     return render_template(
         'planner.html',
         title='Planner',
-        groups=user_groups, # For configuring panels - frontend needs to populate group dropdown
+        groups=user_groups, 
         is_mobile_on_load=is_mobile_on_load,
         available_analyses=available_analyses_list,
         user_panels=user_panels
@@ -445,13 +464,6 @@ def add_members(group_id):
     if not group:
         abort(404)
     
-    # TODO: This messes with my testing. I think we should remove it because
-
-    # Permission check: Only owner should be able to add members via this route
-    # if group.owner_id != current_user.id:
-    #     flash("Only the group owner can add members.", "warning")
-    #     return redirect(url_for('view_group', group_id=group_id))
-
     friends_list = current_user.friends.all()
     
     if request.method == 'POST':
@@ -470,11 +482,6 @@ def add_members(group_id):
         if existing_member:
             flash(f'{user_to_add.username} is already a group member.')
             return redirect(url_for('add_members', group_id=group_id))
-
-        # is_friends_check = current_user.is_friend(user_to_add) # This might be too restrictive if owner can add anyone
-        # if not is_friends_check:
-        #     flash(f"You need to be friends with {user_to_add.username} before adding them to the group.")
-        #     return redirect(url_for('add_members', group_id=group_id))
 
         new_membership = GroupMember(user_id=user_to_add.id, group_id=group_id, is_owner=False) # New members are not owners
         db.session.add(new_membership)
@@ -553,15 +560,10 @@ def get_my_friends():
 @app.route("/api/groups", methods=["GET"])
 @login_required
 def get_groups():
-    # Correctly fetch groups the user is a member of
     groups_query = db.select(Group).join(GroupMember).filter(GroupMember.user_id == current_user.id)\
-        .options(joinedload(Group.owner)) # Eager load owner for to_dict efficiency if needed elsewhere
-    # If Group.members relationship is lazy='dynamic', you might need joinedload(Group.members).joinedload(GroupMember.user)
-    # if to_dict directly accesses member user details without another query.
-    # Given Group.members is lazy="joined" in model, this should be fine.
-
-    user_groups = db.session.scalars(groups_query).unique().all() # +++ ADDED .unique() +++
-    group_data = [g.to_dict(include_nodes=False, include_members=False, current_user_id_param=current_user.id) for g in user_groups] # Default no members for list view
+        .options(joinedload(Group.owner)) 
+    user_groups = db.session.scalars(groups_query).unique().all() 
+    group_data = [g.to_dict(include_nodes=False, include_members=False, current_user_id_param=current_user.id) for g in user_groups] 
     return jsonify(group_data)
 
 
@@ -586,7 +588,6 @@ def create_group_api():
                   about=description.strip(),
                   owner_id=current_user.id)
     db.session.add(group)
-    # Flush to get group.id for GroupMember instances
     db.session.flush()
 
     current_user_membership = GroupMember(
@@ -603,20 +604,10 @@ def create_group_api():
                 member_id = int(member_id_str)
                 if member_id == current_user.id or member_id in processed_member_ids:
                     continue
-
-                # Optional: Check if user_to_add exists and is friend (if desired)
-                # user_to_add_obj = db.session.get(User, member_id)
-                # if not user_to_add_obj:
-                #     app.logger.warning(f"Attempt to add non-existent user {member_id} to new group.")
-                #     continue
-                # if not current_user.is_friend(user_to_add_obj): # If you want to restrict to friends
-                #     app.logger.warning(f"User {current_user.username} tried to add non-friend {user_to_add_obj.username} to new group.")
-                #     continue
-
                 existing_member_check = db.session.scalar(
                     db.select(GroupMember.id).filter_by(group_id=group.id, user_id=member_id)
                 )
-                if not existing_member_check: # Should always be true for new members during group creation
+                if not existing_member_check: 
                     new_member = GroupMember(group_id=group.id, user_id=member_id, is_owner=False)
                     db.session.add(new_member)
                     processed_member_ids.add(member_id)
@@ -624,12 +615,10 @@ def create_group_api():
                 app.logger.warning(f"Invalid member_id '{member_id_str}' provided during group creation.")
 
     db.session.commit()
-
-    # Re-fetch the group with all necessary relationships loaded for the response
-    # This ensures 'members' and 'owner' are correctly populated for to_dict
+    
     group_for_response = db.session.query(Group).options(
         joinedload(Group.owner),
-        joinedload(Group.members).joinedload(GroupMember.user) # Eagerly load members and their user details
+        joinedload(Group.members).joinedload(GroupMember.user) 
     ).filter_by(id=group.id).one_or_none()
 
     if not group_for_response:
@@ -654,8 +643,6 @@ def get_group_detail(group_id):
 
     if not group:
         return jsonify({"error": "Group not found"}), 404
-
-    # --- PASS current_user.id to to_dict ---
     return jsonify(group.to_dict(include_nodes=False, include_members=include_members, current_user_id_param=current_user.id))
 
 
@@ -667,8 +654,6 @@ def update_group_details(group_id):
     if not group:
         return jsonify({"error": "Group not found"}), 404
 
-    # Authorization check (e.g., owner)
-    # This check protects all fields being updated, including the new permission flags.
     if group.owner_id != current_user.id:
         return jsonify({"error": "Only the group owner can modify group settings."}), 403
 
@@ -689,7 +674,6 @@ def update_group_details(group_id):
             group.about = new_description
             updated_fields_count += 1
     
-    # --- UPDATE PERMISSION FLAGS ---
     if "allow_member_edit_name" in data:
         if group.allow_member_edit_name != bool(data["allow_member_edit_name"]):
             group.allow_member_edit_name = bool(data["allow_member_edit_name"])
@@ -702,9 +686,7 @@ def update_group_details(group_id):
         if group.allow_member_manage_members != bool(data["allow_member_manage_members"]):
             group.allow_member_manage_members = bool(data["allow_member_manage_members"])
             updated_fields_count += 1
-    # --- END UPDATE PERMISSION FLAGS ---
     
-    # Logic for adding members (remains owner-restricted in this endpoint)
     if "add_member_ids" in data and isinstance(data["add_member_ids"], list):
         member_ids_to_add = [int(mid) for mid in data["add_member_ids"] if isinstance(mid, (int, str)) and str(mid).isdigit()]
         
@@ -742,7 +724,6 @@ def update_group_details(group_id):
          app.logger.error(f"Failed to re-fetch group {group_id} after update.")
          return jsonify({"error": "Group details could not be retrieved after update."}), 500
          
-    # --- PASS current_user.id to to_dict for the response ---
     return jsonify(group_for_response.to_dict(include_nodes=False, include_members=True, current_user_id_param=current_user.id))
 
 
@@ -755,7 +736,6 @@ def get_group_nodes(group_id):
         abort(404, description="Group not found")
 
     include_events_flag = request.args.get('include') == 'events'
-    # Modify query to use options() for eager loading on the select() statement
     query = db.select(Node).where(Node.group_id == group_id)
 
     if include_events_flag:
@@ -778,7 +758,7 @@ def get_group_nodes(group_id):
             "group_id": node_item.group_id,
             "events": []
         }
-        if include_events_flag and node_item.events: # events are already loaded due to options()
+        if include_events_flag and node_item.events: 
             node_dict["events"] = [
                 event.to_dict(current_user_id=current_user.id) for event in node_item.events
             ]
@@ -809,20 +789,19 @@ def create_event_api(group_id):
     title = data.get("title", "Untitled Event").strip()
     location = data.get("location", "TBD").strip()
     iso_str = data.get("date")
-    node_id = data.get("node_id") # This will be the node it's attached to
+    node_id = data.get("node_id") 
 
     if not title:
          return jsonify({"error": "Event title cannot be empty"}), 400
-    if not node_id: # Event must be attached to a node
+    if not node_id: 
         return jsonify({"error": "node_id is required to associate event with a category/node"}), 400
 
-    # Check if the node belongs to the specified group
     target_node = db.session.get(Node, node_id)
     if not target_node or target_node.group_id != group_id:
         return jsonify({"error": "Node does not belong to this group or does not exist."}), 400
 
     try:
-        event_date = isoparse(iso_str) if iso_str else datetime.now(timezone.utc) + timedelta(hours=1) # Default to 1 hour from now
+        event_date = isoparse(iso_str) if iso_str else datetime.now(timezone.utc) + timedelta(hours=1) 
         if event_date.tzinfo is None:
             event_date = event_date.replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
@@ -830,13 +809,13 @@ def create_event_api(group_id):
 
 
     cost_display = data.get("cost_display", "Free")
-    cost_value = data.get("cost_value") # Can be None
+    cost_value = data.get("cost_value") 
     is_cost_split = data.get("is_cost_split", False)
     
     try:
         if cost_value is not None: cost_value = float(cost_value)
     except (ValueError, TypeError):
-        cost_value = None # Default to None if conversion fails
+        cost_value = None 
 
     location_coordinates = data.get("location_coordinates")
     description = data.get("description", "").strip()
@@ -844,7 +823,6 @@ def create_event_api(group_id):
     if not image_url:
         image_url = url_for('static', filename='img/default-event-image.png')
 
-    # Event-specific permissions
     allow_others_edit_title = data.get("allow_others_edit_title", False)
     allow_others_edit_details = data.get("allow_others_edit_details", False)
 
@@ -860,20 +838,16 @@ def create_event_api(group_id):
         is_cost_split=is_cost_split,
         node_id=node_id,
         location_coordinates=location_coordinates,
-        creator_id=current_user.id, # Set creator
+        creator_id=current_user.id, 
         allow_others_edit_title=bool(allow_others_edit_title),
         allow_others_edit_details=bool(allow_others_edit_details)
     )
     db.session.add(event)
-    db.session.commit() # Commit to get event.id and ensure all relationships are saved
-
-    # Re-fetch or refresh to ensure all relationships (like node.group) are loaded for to_dict
-    # Since we committed, event_obj will have its ID. We can use it to re-query if necessary,
-    # or rely on SQLAlchemy's session management if relationships are configured for eager loading.
-    # For simplicity and robustness, re-fetching can be safer.
+    db.session.commit() 
+    
     event_for_response = db.session.query(Event).options(
-        joinedload(Event.node).joinedload(Node.group), # Eager load for group_name
-        joinedload(Event.creator) # Eager load creator
+        joinedload(Event.node).joinedload(Node.group), 
+        joinedload(Event.creator) 
     ).filter_by(id=event.id).one()
 
 
@@ -885,16 +859,15 @@ def create_event_api(group_id):
 @require_group_member
 def create_node_api(group_id):
     data = request.get_json() or {}
-    label = data.get("label", "").strip() # Get label from payload
+    label = data.get("label", "").strip() 
     if not label:
         return jsonify({"error": "Node label cannot be empty"}), 400
 
-    # Check for uniqueness within the group
     existing_node = db.session.scalar(
         db.select(Node).filter_by(group_id=group_id, label=label)
     )
     if existing_node:
-        return jsonify({"error": f"A node with the name '{label}' already exists in this group."}), 409 # 409 Conflict
+        return jsonify({"error": f"A node with the name '{label}' already exists in this group."}), 409 
 
     try:
         x_coord = float(data.get("x", 0)) 
@@ -917,8 +890,8 @@ def create_node_api(group_id):
 @login_required
 def manage_event(event_id):
     event_obj_loaded = db.session.query(Event).options(
-        joinedload(Event.node).joinedload(Node.group), # For group owner check & group info
-        joinedload(Event.creator), # For creator check
+        joinedload(Event.node).joinedload(Node.group), 
+        joinedload(Event.creator), 
         joinedload(Event.attendees).joinedload(EventRSVP.user) 
     ).filter(Event.id == event_id).first() 
     
@@ -926,7 +899,6 @@ def manage_event(event_id):
         return jsonify({"error": "Event not found"}), 404
     event_obj = event_obj_loaded
 
-    # --- Authorization Logic ---
     is_group_member_of_event_group = False
     is_group_owner_of_event_group = False
     if event_obj.node and event_obj.node.group:
@@ -938,20 +910,17 @@ def manage_event(event_id):
     
     is_event_creator = (event_obj.creator_id == current_user.id)
 
-    # For GET requests, basic membership or invitation is enough
     if request.method == "GET":
-        is_authorized_get, msg_get, status_get = _check_event_authorization(event_id, current_user.id) # Uses existing helper
+        is_authorized_get, msg_get, status_get = _check_event_authorization(event_id, current_user.id) 
         if not is_authorized_get:
              return jsonify({"error": msg_get}), status_get
         return jsonify(event_obj.to_dict(current_user_id=current_user.id))
 
-    # For PATCH/DELETE, stricter authorization needed
     can_modify_title = is_event_creator or is_group_owner_of_event_group or \
                        (event_obj.allow_others_edit_title and is_group_member_of_event_group)
     can_modify_details = is_event_creator or is_group_owner_of_event_group or \
                          (event_obj.allow_others_edit_details and is_group_member_of_event_group)
     
-    # Only creator or group owner can delete
     can_delete = is_event_creator or is_group_owner_of_event_group
 
 
@@ -976,7 +945,7 @@ def manage_event(event_id):
                 new_coords = data["location_coordinates"]
                 event_obj.location_coordinates = new_coords.strip() if isinstance(new_coords, str) and new_coords.strip() else None
                 updated_fields.append("location_coordinates")
-            if "location_key" in data: # Assuming location_key is part of details
+            if "location_key" in data: 
                 new_key = data["location_key"]
                 event_obj.location_key = new_key.strip() if isinstance(new_key, str) and new_key.strip() else None
                 updated_fields.append("location_key")
@@ -999,7 +968,6 @@ def manage_event(event_id):
                     updated_fields.append("date")
                 except (ValueError, TypeError): pass 
             
-        # Cost fields
         if "cost_display" in data or "cost_value" in data or "is_cost_split" in data:
             if not can_modify_details: return jsonify({"error": "Not authorized to edit event cost."}), 403
             if "cost_display" in data:
@@ -1013,12 +981,9 @@ def manage_event(event_id):
                 event_obj.is_cost_split = bool(data["is_cost_split"])
                 updated_fields.append("is_cost_split")
 
-        # Node assignment (typically by creator or group owner)
         if "node_id" in data and data["node_id"] != event_obj.node_id:
             if not (is_event_creator or is_group_owner_of_event_group):
                  return jsonify({"error": "Not authorized to change event node assignment."}), 403
-            # (Validation for node_id belonging to the same group, etc. as before)
-            # ... (add your existing node_id validation logic here) ...
             new_node_id_val = data["node_id"]
             if new_node_id_val is None: event_obj.node_id = None
             else:
@@ -1038,7 +1003,6 @@ def manage_event(event_id):
                 except (ValueError, TypeError): return jsonify({"error": "Invalid node_id format."}), 400
             updated_fields.append("node_id")
 
-        # Event-specific permissions (only group owner or event creator can change these)
         if is_group_owner_of_event_group or is_event_creator:
             if "allow_others_edit_title" in data:
                 event_obj.allow_others_edit_title = bool(data["allow_others_edit_title"])
@@ -1052,7 +1016,6 @@ def manage_event(event_id):
             try:
                 db.session.commit()
                 app.logger.info(f"Event {event_id} updated fields: {', '.join(updated_fields)}")
-                # Re-fetch with all relations for consistent response
                 event_obj_refreshed = db.session.query(Event).options(
                     joinedload(Event.node).joinedload(Node.group),
                     joinedload(Event.creator),
@@ -1064,7 +1027,7 @@ def manage_event(event_id):
                 app.logger.error(f"Error committing updates for event {event_id}: {e}")
                 return jsonify({"error": "Could not save changes to the event."}), 500
         
-        return jsonify(event_obj.to_dict(current_user_id=current_user.id)) # Return current state if no changes made
+        return jsonify(event_obj.to_dict(current_user_id=current_user.id)) 
 
     if request.method == "DELETE":
         if not can_delete:
@@ -1082,7 +1045,6 @@ def manage_node(node_id):
     if not node_obj:
         return jsonify({"error": "Node not found"}), 404
 
-    # Only group members can manage nodes, further restrictions (e.g. owner) can be added.
     if not is_group_member(current_user.id, node_obj.group_id):
         return jsonify({"error": "Unauthorized. Must be a member of the node's group."}), 403
 
@@ -1102,18 +1064,12 @@ def manage_node(node_id):
 
 
     if request.method == "PATCH":
-        # Typically, only group owner or designated admins should modify node structure/labels.
-        # For simplicity, this example allows any group member. Add stricter checks if needed.
-        # if node_obj.group.owner_id != current_user.id:
-        #     return jsonify({"error": "Only group owner can modify nodes."}), 403
-            
         data = request.get_json() or {}
         updated = False
         if "label" in data:
             new_label = data["label"].strip()
             if not new_label: return jsonify({"error": "Node label cannot be empty"}), 400
             
-            # Check for uniqueness within the group if label changed
             if new_label != node_obj.label:
                 existing_node = db.session.scalar(
                     db.select(Node).filter_by(group_id=node_obj.group_id, label=new_label).where(Node.id != node_id)
@@ -1136,9 +1092,6 @@ def manage_node(node_id):
         return jsonify(node_obj.to_dict(include_events=False, current_user_id=current_user.id))
 
     if request.method == "DELETE":
-        # if node_obj.group.owner_id != current_user.id: # Stricter: only owner can delete
-        #     return jsonify({"error": "Only group owner can delete nodes."}), 403
-
         events_on_node = db.session.scalars(db.select(Event.id).filter_by(node_id=node_id).limit(1)).first()
         if events_on_node:
             db.session.execute(
@@ -1190,7 +1143,7 @@ def get_event_attendees(event_id):
                            .filter(EventRSVP.status.isnot(None))\
                            .order_by(EventRSVP.timestamp.desc())
 
-    rsvps = db.session.scalars(rsvps_query).unique().all() # Added .unique() here too
+    rsvps = db.session.scalars(rsvps_query).unique().all() 
 
     attendees = []
     for rsvp in rsvps:
@@ -1298,7 +1251,6 @@ def api_search_users():
 @app.route('/api/insights/panels', methods=['GET'])
 @login_required
 def get_insight_panels():
-    # User's own panels
     own_panels_query = db.select(InsightPanel)\
         .where(InsightPanel.user_id == current_user.id)\
         .order_by(InsightPanel.display_order)
@@ -1306,24 +1258,19 @@ def get_insight_panels():
     
     panels_data = [panel.to_dict() for panel in own_panels]
 
-    # Panels shared with the user
     shared_instances_query = db.select(SharedInsightPanel)\
         .where(SharedInsightPanel.recipient_id == current_user.id)\
         .options(
-            joinedload(SharedInsightPanel.original_panel).joinedload(InsightPanel.user), # Eager load original panel and its owner
-            joinedload(SharedInsightPanel.sharer) # Eager load the sharer's user details
+            joinedload(SharedInsightPanel.original_panel).joinedload(InsightPanel.user), 
+            joinedload(SharedInsightPanel.sharer) 
         )\
-        .order_by(SharedInsightPanel.shared_at.desc()) # Or some other order
+        .order_by(SharedInsightPanel.shared_at.desc()) 
     
     shared_instances = db.session.scalars(shared_instances_query).unique().all()
 
     for shared_instance in shared_instances:
-        # Use the new method to merge and prepare data
         panels_data.append(shared_instance.to_dict_for_recipient())
         
-    # Sort combined list if necessary, e.g., by a common 'effective_display_order' or 'title'
-    # For now, user's panels first, then shared ones.
-
     return jsonify(panels_data)
 
 @app.route('/api/insights/panels/<int:panel_id>/share', methods=['POST'])
@@ -1340,8 +1287,7 @@ def share_insight_panel(panel_id):
         return jsonify({"error": "Invalid request body"}), 400
 
     recipient_user_ids = data.get('recipient_user_ids')
-    access_mode = data.get('access_mode') # 'fixed' or 'dynamic'
-    # This is the sharer's current view configuration when they click "share" for fixed mode
+    access_mode = data.get('access_mode') 
     current_config_for_fixed_share = data.get('current_config_for_fixed_share') 
 
     if not isinstance(recipient_user_ids, list) or not recipient_user_ids:
@@ -1366,7 +1312,6 @@ def share_insight_panel(panel_id):
                 errors.append(f"Recipient user with ID {recipient_id} not found.")
                 continue
 
-            # Check if already shared with this recipient
             existing_share = db.session.scalar(
                 db.select(SharedInsightPanel).filter_by(
                     original_panel_id=panel_to_share.id,
@@ -1382,28 +1327,18 @@ def share_insight_panel(panel_id):
                     "endDate": current_config_for_fixed_share.get("endDate")
                 }
             elif access_mode == 'dynamic':
-                 # For dynamic, store the group context from the sharer's original panel config
-                 # or their current_config_for_fixed_share if they want to fix the group for dynamic shares.
-                 # Let's use current_config_for_fixed_share.group_id for consistency.
-                group_id_for_dynamic = "all" # Default if not specified
+                group_id_for_dynamic = "all" 
                 if current_config_for_fixed_share and 'group_id' in current_config_for_fixed_share:
                     group_id_for_dynamic = current_config_for_fixed_share['group_id']
                 
-                shared_config_payload = {
-                    "group_id": group_id_for_dynamic 
-                    # startDate and endDate are not fixed for dynamic, so not stored here.
-                    # Recipient will use their own.
-                }
-
+                shared_config_payload = { "group_id": group_id_for_dynamic }
 
             if existing_share:
-                # Update existing share
                 existing_share.access_mode = access_mode
                 existing_share.shared_config = shared_config_payload
                 existing_share.shared_at = datetime.now(timezone.utc)
                 errors.append(f"Updated existing share for panel {panel_to_share.id} with user {recipient_user.username}.")
             else:
-                # Create new share
                 new_share = SharedInsightPanel(
                     original_panel_id=panel_to_share.id,
                     sharer_id=current_user.id,
@@ -1426,7 +1361,7 @@ def share_insight_panel(panel_id):
     response_message = f"Successfully processed {shared_count} shares."
     if errors:
         response_message += " Errors: " + "; ".join(errors)
-        return jsonify({"message": response_message, "errors": errors}), 207 # Multi-Status
+        return jsonify({"message": response_message, "errors": errors}), 207 
     
     return jsonify({"message": response_message, "shared_count": shared_count}), 200
 
@@ -1434,20 +1369,18 @@ def share_insight_panel(panel_id):
 @app.route('/api/analysis/data/<analysis_type>', methods=['GET'])
 @login_required
 def get_analysis_data(analysis_type):
-    panel_id_arg = request.args.get('panel_id', type=int) # Original panel ID (owned by user)
-    shared_instance_id_arg = request.args.get('shared_instance_id', type=int) # ID from SharedInsightPanel table
+    panel_id_arg = request.args.get('panel_id', type=int) 
+    shared_instance_id_arg = request.args.get('shared_instance_id', type=int) 
 
-    user_for_data_context = current_user # By default, use the logged-in user's data
-    base_config_from_db = {} # The panel's saved configuration
+    user_for_data_context = current_user 
+    base_config_from_db = {} 
     
-    # Configuration from recipient's interaction (for dynamic shared panels)
     recipient_start_date_str = request.args.get('startDate')
     recipient_end_date_str = request.args.get('endDate')
-    # recipient_group_id_str = request.args.get('group_id') # Group for shared dynamic is fixed by sharer.
-
-    # Final config to be used for data fetching
+    
     active_config_for_query = {}
 
+    shared_instance_for_title = None # To hold the shared instance if used
 
     if shared_instance_id_arg:
         shared_instance = db.session.get(SharedInsightPanel, shared_instance_id_arg)
@@ -1456,32 +1389,27 @@ def get_analysis_data(analysis_type):
         if shared_instance.original_panel.analysis_type != analysis_type:
             return jsonify({"error": "Analysis type mismatch for shared panel"}), 400
 
-        user_for_data_context = shared_instance.sharer # Data comes from the sharer
+        user_for_data_context = shared_instance.sharer 
         base_config_from_db = shared_instance.original_panel.configuration or {}
+        shared_instance_for_title = shared_instance # For title generation later
         
-        active_config_for_query = base_config_from_db.copy() # Start with original panel's config
+        active_config_for_query = base_config_from_db.copy() 
 
         if shared_instance.access_mode == 'fixed':
-            # Override with the fixed shared config
             if shared_instance.shared_config:
                 active_config_for_query.update(shared_instance.shared_config)
         elif shared_instance.access_mode == 'dynamic':
-            # Group is fixed by sharer's shared_config
             if shared_instance.shared_config and 'group_id' in shared_instance.shared_config:
                 active_config_for_query['group_id'] = shared_instance.shared_config['group_id']
             
-            # Time period is dynamic, based on recipient's request
             active_config_for_query['startDate'] = recipient_start_date_str
             active_config_for_query['endDate'] = recipient_end_date_str
-            # If recipient doesn't send dates, it will effectively be 'all_time' for the sharer's data
-            # or whatever the base_config_from_db had for dates if not cleared by `None` values.
             if not recipient_start_date_str and not recipient_end_date_str:
-                 active_config_for_query['time_period'] = 'all_time' # Default to all time if no dates
+                 active_config_for_query['time_period'] = 'all_time' 
                  active_config_for_query.pop('startDate', None)
                  active_config_for_query.pop('endDate', None)
             else:
                  active_config_for_query['time_period'] = 'custom'
-
 
     elif panel_id_arg:
         panel = db.session.get(InsightPanel, panel_id_arg)
@@ -1492,168 +1420,187 @@ def get_analysis_data(analysis_type):
         
         user_for_data_context = current_user
         base_config_from_db = panel.configuration or {}
-        active_config_for_query = base_config_from_db.copy() # For owned panels, active config is saved config
+        active_config_for_query = base_config_from_db.copy() 
     
-    else: # No panel_id or shared_instance_id, use defaults for the type
+    else: 
         analysis_details = get_analysis_details(analysis_type)
         if not analysis_details: return jsonify({"error": f"Analysis type '{analysis_type}' not defined."}), 404
         active_config_for_query = analysis_details.get('default_config', {}).copy()
-        user_for_data_context = current_user # Default to current user's data
+        user_for_data_context = current_user 
+
+    # --- Common Filter Logic ---
+    time_period_str = active_config_for_query.get('time_period', 'all_time')
+    start_date_str = active_config_for_query.get('startDate') 
+    end_date_str = active_config_for_query.get('endDate')    
+    raw_group_id_filter = active_config_for_query.get('group_id', 'all')
+    
+    group_id_to_filter = 'all' 
+    specific_group_name_for_title = None
+
+    if raw_group_id_filter != 'all':
+        try:
+            gid_int = int(raw_group_id_filter)
+            group_for_filter = db.session.get(Group, gid_int)
+            if group_for_filter and is_group_member(user_for_data_context.id, gid_int):
+                group_id_to_filter = gid_int
+                specific_group_name_for_title = group_for_filter.name
+            else:
+                app.logger.warning(f"Data context user {user_for_data_context.id} tried to filter by group {gid_int} they are not a member of or doesn't exist for them. Defaulting to 'all'.")
+        except ValueError:
+            app.logger.warning(f"Invalid group_id '{raw_group_id_filter}' in config. Defaulting to 'all'.")
+    
+    final_start_date = None
+    final_end_date = None
+    date_filter_title_part = "All Time"
+
+    if start_date_str and end_date_str:
+        try:
+            final_start_date = isoparse(start_date_str).replace(tzinfo=timezone.utc)
+            final_end_date = (isoparse(end_date_str) + timedelta(days=1) - timedelta(microseconds=1)).replace(tzinfo=timezone.utc)
+            date_filter_title_part = f"{final_start_date.strftime('%b %d, %Y')} - {isoparse(end_date_str).strftime('%b %d, %Y')}"
+        except (ValueError, TypeError) as e:
+            app.logger.warning(f"Invalid custom date range: {start_date_str} - {end_date_str}. Error: {e}. Falling back.")
+            final_start_date = None; final_end_date = None
+    
+    if not final_start_date and time_period_str != 'custom': 
+        if time_period_str == 'last_month':
+            final_start_date = datetime.now(timezone.utc) - timedelta(days=30)
+            date_filter_title_part = "Last Month"
+        elif time_period_str == 'last_year':
+            final_start_date = datetime.now(timezone.utc) - timedelta(days=365)
+            date_filter_title_part = "Last Year"
+    
+    rsvpd_attending_event_ids_stmt = db.select(EventRSVP.event_id)\
+        .where(EventRSVP.user_id == user_for_data_context.id)\
+        .where(EventRSVP.status == 'attending')
+    rsvpd_attending_event_ids = db.session.scalars(rsvpd_attending_event_ids_stmt).all()
+
+    title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else f"(All Groups for {user_for_data_context.username})"
+    panel_context_title_suffix = ""
+    if shared_instance_for_title:
+        panel_context_title_suffix = f" (Shared by {shared_instance_for_title.sharer.username})"
 
 
-    # --- Now, use user_for_data_context and active_config_for_query to fetch data ---
-    if analysis_type == 'spending-by-category':
-        # ... (existing spending-by-category logic) ...
-        # IMPORTANT: Replace all `user.` with `user_for_data_context.`
-        # Replace `config.get(...)` with `active_config_for_query.get(...)`
-
-        time_period_str = active_config_for_query.get('time_period', 'all_time')
-        start_date_str = active_config_for_query.get('startDate') 
-        end_date_str = active_config_for_query.get('endDate')    
+    if not rsvpd_attending_event_ids:
+        no_data_title = ""
+        if analysis_type == 'spending-by-category':
+            no_data_title = f"Attended Event Spending by Category {title_group_part} (No events attended by {user_for_data_context.username}){panel_context_title_suffix}"
+        elif analysis_type == 'event-location-heatmap':
+            no_data_title = f"Event Location Heatmap {title_group_part} (No events attended by {user_for_data_context.username}){panel_context_title_suffix}"
         
-        raw_group_id_filter = active_config_for_query.get('group_id', 'all')
-        
-        group_id_to_filter = 'all' 
-        specific_group_name_for_title = None
+        return jsonify({
+            "analysis_type": analysis_type,
+            "title": no_data_title,
+            "data": [], 
+            "config_used": active_config_for_query
+        })
+    
+    group_accessible_stmt = db.select(Event.id).distinct()\
+        .join(Node, Event.node_id == Node.id)\
+        .join(Group, Node.group_id == Group.id)\
+        .join(GroupMember, Group.id == GroupMember.group_id)\
+        .where(GroupMember.user_id == user_for_data_context.id)\
+        .where(Event.id.in_(rsvpd_attending_event_ids))
+    
+    if group_id_to_filter != 'all': 
+        group_accessible_stmt = group_accessible_stmt.where(Group.id == group_id_to_filter)
+    
+    group_accessible_event_ids_sq = group_accessible_stmt.subquery()
 
-        if raw_group_id_filter != 'all':
-            try:
-                gid_int = int(raw_group_id_filter)
-                # Check membership against user_for_data_context (the sharer if shared)
-                group_for_filter = db.session.get(Group, gid_int)
-                if group_for_filter and is_group_member(user_for_data_context.id, gid_int): # Check against sharer's membership
-                    group_id_to_filter = gid_int
-                    specific_group_name_for_title = group_for_filter.name
-                else:
-                    app.logger.warning(f"Data context user {user_for_data_context.id} tried to filter spending by group {gid_int} they are not a member of. Defaulting to 'all'.")
-            except ValueError:
-                app.logger.warning(f"Invalid group_id '{raw_group_id_filter}' in spending config. Defaulting to 'all'.")
-        
-        final_start_date = None
-        final_end_date = None
-        date_filter_title_part = "All Time"
+    invited_accessible_stmt = db.select(Event.id).distinct()\
+        .join(InvitedGuest, Event.id == InvitedGuest.event_id)\
+        .where(InvitedGuest.email == user_for_data_context.email)\
+        .where(Event.id.in_(rsvpd_attending_event_ids))
 
-        if start_date_str and end_date_str: # These are from active_config_for_query
-            try:
-                final_start_date = isoparse(start_date_str).replace(tzinfo=timezone.utc)
-                final_end_date = (isoparse(end_date_str) + timedelta(days=1) - timedelta(microseconds=1)).replace(tzinfo=timezone.utc)
-                date_filter_title_part = f"{final_start_date.strftime('%b %d, %Y')} - {isoparse(end_date_str).strftime('%b %d, %Y')}"
-            except (ValueError, TypeError) as e:
-                app.logger.warning(f"Invalid custom date range: {start_date_str} - {end_date_str}. Error: {e}. Falling back.")
-                final_start_date = None; final_end_date = None
-        
-        if not final_start_date and time_period_str != 'custom': # Fallback to time_period_str if custom range invalid or not set
-            if time_period_str == 'last_month':
-                final_start_date = datetime.now(timezone.utc) - timedelta(days=30)
-                date_filter_title_part = "Last Month"
-            elif time_period_str == 'last_year':
-                final_start_date = datetime.now(timezone.utc) - timedelta(days=365)
-                date_filter_title_part = "Last Year"
-        
-        rsvpd_attending_event_ids_stmt = db.select(EventRSVP.event_id)\
-            .where(EventRSVP.user_id == user_for_data_context.id)\
-            .where(EventRSVP.status == 'attending')
-        rsvpd_attending_event_ids = db.session.scalars(rsvpd_attending_event_ids_stmt).all()
-
-        if not rsvpd_attending_event_ids:
-            panel_context_title = ""
-            if shared_instance_id_arg and shared_instance:
-                panel_context_title = f" (Shared by {shared_instance.sharer.username})"
-
-            response_data = {
-                "analysis_type": analysis_type,
-                "title": f"Attended Event Spending by Category (No events attended by {user_for_data_context.username}){panel_context_title}",
-                "data": [], 
-                "config_used": active_config_for_query # Send back the config that was used for this query
-            }
-            return jsonify(response_data)
-        
-        group_accessible_stmt = db.select(Event.id).distinct()\
-            .join(Node, Event.node_id == Node.id)\
-            .join(Group, Node.group_id == Group.id)\
-            .join(GroupMember, Group.id == GroupMember.group_id)\
-            .where(GroupMember.user_id == user_for_data_context.id)\
-            .where(Event.id.in_(rsvpd_attending_event_ids))
-        
-        if group_id_to_filter != 'all': 
-            group_accessible_stmt = group_accessible_stmt.where(Group.id == group_id_to_filter)
-        
-        group_accessible_event_ids_sq = group_accessible_stmt.subquery()
-
-        invited_accessible_stmt = db.select(Event.id).distinct()\
-            .join(InvitedGuest, Event.id == InvitedGuest.event_id)\
-            .where(InvitedGuest.email == user_for_data_context.email)\
-            .where(Event.id.in_(rsvpd_attending_event_ids))
-
-        if group_id_to_filter != 'all': # Filter by group if a specific group is selected
-            invited_accessible_stmt = invited_accessible_stmt\
-                .join(Node, Event.node_id == Node.id) \
-                .where(Node.group_id == group_id_to_filter)
-                
-        invited_event_ids_sq = invited_accessible_stmt.subquery()
-
-        final_event_ids_to_sum_stmt = db.select(Event.id).distinct()\
-            .where(
-                or_( # Use or_() for OR condition
-                    Event.id.in_(db.select(group_accessible_event_ids_sq.c.id)),
-                    Event.id.in_(db.select(invited_event_ids_sq.c.id))
-                )
+    if group_id_to_filter != 'all': 
+        invited_accessible_stmt = invited_accessible_stmt\
+            .join(Node, Event.node_id == Node.id, isouter=True) \
+            .where( # Event must either have no node or belong to the filtered group if it has a node
+                or_(Event.node_id.is_(None), Node.group_id == group_id_to_filter)
             )
-        final_event_ids_to_sum = db.session.scalars(final_event_ids_to_sum_stmt).all()
-        
-        if not final_event_ids_to_sum:
-            title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else f"(All Groups for {user_for_data_context.username})"
-            panel_context_title = ""
-            if shared_instance_id_arg and shared_instance:
-                panel_context_title = f" (Shared by {shared_instance.sharer.username})"
+            
+    invited_event_ids_sq = invited_accessible_stmt.subquery()
 
-            response_data = {
-                "analysis_type": analysis_type,
-                "title": f"Attended Event Spending by Category {title_group_part} (No matching events){panel_context_title}",
-                "data": [], 
-                "config_used": active_config_for_query
-            }
-            return jsonify(response_data)
+    final_event_ids_to_query_stmt = db.select(Event.id).distinct()\
+        .where(
+            or_( 
+                Event.id.in_(db.select(group_accessible_event_ids_sq.c.id)),
+                Event.id.in_(db.select(invited_event_ids_sq.c.id))
+            )
+        )
+    
+    # Apply date filters to the final set of event IDs
+    if final_start_date:
+        final_event_ids_to_query_stmt = final_event_ids_to_query_stmt.where(Event.date >= final_start_date)
+    if final_end_date:
+        final_event_ids_to_query_stmt = final_event_ids_to_query_stmt.where(Event.date <= final_end_date)
 
+    final_event_ids_list = db.session.scalars(final_event_ids_to_query_stmt).all()
+    
+    if not final_event_ids_list:
+        no_match_title = ""
+        if analysis_type == 'spending-by-category':
+            no_match_title = f"Attended Event Spending by Category {title_group_part} (No matching events for filters){panel_context_title_suffix}"
+        elif analysis_type == 'event-location-heatmap':
+            no_match_title = f"Event Location Heatmap {title_group_part} (No matching events for filters){panel_context_title_suffix}"
+
+        return jsonify({
+            "analysis_type": analysis_type,
+            "title": no_match_title,
+            "data": [], 
+            "config_used": active_config_for_query
+        })
+
+    # --- Analysis Specific Logic ---
+    if analysis_type == 'spending-by-category':
         stmt = db.select(
                 Node.label.label('category'),
                 func.sum(Event.cost_value).label('total_cost')
             ).select_from(Event) \
             .join(Node, Event.node_id == Node.id) \
-            .where(Event.id.in_(final_event_ids_to_sum)) \
+            .where(Event.id.in_(final_event_ids_list)) \
             .where(Event.cost_value.isnot(None)) \
-            .where(Event.cost_value > 0)
-
-        if final_start_date:
-            stmt = stmt.where(Event.date >= final_start_date)
-        if final_end_date:
-            stmt = stmt.where(Event.date <= final_end_date)
-        
-        stmt = stmt.group_by(Node.label).order_by(func.sum(Event.cost_value).desc())
+            .where(Event.cost_value > 0) \
+            .group_by(Node.label).order_by(func.sum(Event.cost_value).desc())
         
         results = db.session.execute(stmt).all()
-
-        analysis_data = [
-            {"category": row.category, "amount": round(row.total_cost or 0, 2)}
-            for row in results
-        ]
+        analysis_data = [{"category": row.category, "amount": round(row.total_cost or 0, 2)} for row in results]
         
-        title_group_part = f"({specific_group_name_for_title})" if specific_group_name_for_title else f"(All Groups for {user_for_data_context.username})"
-        final_report_title = f"Attended Event Spending {title_group_part} - {date_filter_title_part}"
+        if not analysis_data: final_report_title += " (No Data)"
 
-        if shared_instance_id_arg and shared_instance:
-            final_report_title += f" (Shared by {shared_instance.sharer.username})"
-
-        if not analysis_data:
-            final_report_title += " (No Data)"
-
-        response_data = {
+        return jsonify({
             "analysis_type": analysis_type,
-            "title": final_report_title,
             "data": analysis_data,
             "config_used": active_config_for_query
-        }
-        return jsonify(response_data)
+        })
+
+    elif analysis_type == 'event-location-heatmap':
+        events_with_coords_stmt = db.select(Event.location_coordinates)\
+            .where(Event.id.in_(final_event_ids_list))\
+            .where(Event.location_coordinates.isnot(None))
+        
+        coordinate_strings = db.session.scalars(events_with_coords_stmt).all()
+        
+        heatmap_points = []
+        for coord_str in coordinate_strings:
+            try:
+                lat_str, lng_str = coord_str.split(',')
+                lat = float(lat_str.strip())
+                lng = float(lng_str.strip())
+                # For Leaflet.heat, data can be [lat, lng] or [lat, lng, intensity]
+                # Using fixed intensity for now, so just [lat, lng] is fine.
+                heatmap_points.append([lat, lng]) 
+            except (ValueError, AttributeError) as e:
+                app.logger.warning(f"Could not parse coordinates: '{coord_str}'. Error: {e}")
+                continue
+        
+        if not heatmap_points: final_report_title += " (No Location Data)"
+
+        return jsonify({
+            "analysis_type": analysis_type,
+            "data": heatmap_points,
+            "config_used": active_config_for_query
+        })
     else:
         return jsonify({"error": f"Analysis type '{analysis_type}' not implemented or not configured correctly."}), 404
 
@@ -1676,7 +1623,6 @@ def add_insight_panel():
     next_order = (max_order_val + 1) if max_order_val is not None else 0
     
     panel_config = details.get('default_config', {}).copy()
-    # User can override default config on creation (e.g., if palette item offers choices)
     if 'configuration' in data and isinstance(data['configuration'], dict):
         panel_config.update(data['configuration'])
 
@@ -1684,7 +1630,7 @@ def add_insight_panel():
     new_panel = InsightPanel(
         user_id=current_user.id,
         analysis_type=analysis_type,
-        title=details['title'], # Initial title from definition
+        title=details['title'], 
         description=details['description'],
         display_order=next_order,
         configuration=panel_config 
@@ -1694,7 +1640,7 @@ def add_insight_panel():
     return jsonify(new_panel.to_dict()), 201
 
 
-@app.route('/api/insights/panels/<int:panel_id>', methods=['PATCH']) # New endpoint for updating panel config
+@app.route('/api/insights/panels/<int:panel_id>', methods=['PATCH']) 
 @login_required
 def update_insight_panel_config(panel_id):
     panel = db.session.get(InsightPanel, panel_id)
@@ -1707,18 +1653,13 @@ def update_insight_panel_config(panel_id):
     if 'configuration' not in data or not isinstance(data['configuration'], dict):
         return jsonify({"error": "Missing or invalid 'configuration' in request body"}), 400
 
-    # Preserve existing config keys not being updated, merge new ones
-    # This allows partial updates to configuration
     if panel.configuration is None:
         panel.configuration = {}
     
-    current_config = panel.configuration.copy() # Make a mutable copy if it's immutable
+    current_config = panel.configuration.copy() 
     current_config.update(data['configuration'])
     panel.configuration = current_config
     
-    # Optionally, update title if a standard title format depends on config
-    # For now, title is updated by the analysis data endpoint itself
-
     db.session.commit()
     return jsonify(panel.to_dict())
 
@@ -1785,7 +1726,6 @@ def get_all_my_events():
     user_id = current_user.id
     user_email = current_user.email
 
-    # Events from groups user is a member of
     group_events_stmt = db.select(Event).distinct() \
         .join(Node, Event.node_id == Node.id) \
         .join(Group, Node.group_id == Group.id) \
@@ -1794,20 +1734,18 @@ def get_all_my_events():
         .options(
             joinedload(Event.node).joinedload(Node.group), 
             joinedload(Event.attendees).joinedload(EventRSVP.user),
-            joinedload(Event.creator) # Eager load creator for to_dict
+            joinedload(Event.creator) 
         )
     
-    # Events user is directly invited to
     invited_events_stmt = db.select(Event).distinct() \
         .join(InvitedGuest, Event.id == InvitedGuest.event_id) \
         .where(InvitedGuest.email == user_email) \
         .options(
             joinedload(Event.node).joinedload(Node.group),
             joinedload(Event.attendees).joinedload(EventRSVP.user),
-            joinedload(Event.creator) # Eager load creator for to_dict
+            joinedload(Event.creator) 
         )
 
-    # Use .unique() when calling scalars() if joinedload involves collections
     group_events = db.session.scalars(group_events_stmt).unique().all()
     invited_events = db.session.scalars(invited_events_stmt).unique().all()
 
