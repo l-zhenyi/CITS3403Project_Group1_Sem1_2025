@@ -19,6 +19,14 @@
 <body>
       {% if not hide_nav %}
       <header class="top-nav glassy">
+            {# --- NEW: Hamburger Menu Toggle Button --- #}
+            <button id="hamburger-menu-toggle" class="hamburger-menu-toggle" aria-label="Toggle navigation" aria-expanded="false">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+            </button>
+            {# --- END: Hamburger Menu Toggle Button --- #}
+
             <nav class="top-nav-left">
                   <a href="{{ url_for('index') }}">Home</a>
                   {% if current_user.is_anonymous %}

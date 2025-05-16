@@ -18,12 +18,71 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
 .button.decline:hover { background-color: rgba(255, 255, 255, 0.25); }
 
 /* ==========================================================================
-   Navigation Bar (.top-nav) - Incorporating Fixes
+   Navigation Bar (.top-nav) - Incorporating Fixes & Hamburger
    ========================================================================== */
-.top-nav { position: sticky; top: 10px; z-index: 1000; display: flex; flex-shrink: 0; width: calc(100% - 24px); max-width: 1800px; margin: 10px auto 0 auto; padding: 10px 24px; border-radius: 16px; justify-content: space-between; align-items: center; /* Inherit .glassy style from HTML */ }
-.top-nav-left a { display: inline-block; padding: 8px 20px; margin-right: 8px; border-radius: 10px; color: #ffffff; font-weight: 500; text-decoration: none; text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); transition: background-color 0.2s ease, color 0.2s ease; }
-.top-nav-left a.active { background-color: rgba(255, 255, 255, 0.15); color: #fff; font-weight: 600; text-shadow: none; }
-.top-nav-left a:not(.active):hover { background-color: rgba(255, 255, 255, 0.15); }
+.top-nav {
+    position: sticky; top: 10px; z-index: 1000; display: flex;
+    flex-shrink: 0; width: calc(100% - 24px); max-width: 1800px;
+    margin: 10px auto 0 auto; padding: 10px 24px; border-radius: 16px;
+    justify-content: space-between; align-items: center;
+    /* Inherit .glassy style from HTML */
+}
+
+/* Hamburger Menu Toggle Button (Mobile Only) */
+#hamburger-menu-toggle {
+    display: none; /* Hidden by default, shown on mobile */
+    flex-direction: column;
+    justify-content: space-around;
+    width: 30px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 10; /* Above links if they overlap */
+    margin-right: 15px; /* Space between hamburger and first link if needed */
+}
+
+#hamburger-menu-toggle span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background-color: #fff;
+    border-radius: 3px;
+    transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+/* Hamburger to X animation */
+#hamburger-menu-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+#hamburger-menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+#hamburger-menu-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+
+.top-nav-left {
+    display: flex; /* Desktop: flex row */
+    align-items: center;
+}
+.top-nav-left a {
+    display: inline-block; padding: 8px 20px; margin-right: 8px;
+    border-radius: 10px; color: #ffffff; font-weight: 500;
+    text-decoration: none; text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+.top-nav-left a:last-child {
+    margin-right: 0;
+}
+.top-nav-left a.active {
+    background-color: rgba(255, 255, 255, 0.15); color: #fff;
+    font-weight: 600; text-shadow: none;
+}
+.top-nav-left a:not(.active):hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
 
 /* --- Container for Right-Side Icons/Widgets --- */
 .top-nav-right {
@@ -35,194 +94,164 @@ body::before { content: ''; position: fixed; top: -10px; left: -10px; right: -10
 
 /* --- Base styles for ALL icon buttons (Profile, etc.) --- */
 .top-nav-right .icon-button {
-  /* Box Model & Shape */
-  display: inline-flex; /* Use flex to center icon content */
-  justify-content: center;
-  align-items: center;
-  width: 36px;        /* Explicit width */
-  height: 36px;       /* Explicit height */
-  border-radius: 50%; /* Ensure fully circular */
-  border: none;
-  padding: 0;         /* No padding needed with explicit w/h */
-  margin: 0;          /* Let gap handle spacing */
-  /* Appearance */
-  background: transparent; /* NO background initially */
-  color: #f0f0f5;
-  font-size: 1.4rem;
-  cursor: pointer;
-  /* Transitions */
-  transition: background-color 0.2s ease; /* Only transition background */
-  text-decoration: none;
-  flex-shrink: 0; /* Prevent shrinking */
+  display: inline-flex; justify-content: center; align-items: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; padding: 0; margin: 0;
+  background: transparent; color: #f0f0f5; font-size: 1.4rem;
+  cursor: pointer; transition: background-color 0.2s ease;
+  text-decoration: none; flex-shrink: 0;
+}
+.top-nav-right .icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* --- Hover state ONLY for regular icon buttons (Profile) --- */
-.top-nav-right .icon-button:hover {
-  background-color: rgba(255, 255, 255, 0.15); /* Circle appears on hover */
+/* Mobile Styles for Navigation */
+@media (max-width: 768px) {
+    .top-nav {
+        padding: 8px 15px; /* Adjust padding for hamburger */
+        /* position: relative; /* Needed if .top-nav-left is absolutely positioned */
+    }
+
+    #hamburger-menu-toggle {
+        display: flex; /* Show hamburger on mobile */
+        order: -1; /* Place it before .top-nav-left in flex order if inside .top-nav */
+    }
+
+    .top-nav-left {
+        /* Collapsed state for mobile */
+        display: none; /* Hide by default, JS will toggle */
+        flex-direction: column;
+        align-items: flex-start; /* Align links to the left */
+        position: absolute;
+        top: calc(100% + 5px); /* Position below the nav bar */
+        left: 0;
+        width: 100%;
+        background-color: rgba(100, 100, 105, 0.75); /* Slightly different glass for dropdown */
+        backdrop-filter: blur(20px) saturate(130%);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-top: none; /* Remove top border if it looks odd with nav bar */
+        border-radius: 0 0 16px 16px; /* Round bottom corners */
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        padding: 10px 0; /* Vertical padding for the dropdown items */
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, padding-top 0.3s ease-out, padding-bottom 0.3s ease-out;
+        z-index: 999; /* Ensure it's above other content but below main modal (1050) */
+    }
+
+    .top-nav-left.menu-open {
+        display: flex; /* Show when active */
+        max-height: 500px; /* Large enough to fit content */
+        opacity: 1;
+        padding: 10px 0;
+    }
+
+    .top-nav-left a {
+        width: 100%; /* Make links full-width */
+        padding: 12px 20px; /* Adjust padding for vertical layout */
+        margin-right: 0;
+        margin-bottom: 1px; /* Small separator */
+        border-radius: 0; /* No rounding for individual items in dropdown */
+        font-size: 1rem;
+    }
+    .top-nav-left a:last-child {
+        margin-bottom: 0;
+    }
+
+    .top-nav-left a.active {
+        background-color: rgba(255, 255, 255, 0.25); /* Slightly more prominent active state */
+    }
+     .top-nav-left a:not(.active):hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+
+    /* Adjust right side if needed, e.g., if search needs to shrink */
+    .top-nav-right .icon-button { font-size: 1.2rem; }
 }
+
 
 /* ==========================================================================
    Search Widget Styles (Sexy Revision 3)
    ========================================================================== */
 
 .search-widget {
-  position: relative; /* For positioning children */
-  display: flex;      /* Use flexbox */
-  align-items: center;
-  /* Sized to fit the icon button initially */
-  width: 36px;
-  height: 36px;
-  /* --- Initially VISUALLY transparent --- */
-  background: transparent;
-  border: 1px solid transparent; /* reserve space but hide border */
-  border-radius: 18px; /* Rounded like the button */
-  /* --- Transitions --- */
-  /* Transition width linearly, background/border/blur smoothly (ease-out) */
-  /* Add a slight delay to width expansion */
+  position: relative; display: flex; align-items: center;
+  width: 36px; height: 36px;
+  background: transparent; border: 1px solid transparent;
+  border-radius: 18px;
   transition:
     width 0.3s linear 0.05s,
     background-color 0.25s ease-out,
     border-color 0.25s ease-out,
     backdrop-filter 0.25s ease-out;
-  /* No overflow hidden */
 }
-
-/* Input - initially hidden */
 .search-input {
-  position: absolute; /* Position inside the widget */
-  left: 0;
-  top: 0;
-  width: 100%; /* Fill parent */
-  height: 100%;
-  padding: 0 40px 0 15px; /* Space for text and icon */
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 0.9em;
-  color: #f0f0f5;
-  opacity: 0; /* Hidden initially */
-  pointer-events: none;
-  /* Fade in *after* the widget starts expanding */
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 100%;
+  padding: 0 40px 0 15px;
+  border: none; background: transparent; outline: none;
+  font-size: 0.9em; color: #f0f0f5;
+  opacity: 0; pointer-events: none;
   transition: opacity 0.2s ease-out 0.15s;
 }
-
-.search-input::placeholder {
-  color: rgba(240, 240, 245, 0.7);
-  font-style: italic;
-}
-
-/* Button - Initially styled like other icons */
+.search-input::placeholder { color: rgba(240, 240, 245, 0.7); font-style: italic; }
 .search-toggle-btn {
-  /* Positioning & Size */
-  position: absolute; /* Keep it pinned */
-  right: 0;
-  top: 0;
-  width: 36px;        /* Match widget initial size */
-  height: 36px;
-  /* Base Icon Styles */
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 50%; /* Circular */
-  border: none;
-  padding: 0;
-  margin: 0;
-  background: transparent; /* No BG initially */
-  color: #f0f0f5;
-  font-size: 1.4rem;
-  cursor: pointer;
-  z-index: 2; /* Above input */
-  /* Transition for hover effect */
+  position: absolute; right: 0; top: 0;
+  width: 36px; height: 36px;
+  display: inline-flex; justify-content: center; align-items: center;
+  border-radius: 50%; border: none; padding: 0; margin: 0;
+  background: transparent; color: #f0f0f5;
+  font-size: 1.4rem; cursor: pointer; z-index: 2;
   transition: background-color 0.2s ease;
 }
-
-/* Button hover effect when search is COLLAPSED */
 .search-widget:not(.active) .search-toggle-btn:hover {
-  background-color: rgba(255, 255, 255, 0.15); /* Standard icon hover */
+  background-color: rgba(255, 255, 255, 0.15);
 }
-
-/* --- Styles when search is ACTIVE --- */
 .search-widget.active {
-  width: 220px; /* Expanded width */
-  /* --- Fade IN the glassy pill style --- */
-  background: rgba(255, 255, 255, 0.15); /* Use a slightly more opaque BG */
+  width: 220px;
+  background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(15px) saturate(120%);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Optional subtle shadow */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   cursor: default;
 }
-
-/* Input becomes visible */
-.search-widget.active .search-input {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Button hover effect when search is EXPANDED (hover the whole widget) */
+.search-widget.active .search-input { opacity: 1; pointer-events: auto; }
 .search-widget.active:hover {
   background-color: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.35);
 }
 
-/* Optional: Dim the icon slightly when expanded? */
-/* .search-widget.active .search-toggle-btn { */
-/*   color: rgba(240, 240, 245, 0.8); */
-/* } */
-
 /* ==========================================================================
    Search Results Dropdown (Darker & Matching Width)
    ========================================================================== */
 .search-results-dropdown {
-  position: fixed; /* KEEP this so it stays above page flow */
-  max-height: 300px;
-  overflow-y: auto;
+  position: fixed; max-height: 300px; overflow-y: auto;
   background-color: rgba(80, 80, 90, 0.4);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
           backdrop-filter: blur(12px) saturate(120%);
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  border-radius: 12px;
-  z-index: 1100;
-  opacity: 0;
+  border-radius: 12px; z-index: 1100; opacity: 0;
   transform: scale(0.98);
   transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-  display: none; /* Add this line */
+  display: none;
 }
-
-.search-results-dropdown.visible {
-  display: block;
-  opacity: 1;
-  transform: scale(1);
+.search-results-dropdown.visible { display: block; opacity: 1; transform: scale(1); }
+.search-results-placeholder, .search-results-loading, .search-results-error, .search-results-empty {
+  padding: 12px 15px; color: rgba(240, 240, 245, 0.8);
+  font-style: italic; font-size: 0.9em; text-align: center;
 }
-
-/* Dropdown Content Styles (Keep text light) */
-.search-results-placeholder,
-.search-results-loading,
-.search-results-error,
-.search-results-empty {
-  padding: 12px 15px;
-  color: rgba(240, 240, 245, 0.8); /* Slightly dimmed white */
-  font-style: italic;
-  font-size: 0.9em;
-  text-align: center;
-}
-
 .search-result-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Darker internal border */
-  text-decoration: none;
-  /* --- UPDATED: Light text color --- */
-  color: #f0f0f5;
+  display: flex; align-items: center; padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-decoration: none; color: #f0f0f5;
   transition: background-color 0.15s ease;
 }
 .search-result-item:last-child { border-bottom: none; }
-/* --- UPDATED: Subtle hover for dark background --- */
-.search-result-item:hover {
-  background-color: rgba(255, 255, 255, 0.1); /* Lighter shade on hover */
-}
-.search-result-avatar { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; object-fit: cover; flex-shrink: 0; background-color: rgba(255,255,255,0.1); /* Placeholder bg */ }
+.search-result-item:hover { background-color: rgba(255, 255, 255, 0.1); }
+.search-result-avatar { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; object-fit: cover; flex-shrink: 0; background-color: rgba(255,255,255,0.1); }
 .search-result-username { font-weight: 500; font-size: 0.95em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ==========================================================================

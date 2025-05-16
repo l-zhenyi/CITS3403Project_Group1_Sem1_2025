@@ -13,6 +13,7 @@ import { setupGroupSettingsModal, openGroupSettingsModal } from './groupSettings
 import { setupViewportInteractions, getTransformState, setTransformState, debounce } from './viewportManager.js';
 import { setupSearchWidget } from './search.js';
 import { initInsightsManager } from './insightsManager.js';
+import { setupMobileNav } from './navManager.js'; // NEW: Import navManager
 
 // --- Global Variables ---
 window.draggingAllowed = true;
@@ -27,6 +28,7 @@ let mainJSInitialized = false; // Flag to prevent re-initialization
 // --- Global Setup for All Views ---
 function setupGlobalUI() {
     setupSearchWidget();
+    setupMobileNav(); // NEW: Initialize mobile navigation
 
     const collageViewportElement = document.getElementById('collage-viewport');
     if (collageViewportElement) {
@@ -354,10 +356,11 @@ async function activateGroup(groupListItem, groupId) {
         plannerPane.classList.add('mobile-event-view-active');
         const collageArea = document.getElementById('event-collage-area'); 
         if (collageArea) {
-            collageArea.style.display = 'block';
+            collageArea.style.display = 'flex'; // MODIFIED: Ensure it's flex for its children
             collageArea.scrollTop = 0;
         }
-        if (groupListUL.parentElement) groupListUL.parentElement.style.display = 'none';
+        const groupListAreaEl = document.querySelector('.group-list-area'); // Get the group list area
+        if(groupListAreaEl) groupListAreaEl.style.display = 'none'; // Hide the group list area itself
     } else { 
         if (plannerPane.classList.contains('calendar-view-active') ||
             plannerPane.classList.contains('events-view-active') ||
