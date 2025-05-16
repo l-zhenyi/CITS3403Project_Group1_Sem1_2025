@@ -15,7 +15,8 @@ Our all-in-one platform empowers you to stay connected and organized with ease. 
 #### Prerequisites
 Python
 
-#### **Add the following to a .flaskenv file**
+#### **Add the following to the .flaskenv file**
+Remember to choose your own SECRET_KEY
 ```
 FLASK_APP=run.py
 FLASK_ENV=development
