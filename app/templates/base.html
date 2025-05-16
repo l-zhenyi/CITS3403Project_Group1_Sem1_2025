@@ -27,8 +27,9 @@
                         <a href="{{ url_for('user', username=current_user.username) }}">Profile</a>
                         <a href="{{ url_for('messages') }}"> {{ ('Messages') }} </a>
                         <a href="{{ url_for('friends') }}">Friends</a>
+                        <a href="{{ url_for('planner') }}">Planner</a>
                         <a href="{{ url_for('explore') }}">Explore</a>
-                          <a href="{{ url_for('logout') }}">Logout</a>
+                        <a href="{{ url_for('logout') }}">Logout</a>
                   {% endif %}
             </nav>
 
