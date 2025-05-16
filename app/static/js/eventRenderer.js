@@ -472,6 +472,100 @@ export function createNodeElement(node) {
     return el;
 }
 
+// --- Event Tile Sizing Logic ---
+const TILE_MIN_WIDTH = 280; // px
+const TILE_MAX_WIDTH = 380; // px
+const TILE_GAP = 16;        // px
+
+/**
+ * Calculates the optimal number of columns and tile width.
+ * @param {number} containerWidth - The width of the container for tiles.
+ * @param {number} minTileWidth - Minimum width for a tile.
+ * @param {number} maxTileWidth - Maximum width for a tile.
+ * @param {number} gap - Gap between tiles.
+ * @returns {{tileWidth: number, numCols: number}}
+ */
+function calculateTileLayout(containerWidth, minTileWidth, maxTileWidth, gap) {
+    if (containerWidth <= 0) {
+        return { tileWidth: minTileWidth, numCols: 1 };
+    }
+
+    // Case 1: Container is too narrow for even one minWidth tile (ignoring gap as numCols=1 means no inter-tile gap)
+    if (containerWidth < minTileWidth) {
+        return { tileWidth: containerWidth, numCols: 1 };
+    }
+
+    // Determine the maximum number of columns possible if tiles were at their minWidth
+    let maxColsPossible = Math.floor((containerWidth + gap) / (minTileWidth + gap));
+    maxColsPossible = Math.max(1, maxColsPossible); // Ensure at least 1 column
+
+    // Iterate downwards from maxPossibleCols to find the best fit
+    for (let numCols = maxColsPossible; numCols >= 1; numCols--) {
+        const totalGapWidth = (numCols - 1) * gap;
+        const availableWidthForTiles = containerWidth - totalGapWidth;
+
+        if (availableWidthForTiles <= 0 && numCols > 1) continue; // Not enough space for gaps with this many columns
+        if (availableWidthForTiles <= 0 && numCols === 1) return { tileWidth: containerWidth, numCols: 1};
+
+
+        const calculatedTileWidth = availableWidthForTiles / numCols;
+
+        if (calculatedTileWidth <= maxTileWidth) {
+            // This is a good fit. tileWidth will be >= minTileWidth because of how maxColsPossible was derived.
+            // And it's <= maxTileWidth. This ensures tiles are within desired constraints and fill the row.
+            return { tileWidth: calculatedTileWidth, numCols: numCols };
+        }
+    }
+    
+    // Fallback: If the loop finishes, it means for numCols=1, calculatedTileWidth (containerWidth) was > maxTileWidth.
+    // To "perfectly fill", we must use more columns to bring tile width down, aiming for maxTileWidth.
+    let numColsNeededForMaxWidth = Math.ceil((containerWidth + gap) / (maxTileWidth + gap));
+    numColsNeededForMaxWidth = Math.max(1, numColsNeededForMaxWidth); // Ensure at least 1
+
+    const totalGapForTheseCols = (numColsNeededForMaxWidth - 1) * gap;
+    const finalTileWidth = (containerWidth - totalGapForTheseCols) / numColsNeededForMaxWidth;
+    
+    // This finalTileWidth might be less than minTileWidth in some edge cases to achieve perfect fill.
+    // e.g. container = 450, min=280, max=300, gap=16 => numCols=2, tileWidth=217
+    return { tileWidth: finalTileWidth, numCols: numColsNeededForMaxWidth };
+}
+
+
+/**
+ * Adjusts the sizes of event tiles in the event list view.
+ */
+export function adjustEventTileSizesIfNeeded() {
+    if (!eventListContainer) {
+        console.warn("Event list container not found for adjustEventTileSizesIfNeeded.");
+        return;
+    }
+
+    // Check if the container is actually visible and has a width
+    if (eventListContainer.offsetParent === null || eventListContainer.clientWidth === 0) {
+        // console.log("Event list container is not visible or has no width, skipping tile size adjustment.");
+        return;
+    }
+
+    const containerWidth = eventListContainer.clientWidth;
+    const { tileWidth, numCols } = calculateTileLayout(containerWidth, TILE_MIN_WIDTH, TILE_MAX_WIDTH, TILE_GAP);
+
+    // Style the container
+    eventListContainer.style.display = 'flex';
+    eventListContainer.style.flexWrap = 'wrap';
+    eventListContainer.style.gap = `${TILE_GAP}px`;
+    // Optional: Add padding to the container itself if desired, or handle via CSS
+    // eventListContainer.style.padding = `${TILE_GAP / 2}px`;
+
+    const tiles = eventListContainer.querySelectorAll('.event-tile');
+    tiles.forEach(tile => {
+        tile.style.width = `${tileWidth}px`;
+        // Ensure tiles handle their own padding/border correctly with box-sizing
+        tile.style.boxSizing = 'border-box'; 
+    });
+     // console.log(`Adjusted event tiles: ${numCols} columns, ${tileWidth.toFixed(2)}px width each.`);
+}
+
+
 export function renderAllEventsList(filter = 'upcoming') {
     if (!eventListContainer) {
         console.warn("Event list container not found for renderAllEventsList.");
@@ -541,6 +635,8 @@ export function renderAllEventsList(filter = 'upcoming') {
             eventListContainer._eventTileClickListenerAttached = true;
         }
     }
+    // Adjust tile sizes after rendering content
+    adjustEventTileSizesIfNeeded();
 }
 
 
