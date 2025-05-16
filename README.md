@@ -22,10 +22,11 @@ FLASK_ENV=development
 SECRET_KEY='<SOME SECRET KEY OF YOUR CHOOSING>'
 ```
 
+Open a terminal in the project directory and run following commands:
 #### On Windows
 ```
 python3 -m venv venv
-venv/Scripts/activate
+venv\Scripts\activate
 python -m pip install -r requirements.txt
 flask db upgrade
 ```
@@ -42,6 +43,12 @@ flask db upgrade
 flask run
 ```
 By default, the application runs on http://127.0.0.1:5000. Check your console output for the exact URL.
+
+#### To deactivate the virtual environment, enter:
+```
+deactivate
+```
+
 
 ## Running tests
 ### Python Models test
