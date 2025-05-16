@@ -41,7 +41,7 @@ AVAILABLE_ANALYSES = {
         "title": "💸 Spending by Category",
         "description": "Total event costs grouped by the event's node (category). Filter by group and time period.", # MODIFIED description
         "preview_title": "Spending Example",
-        "preview_image_filename": "img/placeholder-bar-chart.png", # You'd need this image
+        "preview_image_filename": "img/placeholder-pie-icon.jpeg", # You'd need this image
         "preview_description": "Shows total costs for events linked to different nodes. Helps track budget allocation.",
         "placeholder_html": """
             <div class='loading-placeholder' style='text-align: center; padding: 20px; color: #aaa;'>
@@ -61,7 +61,7 @@ AVAILABLE_ANALYSES = {
         "title": "📍 Event Location Heatmap",
         "description": "Visualizes the geographic concentration of your attended events using a heatmap. Filters apply.",
         "preview_title": "Location Heatmap",
-        "preview_image_filename": "img/placeholder-map-icon.png", # Create a placeholder image
+        "preview_image_filename": "img/placeholder-map-icon.jpeg", # Create a placeholder image
         "preview_description": "Displays a heatmap of event locations you've attended. Useful for seeing event hotspots.",
         "placeholder_html": """
             <div class='loading-placeholder' style='text-align: center; padding: 20px; color: #aaa;'>
