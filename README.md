@@ -15,7 +15,7 @@ Our all-in-one platform empowers you to stay connected and organized with ease. 
 #### Prerequisites
 Python
 
-#### **Add the following to the .flaskenv file (Remember to choose your own SECRET_KEY)**
+#### **Add the following to the .flaskenv file (remember to choose your own SECRET_KEY)**
 ```
 FLASK_APP=run.py
 FLASK_ENV=development
@@ -42,7 +42,7 @@ flask db upgrade
 ```
 python run.py
 ```
-By default, the application runs on http://127.0.0.1:5000. Check your console output for the exact URL.
+By default, the application runs on port 5000. Check your console output for the exact URL.
 
 #### To deactivate the virtual environment, enter:
 ```
